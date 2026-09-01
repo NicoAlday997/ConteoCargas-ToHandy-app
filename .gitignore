@@ -1,0 +1,31 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Builds
+dist/
+build/
+
+# React Native / iOS
+ios/Pods/
+ios/build/
+android/app/build/
+android/.gradle/
+
+# Base de datos local (si se usa contenedor con volumen mapeado a archivo)
+*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
