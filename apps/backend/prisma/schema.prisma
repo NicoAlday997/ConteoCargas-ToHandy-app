@@ -1,0 +1,398 @@
+// Esquema de datos — App de verificación de cargas (ver docs/02-documento-tecnico-y-diseno.md §3).
+// La lógica de dominio no depende de este archivo; Prisma vive solo en la capa de infraestructura.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RolApp {
+  VENDEDOR
+  CONTADOR
+  SUPERVISOR
+}
+
+enum TipoCarga {
+  INICIAL
+  RECARGA
+}
+
+enum EstadoCarga {
+  BORRADOR
+  EN_ESPERA_CONTADOR
+  BLOQUEADA_CORTE_PENDIENTE
+  EN_COMPARACION
+  CONFLICTOS_PENDIENTES
+  LISTA_PARA_ENVIAR
+  ENVIADA
+  ERROR_ENVIO
+  ENVIO_INCIERTO
+}
+
+enum TipoSesion {
+  VENDEDOR
+  CONTADOR
+  REFUERZO
+  SUPERVISOR
+}
+
+enum EstadoSesion {
+  ABIERTA
+  CERRADA
+}
+
+enum UbicacionConteo {
+  ALMACEN
+  CALLE
+}
+
+enum ResultadoVerificacion {
+  COINCIDE
+  DISCREPANCIA
+}
+
+enum ResultadoRevision {
+  CORRECTO
+  INCORRECTO
+}
+
+enum UrgenciaAlerta {
+  ALTA
+  MEDIA
+  BAJA
+}
+
+enum EstadoAlerta {
+  PENDIENTE
+  RESUELTA
+  IGNORADA
+}
+
+enum Plataforma {
+  ANDROID
+  IOS
+}
+
+// ---------------------------------------------------------------------------
+// Rutas y asignación de vendedores
+// ---------------------------------------------------------------------------
+
+model Ruta {
+  id       String   @id @default(cuid())
+  nombre   String
+  codigo   String   @unique
+  activa   Boolean  @default(true)
+  creadaEn DateTime @default(now())
+
+  asignaciones AsignacionRutaVendedor[]
+  eventosCarga EventoCarga[]
+  frecuencias  FrecuenciaProductoRuta[]
+
+  @@map("rutas")
+}
+
+// Historial de qué vendedor tiene asignada cada ruta. Al reasignar se cierra el
+// registro vigente (vigenteHasta) y se abre uno nuevo, preservando el histórico.
+model AsignacionRutaVendedor {
+  id           String    @id @default(cuid())
+  rutaId       String
+  usuarioAppId String
+  vigenteDesde DateTime  @default(now())
+  vigenteHasta DateTime?
+
+  ruta       Ruta       @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  usuarioApp UsuarioApp @relation(fields: [usuarioAppId], references: [id])
+
+  @@index([rutaId])
+  @@index([usuarioAppId])
+  @@map("asignaciones_ruta_vendedor")
+}
+
+// ---------------------------------------------------------------------------
+// Usuarios de la app (autenticación propia por PIN)
+// ---------------------------------------------------------------------------
+
+model UsuarioApp {
+  id                   String    @id @default(cuid())
+  nombreCompleto       String
+  codigoInterno        String?   @unique
+  pinHash              String
+  debeCambiarPin       Boolean   @default(true)
+  fechaUltimoCambioPin DateTime?
+  rolApp               RolApp
+  // Solo se completa cuando rolApp = VENDEDOR (asignación fija por un admin).
+  usuarioHandyId       String?
+  activo               Boolean   @default(true)
+  // Rate limiting del RF-03: bloqueo temporal tras 5 intentos fallidos.
+  intentosFallidos     Int       @default(0)
+  bloqueadoHasta       DateTime?
+  creadoEn             DateTime  @default(now())
+  actualizadoEn        DateTime  @updatedAt
+
+  usuarioHandy UsuarioHandy? @relation(fields: [usuarioHandyId], references: [idHandy])
+
+  asignaciones                AsignacionRutaVendedor[]
+  sesionesConteo              SesionConteo[]
+  restablecimientosRecibidos  HistorialRestablecimientoPin[] @relation("RestablecimientoUsuario")
+  restablecimientosRealizados HistorialRestablecimientoPin[] @relation("RestablecimientoAdmin")
+  discrepanciasCapturadas     DiscrepanciaResuelta[]         @relation("DiscrepanciaCapturadaPor")
+  discrepanciasConfirmadas    DiscrepanciaResuelta[]         @relation("DiscrepanciaConfirmadaPor")
+  comparacionesComoVendedor   ComparacionCarga[]             @relation("ComparacionVendedor")
+  comparacionesComoContador   ComparacionCarga[]             @relation("ComparacionContador")
+  comparacionesComoSupervisor ComparacionCarga[]             @relation("ComparacionSupervisor")
+  alertasResueltas            Alerta[]                       @relation("AlertaResueltaPor")
+  dispositivosPush            DispositivoPush[]
+
+  @@index([usuarioHandyId])
+  @@map("usuarios_app")
+}
+
+model HistorialRestablecimientoPin {
+  id             String   @id @default(cuid())
+  usuarioAppId   String
+  restablecidoPor String
+  fecha          DateTime @default(now())
+
+  usuarioApp UsuarioApp @relation("RestablecimientoUsuario", fields: [usuarioAppId], references: [id])
+  admin      UsuarioApp @relation("RestablecimientoAdmin", fields: [restablecidoPor], references: [id])
+
+  @@index([usuarioAppId])
+  @@map("historiales_restablecimiento_pin")
+}
+
+// ---------------------------------------------------------------------------
+// Cache de Handy (solo lectura desde la app, sincronizado)
+// ---------------------------------------------------------------------------
+
+// El role de Handy es un objeto {id, authority}, no un número: se guardan ambos.
+model UsuarioHandy {
+  idHandy              String   @id
+  nombre               String
+  rolHandyId           String?
+  rolHandyAuthority    String?
+  activo               Boolean  @default(true)
+  ultimaSincronizacion DateTime @default(now())
+
+  vendedores   UsuarioApp[]
+  eventosCarga EventoCarga[]
+
+  @@map("usuarios_handy")
+}
+
+model Producto {
+  // code es la PK: es el identificador que exige la API de Handy en los payloads
+  // y debe tratarse como inmutable en el cache.
+  code                      String   @id
+  nombre                    String
+  // Siempre en centavos (Int); nunca decimal.
+  precioCentavos            Int
+  // Etiquetas descriptivas de unidad, sin factor de conversión.
+  unidadCode                String
+  unidadDescripcion         String
+  familia                   String?
+  activo                    Boolean  @default(true)
+  lastUpdatedHandy          DateTime?
+  ultimaSincronizacionLocal DateTime @default(now())
+
+  frecuencias  FrecuenciaProductoRuta[]
+  conteoItems  ConteoItem[]
+  discrepancias DiscrepanciaResuelta[]
+  revisiones   RevisionSupervisor[]
+
+  @@map("productos")
+}
+
+model FrecuenciaProductoRuta {
+  id                      String @id @default(cuid())
+  rutaId                  String
+  productoCode            String
+  vecesUsadoUltimos30Dias Int    @default(0)
+
+  ruta     Ruta     @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoCode], references: [code])
+
+  @@unique([rutaId, productoCode])
+  @@map("frecuencias_producto_ruta")
+}
+
+// ---------------------------------------------------------------------------
+// Eventos de carga, sesiones de conteo e ítems
+// ---------------------------------------------------------------------------
+
+model EventoCarga {
+  id                         String      @id @default(cuid())
+  // Snapshot de la ruta: se conserva aunque el vendedor se reasigne después.
+  rutaId                     String
+  tipo                       TipoCarga
+  usuarioHandyId             String
+  estado                     EstadoCarga @default(BORRADOR)
+  fechaConteo                DateTime?
+  fechaBloqueoCortePendiente DateTime?
+  fechaDesbloqueo            DateTime?
+  fechaProgramadaEnvio       DateTime?
+  fechaEnvioReal             DateTime?
+  // Id de la ruta en Handy tras un envío exitoso.
+  idHandy                    String?
+  creadoEn                   DateTime    @default(now())
+  actualizadoEn              DateTime    @updatedAt
+
+  ruta         Ruta          @relation(fields: [rutaId], references: [id])
+  usuarioHandy UsuarioHandy  @relation(fields: [usuarioHandyId], references: [idHandy])
+
+  sesiones      SesionConteo[]
+  discrepancias DiscrepanciaResuelta[]
+  comparacion   ComparacionCarga?
+
+  @@index([rutaId])
+  @@index([usuarioHandyId])
+  @@index([estado])
+  @@map("eventos_carga")
+}
+
+model SesionConteo {
+  id            String           @id @default(cuid())
+  eventoCargaId String
+  tipo          TipoSesion
+  usuarioAppId  String
+  dispositivoId String?
+  ubicacion     UbicacionConteo?
+  estado        EstadoSesion     @default(ABIERTA)
+  iniciadaEn    DateTime         @default(now())
+  finalizadaEn  DateTime?
+
+  eventoCarga EventoCarga @relation(fields: [eventoCargaId], references: [id], onDelete: Cascade)
+  usuarioApp  UsuarioApp  @relation(fields: [usuarioAppId], references: [id])
+
+  items ConteoItem[]
+
+  @@index([eventoCargaId])
+  @@index([usuarioAppId])
+  @@map("sesiones_conteo")
+}
+
+model ConteoItem {
+  id           String @id @default(cuid())
+  sesionId     String
+  productoCode String
+  // Int: Handy tiene fractionsInQuantityAllowed en false.
+  cantidad     Int
+
+  sesion   SesionConteo @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  producto Producto     @relation(fields: [productoCode], references: [code])
+
+  @@unique([sesionId, productoCode])
+  @@map("conteos_item")
+}
+
+// ---------------------------------------------------------------------------
+// Resolución de discrepancias (captura + confirmación cruzada)
+// ---------------------------------------------------------------------------
+
+model DiscrepanciaResuelta {
+  id                       String    @id @default(cuid())
+  eventoCargaId            String
+  productoCode             String
+  cantidadVendedorOriginal Int
+  cantidadContadorOriginal Int
+  cantidadFinal            Int?
+  capturadaPor             String?
+  fechaCaptura             DateTime?
+  // Regla de aplicación: confirmadaPor nunca puede ser igual a capturadaPor.
+  confirmadaPor            String?
+  fechaConfirmacion        DateTime?
+
+  eventoCarga    EventoCarga @relation(fields: [eventoCargaId], references: [id], onDelete: Cascade)
+  producto       Producto    @relation(fields: [productoCode], references: [code])
+  usuarioCaptura UsuarioApp? @relation("DiscrepanciaCapturadaPor", fields: [capturadaPor], references: [id])
+  usuarioConfirma UsuarioApp? @relation("DiscrepanciaConfirmadaPor", fields: [confirmadaPor], references: [id])
+
+  @@unique([eventoCargaId, productoCode])
+  @@map("discrepancias_resueltas")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría: comparación por evento y revisión de supervisor
+// ---------------------------------------------------------------------------
+
+model ComparacionCarga {
+  id                       String                 @id @default(cuid())
+  eventoCargaId            String                 @unique
+  vendedorUsuarioAppId     String
+  contadorUsuarioAppId     String
+  totalProductos           Int
+  productosConDiscrepancia Int
+  evidenciaExterna         String?
+  verificadoSupervisor     Boolean                @default(false)
+  resultadoVerificacion    ResultadoVerificacion?
+  supervisorUsuarioAppId   String?
+  fechaVerificacion        DateTime?
+  creadaEn                 DateTime               @default(now())
+
+  eventoCarga EventoCarga @relation(fields: [eventoCargaId], references: [id], onDelete: Cascade)
+  vendedor    UsuarioApp  @relation("ComparacionVendedor", fields: [vendedorUsuarioAppId], references: [id])
+  contador    UsuarioApp  @relation("ComparacionContador", fields: [contadorUsuarioAppId], references: [id])
+  supervisor  UsuarioApp? @relation("ComparacionSupervisor", fields: [supervisorUsuarioAppId], references: [id])
+
+  revisiones RevisionSupervisor[]
+
+  @@map("comparaciones_carga")
+}
+
+model RevisionSupervisor {
+  id                    String            @id @default(cuid())
+  comparacionCargaId    String
+  productoCode          String
+  resultado             ResultadoRevision
+  cantidadRealEncontrada Int?
+  fechaRevision         DateTime          @default(now())
+
+  comparacionCarga ComparacionCarga @relation(fields: [comparacionCargaId], references: [id], onDelete: Cascade)
+  producto         Producto         @relation(fields: [productoCode], references: [code])
+
+  @@unique([comparacionCargaId, productoCode])
+  @@map("revisiones_supervisor")
+}
+
+// ---------------------------------------------------------------------------
+// Alertas y dispositivos push
+// ---------------------------------------------------------------------------
+
+model Alerta {
+  id                 String         @id @default(cuid())
+  tipo               String
+  urgencia           UrgenciaAlerta
+  entidadRelacionada String?
+  mensaje            String
+  estado             EstadoAlerta   @default(PENDIENTE)
+  resueltaPor        String?
+  fechaResolucion    DateTime?
+  creadaEn           DateTime       @default(now())
+
+  usuarioResuelve UsuarioApp? @relation("AlertaResueltaPor", fields: [resueltaPor], references: [id])
+
+  @@index([estado])
+  @@index([urgencia])
+  @@map("alertas")
+}
+
+model DispositivoPush {
+  id           String     @id @default(cuid())
+  usuarioAppId String
+  fcmToken     String     @unique
+  plataforma   Plataforma
+  creadoEn     DateTime   @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  usuarioApp UsuarioApp @relation(fields: [usuarioAppId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioAppId])
+  @@map("dispositivos_push")
+}

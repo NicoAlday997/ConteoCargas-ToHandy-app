@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: handy_conteo_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: handy_app
+      POSTGRES_PASSWORD: dev_local_2026
+      POSTGRES_DB: handy_conteo
+      TZ: America/Mexico_City
+    ports:
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+volumes:
+  db_data:

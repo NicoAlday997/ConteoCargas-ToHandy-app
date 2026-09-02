@@ -29,3 +29,10 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+
+# Herramientas locales de agentes
+.agents/
+.claude/
+.cursor/
+.devin/
+*.tsbuildinfo
