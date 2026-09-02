@@ -12,8 +12,8 @@ import { PrismaModule } from './shared/prisma/prisma.module';
       isGlobal: true,
     }),
     PrismaModule,
-    // Global: registra la JwtStrategy y deja Passport/JWT disponibles para el
-    // JwtAuthGuard y el RolesGuard de cualquier modulo.
+    // Infraestructura de auth (JWT + passport) disponible para todos los
+    // modulos con endpoints protegidos, no solo para AuthModule.
     AuthSharedModule,
     AuthModule,
   ],

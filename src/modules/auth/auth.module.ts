@@ -10,8 +10,8 @@ import { PrismaUsuarioRepository } from './infrastructure/prisma-usuario.reposit
 import { AuthController } from './interface/auth.controller';
 
 @Module({
-  // AuthSharedModule aporta JwtModule (JwtService para firmar el login) y la
-  // JwtStrategy que protege `cambiar-pin` y el resto de endpoints.
+  // El registro de JwtModule/PassportModule y la JwtStrategy viven en
+  // AuthSharedModule; aqui solo se consume `JwtService` para firmar el login.
   imports: [AuthSharedModule],
   controllers: [AuthController],
   providers: [

@@ -107,8 +107,9 @@ export class AuthController {
   }
 
   /**
-   * Cambio de PIN (RF-08). Requiere JWT: `JwtAuthGuard` valida el token y el
-   * `usuarioAppId` sale del `request.user` via `UsuarioActual`, nunca del body.
+   * Cambio de PIN (RF-08). Requiere JWT: `JwtAuthGuard` valida el token y
+   * repone `request.user`; el `usuarioAppId` sale de ahi via `@UsuarioActual`,
+   * nunca del body.
    */
   @Post('cambiar-pin')
   @HttpCode(200)
