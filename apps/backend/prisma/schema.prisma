@@ -129,7 +129,7 @@ model UsuarioApp {
   fechaUltimoCambioPin DateTime?
   rolApp               RolApp
   // Solo se completa cuando rolApp = VENDEDOR (asignación fija por un admin).
-  usuarioHandyId       String?
+  usuarioHandyId       Int?
   activo               Boolean   @default(true)
   // Rate limiting del RF-03: bloqueo temporal tras 5 intentos fallidos.
   intentosFallidos     Int       @default(0)
@@ -174,10 +174,11 @@ model HistorialRestablecimientoPin {
 
 // El role de Handy es un objeto {id, authority}, no un número: se guardan ambos.
 model UsuarioHandy {
-  idHandy              String   @id
+  idHandy              Int      @id
   nombre               String
-  rolHandyId           String?
-  rolHandyAuthority    String?
+  email                String?
+  rolHandyId           Int
+  rolHandyAuthority    String
   activo               Boolean  @default(true)
   ultimaSincronizacion DateTime @default(now())
 
@@ -232,7 +233,7 @@ model EventoCarga {
   // Snapshot de la ruta: se conserva aunque el vendedor se reasigne después.
   rutaId                     String
   tipo                       TipoCarga
-  usuarioHandyId             String
+  usuarioHandyId             Int
   estado                     EstadoCarga @default(BORRADOR)
   fechaConteo                DateTime?
   fechaBloqueoCortePendiente DateTime?
