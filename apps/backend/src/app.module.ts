@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
+import { SincronizacionModule } from './modules/sincronizacion/sincronizacion.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuthSharedModule } from './shared/auth/auth-shared.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
@@ -18,6 +19,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     AuthSharedModule,
     AuthModule,
     UsuariosModule,
+    SincronizacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
