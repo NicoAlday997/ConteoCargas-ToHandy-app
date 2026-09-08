@@ -167,6 +167,34 @@ describe('SincronizarCatalogoUseCase', () => {
     });
   });
 
+  it('usa unit.code como respaldo cuando unit.description viene null', async () => {
+    // Caso verificado: producto MARUCHAN codigo 805 llega con
+    // `unit: { code: 'PIEZA', description: null }`. Sin respaldo, el upsert de
+    // Prisma fallaba con "Argument unidadDescripcion is missing".
+    const handy = new FakeHandyGateway([
+      {
+        items: [
+          productoHandy({
+            code: '805',
+            description: 'MARUCHAN',
+            unit: { code: 'PIEZA', description: null },
+          }),
+        ],
+        totalPaginas: 1,
+        totalRegistros: 1,
+      },
+    ]);
+    const catalogo = new FakeCatalogoRepository();
+    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+
+    await useCase.ejecutar();
+
+    const producto = catalogo.lotesProductos[0][0];
+    expect(producto.unidadCode).toBe('PIEZA');
+    expect(producto.unidadDescripcion).toBe('PIEZA');
+    expect(producto.unidadDescripcion).not.toBeUndefined();
+  });
+
   it('para una sola pagina hace una unica lectura', async () => {
     const handy = new FakeHandyGateway([
       {

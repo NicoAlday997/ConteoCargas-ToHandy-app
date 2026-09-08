@@ -58,7 +58,10 @@ export class SincronizarCatalogoUseCase {
       // Handy envia `price` decimal (77.5); el cache lo guarda en centavos.
       precioCentavos: aCentavos(producto.price),
       unidadCode: producto.unit.code,
-      unidadDescripcion: producto.unit.description,
+      // Handy a veces devuelve `unit.description = null` (p. ej. MARUCHAN
+      // codigo 805). `unidadDescripcion` es obligatorio en el cache local:
+      // se usa `unit.code` como respaldo cuando llega null o vacio.
+      unidadDescripcion: producto.unit.description || producto.unit.code,
       familia: producto.family?.description ?? null,
       activo: producto.enabled,
       lastUpdatedHandy: producto.lastUpdated

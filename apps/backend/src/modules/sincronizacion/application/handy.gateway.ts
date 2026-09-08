@@ -43,12 +43,18 @@ export interface PaginaHandy<T> {
 /** Unidad de medida de un producto (`unit` en la respuesta de Handy). */
 export interface UnidadProductoHandy {
   code: string;
-  description: string;
+  /**
+   * Handy a veces devuelve `null` aqui (verificado con el producto MARUCHAN
+   * codigo 805: `unit.description = null` mientras `unit.code = 'PIEZA'`). El
+   * mapeo al cache local usa `code` como respaldo.
+   */
+  description: string | null;
 }
 
 /** Familia/categoria de un producto (`family` en la respuesta de Handy). */
 export interface FamiliaProductoHandy {
-  description: string;
+  /** Handy puede devolver `null`; el cache local lo guarda como `null`. */
+  description: string | null;
 }
 
 /**
@@ -82,7 +88,8 @@ export interface RolUsuarioHandy {
 export interface UsuarioHandyDto {
   id: number;
   name: string;
-  email: string;
+  /** Handy puede devolver `null`; el cache local lo guarda como `null`. */
+  email: string | null;
   enabled: boolean;
   role: RolUsuarioHandy;
   /** ISO 8601 con `Z` (UTC). */
