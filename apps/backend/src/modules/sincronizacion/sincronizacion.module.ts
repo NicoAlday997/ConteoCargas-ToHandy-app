@@ -34,5 +34,8 @@ import { SincronizacionController } from './interface/sincronizacion.controller'
       inject: [HandyGateway, CatalogoRepository],
     },
   ],
+  // `HandyGateway` se reexporta para que otros modulos (p. ej. `CargasModule`,
+  // en `EnviarCargaUseCase`) reutilicen el mismo adaptador HTTP hacia Handy.
+  exports: [HandyGateway],
 })
 export class SincronizacionModule {}
