@@ -87,6 +87,9 @@ class FakeCargaRepository implements CargaRepository {
   cambiarEstado(): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
   }
+  marcarComoEnviada(): Promise<EventoCarga> {
+    throw new Error('no usado en esta prueba');
+  }
   buscarSesionPorId(): Promise<SesionConteo | null> {
     throw new Error('no usado en esta prueba');
   }

@@ -145,6 +145,20 @@ export abstract class CargaRepository {
   ): Promise<EventoCarga>;
 
   /**
+   * Registra el envio exitoso a Handy sobre el evento, en una sola operacion:
+   * fija `idHandy`, sella `fechaEnvioReal = ahora` y deja el estado en `ENVIADA`.
+   *
+   * El caso de uso ya valido con `puedeTransicionar` que el evento podia pasar a
+   * `ENVIADA` antes de llamar aca; agrupar los tres campos evita una ventana en
+   * la que el evento tenga `idHandy` pero siga en `LISTA_PARA_ENVIAR`.
+   */
+  abstract marcarComoEnviada(
+    eventoId: string,
+    idHandy: string,
+    ahora: Date,
+  ): Promise<EventoCarga>;
+
+  /**
    * Crea una `SesionConteo` en estado `ABIERTA` para ese evento y usuario, y la
    * devuelve. `ubicacion` solo aplica al segundo conteo de una recarga (RF-18).
    */

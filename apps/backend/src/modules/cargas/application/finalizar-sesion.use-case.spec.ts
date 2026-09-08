@@ -82,6 +82,10 @@ class FakeCargaRepository implements CargaRepository {
     return { ...evento };
   }
 
+  async marcarComoEnviada(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+
   async crearSesion(
     eventoId: string,
     tipo: TipoSesion,

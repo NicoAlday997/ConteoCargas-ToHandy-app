@@ -53,6 +53,19 @@ class FakeHandyGateway extends HandyGateway {
       }
     );
   }
+
+  consultarRutaAbierta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  crearRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  recargarRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  cancelarRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 class FakeCatalogoRepository implements CatalogoRepository {

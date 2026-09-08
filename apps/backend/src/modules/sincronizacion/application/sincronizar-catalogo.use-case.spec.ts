@@ -53,6 +53,18 @@ class FakeHandyGateway extends HandyGateway {
   listarVendedores(): Promise<PaginaHandy<UsuarioHandyDto>> {
     throw new Error('no usado en estas pruebas');
   }
+  consultarRutaAbierta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  crearRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  recargarRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  cancelarRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 /** Doble de `CatalogoRepository`: acumula todo lo que recibe cada upsert. */
