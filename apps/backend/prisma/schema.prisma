@@ -25,6 +25,15 @@ enum TipoCarga {
   RECARGA
 }
 
+// Hoy todas las rutas operan en AUTOVENTA. La migración a PREVENTA por ruta
+// introduce una cantidad esperada (suma de pedidos levantados) e invierte los
+// roles de conteo (bodeguero primero, repartidor segundo). El campo se agrega
+// desde ahora para no requerir una migración posterior.
+enum TipoOperacion {
+  AUTOVENTA
+  PREVENTA
+}
+
 enum EstadoCarga {
   BORRADOR
   EN_ESPERA_CONTADOR
@@ -105,14 +114,19 @@ model AsignacionRutaVendedor {
   id           String    @id @default(cuid())
   rutaId       String
   usuarioAppId String
+  // La plantilla vive en la asignación, no en la ruta: si la ruta cambia de
+  // catálogo con el tiempo, cada asignación histórica conserva el suyo.
+  plantillaId  String?
   vigenteDesde DateTime  @default(now())
   vigenteHasta DateTime?
 
-  ruta       Ruta       @relation(fields: [rutaId], references: [id], onDelete: Cascade)
-  usuarioApp UsuarioApp @relation(fields: [usuarioAppId], references: [id])
+  ruta       Ruta            @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  usuarioApp UsuarioApp      @relation(fields: [usuarioAppId], references: [id])
+  plantilla  PlantillaCarga? @relation(fields: [plantillaId], references: [id])
 
   @@index([rutaId])
   @@index([usuarioAppId])
+  @@index([plantillaId])
   @@map("asignaciones_ruta_vendedor")
 }
 
@@ -156,10 +170,10 @@ model UsuarioApp {
 }
 
 model HistorialRestablecimientoPin {
-  id             String   @id @default(cuid())
-  usuarioAppId   String
+  id              String   @id @default(cuid())
+  usuarioAppId    String
   restablecidoPor String
-  fecha          DateTime @default(now())
+  fecha           DateTime @default(now())
 
   usuarioApp UsuarioApp @relation("RestablecimientoUsuario", fields: [usuarioAppId], references: [id])
   admin      UsuarioApp @relation("RestablecimientoAdmin", fields: [restablecidoPor], references: [id])
@@ -191,7 +205,7 @@ model UsuarioHandy {
 model Producto {
   // code es la PK: es el identificador que exige la API de Handy en los payloads
   // y debe tratarse como inmutable en el cache.
-  code                      String   @id
+  code                      String    @id
   nombre                    String
   // Siempre en centavos (Int); nunca decimal.
   precioCentavos            Int
@@ -199,16 +213,51 @@ model Producto {
   unidadCode                String
   unidadDescripcion         String
   familia                   String?
-  activo                    Boolean  @default(true)
+  activo                    Boolean   @default(true)
   lastUpdatedHandy          DateTime?
-  ultimaSincronizacionLocal DateTime @default(now())
+  ultimaSincronizacionLocal DateTime  @default(now())
 
-  frecuencias  FrecuenciaProductoRuta[]
-  conteoItems  ConteoItem[]
-  discrepancias DiscrepanciaResuelta[]
-  revisiones   RevisionSupervisor[]
+  frecuencias        FrecuenciaProductoRuta[]
+  conteoItems        ConteoItem[]
+  discrepancias      DiscrepanciaResuelta[]
+  revisiones         RevisionSupervisor[]
+  plantillaProductos PlantillaProducto[]
 
   @@map("productos")
+}
+
+// ---------------------------------------------------------------------------
+// Plantillas de carga (filtran el catálogo de productos por tipo de ruta)
+// ---------------------------------------------------------------------------
+
+// Ej.: "Refrescos" (5 rutas) y "Dulces y abarrotes" (1 ruta). Evita mostrar
+// los 104 productos a todos los vendedores en el grid de conteo.
+model PlantillaCarga {
+  id            String   @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  activa        Boolean  @default(true)
+  creadaEn      DateTime @default(now())
+  actualizadaEn DateTime @updatedAt
+
+  productos    PlantillaProducto[]
+  asignaciones AsignacionRutaVendedor[]
+  eventosCarga EventoCarga[]
+
+  @@map("plantillas_carga")
+}
+
+model PlantillaProducto {
+  id           String @id @default(cuid())
+  plantillaId  String
+  productoCode String
+
+  plantilla PlantillaCarga @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  producto  Producto       @relation(fields: [productoCode], references: [code])
+
+  @@unique([plantillaId, productoCode])
+  @@index([productoCode])
+  @@map("plantillas_producto")
 }
 
 model FrecuenciaProductoRuta {
@@ -229,12 +278,17 @@ model FrecuenciaProductoRuta {
 // ---------------------------------------------------------------------------
 
 model EventoCarga {
-  id                         String      @id @default(cuid())
+  id                         String        @id @default(cuid())
   // Snapshot de la ruta: se conserva aunque el vendedor se reasigne después.
   rutaId                     String
   tipo                       TipoCarga
+  // Snapshot de la plantilla vigente al momento de la carga: el historial
+  // muestra el catálogo correcto aunque la asignación cambie después.
+  plantillaId                String?
+  // Preparación para preventa; hoy todas las cargas nacen como AUTOVENTA.
+  tipoOperacion              TipoOperacion @default(AUTOVENTA)
   usuarioHandyId             Int
-  estado                     EstadoCarga @default(BORRADOR)
+  estado                     EstadoCarga   @default(BORRADOR)
   fechaConteo                DateTime?
   fechaBloqueoCortePendiente DateTime?
   fechaDesbloqueo            DateTime?
@@ -242,11 +296,12 @@ model EventoCarga {
   fechaEnvioReal             DateTime?
   // Id de la ruta en Handy tras un envío exitoso.
   idHandy                    String?
-  creadoEn                   DateTime    @default(now())
-  actualizadoEn              DateTime    @updatedAt
+  creadoEn                   DateTime      @default(now())
+  actualizadoEn              DateTime      @updatedAt
 
-  ruta         Ruta          @relation(fields: [rutaId], references: [id])
-  usuarioHandy UsuarioHandy  @relation(fields: [usuarioHandyId], references: [idHandy])
+  ruta         Ruta            @relation(fields: [rutaId], references: [id])
+  usuarioHandy UsuarioHandy    @relation(fields: [usuarioHandyId], references: [idHandy])
+  plantilla    PlantillaCarga? @relation(fields: [plantillaId], references: [id])
 
   sesiones      SesionConteo[]
   discrepancias DiscrepanciaResuelta[]
@@ -255,6 +310,7 @@ model EventoCarga {
   @@index([rutaId])
   @@index([usuarioHandyId])
   @@index([estado])
+  @@index([plantillaId])
   @@map("eventos_carga")
 }
 
@@ -310,9 +366,9 @@ model DiscrepanciaResuelta {
   confirmadaPor            String?
   fechaConfirmacion        DateTime?
 
-  eventoCarga    EventoCarga @relation(fields: [eventoCargaId], references: [id], onDelete: Cascade)
-  producto       Producto    @relation(fields: [productoCode], references: [code])
-  usuarioCaptura UsuarioApp? @relation("DiscrepanciaCapturadaPor", fields: [capturadaPor], references: [id])
+  eventoCarga     EventoCarga @relation(fields: [eventoCargaId], references: [id], onDelete: Cascade)
+  producto        Producto    @relation(fields: [productoCode], references: [code])
+  usuarioCaptura  UsuarioApp? @relation("DiscrepanciaCapturadaPor", fields: [capturadaPor], references: [id])
   usuarioConfirma UsuarioApp? @relation("DiscrepanciaConfirmadaPor", fields: [confirmadaPor], references: [id])
 
   @@unique([eventoCargaId, productoCode])
@@ -348,12 +404,12 @@ model ComparacionCarga {
 }
 
 model RevisionSupervisor {
-  id                    String            @id @default(cuid())
-  comparacionCargaId    String
-  productoCode          String
-  resultado             ResultadoRevision
+  id                     String            @id @default(cuid())
+  comparacionCargaId     String
+  productoCode           String
+  resultado              ResultadoRevision
   cantidadRealEncontrada Int?
-  fechaRevision         DateTime          @default(now())
+  fechaRevision          DateTime          @default(now())
 
   comparacionCarga ComparacionCarga @relation(fields: [comparacionCargaId], references: [id], onDelete: Cascade)
   producto         Producto         @relation(fields: [productoCode], references: [code])
@@ -385,12 +441,12 @@ model Alerta {
 }
 
 model DispositivoPush {
-  id           String     @id @default(cuid())
-  usuarioAppId String
-  fcmToken     String     @unique
-  plataforma   Plataforma
-  creadoEn     DateTime   @default(now())
-  actualizadoEn DateTime  @updatedAt
+  id            String     @id @default(cuid())
+  usuarioAppId  String
+  fcmToken      String     @unique
+  plataforma    Plataforma
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
 
   usuarioApp UsuarioApp @relation(fields: [usuarioAppId], references: [id], onDelete: Cascade)
 
