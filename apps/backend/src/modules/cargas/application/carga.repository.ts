@@ -34,6 +34,9 @@ export interface EventoCarga {
   usuarioHandyId: number;
   estado: EstadoCarga;
   fechaConteo: Date | null;
+  /** Id del supervisor que autorizo el envio (EN_ESPERA_AUTORIZACION -> LISTA_PARA_ENVIAR). */
+  autorizadaPorId: string | null;
+  fechaAutorizacion: Date | null;
   creadoEn: Date;
 }
 
@@ -124,6 +127,22 @@ export interface DatosActualizarDiscrepancia {
   fechaConfirmacion?: Date;
 }
 
+/**
+ * Datos para forzar una discrepancia a un estado sin confirmar (ver
+ * `reabrirDiscrepancia`). `cantidadFinal`/`capturadaPor`/`fechaCaptura` van
+ * juntos: o los tres, o ninguno (una captura ya hecha por el supervisor, o
+ * ninguna captura todavia). `confirmadaPor` nunca se recibe aca — reabrir una
+ * discrepancia SIEMPRE la deja sin confirmar.
+ */
+export interface DatosReabrirDiscrepancia {
+  productoCode: string;
+  cantidadVendedorOriginal: number;
+  cantidadContadorOriginal: number;
+  cantidadFinal?: number;
+  capturadaPor?: string;
+  fechaCaptura?: Date;
+}
+
 // ---------------------------------------------------------------------------
 // Puerto
 // ---------------------------------------------------------------------------
@@ -155,6 +174,22 @@ export abstract class CargaRepository {
   abstract marcarComoEnviada(
     eventoId: string,
     idHandy: string,
+    ahora: Date,
+  ): Promise<EventoCarga>;
+
+  /**
+   * Registra la autorizacion del supervisor sobre el evento, en una sola
+   * operacion: fija `autorizadaPorId`, sella `fechaAutorizacion = ahora` y deja
+   * el estado en `LISTA_PARA_ENVIAR` (mismo criterio que `marcarComoEnviada`:
+   * agrupar los campos evita una ventana en la que el evento tenga
+   * `autorizadaPorId` pero siga en `EN_ESPERA_AUTORIZACION`).
+   *
+   * El caso de uso ya valido con `requiereAutorizacion` y `puedeTransicionar`
+   * que el evento podia autorizarse antes de llamar aca.
+   */
+  abstract autorizarEvento(
+    eventoId: string,
+    autorizadaPorId: string,
     ahora: Date,
   ): Promise<EventoCarga>;
 
@@ -209,5 +244,25 @@ export abstract class CargaRepository {
     eventoId: string,
     productoCode: string,
     datos: DatosActualizarDiscrepancia,
+  ): Promise<Discrepancia>;
+
+  /**
+   * Fuerza una discrepancia a un estado SIN CONFIRMAR: crea la fila si no
+   * existia, o si ya existia (incluso si estaba capturada y confirmada) la
+   * reemplaza por completo con los datos recibidos. A diferencia de
+   * `guardarDiscrepancias` (que preserva cualquier resolucion previa de un
+   * producto que ya tenia fila), este metodo SIEMPRE limpia `confirmadaPor` y
+   * `fechaConfirmacion`.
+   *
+   * Lo usan los casos de uso de autorizacion del supervisor
+   * (`RechazarProductosUseCase`, `ModificarCantidadSupervisorUseCase`): al
+   * rechazar un producto o modificar su cantidad, cualquier resolucion previa
+   * deja de ser valida y el producto vuelve a necesitar captura + confirmacion
+   * cruzada de dos personas distintas (CLAUDE.md: "Nadie, ni el supervisor,
+   * cambia una cantidad sin que dos personas lo respalden").
+   */
+  abstract reabrirDiscrepancia(
+    eventoId: string,
+    datos: DatosReabrirDiscrepancia,
   ): Promise<Discrepancia>;
 }

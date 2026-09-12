@@ -55,6 +55,8 @@ class FakeCargaRepository implements CargaRepository {
       // Invariante de alta que el adaptador real garantiza por el default del esquema.
       estado: 'BORRADOR',
       fechaConteo: datos.fechaConteo,
+      autorizadaPorId: null,
+      fechaAutorizacion: null,
       creadoEn: datos.fechaConteo,
     };
   }
@@ -90,6 +92,9 @@ class FakeCargaRepository implements CargaRepository {
   marcarComoEnviada(): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
   }
+  autorizarEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en esta prueba');
+  }
   buscarSesionPorId(): Promise<SesionConteo | null> {
     throw new Error('no usado en esta prueba');
   }
@@ -119,6 +124,9 @@ class FakeCargaRepository implements CargaRepository {
     _productoCode: string,
     _datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia> {
+    throw new Error('no usado en esta prueba');
+  }
+  reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
 }

@@ -13,6 +13,7 @@ import {
   CargaRepository,
   type DatosActualizarDiscrepancia,
   type DatosCrearEvento,
+  type DatosReabrirDiscrepancia,
   type Discrepancia,
   type DiscrepanciaAGuardar,
   type EventoCarga,
@@ -80,6 +81,24 @@ export class PrismaCargaRepository extends CargaRepository {
       // Los tres campos se fijan juntos para no dejar una ventana con `idHandy`
       // puesto pero el estado aun en `LISTA_PARA_ENVIAR`.
       data: { idHandy, fechaEnvioReal: ahora, estado: 'ENVIADA' },
+    });
+    return this.aEventoCarga(row);
+  }
+
+  async autorizarEvento(
+    eventoId: string,
+    autorizadaPorId: string,
+    ahora: Date,
+  ): Promise<EventoCarga> {
+    const row = await this.prisma.eventoCarga.update({
+      where: { id: eventoId },
+      // Los tres campos se fijan juntos: sin ventana con `autorizadaPorId`
+      // puesto pero el estado aun en `EN_ESPERA_AUTORIZACION`.
+      data: {
+        autorizadaPorId,
+        fechaAutorizacion: ahora,
+        estado: 'LISTA_PARA_ENVIAR',
+      },
     });
     return this.aEventoCarga(row);
   }
@@ -207,6 +226,43 @@ export class PrismaCargaRepository extends CargaRepository {
     return this.aDiscrepancia(row);
   }
 
+  async reabrirDiscrepancia(
+    eventoId: string,
+    datos: DatosReabrirDiscrepancia,
+  ): Promise<Discrepancia> {
+    const row = await this.prisma.discrepanciaResuelta.upsert({
+      where: {
+        eventoCargaId_productoCode: {
+          eventoCargaId: eventoId,
+          productoCode: datos.productoCode,
+        },
+      },
+      create: {
+        eventoCargaId: eventoId,
+        productoCode: datos.productoCode,
+        cantidadVendedorOriginal: datos.cantidadVendedorOriginal,
+        cantidadContadorOriginal: datos.cantidadContadorOriginal,
+        cantidadFinal: datos.cantidadFinal ?? null,
+        capturadaPor: datos.capturadaPor ?? null,
+        fechaCaptura: datos.fechaCaptura ?? null,
+      },
+      // A diferencia de guardarDiscrepancias (createMany + skipDuplicates), aca
+      // se sobreescribe la fila entera si ya existia: confirmadaPor y
+      // fechaConfirmacion SIEMPRE quedan en null, aunque la discrepancia ya
+      // estuviera confirmada.
+      update: {
+        cantidadVendedorOriginal: datos.cantidadVendedorOriginal,
+        cantidadContadorOriginal: datos.cantidadContadorOriginal,
+        cantidadFinal: datos.cantidadFinal ?? null,
+        capturadaPor: datos.capturadaPor ?? null,
+        fechaCaptura: datos.fechaCaptura ?? null,
+        confirmadaPor: null,
+        fechaConfirmacion: null,
+      },
+    });
+    return this.aDiscrepancia(row);
+  }
+
   // -------------------------------------------------------------------------
   // Mapeo fila Prisma -> vista de la capa de aplicacion (select explicito para
   // no arrastrar campos internos del esquema al contrato del puerto).
@@ -222,6 +278,8 @@ export class PrismaCargaRepository extends CargaRepository {
       usuarioHandyId: row.usuarioHandyId,
       estado: row.estado,
       fechaConteo: row.fechaConteo,
+      autorizadaPorId: row.autorizadaPorId,
+      fechaAutorizacion: row.fechaAutorizacion,
       creadoEn: row.creadoEn,
     };
   }

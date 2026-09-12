@@ -108,6 +108,9 @@ class FakeCargaRepository implements CargaRepository {
   async marcarComoEnviada(): Promise<EventoCarga> {
     throw new Error('no usado en estas pruebas');
   }
+  async autorizarEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
   async crearSesion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -129,6 +132,9 @@ class FakeCargaRepository implements CargaRepository {
   async guardarDiscrepancias(): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
+  async reabrirDiscrepancia(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
@@ -141,6 +147,8 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     usuarioHandyId: 42,
     estado: 'CONFLICTOS_PENDIENTES',
     fechaConteo: AHORA,
+    autorizadaPorId: null,
+    fechaAutorizacion: null,
     creadoEn: AHORA,
     ...parcial,
   };

@@ -144,6 +144,12 @@ class FakeCargaRepository implements CargaRepository {
   async actualizarDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async autorizarEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async reabrirDiscrepancia(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 class FakeHandyGateway extends HandyGateway {
@@ -263,6 +269,8 @@ function sembrarCargaLista(
     usuarioHandyId: USUARIO_HANDY_ID,
     estado: opciones.estado ?? 'LISTA_PARA_ENVIAR',
     fechaConteo: INICIADA_EN,
+    autorizadaPorId: null,
+    fechaAutorizacion: null,
     creadoEn: INICIADA_EN,
   });
   repo.sembrarSesiones(EVENTO_ID, [

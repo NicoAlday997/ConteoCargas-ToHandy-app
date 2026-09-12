@@ -58,6 +58,8 @@ class FakeCargaRepository implements CargaRepository {
       usuarioHandyId: datos.usuarioHandyId,
       estado: 'BORRADOR',
       fechaConteo: datos.fechaConteo,
+      autorizadaPorId: null,
+      fechaAutorizacion: null,
       creadoEn: datos.fechaConteo,
     };
     this.eventos.set(evento.id, evento);
@@ -83,6 +85,10 @@ class FakeCargaRepository implements CargaRepository {
   }
 
   async marcarComoEnviada(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  async autorizarEvento(): Promise<EventoCarga> {
     throw new Error('no usado en estas pruebas');
   }
 
@@ -179,6 +185,10 @@ class FakeCargaRepository implements CargaRepository {
     }
     Object.assign(discrepancia, datos);
     return { ...discrepancia };
+  }
+
+  async reabrirDiscrepancia(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
   }
 }
 
