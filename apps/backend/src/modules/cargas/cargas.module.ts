@@ -4,12 +4,15 @@ import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
 import { HandyGateway } from '../sincronizacion/application/handy.gateway';
 import { SincronizacionModule } from '../sincronizacion/sincronizacion.module';
 import { AsignacionRepository } from './application/asignacion.repository';
+import { AutorizarCargaUseCase } from './application/autorizar-carga.use-case';
 import { CapturarCantidadFinalUseCase } from './application/capturar-cantidad-final.use-case';
 import { CargaRepository } from './application/carga.repository';
 import { ConfirmarCantidadFinalUseCase } from './application/confirmar-cantidad-final.use-case';
 import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
+import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
+import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
 import { PrismaAsignacionRepository } from './infrastructure/prisma-asignacion.repository';
 import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository';
 import { CargasController } from './interface/cargas.controller';
@@ -62,6 +65,24 @@ import { CargasController } from './interface/cargas.controller';
       useFactory: (cargas: CargaRepository, handy: HandyGateway) =>
         new EnviarCargaUseCase(cargas, handy),
       inject: [CargaRepository, HandyGateway],
+    },
+    {
+      provide: AutorizarCargaUseCase,
+      useFactory: (cargas: CargaRepository) =>
+        new AutorizarCargaUseCase(cargas),
+      inject: [CargaRepository],
+    },
+    {
+      provide: RechazarProductosUseCase,
+      useFactory: (cargas: CargaRepository) =>
+        new RechazarProductosUseCase(cargas),
+      inject: [CargaRepository],
+    },
+    {
+      provide: ModificarCantidadSupervisorUseCase,
+      useFactory: (cargas: CargaRepository) =>
+        new ModificarCantidadSupervisorUseCase(cargas),
+      inject: [CargaRepository],
     },
   ],
 })

@@ -22,22 +22,29 @@ import { Roles } from '../../../shared/auth/roles.decorator';
 import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
+import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
 import { CargaRepository } from '../application/carga.repository';
 import { CapturarCantidadFinalUseCase } from '../application/capturar-cantidad-final.use-case';
 import { ConfirmarCantidadFinalUseCase } from '../application/confirmar-cantidad-final.use-case';
 import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
+import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
+import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import {
   CapturarCantidadSchema,
   FinalizarSesionSchema,
   GuardarItemsSchema,
   IdSchema,
   IniciarCargaSchema,
+  ModificarCantidadSchema,
+  RechazarProductosSchema,
   type CapturarCantidadDto,
   type FinalizarSesionDto,
   type GuardarItemsDto,
   type IniciarCargaDto,
+  type ModificarCantidadDto,
+  type RechazarProductosDto,
 } from './cargas.dto';
 
 /**
@@ -66,6 +73,9 @@ export class CargasController {
     private readonly capturarCantidadFinalUseCase: CapturarCantidadFinalUseCase,
     private readonly confirmarCantidadFinalUseCase: ConfirmarCantidadFinalUseCase,
     private readonly enviarCargaUseCase: EnviarCargaUseCase,
+    private readonly autorizarCargaUseCase: AutorizarCargaUseCase,
+    private readonly rechazarProductosUseCase: RechazarProductosUseCase,
+    private readonly modificarCantidadSupervisorUseCase: ModificarCantidadSupervisorUseCase,
   ) {}
 
   /**
@@ -457,6 +467,151 @@ export class CargasController {
       idHandy: resultado.idHandy,
       yaExistia: resultado.yaExistia,
       productosRechazados: resultado.productosRechazados,
+    };
+  }
+
+  /**
+   * El supervisor autoriza el envio de una carga ya conciliada por el doble
+   * conteo (CLAUDE.md, docs/02 §3.1): el tercer par de ojos que cierra el
+   * punto ciego del doble conteo. Solo aplica sobre eventos en
+   * `EN_ESPERA_AUTORIZACION`.
+   */
+  @Post(':id/autorizar')
+  @HttpCode(200)
+  @Roles(RolApp.SUPERVISOR)
+  async autorizar(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    const resultado = await this.autorizarCargaUseCase.ejecutar(
+      { eventoId, usuarioAppId: usuario.usuarioAppId },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'La carga no existe o no esta esperando autorizacion del supervisor.',
+          });
+        case 'TRANSICION_INVALIDA':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje: 'La carga no puede autorizarse en su estado actual.',
+          });
+      }
+    }
+
+    return { evento: resultado.evento };
+  }
+
+  /**
+   * El supervisor rechaza productos puntuales durante la autorizacion
+   * (CLAUDE.md): NO se devuelve la carga completa a recontar, solo los
+   * productos senalados vuelven a quedar sin resolver.
+   */
+  @Post(':id/rechazar-productos')
+  @HttpCode(200)
+  @Roles(RolApp.SUPERVISOR)
+  async rechazarProductos(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(RechazarProductosSchema))
+    dto: RechazarProductosDto,
+  ) {
+    const resultado = await this.rechazarProductosUseCase.ejecutar(
+      {
+        eventoId,
+        usuarioAppId: usuario.usuarioAppId,
+        productosRechazados: dto.productos,
+      },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'La carga no existe o no esta esperando autorizacion del supervisor.',
+          });
+        case 'SIN_PRODUCTOS':
+          throw new BadRequestException({
+            statusCode: 400,
+            mensaje: 'Debes indicar al menos un producto a rechazar.',
+          });
+        case 'PRODUCTO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje:
+              'Alguno de los productos indicados no forma parte de esta carga.',
+          });
+      }
+    }
+
+    return {
+      evento: resultado.evento,
+      productosPendientes: resultado.productosPendientes,
+    };
+  }
+
+  /**
+   * El supervisor propone una cantidad nueva para un producto durante la
+   * autorizacion (CLAUDE.md): esa cantidad NO queda resuelta con solo su
+   * palabra, requiere la misma confirmacion cruzada que cualquier
+   * discrepancia — el supervisor no puede confirmar su propia modificacion.
+   */
+  @Post(':id/productos/:productoCode/modificar')
+  @HttpCode(200)
+  @Roles(RolApp.SUPERVISOR)
+  async modificarCantidad(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @Param('productoCode') productoCode: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(ModificarCantidadSchema))
+    dto: ModificarCantidadDto,
+  ) {
+    const resultado = await this.modificarCantidadSupervisorUseCase.ejecutar(
+      {
+        eventoId,
+        productoCode,
+        cantidadNueva: dto.cantidadNueva,
+        usuarioAppId: usuario.usuarioAppId,
+        motivo: dto.motivo,
+      },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'La carga no existe o no esta esperando autorizacion del supervisor.',
+          });
+        case 'CANTIDAD_INVALIDA':
+          throw new BadRequestException({
+            statusCode: 400,
+            mensaje:
+              'La cantidad nueva debe ser un numero entero mayor o igual a cero.',
+          });
+        case 'PRODUCTO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'Ese producto no forma parte de esta carga.',
+          });
+      }
+    }
+
+    return {
+      evento: resultado.evento,
+      discrepancia: resultado.discrepancia,
+      mensaje:
+        'La cantidad quedo registrada pero pendiente de confirmacion: una persona distinta a ti debe confirmarla con su propio PIN antes de que la carga pueda autorizarse.',
     };
   }
 }

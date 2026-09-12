@@ -60,7 +60,46 @@ export const CapturarCantidadSchema = z.object({
   cantidadFinal: cantidadCapturada,
 });
 
+/** Motivo obligatorio que debe dar el supervisor al rechazar o modificar. */
+const motivoSupervisor = z
+  .string()
+  .trim()
+  .min(3, 'El motivo debe tener al menos 3 caracteres');
+
+/**
+ * Body de `POST /eventos-carga/:id/rechazar-productos`. El supervisor marca
+ * productos puntuales de la autorizacion como incorrectos (CLAUDE.md): cada
+ * uno vuelve a quedar sin resolver para un nuevo conteo/confirmacion, sin
+ * devolver la carga entera.
+ */
+export const RechazarProductosSchema = z.object({
+  productos: z
+    .array(
+      z.object({
+        productoCode: z
+          .string()
+          .trim()
+          .min(1, 'El codigo de producto es obligatorio'),
+        motivo: motivoSupervisor,
+      }),
+    )
+    .min(1, 'Debes indicar al menos un producto a rechazar'),
+});
+
+/**
+ * Body de `POST /eventos-carga/:id/productos/:productoCode/modificar`. El
+ * supervisor propone una cantidad nueva, que queda pendiente de confirmacion
+ * cruzada por otra persona (CLAUDE.md): el supervisor no puede confirmar su
+ * propia modificacion.
+ */
+export const ModificarCantidadSchema = z.object({
+  cantidadNueva: cantidadCapturada,
+  motivo: motivoSupervisor,
+});
+
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
 export type CapturarCantidadDto = z.infer<typeof CapturarCantidadSchema>;
+export type RechazarProductosDto = z.infer<typeof RechazarProductosSchema>;
+export type ModificarCantidadDto = z.infer<typeof ModificarCantidadSchema>;
