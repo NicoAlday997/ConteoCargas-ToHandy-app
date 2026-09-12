@@ -10,9 +10,12 @@
  *     -> EN_ESPERA_CONTADOR
  *          -> [BLOQUEADA_CORTE_PENDIENTE] -> (se resuelve el corte) -> EN_ESPERA_CONTADOR
  *          -> EN_COMPARACION
- *               -> CONFLICTOS_PENDIENTES  (hubo discrepancias)
- *               -> LISTA_PARA_ENVIAR      (todo coincidio)
- *          CONFLICTOS_PENDIENTES -> LISTA_PARA_ENVIAR
+ *               -> CONFLICTOS_PENDIENTES     (hubo discrepancias)
+ *               -> EN_ESPERA_AUTORIZACION    (todo coincidio)
+ *          CONFLICTOS_PENDIENTES -> EN_ESPERA_AUTORIZACION
+ *          EN_ESPERA_AUTORIZACION
+ *            -> LISTA_PARA_ENVIAR      (el supervisor autoriza)
+ *            -> CONFLICTOS_PENDIENTES  (el supervisor rechaza productos especificos)
  *     LISTA_PARA_ENVIAR
  *       -> ENVIADA           (terminal)
  *       -> ERROR_ENVIO       -> LISTA_PARA_ENVIAR (reintento)
@@ -21,8 +24,14 @@
  * INVARIANTE CRITICA: no existe ninguna transicion que salte la verificacion.
  * BORRADOR jamas alcanza LISTA_PARA_ENVIAR ni ENVIADA — ese salto seria burlar
  * el doble conteo, que es la razon de ser del sistema (docs/01 seccion 6, regla
- * 1). El unico camino a LISTA_PARA_ENVIAR pasa por EN_COMPARACION, y a esa solo
- * se llega desde EN_ESPERA_CONTADOR, que solo se alcanza desde BORRADOR.
+ * 1). Ademas, desde que se agrego EN_ESPERA_AUTORIZACION, ninguna carga llega a
+ * LISTA_PARA_ENVIAR sin pasar por ahi: el doble conteo tiene un punto ciego
+ * (que ambos se equivoquen igual, o se pongan de acuerdo) que solo cierra un
+ * tercer par de ojos — la autorizacion explicita de un supervisor, lo haya
+ * revisado fisicamente o no. El unico camino a LISTA_PARA_ENVIAR pasa por
+ * EN_ESPERA_AUTORIZACION, y a esa solo se llega desde EN_COMPARACION o
+ * CONFLICTOS_PENDIENTES, que a su vez solo se alcanzan desde EN_ESPERA_CONTADOR,
+ * que solo se alcanza desde BORRADOR.
  */
 
 import type { EstadoCarga } from '@prisma/client';
@@ -39,8 +48,11 @@ export const TRANSICIONES_VALIDAS: Record<EstadoCarga, readonly EstadoCarga[]> =
   // El corte pendiente solo se libera volviendo a la cola del contador; nunca
   // avanza saltandose la comparacion.
   BLOQUEADA_CORTE_PENDIENTE: ['EN_ESPERA_CONTADOR'],
-  EN_COMPARACION: ['CONFLICTOS_PENDIENTES', 'LISTA_PARA_ENVIAR'],
-  CONFLICTOS_PENDIENTES: ['LISTA_PARA_ENVIAR'],
+  EN_COMPARACION: ['CONFLICTOS_PENDIENTES', 'EN_ESPERA_AUTORIZACION'],
+  CONFLICTOS_PENDIENTES: ['EN_ESPERA_AUTORIZACION'],
+  // El supervisor es el tercer par de ojos: autoriza (-> LISTA_PARA_ENVIAR) o
+  // rechaza productos especificos, lo que reabre la resolucion de conflictos.
+  EN_ESPERA_AUTORIZACION: ['LISTA_PARA_ENVIAR', 'CONFLICTOS_PENDIENTES'],
   LISTA_PARA_ENVIAR: ['ENVIADA', 'ERROR_ENVIO', 'ENVIO_INCIERTO'],
   ENVIADA: [],
   ERROR_ENVIO: ['LISTA_PARA_ENVIAR'],
@@ -95,4 +107,12 @@ export function permiteConteoDelVendedor(estado: EstadoCarga): boolean {
  */
 export function permiteVerificacionDelContador(estado: EstadoCarga): boolean {
   return estado === 'EN_ESPERA_CONTADOR';
+}
+
+/**
+ * `true` si la carga esta esperando la autorizacion del supervisor (el tercer
+ * par de ojos) antes de poder enviarse a Handy. Solo en EN_ESPERA_AUTORIZACION.
+ */
+export function requiereAutorizacion(estado: EstadoCarga): boolean {
+  return estado === 'EN_ESPERA_AUTORIZACION';
 }

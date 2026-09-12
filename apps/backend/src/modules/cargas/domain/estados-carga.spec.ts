@@ -7,6 +7,7 @@ import {
   esTerminal,
   permiteConteoDelVendedor,
   permiteVerificacionDelContador,
+  requiereAutorizacion,
 } from './estados-carga';
 
 describe('TRANSICIONES_VALIDAS — cada transicion declarada del mapa es valida', () => {
@@ -52,12 +53,32 @@ describe('INVARIANTE CRITICA: no se puede saltar la verificacion', () => {
     }
   });
 
-  it('el unico camino a LISTA_PARA_ENVIAR pasa por EN_COMPARACION o CONFLICTOS_PENDIENTES', () => {
+  it('el unico camino a LISTA_PARA_ENVIAR pasa por EN_ESPERA_AUTORIZACION (o un reintento de envio)', () => {
     const origenesHaciaListo = TODOS_LOS_ESTADOS.filter((e) =>
       puedeTransicionar(e, 'LISTA_PARA_ENVIAR'),
     ).sort();
     expect(origenesHaciaListo).toEqual(
-      ['CONFLICTOS_PENDIENTES', 'EN_COMPARACION', 'ERROR_ENVIO', 'ENVIO_INCIERTO'].sort(),
+      ['EN_ESPERA_AUTORIZACION', 'ERROR_ENVIO', 'ENVIO_INCIERTO'].sort(),
+    );
+  });
+
+  it('EN_COMPARACION no alcanza LISTA_PARA_ENVIAR directamente: debe pasar por EN_ESPERA_AUTORIZACION', () => {
+    expect(puedeTransicionar('EN_COMPARACION', 'LISTA_PARA_ENVIAR')).toBe(false);
+    expect(estadosAlcanzables('EN_COMPARACION').sort()).toEqual(
+      ['CONFLICTOS_PENDIENTES', 'EN_ESPERA_AUTORIZACION'].sort(),
+    );
+  });
+
+  it('CONFLICTOS_PENDIENTES no alcanza LISTA_PARA_ENVIAR directamente: debe pasar por EN_ESPERA_AUTORIZACION', () => {
+    expect(puedeTransicionar('CONFLICTOS_PENDIENTES', 'LISTA_PARA_ENVIAR')).toBe(false);
+    expect(estadosAlcanzables('CONFLICTOS_PENDIENTES')).toEqual(['EN_ESPERA_AUTORIZACION']);
+  });
+
+  it('EN_ESPERA_AUTORIZACION puede ir a LISTA_PARA_ENVIAR (autoriza) o a CONFLICTOS_PENDIENTES (rechaza)', () => {
+    expect(puedeTransicionar('EN_ESPERA_AUTORIZACION', 'LISTA_PARA_ENVIAR')).toBe(true);
+    expect(puedeTransicionar('EN_ESPERA_AUTORIZACION', 'CONFLICTOS_PENDIENTES')).toBe(true);
+    expect(estadosAlcanzables('EN_ESPERA_AUTORIZACION').sort()).toEqual(
+      ['CONFLICTOS_PENDIENTES', 'LISTA_PARA_ENVIAR'].sort(),
     );
   });
 
@@ -106,8 +127,10 @@ describe('recorrido exhaustivo: TODAS las combinaciones origen x destino', () =>
     'EN_ESPERA_CONTADOR->EN_COMPARACION',
     'BLOQUEADA_CORTE_PENDIENTE->EN_ESPERA_CONTADOR',
     'EN_COMPARACION->CONFLICTOS_PENDIENTES',
-    'EN_COMPARACION->LISTA_PARA_ENVIAR',
-    'CONFLICTOS_PENDIENTES->LISTA_PARA_ENVIAR',
+    'EN_COMPARACION->EN_ESPERA_AUTORIZACION',
+    'CONFLICTOS_PENDIENTES->EN_ESPERA_AUTORIZACION',
+    'EN_ESPERA_AUTORIZACION->LISTA_PARA_ENVIAR',
+    'EN_ESPERA_AUTORIZACION->CONFLICTOS_PENDIENTES',
     'LISTA_PARA_ENVIAR->ENVIADA',
     'LISTA_PARA_ENVIAR->ERROR_ENVIO',
     'LISTA_PARA_ENVIAR->ENVIO_INCIERTO',
@@ -134,13 +157,14 @@ describe('recorrido exhaustivo: TODAS las combinaciones origen x destino', () =>
     }
   });
 
-  it('cubre los 9 estados del enum EstadoCarga', () => {
+  it('cubre los 10 estados del enum EstadoCarga', () => {
     expect(TODOS_LOS_ESTADOS.sort()).toEqual(
       [
         'BLOQUEADA_CORTE_PENDIENTE',
         'BORRADOR',
         'CONFLICTOS_PENDIENTES',
         'EN_COMPARACION',
+        'EN_ESPERA_AUTORIZACION',
         'EN_ESPERA_CONTADOR',
         'ENVIADA',
         'ENVIO_INCIERTO',
@@ -165,6 +189,7 @@ describe('permiteConteoDelVendedor (docs/01 seccion 6, regla 2)', () => {
     for (const estado of [
       'EN_COMPARACION',
       'CONFLICTOS_PENDIENTES',
+      'EN_ESPERA_AUTORIZACION',
       'LISTA_PARA_ENVIAR',
       'ENVIADA',
       'ERROR_ENVIO',
@@ -187,6 +212,18 @@ describe('permiteVerificacionDelContador (docs/02 seccion 4.5)', () => {
   it('false en el resto de estados', () => {
     for (const estado of TODOS_LOS_ESTADOS.filter((e) => e !== 'EN_ESPERA_CONTADOR')) {
       expect(permiteVerificacionDelContador(estado)).toBe(false);
+    }
+  });
+});
+
+describe('requiereAutorizacion (el tercer par de ojos antes de LISTA_PARA_ENVIAR)', () => {
+  it('true solo en EN_ESPERA_AUTORIZACION', () => {
+    expect(requiereAutorizacion('EN_ESPERA_AUTORIZACION')).toBe(true);
+  });
+
+  it('false en el resto de estados', () => {
+    for (const estado of TODOS_LOS_ESTADOS.filter((e) => e !== 'EN_ESPERA_AUTORIZACION')) {
+      expect(requiereAutorizacion(estado)).toBe(false);
     }
   });
 });

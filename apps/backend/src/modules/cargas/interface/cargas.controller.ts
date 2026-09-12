@@ -403,7 +403,7 @@ export class CargasController {
 
     return {
       discrepancia: resultado.discrepancia,
-      listaParaEnviar: resultado.listaParaEnviar,
+      enEsperaAutorizacion: resultado.enEsperaAutorizacion,
     };
   }
 

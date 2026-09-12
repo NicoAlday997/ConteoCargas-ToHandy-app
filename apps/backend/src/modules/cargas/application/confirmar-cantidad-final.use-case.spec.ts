@@ -18,7 +18,9 @@ import {
  * LA prueba que da sentido a este archivo: la autoconfirmacion (mismo usuario
  * que capturo) SIEMPRE se rechaza y NO persiste absolutamente nada. Ademas:
  * confirmar sin captura previa, estado invalido del evento, y la transicion a
- * LISTA_PARA_ENVIAR solo cuando se resolvio la ultima discrepancia pendiente.
+ * EN_ESPERA_AUTORIZACION solo cuando se resolvio la ultima discrepancia
+ * pendiente (nunca directo a LISTA_PARA_ENVIAR: falta la autorizacion del
+ * supervisor).
  */
 
 const AHORA = new Date('2026-09-08T11:00:00-06:00');
@@ -269,7 +271,7 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     expect(repo.actualizaciones).toEqual([]);
   });
 
-  it('confirmar la ULTIMA discrepancia pendiente: persiste y transiciona el evento a LISTA_PARA_ENVIAR', async () => {
+  it('confirmar la ULTIMA discrepancia pendiente: persiste y transiciona el evento a EN_ESPERA_AUTORIZACION', async () => {
     repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
 
     const resultado = exigirExito(
@@ -281,7 +283,9 @@ describe('ConfirmarCantidadFinalUseCase', () => {
 
     expect(resultado.discrepancia.confirmadaPor).toBe('contador-1');
     expect(resultado.discrepancia.fechaConfirmacion).toEqual(AHORA);
-    expect(resultado.listaParaEnviar).toBe(true);
+    // Ni siquiera resuelta la ultima discrepancia se va directo a
+    // LISTA_PARA_ENVIAR: falta la autorizacion del supervisor.
+    expect(resultado.enEsperaAutorizacion).toBe(true);
     expect(repo.actualizaciones).toEqual([
       {
         eventoId: 'ev-1',
@@ -290,10 +294,10 @@ describe('ConfirmarCantidadFinalUseCase', () => {
       },
     ]);
     expect(repo.cambiosDeEstado).toEqual([
-      { eventoId: 'ev-1', estado: 'LISTA_PARA_ENVIAR' },
+      { eventoId: 'ev-1', estado: 'EN_ESPERA_AUTORIZACION' },
     ]);
     const evento = await repo.buscarEventoPorId('ev-1');
-    expect(evento?.estado).toBe('LISTA_PARA_ENVIAR');
+    expect(evento?.estado).toBe('EN_ESPERA_AUTORIZACION');
   });
 
   it('confirmar UNA de varias discrepancias: el evento sigue en CONFLICTOS_PENDIENTES', async () => {
@@ -310,7 +314,7 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     );
 
     expect(resultado.discrepancia.confirmadaPor).toBe('contador-1');
-    expect(resultado.listaParaEnviar).toBe(false);
+    expect(resultado.enEsperaAutorizacion).toBe(false);
     expect(repo.cambiosDeEstado).toEqual([]);
     const evento = await repo.buscarEventoPorId('ev-1');
     expect(evento?.estado).toBe('CONFLICTOS_PENDIENTES');

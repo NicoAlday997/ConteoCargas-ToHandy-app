@@ -40,6 +40,7 @@ enum EstadoCarga {
   BLOQUEADA_CORTE_PENDIENTE
   EN_COMPARACION
   CONFLICTOS_PENDIENTES
+  EN_ESPERA_AUTORIZACION
   LISTA_PARA_ENVIAR
   ENVIADA
   ERROR_ENVIO
@@ -164,6 +165,7 @@ model UsuarioApp {
   comparacionesComoSupervisor ComparacionCarga[]             @relation("ComparacionSupervisor")
   alertasResueltas            Alerta[]                       @relation("AlertaResueltaPor")
   dispositivosPush            DispositivoPush[]
+  cargasAutorizadas           EventoCarga[]                  @relation("EventoCargaAutorizadaPor")
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -296,12 +298,17 @@ model EventoCarga {
   fechaEnvioReal             DateTime?
   // Id de la ruta en Handy tras un envío exitoso.
   idHandy                    String?
+  // Autorizacion del supervisor (EN_ESPERA_AUTORIZACION -> LISTA_PARA_ENVIAR):
+  // el tercer par de ojos, la haya revisado fisicamente o no.
+  autorizadaPorId            String?
+  fechaAutorizacion          DateTime?
   creadoEn                   DateTime      @default(now())
   actualizadoEn              DateTime      @updatedAt
 
-  ruta         Ruta            @relation(fields: [rutaId], references: [id])
-  usuarioHandy UsuarioHandy    @relation(fields: [usuarioHandyId], references: [idHandy])
-  plantilla    PlantillaCarga? @relation(fields: [plantillaId], references: [id])
+  ruta          Ruta            @relation(fields: [rutaId], references: [id])
+  usuarioHandy  UsuarioHandy    @relation(fields: [usuarioHandyId], references: [idHandy])
+  plantilla     PlantillaCarga? @relation(fields: [plantillaId], references: [id])
+  autorizadaPor UsuarioApp?     @relation("EventoCargaAutorizadaPor", fields: [autorizadaPorId], references: [id])
 
   sesiones      SesionConteo[]
   discrepancias DiscrepanciaResuelta[]
@@ -311,6 +318,7 @@ model EventoCarga {
   @@index([usuarioHandyId])
   @@index([estado])
   @@index([plantillaId])
+  @@index([autorizadaPorId])
   @@map("eventos_carga")
 }
 

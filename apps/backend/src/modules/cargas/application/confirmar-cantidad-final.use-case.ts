@@ -18,8 +18,10 @@ import type { CargaRepository, Discrepancia } from './carga.repository';
  * cuando el dominio rechaza.
  *
  * Al confirmarse la ultima discrepancia pendiente del evento, este pasa a
- * `LISTA_PARA_ENVIAR` (RF-16) — siempre validando la transicion con
- * `puedeTransicionar` del dominio.
+ * `EN_ESPERA_AUTORIZACION` (RF-16): incluso conciliado, ninguna carga se envia
+ * a Handy sin que un supervisor la autorice — el tercer par de ojos que cierra
+ * el punto ciego de que ambos conteos se equivoquen igual (CLAUDE.md). La
+ * transicion siempre se valida con `puedeTransicionar` del dominio.
  *
  * Capa de aplicacion: solo depende del dominio y de los puertos, nunca de
  * infraestructura (Prisma, HTTP, NestJS).
@@ -36,9 +38,10 @@ export interface EntradaConfirmarCantidadFinal {
 /**
  * Resultado como union discriminada por `exito`.
  *
- * En exito se devuelve la discrepancia ya persistida y `listaParaEnviar`: `true`
- * si esta confirmacion resolvio la ultima discrepancia pendiente y el evento
- * quedo en `LISTA_PARA_ENVIAR`.
+ * En exito se devuelve la discrepancia ya persistida y `enEsperaAutorizacion`:
+ * `true` si esta confirmacion resolvio la ultima discrepancia pendiente y el
+ * evento quedo en `EN_ESPERA_AUTORIZACION`, a la espera de que un supervisor lo
+ * autorice.
  *
  * Motivos de rechazo:
  * - `ESTADO_INVALIDO`: el evento no existe o no esta en `CONFLICTOS_PENDIENTES`.
@@ -50,7 +53,7 @@ export interface EntradaConfirmarCantidadFinal {
  * - `YA_CONFIRMADA`: la discrepancia ya estaba confirmada (lo decide el dominio).
  */
 export type ResultadoConfirmarCantidadFinal =
-  | { exito: true; discrepancia: Discrepancia; listaParaEnviar: boolean }
+  | { exito: true; discrepancia: Discrepancia; enEsperaAutorizacion: boolean }
   | {
       exito: false;
       motivo:
@@ -128,19 +131,20 @@ export class ConfirmarCantidadFinalUseCase {
       },
     );
 
-    // 5. Si con esto quedaron TODAS las discrepancias del evento resueltas,
-    //    el evento avanza a LISTA_PARA_ENVIAR (RF-16). La transicion se valida
-    //    siempre contra la maquina de estados del dominio.
+    // 5. Si con esto quedaron TODAS las discrepancias del evento resueltas, el
+    //    evento avanza a EN_ESPERA_AUTORIZACION (RF-16), no a LISTA_PARA_ENVIAR:
+    //    todavia falta que un supervisor autorice el envio. La transicion se
+    //    valida siempre contra la maquina de estados del dominio.
     const tras = await this.cargas.listarDiscrepancias(entrada.eventoId);
-    let listaParaEnviar = false;
+    let enEsperaAutorizacion = false;
     if (
       todasResueltas(tras.map(aEstadoDiscrepancia)) &&
-      puedeTransicionar(evento.estado, 'LISTA_PARA_ENVIAR')
+      puedeTransicionar(evento.estado, 'EN_ESPERA_AUTORIZACION')
     ) {
-      await this.cargas.cambiarEstado(entrada.eventoId, 'LISTA_PARA_ENVIAR');
-      listaParaEnviar = true;
+      await this.cargas.cambiarEstado(entrada.eventoId, 'EN_ESPERA_AUTORIZACION');
+      enEsperaAutorizacion = true;
     }
 
-    return { exito: true, discrepancia: actualizada, listaParaEnviar };
+    return { exito: true, discrepancia: actualizada, enEsperaAutorizacion };
   }
 }

@@ -26,7 +26,7 @@ import {
  * en memoria del puerto `CargaRepository`.
  *
  * Cubre: sesion ajena rechazada, primera sesion -> EN_ESPERA_CONTADOR, segunda
- * sesion con conteos identicos -> LISTA_PARA_ENVIAR, segunda sesion con
+ * sesion con conteos identicos -> EN_ESPERA_AUTORIZACION, segunda sesion con
  * discrepancias -> CONFLICTOS_PENDIENTES, y el guardarraiil de `puedeTransicionar`.
  */
 
@@ -270,7 +270,7 @@ describe('FinalizarSesionUseCase', () => {
     ]);
   });
 
-  it('segunda sesion con conteos identicos: pasa por EN_COMPARACION y termina en LISTA_PARA_ENVIAR', async () => {
+  it('segunda sesion con conteos identicos: pasa por EN_COMPARACION y termina en EN_ESPERA_AUTORIZACION', async () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       estado: 'EN_ESPERA_CONTADOR',
       itemsVendedor: [
@@ -294,12 +294,14 @@ describe('FinalizarSesionUseCase', () => {
       await useCase.ejecutar(sesionContador.id, 'contador-1', AHORA),
     );
 
-    expect(resultado.evento.estado).toBe('LISTA_PARA_ENVIAR');
+    // Aunque todo coincidio, NO se envia directo: falta la autorizacion del
+    // supervisor, el tercer par de ojos (CLAUDE.md).
+    expect(resultado.evento.estado).toBe('EN_ESPERA_AUTORIZACION');
     expect(resultado.discrepancias).toEqual([]);
     expect(repo.transiciones).toEqual([
       { eventoId: evento.id, estado: 'EN_ESPERA_CONTADOR' },
       { eventoId: evento.id, estado: 'EN_COMPARACION' },
-      { eventoId: evento.id, estado: 'LISTA_PARA_ENVIAR' },
+      { eventoId: evento.id, estado: 'EN_ESPERA_AUTORIZACION' },
     ]);
   });
 

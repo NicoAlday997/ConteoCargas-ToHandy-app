@@ -14,8 +14,9 @@ import type {
  * - La primera sesion que se cierra deja el evento `EN_ESPERA_CONTADOR`.
  * - Al cerrarse la segunda, se dispara la comparacion automatica (RF-14): el
  *   evento pasa por `EN_COMPARACION`, se guardan las discrepancias y termina en
- *   `LISTA_PARA_ENVIAR` (todo coincidio) o `CONFLICTOS_PENDIENTES` (hubo
- *   diferencias).
+ *   `EN_ESPERA_AUTORIZACION` (todo coincidio) o `CONFLICTOS_PENDIENTES` (hubo
+ *   diferencias). Ni siquiera cuando todo coincide se envia directo: el
+ *   supervisor sigue siendo el tercer par de ojos que autoriza el envio.
  *
  * TODA transicion de estado se valida antes con `puedeTransicionar` del dominio:
  * el caso de uso nunca fuerza un salto que la maquina de estados no permita.
@@ -117,7 +118,7 @@ export class FinalizarSesionUseCase {
     );
 
     const destino = comparacion.coinciden
-      ? 'LISTA_PARA_ENVIAR'
+      ? 'EN_ESPERA_AUTORIZACION'
       : 'CONFLICTOS_PENDIENTES';
     const cerrado = await this.transicionar(enComparacion, destino);
     if (cerrado === null) {
