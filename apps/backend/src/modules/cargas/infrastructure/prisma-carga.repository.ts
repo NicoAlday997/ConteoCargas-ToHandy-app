@@ -103,6 +103,30 @@ export class PrismaCargaRepository extends CargaRepository {
     return this.aEventoCarga(row);
   }
 
+  async bloquearPorCortePendiente(
+    eventoId: string,
+    ahora: Date,
+  ): Promise<EventoCarga> {
+    const row = await this.prisma.eventoCarga.update({
+      where: { id: eventoId },
+      // Los dos campos se fijan juntos: sin ventana con `fechaBloqueoCortePendiente`
+      // puesto pero el estado aun en `EN_ESPERA_CONTADOR`.
+      data: {
+        fechaBloqueoCortePendiente: ahora,
+        estado: 'BLOQUEADA_CORTE_PENDIENTE',
+      },
+    });
+    return this.aEventoCarga(row);
+  }
+
+  async desbloquearEvento(eventoId: string, ahora: Date): Promise<EventoCarga> {
+    const row = await this.prisma.eventoCarga.update({
+      where: { id: eventoId },
+      data: { fechaDesbloqueo: ahora, estado: 'EN_ESPERA_CONTADOR' },
+    });
+    return this.aEventoCarga(row);
+  }
+
   async crearSesion(
     eventoId: string,
     tipo: TipoSesion,
@@ -280,6 +304,8 @@ export class PrismaCargaRepository extends CargaRepository {
       fechaConteo: row.fechaConteo,
       autorizadaPorId: row.autorizadaPorId,
       fechaAutorizacion: row.fechaAutorizacion,
+      fechaBloqueoCortePendiente: row.fechaBloqueoCortePendiente,
+      fechaDesbloqueo: row.fechaDesbloqueo,
       creadoEn: row.creadoEn,
     };
   }

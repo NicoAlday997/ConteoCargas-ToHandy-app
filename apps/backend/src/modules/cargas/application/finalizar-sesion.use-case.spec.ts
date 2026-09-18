@@ -60,6 +60,8 @@ class FakeCargaRepository implements CargaRepository {
       fechaConteo: datos.fechaConteo,
       autorizadaPorId: null,
       fechaAutorizacion: null,
+      fechaBloqueoCortePendiente: null,
+      fechaDesbloqueo: null,
       creadoEn: datos.fechaConteo,
     };
     this.eventos.set(evento.id, evento);
@@ -89,6 +91,12 @@ class FakeCargaRepository implements CargaRepository {
   }
 
   async autorizarEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async bloquearPorCortePendiente(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async desbloquearEvento(): Promise<EventoCarga> {
     throw new Error('no usado en estas pruebas');
   }
 

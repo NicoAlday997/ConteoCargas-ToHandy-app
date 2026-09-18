@@ -61,6 +61,12 @@ class FakeCargaRepository implements CargaRepository {
   async marcarComoEnviada(): Promise<EventoCarga> {
     throw new Error('no usado en estas pruebas');
   }
+  async bloquearPorCortePendiente(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async desbloquearEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
   async crearSesion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -105,6 +111,8 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     fechaConteo: AHORA,
     autorizadaPorId: null,
     fechaAutorizacion: null,
+    fechaBloqueoCortePendiente: null,
+    fechaDesbloqueo: null,
     creadoEn: AHORA,
     ...parcial,
   };

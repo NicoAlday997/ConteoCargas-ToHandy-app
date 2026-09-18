@@ -26,11 +26,13 @@ import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
 import { CargaRepository } from '../application/carga.repository';
 import { CapturarCantidadFinalUseCase } from '../application/capturar-cantidad-final.use-case';
 import { ConfirmarCantidadFinalUseCase } from '../application/confirmar-cantidad-final.use-case';
+import { DesbloquearCargaUseCase } from '../application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
 import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
+import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
 import {
   CapturarCantidadSchema,
   FinalizarSesionSchema,
@@ -76,6 +78,8 @@ export class CargasController {
     private readonly autorizarCargaUseCase: AutorizarCargaUseCase,
     private readonly rechazarProductosUseCase: RechazarProductosUseCase,
     private readonly modificarCantidadSupervisorUseCase: ModificarCantidadSupervisorUseCase,
+    private readonly verificarCortePendienteUseCase: VerificarCortePendienteUseCase,
+    private readonly desbloquearCargaUseCase: DesbloquearCargaUseCase,
   ) {}
 
   /**
@@ -133,6 +137,13 @@ export class CargasController {
    * sesion lo determina su rol (en autoventa el vendedor cuenta primero y el
    * contador verifica, docs/02 §3); `ubicacion` solo aplica al segundo conteo de
    * una recarga y es informativa.
+   *
+   * Si quien abre la sesion es el CONTADOR, antes se verifica que el vendedor no
+   * tenga un corte de venta anterior pendiente en Handy (RF-13, docs/01 §6 regla
+   * 2; docs/02 §4.5): de haberlo, el evento queda `BLOQUEADA_CORTE_PENDIENTE` y
+   * la apertura se rechaza con 409. Esta verificacion NUNCA corre para el
+   * VENDEDOR: el bloqueo es exclusivo de la verificacion del contador, el
+   * vendedor siempre puede contar sin restriccion.
    */
   @Post(':id/sesiones')
   @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
@@ -153,6 +164,20 @@ export class CargasController {
     // asi que el rol mapea 1:1 al tipo de sesion.
     const tipoSesion: TipoSesion =
       usuario.rolApp === RolApp.CONTADOR ? 'CONTADOR' : 'VENDEDOR';
+
+    if (tipoSesion === 'CONTADOR') {
+      const verificacion = await this.verificarCortePendienteUseCase.ejecutar(
+        { eventoId },
+        new Date(),
+      );
+      if (verificacion.exito && verificacion.bloqueado) {
+        throw new ConflictException({
+          statusCode: 409,
+          mensaje:
+            'El vendedor tiene un corte de venta pendiente en Handy (una ruta anterior sin cerrar). Debe cerrarlo antes de que puedas verificar esta carga.',
+        });
+      }
+    }
 
     return this.cargas.crearSesion(
       eventoId,
@@ -613,5 +638,41 @@ export class CargasController {
       mensaje:
         'La cantidad quedo registrada pero pendiente de confirmacion: una persona distinta a ti debe confirmarla con su propio PIN antes de que la carga pueda autorizarse.',
     };
+  }
+
+  /**
+   * Intenta liberar una carga bloqueada por corte de venta pendiente (RF-13,
+   * docs/01 §6 regla 2; docs/02 §4.5): vuelve a consultar Handy y, si el
+   * vendedor ya cerro la ruta anterior, el evento vuelve a `EN_ESPERA_CONTADOR`.
+   * Si el corte sigue pendiente no cambia nada y lo indica en la respuesta.
+   */
+  @Post(':id/desbloquear')
+  @HttpCode(200)
+  @Roles(RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async desbloquear(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+  ) {
+    const resultado = await this.desbloquearCargaUseCase.ejecutar(
+      { eventoId },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      throw new ConflictException({
+        statusCode: 409,
+        mensaje:
+          'La carga no existe o no esta bloqueada por corte de venta pendiente.',
+      });
+    }
+
+    if (resultado.sigueBloqueado) {
+      return {
+        sigueBloqueado: true,
+        mensaje:
+          'El vendedor todavia no cierra su corte de venta pendiente en Handy.',
+      };
+    }
+
+    return { sigueBloqueado: false, evento: resultado.evento };
   }
 }

@@ -147,6 +147,12 @@ class FakeCargaRepository implements CargaRepository {
   async autorizarEvento(): Promise<EventoCarga> {
     throw new Error('no usado en estas pruebas');
   }
+  async bloquearPorCortePendiente(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async desbloquearEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en estas pruebas');
+  }
   async reabrirDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -271,6 +277,8 @@ function sembrarCargaLista(
     fechaConteo: INICIADA_EN,
     autorizadaPorId: null,
     fechaAutorizacion: null,
+    fechaBloqueoCortePendiente: null,
+    fechaDesbloqueo: null,
     creadoEn: INICIADA_EN,
   });
   repo.sembrarSesiones(EVENTO_ID, [

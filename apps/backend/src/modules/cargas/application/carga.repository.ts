@@ -37,6 +37,10 @@ export interface EventoCarga {
   /** Id del supervisor que autorizo el envio (EN_ESPERA_AUTORIZACION -> LISTA_PARA_ENVIAR). */
   autorizadaPorId: string | null;
   fechaAutorizacion: Date | null;
+  /** Momento en que el corte de venta pendiente del vendedor bloqueo la verificacion (docs/02 seccion 4.5). */
+  fechaBloqueoCortePendiente: Date | null;
+  /** Momento en que se confirmo que el corte se cerro y el evento volvio a EN_ESPERA_CONTADOR. */
+  fechaDesbloqueo: Date | null;
   creadoEn: Date;
 }
 
@@ -192,6 +196,28 @@ export abstract class CargaRepository {
     autorizadaPorId: string,
     ahora: Date,
   ): Promise<EventoCarga>;
+
+  /**
+   * Bloquea el evento por corte de venta pendiente del vendedor (docs/02
+   * seccion 4.5, docs/01 seccion 6 regla 2): fija `fechaBloqueoCortePendiente`
+   * y deja el estado en `BLOQUEADA_CORTE_PENDIENTE`, en una sola operacion.
+   *
+   * El caso de uso ya valido con `puedeTransicionar` que el evento podia
+   * bloquearse antes de llamar aca.
+   */
+  abstract bloquearPorCortePendiente(
+    eventoId: string,
+    ahora: Date,
+  ): Promise<EventoCarga>;
+
+  /**
+   * Libera el bloqueo por corte de venta pendiente: fija `fechaDesbloqueo` y
+   * devuelve el evento a `EN_ESPERA_CONTADOR`, en una sola operacion.
+   *
+   * El caso de uso ya valido con `puedeTransicionar` que el evento podia
+   * desbloquearse antes de llamar aca.
+   */
+  abstract desbloquearEvento(eventoId: string, ahora: Date): Promise<EventoCarga>;
 
   /**
    * Crea una `SesionConteo` en estado `ABIERTA` para ese evento y usuario, y la

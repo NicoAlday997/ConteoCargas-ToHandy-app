@@ -57,6 +57,8 @@ class FakeCargaRepository implements CargaRepository {
       fechaConteo: datos.fechaConteo,
       autorizadaPorId: null,
       fechaAutorizacion: null,
+      fechaBloqueoCortePendiente: null,
+      fechaDesbloqueo: null,
       creadoEn: datos.fechaConteo,
     };
   }
@@ -93,6 +95,12 @@ class FakeCargaRepository implements CargaRepository {
     throw new Error('no usado en esta prueba');
   }
   autorizarEvento(): Promise<EventoCarga> {
+    throw new Error('no usado en esta prueba');
+  }
+  bloquearPorCortePendiente(): Promise<EventoCarga> {
+    throw new Error('no usado en esta prueba');
+  }
+  desbloquearEvento(): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
   }
   buscarSesionPorId(): Promise<SesionConteo | null> {
