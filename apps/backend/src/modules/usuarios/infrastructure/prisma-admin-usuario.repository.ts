@@ -104,6 +104,12 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     });
   }
 
+  async contarSupervisoresActivos(): Promise<number> {
+    return this.prisma.usuarioApp.count({
+      where: { rolApp: 'SUPERVISOR', activo: true },
+    });
+  }
+
   private aDominio(registro: {
     id: string;
     nombreCompleto: string;

@@ -5,7 +5,7 @@ import { HasherPort } from '../auth/application/hasher.port';
 import { Argon2HasherAdapter } from '../auth/infrastructure/argon2-hasher.adapter';
 import { AdminUsuarioRepository } from './application/admin-usuario.repository';
 import { CrearUsuarioUseCase } from './application/crear-usuario.use-case';
-import { DesactivarUsuarioUseCase } from './application/desactivar-usuario.use-case';
+import { EditarUsuarioUseCase } from './application/editar-usuario.use-case';
 import { RestablecerPinUseCase } from './application/restablecer-pin.use-case';
 import { PrismaAdminUsuarioRepository } from './infrastructure/prisma-admin-usuario.repository';
 import { UsuariosController } from './interface/usuarios.controller';
@@ -35,9 +35,9 @@ import { UsuariosController } from './interface/usuarios.controller';
       inject: [AdminUsuarioRepository, HasherPort],
     },
     {
-      provide: DesactivarUsuarioUseCase,
+      provide: EditarUsuarioUseCase,
       useFactory: (usuarios: AdminUsuarioRepository) =>
-        new DesactivarUsuarioUseCase(usuarios),
+        new EditarUsuarioUseCase(usuarios),
       inject: [AdminUsuarioRepository],
     },
   ],

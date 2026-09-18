@@ -338,7 +338,11 @@ model SesionConteo {
 
   items ConteoItem[]
 
-  @@index([eventoCargaId])
+  // Un mismo usuario no puede tener dos sesiones de conteo (abierta o cerrada)
+  // sobre el mismo evento: duplicaria el conteo y arruinaria la comparacion
+  // (RF-14). Respaldo a nivel de base de datos de `AbrirSesionUseCase`, que ya
+  // rechaza esto en la capa de aplicacion.
+  @@unique([eventoCargaId, usuarioAppId])
   @@index([usuarioAppId])
   @@map("sesiones_conteo")
 }

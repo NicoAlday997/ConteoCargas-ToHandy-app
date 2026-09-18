@@ -71,6 +71,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   ): Promise<void> {
     this.restablecimientos.push(datos);
   }
+
+  contarSupervisoresActivos(): Promise<number> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 /** Hasher falso: el "hash" de un valor plano `x` es la cadena `HASH:x`. */

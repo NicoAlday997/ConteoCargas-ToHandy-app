@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
 import { HandyGateway } from '../sincronizacion/application/handy.gateway';
 import { SincronizacionModule } from '../sincronizacion/sincronizacion.module';
+import { AbrirSesionUseCase } from './application/abrir-sesion.use-case';
 import { AsignacionRepository } from './application/asignacion.repository';
 import { AutorizarCargaUseCase } from './application/autorizar-carga.use-case';
 import { CapturarCantidadFinalUseCase } from './application/capturar-cantidad-final.use-case';
@@ -43,6 +44,11 @@ import { CargasController } from './interface/cargas.controller';
         asignaciones: AsignacionRepository,
       ) => new IniciarCargaUseCase(cargas, asignaciones),
       inject: [CargaRepository, AsignacionRepository],
+    },
+    {
+      provide: AbrirSesionUseCase,
+      useFactory: (cargas: CargaRepository) => new AbrirSesionUseCase(cargas),
+      inject: [CargaRepository],
     },
     {
       provide: FinalizarSesionUseCase,

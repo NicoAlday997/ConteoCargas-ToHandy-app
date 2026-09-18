@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   HttpCode,
@@ -20,7 +21,7 @@ import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AdminUsuarioRepository } from '../application/admin-usuario.repository';
 import { CrearUsuarioUseCase } from '../application/crear-usuario.use-case';
-import { DesactivarUsuarioUseCase } from '../application/desactivar-usuario.use-case';
+import { EditarUsuarioUseCase } from '../application/editar-usuario.use-case';
 import { RestablecerPinUseCase } from '../application/restablecer-pin.use-case';
 import {
   CrearUsuarioSchema,
@@ -45,7 +46,7 @@ export class UsuariosController {
     private readonly adminUsuarioRepository: AdminUsuarioRepository,
     private readonly crearUsuarioUseCase: CrearUsuarioUseCase,
     private readonly restablecerPinUseCase: RestablecerPinUseCase,
-    private readonly desactivarUsuarioUseCase: DesactivarUsuarioUseCase,
+    private readonly editarUsuarioUseCase: EditarUsuarioUseCase,
   ) {}
 
   /** Lista completa, incluidos los inactivos (RF-11). Nunca expone `pinHash`. */
@@ -89,48 +90,53 @@ export class UsuariosController {
   }
 
   /**
-   * Edicion de nombre, rol, vinculo con Handy (RF-05) o estado. La baja
-   * (`activo: false`, RF-11) pasa siempre por su caso de uso, que garantiza que
-   * el registro solo se marca inactivo y nunca se elimina.
+   * Edicion de nombre, rol, vinculo con Handy (RF-05), alta/baja (RF-11). Todo
+   * pasa por `EditarUsuarioUseCase`, que aplica las politicas de proteccion
+   * del ultimo supervisor antes de tocar `activo` o `rolApp`: nadie se
+   * desactiva ni se cambia el rol a si mismo, y ninguna accion puede dejar el
+   * sistema sin un supervisor activo. `actorId` sale del JWT, nunca del body.
    */
   @Patch(':id')
   @HttpCode(200)
   async editar(
     @Param('id', new ZodValidationPipe(IdUsuarioSchema)) id: string,
     @Body(new ZodValidationPipe(EditarUsuarioSchema)) dto: EditarUsuarioDto,
+    @UsuarioActual() admin: UsuarioAutenticado,
   ) {
-    const existente = await this.adminUsuarioRepository.buscarPorId(id);
-    if (existente === null) {
-      throw new NotFoundException({
-        statusCode: 404,
-        mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
-      });
-    }
+    const resultado = await this.editarUsuarioUseCase.ejecutar(
+      id,
+      admin.usuarioAppId,
+      dto,
+    );
 
-    const { activo, ...campos } = dto;
-
-    // Campos simples y reactivacion (`activo: true`) van directo al repositorio.
-    if (Object.keys(campos).length > 0 || activo === true) {
-      await this.adminUsuarioRepository.actualizar(id, {
-        ...campos,
-        ...(activo === true ? { activo: true } : {}),
-      });
-    }
-
-    // Baja: RF-11.
-    if (activo === false) {
-      const resultado = await this.desactivarUsuarioUseCase.ejecutar(id);
-      if (!resultado.exito) {
-        throw new NotFoundException({
-          statusCode: 404,
-          mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
-        });
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'USUARIO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
+          });
+        case 'AUTODESACTIVACION_PROHIBIDA':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje: 'No puedes desactivar tu propia cuenta.',
+          });
+        case 'AUTOCAMBIO_ROL_PROHIBIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje: 'No puedes cambiar tu propio rol.',
+          });
+        case 'ULTIMO_SUPERVISOR':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'Esta accion dejaria el sistema sin ningun supervisor activo. Asigna el rol de supervisor a otra persona antes de continuar.',
+          });
       }
-      return resultado.usuario;
     }
 
     // Convencion docs/04 §1.7: toda mutacion devuelve el recurso completo.
-    return this.adminUsuarioRepository.buscarPorId(id);
+    return resultado.usuario;
   }
 
   /**

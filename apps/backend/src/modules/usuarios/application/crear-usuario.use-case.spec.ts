@@ -63,6 +63,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   ): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
+
+  contarSupervisoresActivos(): Promise<number> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 /**

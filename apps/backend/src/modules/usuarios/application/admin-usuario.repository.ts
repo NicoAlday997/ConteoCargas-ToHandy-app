@@ -65,4 +65,10 @@ export abstract class AdminUsuarioRepository {
   abstract registrarRestablecimientoPin(
     datos: RegistroRestablecimientoPin,
   ): Promise<void>;
+  /**
+   * Cuenta los `UsuarioApp` con `rolApp = SUPERVISOR` y `activo = true`. Lo usa
+   * `politica-supervisores.ts` para impedir que una desactivacion o un cambio
+   * de rol deje el sistema sin ningun supervisor activo.
+   */
+  abstract contarSupervisoresActivos(): Promise<number>;
 }

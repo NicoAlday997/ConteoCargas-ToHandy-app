@@ -22,6 +22,7 @@ import { Roles } from '../../../shared/auth/roles.decorator';
 import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
+import { AbrirSesionUseCase } from '../application/abrir-sesion.use-case';
 import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
 import { CargaRepository } from '../application/carga.repository';
 import { CapturarCantidadFinalUseCase } from '../application/capturar-cantidad-final.use-case';
@@ -71,6 +72,7 @@ export class CargasController {
   constructor(
     private readonly cargas: CargaRepository,
     private readonly iniciarCargaUseCase: IniciarCargaUseCase,
+    private readonly abrirSesionUseCase: AbrirSesionUseCase,
     private readonly finalizarSesionUseCase: FinalizarSesionUseCase,
     private readonly capturarCantidadFinalUseCase: CapturarCantidadFinalUseCase,
     private readonly confirmarCantidadFinalUseCase: ConfirmarCantidadFinalUseCase,
@@ -179,13 +181,30 @@ export class CargasController {
       }
     }
 
-    return this.cargas.crearSesion(
+    const resultado = await this.abrirSesionUseCase.ejecutar({
       eventoId,
-      tipoSesion,
-      usuario.usuarioAppId,
-      undefined,
-      dto.ubicacion,
-    );
+      usuarioAppId: usuario.usuarioAppId,
+      tipo: tipoSesion,
+      ubicacion: dto.ubicacion,
+    });
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'EVENTO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'El evento de carga no existe.',
+          });
+        case 'YA_TIENE_SESION_EN_ESTE_EVENTO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'Ya tienes una sesion abierta en esta carga. Continua esa sesion en vez de abrir una nueva.',
+          });
+      }
+    }
+
+    return resultado.sesion;
   }
 
   /**
