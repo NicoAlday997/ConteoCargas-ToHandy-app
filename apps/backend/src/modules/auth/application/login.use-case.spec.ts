@@ -1,6 +1,9 @@
 import { RolApp } from '@prisma/client';
 
-import { MINUTOS_BLOQUEO } from '../domain/politica-acceso';
+import {
+  MAX_INTENTOS_FALLIDOS,
+  MINUTOS_BLOQUEO,
+} from '../domain/politica-acceso';
 import { HasherPort } from './hasher.port';
 import { LoginUseCase, type ResultadoLogin } from './login.use-case';
 import type {
@@ -132,25 +135,26 @@ describe('LoginUseCase', () => {
     });
   });
 
-  it('3. devuelve BLOQUEADO si el usuario esta inactivo aunque el PIN sea correcto', async () => {
+  it('3. devuelve INACTIVO si el usuario esta inactivo aunque el PIN sea correcto', async () => {
     repo.sembrar(crearUsuario({ activo: false }));
 
     const resultado = await useCase.ejecutar('u-1', '1234', AHORA);
 
-    expect(resultado).toEqual({ exito: false, motivo: 'BLOQUEADO' });
+    expect(resultado).toEqual({ exito: false, motivo: 'INACTIVO' });
+    expect(hasher.verificarInvocaciones).toBe(0);
   });
 
-  it('4. devuelve BLOQUEADO con bloqueoHasta futuro y no invoca al hasher', async () => {
-    repo.sembrar(
-      crearUsuario({
-        bloqueadoHasta: new Date(AHORA.getTime() + 60_000),
-        intentosFallidos: 5,
-      }),
-    );
+  it('4. devuelve BLOQUEADO con la fecha de desbloqueo y no invoca al hasher', async () => {
+    const bloqueadoHasta = new Date(AHORA.getTime() + 60_000);
+    repo.sembrar(crearUsuario({ bloqueadoHasta, intentosFallidos: 5 }));
 
     const resultado = await useCase.ejecutar('u-1', '1234', AHORA);
 
-    expect(resultado).toEqual({ exito: false, motivo: 'BLOQUEADO' });
+    expect(resultado).toEqual({
+      exito: false,
+      motivo: 'BLOQUEADO',
+      bloqueadoHasta,
+    });
     expect(hasher.verificarInvocaciones).toBe(0);
     expect(repo.actualizaciones).toHaveLength(0);
   });
@@ -169,14 +173,15 @@ describe('LoginUseCase', () => {
     expect(hasher.verificarInvocaciones).toBe(1);
   });
 
-  it('6. con PIN incorrecto devuelve CREDENCIALES_INVALIDAS e incrementa intentosFallidos en la persistencia', async () => {
+  it('6. con PIN incorrecto devuelve PIN_INCORRECTO con intentos restantes e incrementa intentosFallidos', async () => {
     repo.sembrar(crearUsuario({ intentosFallidos: 2 }));
 
     const resultado = await useCase.ejecutar('u-1', '0000', AHORA);
 
     expect(resultado).toEqual({
       exito: false,
-      motivo: 'CREDENCIALES_INVALIDAS',
+      motivo: 'PIN_INCORRECTO',
+      intentosRestantes: MAX_INTENTOS_FALLIDOS - 3,
     });
     expect(repo.actualizaciones).toHaveLength(1);
     expect(repo.actualizaciones[0]).toEqual({
@@ -185,17 +190,55 @@ describe('LoginUseCase', () => {
     });
   });
 
-  it('7. al quinto intento fallido consecutivo persiste bloqueadoHasta distinto de null', async () => {
+  it('7. al quinto intento fallido consecutivo devuelve BLOQUEO_ACTIVADO y persiste bloqueadoHasta', async () => {
     repo.sembrar(crearUsuario({ intentosFallidos: 4 }));
-
-    await useCase.ejecutar('u-1', '9999', AHORA);
-
-    const { datos } = repo.actualizaciones[0];
-    expect(datos.intentosFallidos).toBe(5);
-    expect(datos.bloqueadoHasta).not.toBeNull();
-    expect(datos.bloqueadoHasta?.getTime()).toBe(
+    const bloqueadoHastaEsperado = new Date(
       AHORA.getTime() + MINUTOS_BLOQUEO * 60 * 1000,
     );
+
+    const resultado = await useCase.ejecutar('u-1', '9999', AHORA);
+
+    expect(resultado).toEqual({
+      exito: false,
+      motivo: 'BLOQUEO_ACTIVADO',
+      bloqueadoHasta: bloqueadoHastaEsperado,
+    });
+    const { datos } = repo.actualizaciones[0];
+    expect(datos.intentosFallidos).toBe(5);
+    expect(datos.bloqueadoHasta).toEqual(bloqueadoHastaEsperado);
+  });
+
+  it('7b. intentos restantes decrecen de uno en uno hasta la transicion al bloqueo', async () => {
+    repo.sembrar(crearUsuario());
+
+    const restantes: number[] = [];
+    for (let i = 1; i < MAX_INTENTOS_FALLIDOS; i++) {
+      const resultado = await useCase.ejecutar('u-1', '0000', AHORA);
+      if (resultado.exito || resultado.motivo !== 'PIN_INCORRECTO') {
+        throw new Error(`intento ${i}: resultado inesperado`);
+      }
+      restantes.push(resultado.intentosRestantes);
+    }
+    expect(restantes).toEqual([4, 3, 2, 1]);
+
+    const ultimo = await useCase.ejecutar('u-1', '0000', AHORA);
+    expect(ultimo).toEqual({
+      exito: false,
+      motivo: 'BLOQUEO_ACTIVADO',
+      bloqueadoHasta: new Date(AHORA.getTime() + MINUTOS_BLOQUEO * 60 * 1000),
+    });
+
+    // Ya bloqueado: ni el PIN correcto entra y no se toca el contador.
+    const siguiente = await useCase.ejecutar('u-1', '1234', AHORA);
+    expect(!siguiente.exito && siguiente.motivo).toBe('BLOQUEADO');
+    expect(repo.actualizaciones).toHaveLength(MAX_INTENTOS_FALLIDOS);
+  });
+
+  it('7c. un usuario inexistente no recibe intentos restantes', async () => {
+    const resultado = await useCase.ejecutar('desconocido', '0000', AHORA);
+
+    expect(resultado).not.toHaveProperty('intentosRestantes');
+    expect(resultado).not.toHaveProperty('bloqueadoHasta');
   });
 
   it('8. en login exitoso devuelve los datos del usuario', async () => {

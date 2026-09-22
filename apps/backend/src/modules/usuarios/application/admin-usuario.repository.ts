@@ -41,6 +41,8 @@ export interface DatosActualizarUsuario {
   activo?: boolean;
   debeCambiarPin?: boolean;
   pinHash?: string;
+  intentosFallidos?: number;
+  bloqueadoHasta?: Date | null;
 }
 
 /** Traza de un restablecimiento de PIN (RF-10). */

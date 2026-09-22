@@ -17,6 +17,21 @@ Todos los endpoints requieren `Authorization: Bearer {JWT}` salvo el login. El J
 | POST | `/auth/login` | Público | Body: `{ usuarioAppId, pin }`. Devuelve JWT y `debeCambiarPin`. |
 | POST | `/auth/cambiar-pin` | Autenticado | Body: `{ pinActual, pinNuevo }`. Obligatorio si `debeCambiarPin = true`. |
 
+**Errores de `POST /auth/login` (RF-03).** Todo fallo responde `401` con este cuerpo:
+
+```json
+{ "statusCode": 401, "codigo": "PIN_INCORRECTO", "mensaje": "PIN incorrecto. Te quedan 3 intentos antes del bloqueo temporal.", "intentosRestantes": 3, "bloqueadoHasta": null }
+```
+
+| `codigo` | Cuándo | `intentosRestantes` | `bloqueadoHasta` |
+|---|---|---|---|
+| `PIN_INCORRECTO` | PIN equivocado sin llegar al bloqueo | número | `null` |
+| `USUARIO_BLOQUEADO` | Este intento activó el bloqueo, o ya estaba bloqueado | `0` | ISO 8601 |
+| `USUARIO_INACTIVO` | Usuario dado de baja | `null` | `null` |
+| `CREDENCIALES_INVALIDAS` | Usuario inexistente o PIN mal formado | `null` | `null` |
+
+Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/usuarios` ya los lista públicamente. `POST /admin/usuarios/:id/restablecer-pin` también levanta el bloqueo.
+
 ### 1.2 Administración de usuarios
 
 | Método | Ruta | Rol | Descripción |

@@ -2,6 +2,7 @@
   "expo": {
     "name": "movil",
     "slug": "movil",
+    "scheme": "conteocargas",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

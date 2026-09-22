@@ -23,7 +23,8 @@ export default function LayoutRaiz() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={clienteConsultas}>
-          <Stack />
+          {/* Sin encabezado nativo: mostraba el nombre del archivo y cada pantalla trae el suyo. */}
+          <Stack screenOptions={{ headerShown: false }} />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

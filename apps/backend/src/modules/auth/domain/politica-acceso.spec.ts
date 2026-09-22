@@ -4,6 +4,7 @@ import {
   puedeIntentarLogin,
   registrarIntentoFallido,
   registrarIntentoExitoso,
+  intentosRestantes,
   MAX_INTENTOS_FALLIDOS,
   EstadoAcceso,
 } from './politica-acceso';
@@ -107,5 +108,24 @@ describe('registrarIntentoExitoso', () => {
     const resultado = registrarIntentoExitoso(estado);
     expect(resultado.intentosFallidos).toBe(0);
     expect(resultado.bloqueadoHasta).toBeNull();
+  });
+});
+
+describe('intentosRestantes', () => {
+  it('es el maximo cuando no hay intentos fallidos', () => {
+    expect(intentosRestantes(estadoLimpio)).toBe(MAX_INTENTOS_FALLIDOS);
+  });
+
+  it('descuenta cada intento fallido', () => {
+    const estado: EstadoAcceso = { ...estadoLimpio, intentosFallidos: 3 };
+    expect(intentosRestantes(estado)).toBe(MAX_INTENTOS_FALLIDOS - 3);
+  });
+
+  it('nunca es negativo aunque el contador supere el maximo', () => {
+    const estado: EstadoAcceso = {
+      ...estadoLimpio,
+      intentosFallidos: MAX_INTENTOS_FALLIDOS + 2,
+    };
+    expect(intentosRestantes(estado)).toBe(0);
   });
 });

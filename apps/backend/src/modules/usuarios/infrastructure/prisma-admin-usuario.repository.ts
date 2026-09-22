@@ -79,6 +79,8 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
         activo: datos.activo,
         debeCambiarPin: datos.debeCambiarPin,
         pinHash: datos.pinHash,
+        intentosFallidos: datos.intentosFallidos,
+        bloqueadoHasta: datos.bloqueadoHasta,
       },
       select: PrismaAdminUsuarioRepository.SELECT,
     });

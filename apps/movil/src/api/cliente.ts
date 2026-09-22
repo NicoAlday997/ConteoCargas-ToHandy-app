@@ -6,6 +6,51 @@ export interface OpcionesPeticion extends Omit<RequestInit, 'body'> {
   cuerpo?: unknown;
 }
 
+/** Forma de los errores del backend (`{ statusCode, mensaje }`), más campos opcionales. */
+export interface CuerpoErrorApi {
+  statusCode?: number | null;
+  mensaje?: string | null;
+  /** Solo en login: `PIN_INCORRECTO`, `USUARIO_BLOQUEADO`, `USUARIO_INACTIVO`, `CREDENCIALES_INVALIDAS`. */
+  codigo?: string | null;
+  intentosRestantes?: number | null;
+  /** ISO 8601. */
+  bloqueadoHasta?: string | null;
+}
+
+/** El servidor respondió, pero con un código de error. */
+export class ErrorApi extends Error {
+  constructor(
+    readonly estado: number,
+    readonly cuerpo: CuerpoErrorApi | null,
+    mensaje: string,
+  ) {
+    super(mensaje);
+    this.name = 'ErrorApi';
+  }
+}
+
+/**
+ * No hubo respuesta del servidor. Se distingue de ErrorApi para no hacer
+ * creer al usuario que su PIN está mal cuando lo que falla es la red.
+ */
+export class ErrorRed extends Error {
+  constructor() {
+    super('No hay conexión con el servidor');
+    this.name = 'ErrorRed';
+  }
+}
+
+async function leerCuerpoError(respuesta: Response): Promise<CuerpoErrorApi | null> {
+  const texto = await respuesta.text().catch(() => '');
+  if (!texto) return null;
+  try {
+    const json: unknown = JSON.parse(texto);
+    return typeof json === 'object' && json !== null ? (json as CuerpoErrorApi) : null;
+  } catch {
+    return { mensaje: texto };
+  }
+}
+
 /**
  * Cliente HTTP propio (nunca hacia Handy directo: el backend es el único
  * que conoce el token de integración de Handy).
@@ -27,20 +72,32 @@ export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {})
     encabezados.Authorization = `Bearer ${token}`;
   }
 
-  const respuesta = await fetch(`${URL_BASE}${ruta}`, {
-    ...resto,
-    headers: encabezados,
-    body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
-  });
-
-  if (respuesta.status === 401) {
-    await borrarToken();
-    throw new Error('Sesión expirada');
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${URL_BASE}${ruta}`, {
+      ...resto,
+      headers: encabezados,
+      body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
+    });
+  } catch {
+    throw new ErrorRed();
   }
 
   if (!respuesta.ok) {
-    const texto = await respuesta.text().catch(() => '');
-    throw new Error(`Error ${respuesta.status}: ${texto || respuesta.statusText}`);
+    const cuerpoError = await leerCuerpoError(respuesta);
+
+    // Con token, un 401 significa sesión vencida. Sin token (login) es un
+    // PIN incorrecto y se deja pasar el mensaje del servidor.
+    if (respuesta.status === 401 && token) {
+      await borrarToken();
+      throw new ErrorApi(401, cuerpoError, 'Sesión expirada');
+    }
+
+    throw new ErrorApi(
+      respuesta.status,
+      cuerpoError,
+      cuerpoError?.mensaje || `Error ${respuesta.status}: ${respuesta.statusText}`,
+    );
   }
 
   if (respuesta.status === 204) {

@@ -51,6 +51,14 @@ export function registrarIntentoFallido(
   return { ...estado, intentosFallidos: intentos, bloqueadoHasta: null };
 }
 
+/**
+ * Intentos fallidos que aun caben antes del bloqueo (RF-03). Nunca negativo:
+ * tras un bloqueo vencido el contador puede quedar por encima del maximo.
+ */
+export function intentosRestantes(estado: EstadoAcceso): number {
+  return Math.max(0, MAX_INTENTOS_FALLIDOS - estado.intentosFallidos);
+}
+
 /** Un login exitoso limpia el contador y cualquier bloqueo previo. */
 export function registrarIntentoExitoso(estado: EstadoAcceso): EstadoAcceso {
   return { ...estado, intentosFallidos: 0, bloqueadoHasta: null };

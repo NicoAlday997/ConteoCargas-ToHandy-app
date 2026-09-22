@@ -147,7 +147,7 @@ describe('RestablecerPinUseCase', () => {
     expect(resultado.pinTemporal).toMatch(/^\d{4}$/);
   });
 
-  it('3. persiste solo el hash del PIN nuevo y fuerza debeCambiarPin en true', async () => {
+  it('3. persiste solo el hash del PIN nuevo, fuerza debeCambiarPin y levanta el bloqueo', async () => {
     repo.sembrar(crearUsuario({ debeCambiarPin: false }));
 
     const resultado = exigirExito(await useCase.ejecutar('u-1', 'admin-1'));
@@ -159,6 +159,8 @@ describe('RestablecerPinUseCase', () => {
         datos: {
           pinHash: `HASH:${resultado.pinTemporal}`,
           debeCambiarPin: true,
+          intentosFallidos: 0,
+          bloqueadoHasta: null,
         },
       },
     ]);

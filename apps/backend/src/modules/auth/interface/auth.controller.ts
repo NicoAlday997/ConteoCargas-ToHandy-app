@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   Post,
   UnauthorizedException,
@@ -30,11 +29,53 @@ import {
 import { ZodValidationPipe } from './zod-validation.pipe';
 
 /**
- * Mensaje unico para todo fallo de credenciales. Login responde exactamente lo
- * mismo ante "usuario inexistente", "PIN incorrecto" o "PIN mal formado" para no
- * revelar que identificadores existen.
+ * Mensaje generico para fallos sin datos que informar: usuario inexistente o
+ * PIN mal formado en login, y cualquier fallo de credenciales en cambiar-pin.
  */
 const MENSAJE_CREDENCIALES = 'Usuario o PIN incorrectos';
+
+/**
+ * Codigos estables del cuerpo 401 de login. Los define la interfaz, no son el
+ * `motivo` interno del caso de uso: la app decide que mostrar a partir de ellos.
+ */
+type CodigoErrorLogin =
+  | 'PIN_INCORRECTO'
+  | 'USUARIO_BLOQUEADO'
+  | 'USUARIO_INACTIVO'
+  | 'CREDENCIALES_INVALIDAS';
+
+function errorLogin(
+  codigo: CodigoErrorLogin,
+  mensaje: string,
+  extra: { intentosRestantes?: number; bloqueadoHasta?: Date } = {},
+): UnauthorizedException {
+  return new UnauthorizedException({
+    statusCode: HttpStatus.UNAUTHORIZED,
+    codigo,
+    mensaje,
+    intentosRestantes: extra.intentosRestantes ?? null,
+    bloqueadoHasta: extra.bloqueadoHasta?.toISOString() ?? null,
+  });
+}
+
+function mensajeIntentosRestantes(intentos: number): string {
+  const cuantos =
+    intentos === 1 ? 'Te queda 1 intento' : `Te quedan ${intentos} intentos`;
+  return `PIN incorrecto. ${cuantos} antes del bloqueo temporal.`;
+}
+
+function mensajeBloqueo(bloqueadoHasta: Date, ahora: Date): string {
+  // Redondeo hacia arriba: nunca prometer que falta menos de lo real.
+  const minutos = Math.max(
+    1,
+    Math.ceil((bloqueadoHasta.getTime() - ahora.getTime()) / 60_000),
+  );
+  const cuanto = minutos === 1 ? '1 minuto' : `${minutos} minutos`;
+  return (
+    `Usuario bloqueado por intentos fallidos. Se desbloquea en ${cuanto}. ` +
+    'Si necesitas entrar antes, pide a tu supervisor que restablezca tu PIN.'
+  );
+}
 
 @Controller('auth')
 export class AuthController {
@@ -59,32 +100,37 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto) {
+    const ahora = new Date();
     const resultado = await this.loginUseCase.ejecutar(
       dto.usuarioAppId,
       dto.pin,
-      new Date(),
+      ahora,
     );
 
     if (!resultado.exito) {
       // Nunca se propaga `resultado.motivo` crudo al cliente.
       switch (resultado.motivo) {
+        case 'PIN_INCORRECTO':
+          throw errorLogin(
+            'PIN_INCORRECTO',
+            mensajeIntentosRestantes(resultado.intentosRestantes),
+            { intentosRestantes: resultado.intentosRestantes },
+          );
         case 'BLOQUEADO':
-          throw new HttpException(
-            {
-              statusCode: HttpStatus.TOO_MANY_REQUESTS,
-              mensaje:
-                'Se supero el numero de intentos permitidos. Intenta de nuevo mas tarde.',
-            },
-            HttpStatus.TOO_MANY_REQUESTS,
+        case 'BLOQUEO_ACTIVADO':
+          throw errorLogin(
+            'USUARIO_BLOQUEADO',
+            mensajeBloqueo(resultado.bloqueadoHasta, ahora),
+            { intentosRestantes: 0, bloqueadoHasta: resultado.bloqueadoHasta },
+          );
+        case 'INACTIVO':
+          throw errorLogin(
+            'USUARIO_INACTIVO',
+            'Este usuario esta desactivado. Pide a tu supervisor que lo reactive.',
           );
         case 'CREDENCIALES_INVALIDAS':
         case 'PIN_MAL_FORMADO':
-          // Mismo mensaje para ambos: no se revela si el usuario existe ni si
-          // el PIN venia mal formado.
-          throw new UnauthorizedException({
-            statusCode: HttpStatus.UNAUTHORIZED,
-            mensaje: MENSAJE_CREDENCIALES,
-          });
+          throw errorLogin('CREDENCIALES_INVALIDAS', MENSAJE_CREDENCIALES);
       }
     }
 

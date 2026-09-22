@@ -34,10 +34,14 @@ export class RestablecerPinUseCase {
     const pinTemporal = generarPinTemporal();
     const pinHash = await this.hasher.hash(pinTemporal);
 
-    // Se fuerza el cambio en el siguiente login (RF-08).
+    // Se fuerza el cambio en el siguiente login (RF-08) y se levanta el
+    // bloqueo por intentos: el mensaje de bloqueo del login remite al
+    // supervisor justamente para esto (RF-03).
     await this.usuarios.actualizar(usuarioAppId, {
       pinHash,
       debeCambiarPin: true,
+      intentosFallidos: 0,
+      bloqueadoHasta: null,
     });
 
     // Traza obligatoria: usuario afectado, quien lo ejecuto y cuando (RF-10).
