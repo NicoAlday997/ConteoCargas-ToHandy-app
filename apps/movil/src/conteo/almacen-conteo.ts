@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { esTipoCarga, type TipoCarga } from '../api/cargas';
 import { limpiarConteoLocal } from './almacen-local';
+import { esDia } from './fecha-operativa';
 
 /**
  * Qué carga dejó a medias cada usuario en este dispositivo, para ofrecerle
@@ -14,6 +15,11 @@ export interface CargaAbierta {
   eventoId: string;
   sesionId: string;
   tipo: TipoCarga | null;
+  /**
+   * `aaaa-mm-dd`, para mostrar en el conteo para qué día es. Falta en cargas
+   * guardadas antes de existir y en las del contador: el conteo la pide al servidor.
+   */
+  fechaOperativa?: string | null;
 }
 
 const PREFIJO = 'conteo_cargas';
@@ -35,9 +41,14 @@ export async function guardarCargaAbierta(usuarioId: string, carga: CargaAbierta
 export async function obtenerCargaAbierta(usuarioId: string): Promise<CargaAbierta | null> {
   const valor = await leerJson(claveCarga(usuarioId));
   if (typeof valor !== 'object' || valor === null) return null;
-  const { eventoId, sesionId, tipo } = valor as Record<string, unknown>;
+  const { eventoId, sesionId, tipo, fechaOperativa } = valor as Record<string, unknown>;
   if (typeof eventoId !== 'string' || !eventoId || typeof sesionId !== 'string' || !sesionId) return null;
-  return { eventoId, sesionId, tipo: esTipoCarga(tipo) ? tipo : null };
+  return {
+    eventoId,
+    sesionId,
+    tipo: esTipoCarga(tipo) ? tipo : null,
+    fechaOperativa: esDia(fechaOperativa) ? fechaOperativa : null,
+  };
 }
 
 /** Al finalizar: la sesión ya quedó cerrada en el servidor. */

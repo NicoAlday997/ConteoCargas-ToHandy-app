@@ -49,6 +49,8 @@ export interface EntradaConsultarHistorial {
   fechaFin?: Date;
   estado?: EstadoCarga;
   conDiscrepancia?: boolean;
+  /** Solo las cargas que arrancaron con la ruta anterior sin liquidar. */
+  sinLiquidar?: boolean;
   tipo?: TipoCarga;
   page?: number;
   pageSize?: number;
@@ -75,6 +77,7 @@ export class ConsultarHistorialUseCase {
       fechaFin: entrada.fechaFin,
       estado: entrada.estado,
       conDiscrepancia: entrada.conDiscrepancia,
+      sinLiquidar: entrada.sinLiquidar,
       tipo: entrada.tipo,
       page:
         entrada.page !== undefined && entrada.page > 0

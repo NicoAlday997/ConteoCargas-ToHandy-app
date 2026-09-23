@@ -10,13 +10,18 @@ export interface OpcionesPeticion extends Omit<RequestInit, 'body'> {
 export interface CuerpoErrorApi {
   statusCode?: number | null;
   mensaje?: string | null;
-  /** Solo en login: `PIN_INCORRECTO`, `USUARIO_BLOQUEADO`, `USUARIO_INACTIVO`, `CREDENCIALES_INVALIDAS`. */
+  /**
+   * Login: `PIN_INCORRECTO`, `USUARIO_BLOQUEADO`, `USUARIO_INACTIVO`, `CREDENCIALES_INVALIDAS`.
+   * Iniciar carga: `YA_TIENE_CARGA_ABIERTA`, `FECHA_OPERATIVA_INVALIDA`.
+   */
   codigo?: string | null;
   intentosRestantes?: number | null;
   /** Solo en `PATCH .../items` rechazado: los productos que el servidor no aceptó. */
   productos?: unknown;
   /** ISO 8601. */
   bloqueadoHasta?: string | null;
+  /** Solo en 409 `YA_TIENE_CARGA_ABIERTA`: la carga inicial que ya existe. */
+  eventoId?: string | null;
 }
 
 /** El servidor respondió, pero con un código de error. */

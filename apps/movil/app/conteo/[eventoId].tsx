@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
+import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { obtenerUsuarioSesion } from '../../src/api/sesion';
 import { olvidarCarga } from '../../src/conteo/almacen-conteo';
 import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
@@ -37,6 +37,7 @@ import {
 } from '../../src/conteo/estado-conteo';
 import { EtiquetaFactor, FilaProducto, type EnvioFila } from '../../src/conteo/FilaProducto';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
+import { diaDesdeApi, diaNegocio, esDia, textoSalida } from '../../src/conteo/fecha-operativa';
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
@@ -96,10 +97,11 @@ function envioDe(item: ItemLocal | undefined): EnvioFila {
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 
 export default function PantallaConteo() {
-  const params = useLocalSearchParams<{ eventoId: string; sesionId: string; tipo: string }>();
+  const params = useLocalSearchParams<{ eventoId: string; sesionId: string; tipo: string; fechaOperativa: string }>();
   const eventoId = parametro(params.eventoId);
   const sesionId = parametro(params.sesionId);
   const tipo = parametro(params.tipo);
+  const fechaOperativa = parametro(params.fechaOperativa);
 
   if (!eventoId || !sesionId) {
     return (
@@ -114,11 +116,28 @@ export default function PantallaConteo() {
     );
   }
 
-  return <Conteo eventoId={eventoId} sesionId={sesionId} tituloCarga={esTipoCarga(tipo) ? ETIQUETAS_TIPO_CARGA[tipo] : 'Carga'} />;
+  return (
+    <Conteo
+      eventoId={eventoId}
+      sesionId={sesionId}
+      tituloCarga={esTipoCarga(tipo) ? ETIQUETAS_TIPO_CARGA[tipo] : 'Carga'}
+      fechaOperativa={esDia(fechaOperativa) ? fechaOperativa : null}
+    />
+  );
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga }: { eventoId: string; sesionId: string; tituloCarga: string }) {
+interface PropsConteo {
+  eventoId: string;
+  sesionId: string;
+  tituloCarga: string;
+  /** `aaaa-mm-dd`; si no vino en la navegación (el contador entra desde la cola), se pide al servidor. */
+  fechaOperativa: string | null;
+}
+
+function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion }: PropsConteo) {
   const { esTablet, ancho } = useLayout();
+  const evento = useEventoCarga(eventoId, fechaNavegacion === null);
+  const fechaOperativa = fechaNavegacion ?? diaDesdeApi(evento.data?.evento?.fechaOperativa);
   const consulta = useProductosCarga(eventoId);
   const productos = useMemo(() => consulta.data?.productos ?? [], [consulta.data]);
   const familias = useMemo(() => consulta.data?.familias ?? [], [consulta.data]);
@@ -392,6 +411,7 @@ function Conteo({ eventoId, sesionId, tituloCarga }: { eventoId: string; sesionI
     <SafeAreaView style={estilos.pantalla}>
       <Encabezado
         titulo={tituloCarga}
+        fechaOperativa={fechaOperativa}
         subtitulo={usuario?.nombre ?? null}
         capturados={capturados}
         total={total}
@@ -491,6 +511,7 @@ function Conteo({ eventoId, sesionId, tituloCarga }: { eventoId: string; sesionI
 
 interface PropsEncabezado {
   titulo: string;
+  fechaOperativa: string | null;
   subtitulo: string | null;
   capturados: number;
   total: number;
@@ -504,6 +525,7 @@ interface PropsEncabezado {
 
 function Encabezado({
   titulo,
+  fechaOperativa,
   subtitulo,
   capturados,
   total,
@@ -534,6 +556,12 @@ function Encabezado({
           <Text style={estilos.titulo} accessibilityRole="header" numberOfLines={1}>
             {titulo}
           </Text>
+          {/* Siempre a la vista: quien cuenta debe saber para qué día es la carga. */}
+          {fechaOperativa && (
+            <Text style={estilos.fechaOperativa} numberOfLines={2}>
+              {textoSalida(fechaOperativa, diaNegocio(new Date()))}
+            </Text>
+          )}
           {subtitulo && (
             <Text style={estilos.subtitulo} numberOfLines={1}>
               {subtitulo}
@@ -1061,6 +1089,11 @@ const estilos = StyleSheet.create({
   titulo: {
     fontSize: TIPOGRAFIA.tamanos.xl,
     fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.texto,
+  },
+  fechaOperativa: {
+    fontSize: TIPOGRAFIA.tamanos.base,
+    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
     color: COLORES.texto,
   },
   subtitulo: {

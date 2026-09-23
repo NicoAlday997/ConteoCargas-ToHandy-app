@@ -14,9 +14,6 @@
 
 import { inicioDelDiaNegocio } from '../../sincronizacion/domain/fecha-handy';
 
-/** Hora local a partir de la cual se propone el dia siguiente. */
-export const HORA_CORTE_PROPUESTA = 12;
-
 const MS_POR_HORA = 60 * 60 * 1000;
 
 /** Inicio del dia de negocio siguiente al que contiene a `fecha`. */
@@ -28,14 +25,13 @@ function inicioDelDiaSiguiente(fecha: Date): Date {
 }
 
 /**
- * Fecha operativa que la app PROPONE al iniciar una carga: antes de las 12:00
- * (hora del negocio) propone HOY; a partir de las 12:00, MAÑANA. Es solo una
- * propuesta: el usuario decide la fecha final.
+ * Fecha operativa que la app PROPONE al iniciar una carga: SIEMPRE MAÑANA, sin
+ * importar la hora. Lo normal es contar por la tarde para que el camion salga
+ * al dia siguiente; contar para hoy es la excepcion (camion descompuesto) y se
+ * elige a mano. Es solo una propuesta: el usuario decide la fecha final.
  */
 export function fechaOperativaPropuesta(ahora: Date): Date {
-  const inicioHoy = inicioDelDiaNegocio(ahora);
-  const mediodia = inicioHoy.getTime() + HORA_CORTE_PROPUESTA * MS_POR_HORA;
-  return ahora.getTime() < mediodia ? inicioHoy : inicioDelDiaSiguiente(ahora);
+  return inicioDelDiaSiguiente(ahora);
 }
 
 /**

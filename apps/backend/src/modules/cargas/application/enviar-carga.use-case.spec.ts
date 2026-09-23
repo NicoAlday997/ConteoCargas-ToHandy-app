@@ -286,6 +286,8 @@ function sembrarCargaLista(
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    rutaHandySinLiquidarId: null,
+    liquidacionNoVerificada: false,
     creadoEn: INICIADA_EN,
   });
   repo.sembrarSesiones(EVENTO_ID, [

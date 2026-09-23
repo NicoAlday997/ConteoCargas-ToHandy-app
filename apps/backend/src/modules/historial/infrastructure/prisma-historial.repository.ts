@@ -8,6 +8,7 @@ import {
   type CargaHistorial,
   type EventoConsolidado,
   type FiltrosHistorial,
+  type InicioSinLiquidar,
   type PaginaCargas,
   type ProductoConsolidado,
 } from '../application/historial.repository';
@@ -25,9 +26,18 @@ import {
 /** Las unicas dos sesiones que participan en la comparacion (docs/02 seccion 3). */
 const TIPOS_SESION_COMPARABLE = ['VENDEDOR', 'CONTADOR'] as const;
 
+/** Permiso consumido al iniciar con la ruta anterior sin liquidar. */
+const includePermiso = {
+  select: {
+    motivo: true,
+    otorgadoPor: { select: { nombreCompleto: true } },
+  },
+} satisfies Prisma.EventoCarga$permisoCargaSinLiquidarArgs;
+
 const includeListado = {
   ruta: { select: { nombre: true } },
   autorizadaPor: { select: { nombreCompleto: true } },
+  permisoCargaSinLiquidar: includePermiso,
   sesiones: {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
@@ -44,6 +54,7 @@ type FilaListado = Prisma.EventoCargaGetPayload<{ include: typeof includeListado
 const includeConsolidada = {
   ruta: { select: { nombre: true } },
   autorizadaPor: { select: { nombreCompleto: true } },
+  permisoCargaSinLiquidar: includePermiso,
   sesiones: {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
@@ -137,7 +148,14 @@ export class PrismaHistorialRepository extends HistorialRepository {
 
     const catalogo = await this.prisma.producto.findMany({
       where: { code: { in: [...codigos] } },
-      select: { code: true, nombre: true, unidadCode: true, familia: true },
+      select: {
+        code: true,
+        nombre: true,
+        unidadCode: true,
+        familia: true,
+        piezasPorPaquete: true,
+        factorConfirmado: true,
+      },
     });
     const catalogoPorCode = new Map(catalogo.map((p) => [p.code, p]));
 
@@ -150,6 +168,8 @@ export class PrismaHistorialRepository extends HistorialRepository {
         nombre: info?.nombre ?? productoCode,
         unidadCode: info?.unidadCode ?? '',
         familia: info?.familia ?? null,
+        piezasPorPaquete: info?.piezasPorPaquete ?? null,
+        factorConfirmado: info?.factorConfirmado ?? false,
       };
 
       if (discrepancia) {
@@ -212,6 +232,13 @@ export class PrismaHistorialRepository extends HistorialRepository {
                 usuarioAppId: filtros.vendedorUsuarioAppId,
               },
             },
+      // Cargas iniciadas con la ruta anterior sin liquidar (con permiso).
+      rutaHandySinLiquidarId:
+        filtros.sinLiquidar === undefined
+          ? undefined
+          : filtros.sinLiquidar
+            ? { not: null }
+            : null,
       // No hay restriccion por defecto entre "con" y "sin" discrepancia
       // (CLAUDE.md, docs/01 seccion 6 regla 4): `conDiscrepancia` es solo un
       // filtro mas que el supervisor puede o no aplicar.
@@ -245,6 +272,8 @@ export class PrismaHistorialRepository extends HistorialRepository {
       productosConDiscrepancia: row._count.discrepancias,
       autorizada: row.autorizadaPorId !== null,
       autorizadaPorNombre: row.autorizadaPor?.nombreCompleto ?? null,
+      inicioSinLiquidar: this.aInicioSinLiquidar(row),
+      liquidacionNoVerificada: row.liquidacionNoVerificada,
     };
   }
 
@@ -263,6 +292,22 @@ export class PrismaHistorialRepository extends HistorialRepository {
       contadorNombre: sesionContador?.usuarioApp.nombreCompleto ?? null,
       autorizada: row.autorizadaPorId !== null,
       autorizadaPorNombre: row.autorizadaPor?.nombreCompleto ?? null,
+      inicioSinLiquidar: this.aInicioSinLiquidar(row),
+      liquidacionNoVerificada: row.liquidacionNoVerificada,
+    };
+  }
+
+  private aInicioSinLiquidar(
+    row: FilaListado | FilaConsolidada,
+  ): InicioSinLiquidar | null {
+    if (row.rutaHandySinLiquidarId === null) {
+      return null;
+    }
+    return {
+      rutaHandyId: row.rutaHandySinLiquidarId,
+      permisoOtorgadoPorNombre:
+        row.permisoCargaSinLiquidar?.otorgadoPor.nombreCompleto ?? null,
+      permisoMotivo: row.permisoCargaSinLiquidar?.motivo ?? null,
     };
   }
 }

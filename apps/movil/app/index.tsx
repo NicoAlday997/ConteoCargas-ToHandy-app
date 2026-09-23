@@ -6,7 +6,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 
 import { ETIQUETAS_ROL } from '../src/api/auth';
-import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../src/api/cargas';
+import {
+  CODIGO_FECHA_INVALIDA,
+  CODIGO_YA_TIENE_CARGA,
+  ETIQUETAS_TIPO_CARGA,
+  obtenerEvento,
+  type TipoCarga,
+} from '../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
@@ -14,6 +20,8 @@ import { obtenerToken } from '../src/api/token';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
+import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operativa';
+import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
@@ -59,7 +67,8 @@ export default function PantallaInicio() {
 
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
-  // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo.
+  // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo. El
+  // historial es para los tres: qué ve cada quien lo decide el servidor.
   return (
     <SafeAreaView style={estilos.pantalla}>
       <ScrollView contentContainerStyle={estilos.contenido}>
@@ -72,9 +81,22 @@ export default function PantallaInicio() {
             <AccionesCarga usuario={usuario} />
           </View>
         )}
+        {usuario && <BotonHistorial />}
         <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function BotonHistorial() {
+  return (
+    <Pressable
+      onPress={() => router.push('/historial')}
+      accessibilityRole="button"
+      style={({ pressed }) => [estilos.boton, pressed && estilos.botonPresionado]}
+    >
+      <Text style={estilos.textoBoton}>Historial de cargas</Text>
+    </Pressable>
   );
 }
 
@@ -199,8 +221,27 @@ const MENSAJE_SIN_RED_INICIAR =
 function irAConteo(carga: CargaAbierta) {
   router.push({
     pathname: '/conteo/[eventoId]',
-    params: { eventoId: carga.eventoId, sesionId: carga.sesionId, tipo: carga.tipo ?? '' },
+    params: {
+      eventoId: carga.eventoId,
+      sesionId: carga.sesionId,
+      tipo: carga.tipo ?? '',
+      fechaOperativa: carga.fechaOperativa ?? '',
+    },
   });
+}
+
+/** Qué hacer con un error al crear la carga o abrir la existente. `null` = ya se atendió. */
+function mensajeDeError(e: unknown, porDefecto: string): string | null {
+  if (e instanceof ErrorApi && e.estado === 401) {
+    sesionVencida();
+    return null;
+  }
+  if (e instanceof ErrorRed) return MENSAJE_SIN_RED_INICIAR;
+  if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_FECHA_INVALIDA) {
+    // Solo pasa si el reloj del teléfono va atrasado: la app nunca ofrece días pasados.
+    return 'Ese día ya pasó según el servidor. Revisa la fecha y hora de tu teléfono y elige de nuevo.';
+  }
+  return e instanceof Error && e.message ? e.message : porDefecto;
 }
 
 /**
@@ -214,6 +255,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   // `undefined` mientras se consulta: no mostrar "Iniciar" a quien debe "Continuar".
   const [cargaAbierta, setCargaAbierta] = useState<CargaAbierta | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  // Selector de fecha abierto para este tipo de carga (`null` = cerrado).
+  const [tipoAIniciar, setTipoAIniciar] = useState<TipoCarga | null>(null);
+  const [conflicto, setConflicto] = useState<ConflictoFecha | null>(null);
+  const [abriendoExistente, setAbriendoExistente] = useState(false);
 
   // Al volver de la pantalla de conteo (finalizada o no) se relee.
   useFocusEffect(
@@ -242,17 +287,38 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     [usuario.id],
   );
 
-  const ocupado = iniciar.isPending || abrir.isPending;
+  const ocupado = iniciar.isPending || abrir.isPending || abriendoExistente;
 
-  const iniciarCarga = async (tipo: TipoCarga) => {
+  const cerrarSelector = () => {
+    setTipoAIniciar(null);
+    setConflicto(null);
     setError(null);
-    // Contar sí funciona sin señal; crear la carga no: se dice en vez de fallar callado.
+  };
+
+  /** Primero la fecha: el evento se crea ya con ella. */
+  const pedirFecha = async (tipo: TipoCarga) => {
+    setError(null);
+    // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
       setError(MENSAJE_SIN_RED_INICIAR);
       return;
     }
+    setConflicto(null);
+    setTipoAIniciar(tipo);
+  };
+
+  const entrarAConteo = async (carga: CargaAbierta) => {
+    await guardarCargaAbierta(usuario.id, carga);
+    setCargaAbierta(carga);
+    setTipoAIniciar(null);
+    setConflicto(null);
+    irAConteo(carga);
+  };
+
+  const iniciarCarga = async (tipo: TipoCarga, fechaOperativa: string) => {
+    setError(null);
     try {
-      const respuesta = await iniciar.mutateAsync(tipo);
+      const respuesta = await iniciar.mutateAsync({ tipo, fechaOperativa });
       const eventoId = respuesta?.evento?.id;
       if (!eventoId) throw new Error('El servidor no devolvió la carga creada.');
       // El backend ya abre la sesión del vendedor al crear el evento; solo si
@@ -260,20 +326,61 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       const sesionId = respuesta?.sesion?.id ?? (await abrir.mutateAsync(eventoId))?.id;
       if (!sesionId) throw new Error('El servidor no devolvió la sesión de conteo.');
 
-      const carga: CargaAbierta = { eventoId, sesionId, tipo: respuesta?.evento?.tipo ?? tipo };
-      await guardarCargaAbierta(usuario.id, carga);
-      setCargaAbierta(carga);
-      irAConteo(carga);
+      await entrarAConteo({
+        eventoId,
+        sesionId,
+        tipo: respuesta?.evento?.tipo ?? tipo,
+        fechaOperativa: diaDesdeApi(respuesta?.evento?.fechaOperativa) ?? fechaOperativa,
+      });
     } catch (e) {
-      if (e instanceof ErrorApi && e.estado === 401) {
-        sesionVencida();
+      // Una sola carga inicial por ruta y día (hasta que una pase la
+      // verificación no se generan otras versiones): se ofrece la que ya existe.
+      const existente = e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_YA_TIENE_CARGA ? e.cuerpo.eventoId : null;
+      if (existente) {
+        setConflicto({ eventoId: existente, dia: fechaOperativa });
         return;
       }
-      if (e instanceof ErrorRed) {
-        setError(MENSAJE_SIN_RED_INICIAR);
+      setError(mensajeDeError(e, 'No se pudo iniciar la carga.'));
+    }
+  };
+
+  /**
+   * La carga que ya existe: si la sesión del vendedor sigue abierta se vuelve
+   * a contar; si ya la finalizó, se abre donde va (discrepancias o historial).
+   */
+  const continuarExistente = async ({ eventoId, dia }: ConflictoFecha) => {
+    setError(null);
+    setAbriendoExistente(true);
+    try {
+      const respuesta = await obtenerEvento(eventoId);
+      const evento = respuesta?.evento;
+      const mia = respuesta?.sesiones?.find((s) => s.usuarioAppId === usuario.id);
+      if (mia?.id && mia.estado === 'ABIERTA') {
+        await entrarAConteo({
+          eventoId,
+          sesionId: mia.id,
+          tipo: evento?.tipo ?? 'INICIAL',
+          fechaOperativa: diaDesdeApi(evento?.fechaOperativa) ?? dia,
+        });
         return;
       }
-      setError(e instanceof Error && e.message ? e.message : 'No se pudo iniciar la carga.');
+      cerrarSelector();
+      if (evento?.estado === 'CONFLICTOS_PENDIENTES') {
+        router.push({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
+      } else {
+        router.push({ pathname: '/historial/[eventoId]', params: { eventoId } });
+      }
+    } catch (e) {
+      if (e instanceof ErrorApi && e.estado === 403) {
+        // El servidor solo deja ver la carga a quien contó en ella.
+        setError(
+          'Esa carga la inició otra persona asignada a tu ruta, así que no puedes continuarla desde tu usuario. Avisa a tu supervisor.',
+        );
+      } else {
+        setError(mensajeDeError(e, 'No se pudo abrir esa carga.'));
+      }
+    } finally {
+      setAbriendoExistente(false);
     }
   };
 
@@ -286,7 +393,14 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       <View style={estilos.grupoAcciones}>
         <BotonGrande
           titulo="Continuar carga"
-          detalle={cargaAbierta.tipo ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo] : 'Conteo sin finalizar'}
+          detalle={[
+            cargaAbierta.tipo ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo] : 'Conteo sin finalizar',
+            cargaAbierta.fechaOperativa
+              ? textoSalida(cargaAbierta.fechaOperativa, diaNegocio(new Date())).toLowerCase()
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           onPress={() => irAConteo(cargaAbierta)}
         />
       </View>
@@ -305,27 +419,40 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   return (
     <View style={estilos.grupoAcciones}>
       <BotonGrande
-        titulo={iniciar.isPending && iniciar.variables === 'INICIAL' ? 'Iniciando…' : 'Iniciar carga'}
-        detalle="Carga inicial de hoy"
-        onPress={() => void iniciarCarga('INICIAL')}
+        titulo="Iniciar carga"
+        detalle="Carga inicial"
+        onPress={() => void pedirFecha('INICIAL')}
         deshabilitado={ocupado}
       />
       <Pressable
-        onPress={() => void iniciarCarga('RECARGA')}
+        onPress={() => void pedirFecha('RECARGA')}
         disabled={ocupado}
         accessibilityRole="button"
         accessibilityState={{ disabled: ocupado, busy: ocupado }}
         style={({ pressed }) => [estilos.boton, estilos.botonSecundario, pressed && estilos.botonPresionado, ocupado && estilos.deshabilitado]}
       >
-        <Text style={estilos.textoBoton}>
-          {iniciar.isPending && iniciar.variables === 'RECARGA' ? 'Iniciando…' : 'Iniciar recarga'}
-        </Text>
+        <Text style={estilos.textoBoton}>Iniciar recarga</Text>
       </Pressable>
-      {error && (
+      {error && tipoAIniciar === null && (
         <Text style={estilos.error} accessibilityRole="alert">
           {error}
         </Text>
       )}
+      <SelectorFechaOperativa
+        tipo={tipoAIniciar}
+        conflicto={conflicto}
+        ocupado={ocupado}
+        error={error}
+        onElegir={(dia) => {
+          if (tipoAIniciar) void iniciarCarga(tipoAIniciar, dia);
+        }}
+        onContinuarExistente={(c) => void continuarExistente(c)}
+        onElegirOtra={() => {
+          setConflicto(null);
+          setError(null);
+        }}
+        onCerrar={cerrarSelector}
+      />
     </View>
   );
 }

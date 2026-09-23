@@ -195,6 +195,8 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    rutaHandySinLiquidarId: null,
+    liquidacionNoVerificada: false,
     creadoEn: AHORA,
     ...parcial,
   };

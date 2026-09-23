@@ -45,6 +45,8 @@ function eventoDePrueba(overrides: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    rutaHandySinLiquidarId: null,
+    liquidacionNoVerificada: false,
     creadoEn: AHORA,
     ...overrides,
   };

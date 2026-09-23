@@ -6,9 +6,10 @@ import {
 } from './fecha-operativa';
 
 /**
- * Casos reales de la operacion (hora de Mexico, UTC-6): la carga de la tarde
- * sale al dia siguiente; la de la mañana (camion descompuesto) sale ese mismo
- * dia. Nunca se registra una carga para un dia pasado.
+ * Casos reales de la operacion (hora de Mexico, UTC-6): lo normal es contar
+ * para que el camion salga al dia siguiente, asi que siempre se propone
+ * mañana; hoy (camion descompuesto) se elige a mano. Nunca se registra una
+ * carga para un dia pasado.
  */
 
 const INICIO_22 = new Date('2026-09-22T00:00:00-06:00');
@@ -22,22 +23,24 @@ describe('fechaOperativaPropuesta', () => {
     );
   });
 
-  it('contando el 24 a las 08:00 (camion descompuesto) propone el 24', () => {
-    expect(fechaOperativaPropuesta(new Date('2026-09-24T08:00:00-06:00'))).toEqual(
-      INICIO_24,
-    );
+  it('contando el 23 a las 08:00 tambien propone el 24: hoy es la excepcion y se elige a mano', () => {
+    expect(
+      fechaOperativaPropuesta(new Date('2026-09-23T08:00:00-06:00')),
+    ).toEqual(INICIO_24);
   });
 
-  it('a las 11:59 todavia propone hoy', () => {
-    expect(fechaOperativaPropuesta(new Date('2026-09-23T11:59:59-06:00'))).toEqual(
-      INICIO_23,
-    );
+  it('no depende de la hora: del primer al ultimo instante del 23 propone el 24', () => {
+    for (const hora of ['00:00:00', '11:59:59', '12:00:00', '23:59:59']) {
+      expect(
+        fechaOperativaPropuesta(new Date(`2026-09-23T${hora}-06:00`)),
+      ).toEqual(INICIO_24);
+    }
   });
 
-  it('a las 12:00 en punto ya propone mañana', () => {
-    expect(fechaOperativaPropuesta(new Date('2026-09-23T12:00:00-06:00'))).toEqual(
-      INICIO_24,
-    );
+  it('nunca propone hoy', () => {
+    expect(
+      fechaOperativaPropuesta(new Date('2026-09-23T06:00:00-06:00')),
+    ).not.toEqual(INICIO_23);
   });
 
   it('usa el dia de Mexico, no el de UTC: 23 a las 20:00 (ya 24 en UTC) propone el 24', () => {
@@ -47,9 +50,9 @@ describe('fechaOperativaPropuesta', () => {
   });
 
   it('cruza fin de mes', () => {
-    expect(fechaOperativaPropuesta(new Date('2026-09-30T17:00:00-06:00'))).toEqual(
-      new Date('2026-10-01T00:00:00-06:00'),
-    );
+    expect(
+      fechaOperativaPropuesta(new Date('2026-09-30T09:00:00-06:00')),
+    ).toEqual(new Date('2026-10-01T00:00:00-06:00'));
   });
 });
 

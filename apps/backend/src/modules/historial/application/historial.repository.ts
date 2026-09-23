@@ -16,6 +16,18 @@ import type { EstadoCarga, TipoCarga } from '@prisma/client';
 // Listado
 // ---------------------------------------------------------------------------
 
+/**
+ * La carga INICIAL arranco con la ruta anterior del vendedor sin liquidar en
+ * Handy, con permiso del supervisor. Se muestra en listado y detalle para que
+ * sea visible si un vendedor acumula cargas sin liquidar.
+ */
+export interface InicioSinLiquidar {
+  /** Id en Handy de la ruta que seguia abierta. */
+  rutaHandyId: string;
+  permisoOtorgadoPorNombre: string | null;
+  permisoMotivo: string | null;
+}
+
 /** Fila del listado de historial: una carga con sus metricas ya calculadas. */
 export interface CargaHistorial {
   id: string;
@@ -35,6 +47,10 @@ export interface CargaHistorial {
   autorizada: boolean;
   /** Nombre del supervisor que autorizo el envio; `null` si aun no se autoriza. */
   autorizadaPorNombre: string | null;
+  /** `null` si la carga no arranco con ruta anterior sin liquidar. */
+  inicioSinLiquidar: InicioSinLiquidar | null;
+  /** Handy no respondio al verificar la liquidacion al iniciar. */
+  liquidacionNoVerificada: boolean;
 }
 
 /**
@@ -54,6 +70,8 @@ export interface FiltrosHistorial {
   fechaFin?: Date;
   estado?: EstadoCarga;
   conDiscrepancia?: boolean;
+  /** Solo las que arrancaron (o no) con la ruta anterior sin liquidar. */
+  sinLiquidar?: boolean;
   tipo?: TipoCarga;
   page: number;
   pageSize: number;
@@ -83,6 +101,16 @@ export interface ProductoConsolidado {
   unidadCode: string;
   familia: string | null;
   /**
+   * Factor de empaque del catalogo, para mostrar las cantidades en paquetes y
+   * sueltas como se cuentan en bodega. `null` si el producto no tiene factor.
+   */
+  piezasPorPaquete: number | null;
+  /**
+   * Un factor sin confirmar no se usa para contar (el producto se cuenta en
+   * piezas), asi que tampoco para mostrar.
+   */
+  factorConfirmado: boolean;
+  /**
    * `null` solo es posible cuando `tuvoDiscrepancia` es `true` y todavia nadie
    * capturo la cantidad final acordada.
    */
@@ -105,6 +133,8 @@ export interface EventoConsolidado {
   contadorNombre: string | null;
   autorizada: boolean;
   autorizadaPorNombre: string | null;
+  inicioSinLiquidar: InicioSinLiquidar | null;
+  liquidacionNoVerificada: boolean;
 }
 
 /**

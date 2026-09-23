@@ -19,6 +19,8 @@ export interface EventoCargaApi {
   tipo: TipoCarga | null;
   estado: string | null;
   fechaConteo: string | null;
+  /** Inicio del día para el que sale el camión, en hora de México (ISO 8601). */
+  fechaOperativa: string | null;
   creadoEn: string | null;
 }
 
@@ -37,6 +39,17 @@ export interface RespuestaIniciarCarga {
   evento: EventoCargaApi | null;
   sesion: SesionConteoApi | null;
 }
+
+/** `GET /eventos-carga/:id`. Al vendedor solo le responde si contó en él. */
+export interface RespuestaEvento {
+  evento: EventoCargaApi | null;
+  sesiones: SesionConteoApi[] | null;
+}
+
+/** 409 de `POST /eventos-carga`: la ruta ya tiene carga inicial para ese día. */
+export const CODIGO_YA_TIENE_CARGA = 'YA_TIENE_CARGA_ABIERTA';
+/** 400 de `POST /eventos-carga`: la fecha es un día pasado (reloj del teléfono atrasado). */
+export const CODIGO_FECHA_INVALIDA = 'FECHA_OPERATIVA_INVALIDA';
 
 export interface ProductoApi {
   code: string | null;
@@ -92,11 +105,16 @@ export interface RespuestaFinalizarSesion {
   discrepancias: unknown[] | null;
 }
 
-export function iniciarCarga(tipo: TipoCarga): Promise<RespuestaIniciarCarga | null> {
+/** `fechaOperativa` en `aaaa-mm-dd`: el día que eligió quien cuenta. */
+export function iniciarCarga(tipo: TipoCarga, fechaOperativa: string): Promise<RespuestaIniciarCarga | null> {
   return peticion<RespuestaIniciarCarga | null>('/eventos-carga', {
     method: 'POST',
-    cuerpo: { tipo },
+    cuerpo: { tipo, fechaOperativa },
   });
+}
+
+export function obtenerEvento(eventoId: string): Promise<RespuestaEvento | null> {
+  return peticion<RespuestaEvento | null>(`/eventos-carga/${encodeURIComponent(eventoId)}`);
 }
 
 export function obtenerProductos(eventoId: string): Promise<RespuestaProductos | null> {

@@ -151,6 +151,14 @@ export class CargasController {
               'Tu ruta ya tiene una carga inicial para esa fecha. Continua esa carga en lugar de crear otra.',
             eventoId: resultado.eventoId,
           });
+        case 'RUTA_ANTERIOR_SIN_LIQUIDAR':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'RUTA_ANTERIOR_SIN_LIQUIDAR',
+            mensaje:
+              'Tu ruta anterior sigue sin liquidar en Handy. Liquidala antes de iniciar la carga, o pide a un supervisor un permiso para cargar sin liquidar.',
+            rutaHandyId: resultado.rutaHandyId,
+          });
       }
     }
 

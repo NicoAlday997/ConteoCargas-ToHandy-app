@@ -13,6 +13,7 @@ import {
   listarConflictosPendientes,
   listarPendientesVerificacion,
   obtenerDiscrepancias,
+  obtenerEvento,
   obtenerProductos,
   type DiscrepanciaApi,
   type LadoDiscrepanciaApi,
@@ -25,6 +26,7 @@ import { ErrorRed } from './cliente';
 const STALE_TIME_PRODUCTOS_MS = 1000 * 60 * 60 * 12;
 
 export const clavesCargas = {
+  evento: (eventoId: string) => ['cargas', eventoId, 'evento'] as const,
   productos: (eventoId: string) => ['cargas', eventoId, 'productos'] as const,
   pendientesVerificacion: ['cargas', 'pendientes-verificacion'] as const,
   conflictosPendientes: ['cargas', 'conflictos-pendientes'] as const,
@@ -107,9 +109,28 @@ export function useProductosCarga(eventoId: string) {
   });
 }
 
+interface VariablesIniciarCarga {
+  tipo: TipoCarga;
+  fechaOperativa: string;
+}
+
 export function useIniciarCarga() {
   return useMutation({
-    mutationFn: (tipo: TipoCarga) => iniciarCarga(tipo),
+    mutationFn: ({ tipo, fechaOperativa }: VariablesIniciarCarga) => iniciarCarga(tipo, fechaOperativa),
+  });
+}
+
+/**
+ * Solo para leer la fecha operativa cuando no vino en la navegación (el
+ * contador entra desde la cola). No cambia mientras se cuenta.
+ */
+export function useEventoCarga(eventoId: string, habilitada: boolean) {
+  return useQuery({
+    queryKey: clavesCargas.evento(eventoId),
+    queryFn: () => obtenerEvento(eventoId),
+    enabled: habilitada && eventoId.length > 0,
+    staleTime: STALE_TIME_PRODUCTOS_MS,
+    retry: false,
   });
 }
 
