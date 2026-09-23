@@ -141,3 +141,117 @@ export function finalizarSesion(eventoId: string, sesionId: string): Promise<Res
     { method: 'POST', cuerpo: {} },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Verificación (segundo conteo) y resolución de discrepancias
+// ---------------------------------------------------------------------------
+
+export type EstadoVerificacion = 'LISTA' | 'BLOQUEADA_CORTE_PENDIENTE' | 'EN_CURSO_PROPIA' | 'EN_CURSO_OTRO';
+
+/** Fila de `GET /eventos-carga/pendientes-verificacion`. Nunca trae cantidades del vendedor. */
+export interface CargaPendienteApi {
+  id: string | null;
+  rutaNombre: string | null;
+  vendedorNombre: string | null;
+  tipo: TipoCarga | null;
+  fechaConteo: string | null;
+  totalProductos: number | null;
+  bloqueadaPorCorte: boolean | null;
+  estadoVerificacion: EstadoVerificacion | null;
+  miSesionId: string | null;
+  verificandoPor: string | null;
+}
+
+/** Fila de `GET /eventos-carga/conflictos-pendientes`. */
+export interface CargaConConflictosApi {
+  id: string | null;
+  rutaNombre: string | null;
+  tipo: TipoCarga | null;
+  fechaConteo: string | null;
+  totalDiscrepancias: number | null;
+  resueltas: number | null;
+}
+
+export interface DiscrepanciaApi {
+  productoCode: string | null;
+  productoNombre: string | null;
+  piezasPorPaquete: number | null;
+  factorConfirmado: boolean | null;
+  /** Primer conteo (el vendedor en autoventa), en piezas. */
+  cantidadVendedorOriginal: number | null;
+  /** Segundo conteo (el contador en autoventa), en piezas. */
+  cantidadContadorOriginal: number | null;
+  cantidadFinal: number | null;
+  capturadaPor: string | null;
+  capturadaPorNombre: string | null;
+  fechaCaptura: string | null;
+  confirmadaPor: string | null;
+  confirmadaPorNombre: string | null;
+  fechaConfirmacion: string | null;
+  primerConteo?: LadoDiscrepanciaApi | null;
+  segundoConteo?: LadoDiscrepanciaApi | null;
+}
+
+/** Quién contó (por tipo de sesión, nunca por nombre) y lo que tecleó. */
+export interface LadoDiscrepanciaApi {
+  tipoSesion: string | null;
+  paquetes: number | null;
+  sueltas: number | null;
+}
+
+export interface RespuestaDesbloquear {
+  sigueBloqueado: boolean | null;
+  mensaje?: string | null;
+}
+
+export interface RespuestaConfirmarDiscrepancia {
+  enEsperaAutorizacion: boolean | null;
+}
+
+const rutaEvento = (eventoId: string) => `/eventos-carga/${encodeURIComponent(eventoId)}`;
+
+export async function listarPendientesVerificacion(): Promise<CargaPendienteApi[]> {
+  const filas = await peticion<CargaPendienteApi[] | null>('/eventos-carga/pendientes-verificacion');
+  return Array.isArray(filas) ? filas : [];
+}
+
+export async function listarConflictosPendientes(): Promise<CargaConConflictosApi[]> {
+  const filas = await peticion<CargaConConflictosApi[] | null>('/eventos-carga/conflictos-pendientes');
+  return Array.isArray(filas) ? filas : [];
+}
+
+export function desbloquearCarga(eventoId: string): Promise<RespuestaDesbloquear | null> {
+  return peticion<RespuestaDesbloquear | null>(`${rutaEvento(eventoId)}/desbloquear`, { method: 'POST', cuerpo: {} });
+}
+
+export async function obtenerDiscrepancias(eventoId: string): Promise<DiscrepanciaApi[]> {
+  const filas = await peticion<DiscrepanciaApi[] | null>(`${rutaEvento(eventoId)}/discrepancias`);
+  return Array.isArray(filas) ? filas : [];
+}
+
+const rutaDiscrepancia = (eventoId: string, productoCode: string) =>
+  `${rutaEvento(eventoId)}/discrepancias/${encodeURIComponent(productoCode)}`;
+
+/** La cantidad final va en piezas: la app ya la convirtió con el mismo factor que el conteo. */
+export function capturarDiscrepancia(eventoId: string, productoCode: string, cantidadFinal: number): Promise<unknown> {
+  return peticion<unknown>(`${rutaDiscrepancia(eventoId, productoCode)}/capturar`, {
+    method: 'POST',
+    cuerpo: { cantidadFinal },
+  });
+}
+
+/**
+ * `cantidadFinal` es la que la persona tiene a la vista: si alguien la recapturó
+ * mientras tecleaba su PIN, el servidor rechaza (409 `CANTIDAD_CAMBIO`).
+ */
+export function confirmarDiscrepancia(
+  eventoId: string,
+  productoCode: string,
+  cantidadFinal: number,
+  pin: string,
+): Promise<RespuestaConfirmarDiscrepancia | null> {
+  return peticion<RespuestaConfirmarDiscrepancia | null>(`${rutaDiscrepancia(eventoId, productoCode)}/confirmar`, {
+    method: 'POST',
+    cuerpo: { cantidadFinal, pin },
+  });
+}

@@ -27,18 +27,21 @@ import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
 import { CargaRepository } from '../application/carga.repository';
 import { CapturarCantidadFinalUseCase } from '../application/capturar-cantidad-final.use-case';
 import { ConfirmarCantidadFinalUseCase } from '../application/confirmar-cantidad-final.use-case';
+import { ConsultasCargaRepository } from '../application/consultas-carga.repository';
 import { DesbloquearCargaUseCase } from '../application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from '../application/guardar-items.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
 import { ListarItemsDeSesionUseCase } from '../application/listar-items-de-sesion.use-case';
+import { ListarPendientesVerificacionUseCase } from '../application/listar-pendientes-verificacion.use-case';
 import { ListarProductosDePlantillaUseCase } from '../application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
 import {
   CapturarCantidadSchema,
+  ConfirmarCantidadSchema,
   FinalizarSesionSchema,
   GuardarItemsSchema,
   IdSchema,
@@ -46,6 +49,7 @@ import {
   ModificarCantidadSchema,
   RechazarProductosSchema,
   type CapturarCantidadDto,
+  type ConfirmarCantidadDto,
   type FinalizarSesionDto,
   type GuardarItemsDto,
   type IniciarCargaDto,
@@ -74,6 +78,8 @@ import {
 export class CargasController {
   constructor(
     private readonly cargas: CargaRepository,
+    private readonly consultas: ConsultasCargaRepository,
+    private readonly listarPendientesVerificacionUseCase: ListarPendientesVerificacionUseCase,
     private readonly iniciarCargaUseCase: IniciarCargaUseCase,
     private readonly abrirSesionUseCase: AbrirSesionUseCase,
     private readonly guardarItemsUseCase: GuardarItemsUseCase,
@@ -138,6 +144,32 @@ export class CargasController {
     }
 
     return { evento: resultado.evento, sesion: resultado.sesion };
+  }
+
+  /**
+   * Cola del contador (docs/06 §3.3): cargas que el vendedor ya conto y esperan
+   * el segundo conteo, incluidas las bloqueadas por corte de venta pendiente.
+   * Solo dice cuantos productos conto el vendedor, nunca cuantas piezas: el
+   * segundo conteo es a ciegas.
+   *
+   * Declarado ANTES de `GET :id`: si no, Nest lo tomaria como un id.
+   */
+  @Get('pendientes-verificacion')
+  @Roles(RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async pendientesVerificacion(@UsuarioActual() usuario: UsuarioAutenticado) {
+    return this.listarPendientesVerificacionUseCase.ejecutar({
+      usuarioAppId: usuario.usuarioAppId,
+    });
+  }
+
+  /**
+   * Cargas en `CONFLICTOS_PENDIENTES` donde el usuario autenticado conto: su
+   * acceso directo a resolver discrepancias. Declarado antes de `GET :id`.
+   */
+  @Get('conflictos-pendientes')
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
+  async conflictosPendientes(@UsuarioActual() usuario: UsuarioAutenticado) {
+    return this.consultas.listarConflictosDeParticipante(usuario.usuarioAppId);
   }
 
   /**
@@ -419,11 +451,16 @@ export class CargasController {
     };
   }
 
-  /** Productos con discrepancia del evento (pendientes o ya resueltas). */
+  /**
+   * Productos con discrepancia del evento (pendientes o ya resueltas), con el
+   * nombre y factor de empaque del producto y el nombre de quien capturo y
+   * confirmo. El vendedor solo ve las de cargas donde conto.
+   */
   @Get(':id/discrepancias')
-  @Roles(RolApp.CONTADOR, RolApp.SUPERVISOR)
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR, RolApp.SUPERVISOR)
   async discrepancias(
     @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     const evento = await this.cargas.buscarEventoPorId(eventoId);
     if (evento === null) {
@@ -432,8 +469,9 @@ export class CargasController {
         mensaje: 'El evento de carga no existe.',
       });
     }
+    await this.exigirVendedorParticipante(eventoId, usuario);
 
-    return this.cargas.listarDiscrepancias(eventoId);
+    return this.consultas.listarDiscrepanciasDetalle(eventoId);
   }
 
   /**
@@ -450,6 +488,8 @@ export class CargasController {
     @Body(new ZodValidationPipe(CapturarCantidadSchema))
     dto: CapturarCantidadDto,
   ) {
+    await this.exigirVendedorParticipante(eventoId, usuario);
+
     const resultado = await this.capturarCantidadFinalUseCase.ejecutar(
       {
         eventoId,
@@ -493,8 +533,12 @@ export class CargasController {
 
   /**
    * Paso 2 de la resolucion de una discrepancia: una persona DISTINTA a la que
-   * capturo confirma la cantidad con su propio PIN. La autoconfirmacion se
-   * rechaza (CLAUDE.md, docs/01 §6 regla 3).
+   * capturo confirma la cantidad tecleando su propio PIN, que se verifica aqui.
+   * La autoconfirmacion se rechaza (CLAUDE.md, docs/01 §6 regla 3).
+   *
+   * Los rechazos de PIN responden 403 y NO 401: para la app un 401 significa
+   * sesion vencida y cierra la sesion, y aqui la sesion sigue siendo valida.
+   * `codigo` permite a la app distinguir cada caso sin leer el mensaje.
    */
   @Post(':id/discrepancias/:productoCode/confirmar')
   @HttpCode(200)
@@ -503,10 +547,21 @@ export class CargasController {
     @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
     @Param('productoCode') productoCode: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(ConfirmarCantidadSchema))
+    dto: ConfirmarCantidadDto,
   ) {
+    await this.exigirVendedorParticipante(eventoId, usuario);
+
+    const ahora = new Date();
     const resultado = await this.confirmarCantidadFinalUseCase.ejecutar(
-      { eventoId, productoCode, usuarioAppId: usuario.usuarioAppId },
-      new Date(),
+      {
+        eventoId,
+        productoCode,
+        usuarioAppId: usuario.usuarioAppId,
+        pin: dto.pin,
+        cantidadFinal: dto.cantidadFinal,
+      },
+      ahora,
     );
 
     if (!resultado.exito) {
@@ -514,8 +569,43 @@ export class CargasController {
         case 'AUTOCONFIRMACION_PROHIBIDA':
           throw new ForbiddenException({
             statusCode: 403,
+            codigo: 'AUTOCONFIRMACION_PROHIBIDA',
             mensaje:
               'No puedes confirmar una cantidad que tu mismo capturaste: la confirmacion debe hacerla otra persona con su propio PIN.',
+          });
+        case 'CANTIDAD_CAMBIO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'CANTIDAD_CAMBIO',
+            mensaje:
+              'La cantidad final cambio mientras confirmabas: alguien la volvio a capturar. Revisala antes de confirmar.',
+          });
+        case 'PIN_INCORRECTO': {
+          const n = resultado.intentosRestantes;
+          throw new ForbiddenException({
+            statusCode: 403,
+            codigo: 'PIN_INCORRECTO',
+            mensaje:
+              n === null
+                ? 'PIN incorrecto.'
+                : `PIN incorrecto. ${n === 1 ? 'Te queda 1 intento' : `Te quedan ${n} intentos`} antes del bloqueo temporal.`,
+            intentosRestantes: n,
+          });
+        }
+        case 'BLOQUEADO':
+          throw new ForbiddenException({
+            statusCode: 403,
+            codigo: 'USUARIO_BLOQUEADO',
+            mensaje:
+              'Tu usuario quedo bloqueado temporalmente por intentos fallidos de PIN. Espera unos minutos o pide a tu supervisor que lo restablezca.',
+            bloqueadoHasta: resultado.bloqueadoHasta.toISOString(),
+          });
+        case 'INACTIVO':
+          throw new ForbiddenException({
+            statusCode: 403,
+            codigo: 'USUARIO_INACTIVO',
+            mensaje:
+              'Tu usuario esta desactivado. Pide a tu supervisor que lo reactive.',
           });
         case 'ESTADO_INVALIDO':
           throw new ConflictException({
@@ -780,5 +870,26 @@ export class CargasController {
     }
 
     return { sigueBloqueado: false, evento: resultado.evento };
+  }
+
+  /**
+   * El vendedor solo actua sobre cargas donde conto (tiene sesion propia), igual
+   * que en `GET :id`. Sin esto, otro vendedor ajeno a la carga podria servir de
+   * "segunda persona" en la confirmacion cruzada. Contador y supervisor no se
+   * restringen aqui.
+   */
+  private async exigirVendedorParticipante(
+    eventoId: string,
+    usuario: UsuarioAutenticado,
+  ): Promise<void> {
+    if (usuario.rolApp !== RolApp.VENDEDOR) return;
+    const sesiones = await this.cargas.listarSesionesDeEvento(eventoId);
+    if (!sesiones.some((s) => s.usuarioAppId === usuario.usuarioAppId)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        mensaje:
+          'Solo puedes resolver discrepancias de una carga donde contaste.',
+      });
+    }
   }
 }

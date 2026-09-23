@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 
 import { ETIQUETAS_ROL } from '../src/api/auth';
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
-import { useAbrirSesion, useIniciarCarga } from '../src/api/hooks-cargas';
+import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
 import { obtenerToken } from '../src/api/token';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
+import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
+import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 type EstadoSesion =
@@ -56,18 +59,27 @@ export default function PantallaInicio() {
 
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
-  // Pantalla temporal hasta que existan los inicios por rol (docs/06 §3.2-3.3).
+  // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo.
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <View style={estilos.centrado}>
+      <ScrollView contentContainerStyle={estilos.contenido}>
         <Text style={estilos.saludo}>Sesión iniciada</Text>
         <Text style={estilos.nombre}>{usuario?.nombreCompleto ?? 'Usuario'}</Text>
         {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
-        {cuenta && usuario && <AccionesCarga usuario={usuario} />}
+        {cuenta && usuario && (
+          <View style={estilos.acciones}>
+            <AccesoConflictos />
+            <AccionesCarga usuario={usuario} />
+          </View>
+        )}
         <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
+}
+
+function sesionVencida() {
+  void cerrarSesion().then(() => router.replace('/login'));
 }
 
 function salir() {
@@ -198,6 +210,7 @@ function irAConteo(carga: CargaAbierta) {
 function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const iniciar = useIniciarCarga();
   const abrir = useAbrirSesion();
+  const clienteConsultas = useQueryClient();
   // `undefined` mientras se consulta: no mostrar "Iniciar" a quien debe "Continuar".
   const [cargaAbierta, setCargaAbierta] = useState<CargaAbierta | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -209,10 +222,24 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       void obtenerCargaAbierta(usuario.id).then((carga) => {
         if (vigente) setCargaAbierta(carga);
       });
+      // Las listas del servidor también: al volver de contar o de resolver, ya cambiaron.
+      void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
+      void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.conflictosPendientes });
       return () => {
         vigente = false;
       };
-    }, [usuario.id]),
+    }, [usuario.id, clienteConsultas]),
+  );
+
+  /** El contador abrió (o retomó) su verificación: queda como su carga en proceso. */
+  const abrirVerificacion = useCallback(
+    (carga: CargaAbierta) => {
+      void guardarCargaAbierta(usuario.id, carga).finally(() => {
+        setCargaAbierta(carga);
+        irAConteo(carga);
+      });
+    },
+    [usuario.id],
   );
 
   const ocupado = iniciar.isPending || abrir.isPending;
@@ -239,7 +266,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       irAConteo(carga);
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 401) {
-        void cerrarSesion().then(() => router.replace('/login'));
+        sesionVencida();
         return;
       }
       if (e instanceof ErrorRed) {
@@ -251,12 +278,12 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   };
 
   if (cargaAbierta === undefined) {
-    return <ActivityIndicator style={estilos.acciones} color={COLORES.texto} />;
+    return <ActivityIndicator color={COLORES.texto} />;
   }
 
   if (cargaAbierta) {
     return (
-      <View style={estilos.acciones}>
+      <View style={estilos.grupoAcciones}>
         <BotonGrande
           titulo="Continuar carga"
           detalle={cargaAbierta.tipo ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo] : 'Conteo sin finalizar'}
@@ -267,19 +294,16 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   }
 
   // POST /eventos-carga es solo para Vendedor: el contador entra a una carga
-  // ya iniciada, desde la cola de verificación (docs/06 §3.3), aún sin construir.
-  if (usuario.rolApp !== 'VENDEDOR') {
-    return (
-      <View style={estilos.acciones}>
-        <Text style={estilos.avisoAcciones}>
-          No tienes cargas por verificar en este dispositivo. La cola de verificación todavía no está disponible.
-        </Text>
-      </View>
-    );
+  // ya iniciada, desde la cola de verificación (docs/06 §3.3), y cuenta en la
+  // misma pantalla de conteo, a ciegas.
+  if (usuario.rolApp === 'CONTADOR') {
+    return <ColaVerificacion onAbrir={abrirVerificacion} onSesionVencida={sesionVencida} />;
   }
 
+  if (usuario.rolApp !== 'VENDEDOR') return null;
+
   return (
-    <View style={estilos.acciones}>
+    <View style={estilos.grupoAcciones}>
       <BotonGrande
         titulo={iniciar.isPending && iniciar.variables === 'INICIAL' ? 'Iniciando…' : 'Iniciar carga'}
         detalle="Carga inicial de hoy"
@@ -346,6 +370,13 @@ const estilos = StyleSheet.create({
     padding: ESPACIADO.lg,
     gap: ESPACIADO.sm,
   },
+  contenido: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: ESPACIADO.lg,
+    gap: ESPACIADO.sm,
+  },
   saludo: {
     fontSize: TIPOGRAFIA.tamanos.base,
     color: COLORES.textoSecundario,
@@ -382,8 +413,14 @@ const estilos = StyleSheet.create({
   },
   acciones: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 560,
     marginTop: ESPACIADO.xl,
+    gap: ESPACIADO.lg,
+  },
+  grupoAcciones: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
     gap: ESPACIADO.md,
   },
   botonGrande: {
@@ -413,11 +450,6 @@ const estilos = StyleSheet.create({
   },
   deshabilitado: {
     opacity: 0.5,
-  },
-  avisoAcciones: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
-    textAlign: 'center',
   },
   error: {
     fontSize: TIPOGRAFIA.tamanos.base,

@@ -876,13 +876,19 @@ function PanelConfirmar({
     mutacion.mutate(
       { eventoId, sesionId },
       {
-        onSuccess: async () => {
+        onSuccess: async (respuesta) => {
           descartarCola(eventoId, sesionId);
           await (usuarioId ? olvidarCarga(usuarioId, { eventoId, sesionId }) : limpiarConteoLocal(eventoId, sesionId)).catch(
             () => undefined,
           );
           setFase('confirmando');
           onCerrar();
+          // Fue el segundo conteo y hubo diferencias: resolverlas es lo siguiente,
+          // con la otra persona al lado. Se reemplaza el conteo: ya no se puede volver a él.
+          if (respuesta?.evento?.estado === 'CONFLICTOS_PENDIENTES') {
+            router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
+            return;
+          }
           if (router.canGoBack()) router.back();
           else router.replace('/');
         },

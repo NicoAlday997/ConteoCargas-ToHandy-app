@@ -5,6 +5,7 @@ import {
   type EstadoDiscrepancia,
 } from '../domain/resolver-discrepancia';
 import type { CargaRepository, Discrepancia } from './carga.repository';
+import type { VerificadorPin } from './verificador-pin.port';
 
 /**
  * Caso de uso: paso 2 de la resolucion de una discrepancia (RF-15, docs/04
@@ -16,6 +17,12 @@ import type { CargaRepository, Discrepancia } from './carga.repository';
  * capturar y confirmar. Ese rechazo lo hace el dominio (`confirmarCantidadFinal`
  * devuelve `AUTOCONFIRMACION_PROHIBIDA`) y este caso de uso NO persiste nada
  * cuando el dominio rechaza.
+ *
+ * El PIN se verifica aqui, en el momento de confirmar, y no se da por bueno
+ * por el JWT: la sesion abierta en un dispositivo no prueba quien lo tiene en
+ * la mano. Se verifica DESPUES de las reglas del dominio para que un intento
+ * que igual seria rechazado (autoconfirmacion, ya confirmada) no gaste
+ * intentos de PIN del usuario.
  *
  * Al confirmarse la ultima discrepancia pendiente del evento, este pasa a
  * `EN_ESPERA_AUTORIZACION` (RF-16): incluso conciliado, ninguna carga se envia
@@ -31,8 +38,16 @@ import type { CargaRepository, Discrepancia } from './carga.repository';
 export interface EntradaConfirmarCantidadFinal {
   eventoId: string;
   productoCode: string;
-  /** Id del usuario de la app que confirma; su PIN ya fue validado por el auth. */
+  /** Id del usuario de la app que confirma (viaja en el JWT). */
   usuarioAppId: string;
+  /** PIN que el usuario teclea al confirmar; se verifica contra el suyo. */
+  pin: string;
+  /**
+   * Cantidad final que la persona VIO en pantalla al confirmar. Si alguien la
+   * recapturo mientras tecleaba su PIN, se rechaza: nadie confirma una cantidad
+   * que no vio.
+   */
+  cantidadFinal: number;
 }
 
 /**
@@ -51,6 +66,10 @@ export interface EntradaConfirmarCantidadFinal {
  * - `NO_HAY_CAPTURA_PREVIA`: nadie capturo la cantidad final todavia (lo decide
  *   el dominio).
  * - `YA_CONFIRMADA`: la discrepancia ya estaba confirmada (lo decide el dominio).
+ * - `CANTIDAD_CAMBIO`: la cantidad capturada ya no es la que vio quien confirma
+ *   (alguien la recapturo). Nada se persiste ni se verifica el PIN.
+ * - `PIN_INCORRECTO` / `BLOQUEADO` / `INACTIVO`: el PIN no es el de quien
+ *   confirma, o su usuario no puede autenticarse. Nada se persiste.
  */
 export type ResultadoConfirmarCantidadFinal =
   | { exito: true; discrepancia: Discrepancia; enEsperaAutorizacion: boolean }
@@ -61,8 +80,16 @@ export type ResultadoConfirmarCantidadFinal =
         | 'DISCREPANCIA_NO_ENCONTRADA'
         | 'AUTOCONFIRMACION_PROHIBIDA'
         | 'NO_HAY_CAPTURA_PREVIA'
-        | 'YA_CONFIRMADA';
-    };
+        | 'YA_CONFIRMADA'
+        | 'CANTIDAD_CAMBIO';
+    }
+  | {
+      exito: false;
+      motivo: 'PIN_INCORRECTO';
+      intentosRestantes: number | null;
+    }
+  | { exito: false; motivo: 'BLOQUEADO'; bloqueadoHasta: Date }
+  | { exito: false; motivo: 'INACTIVO' };
 
 /** Traduce la fila persistida al modelo puro del dominio. */
 function aEstadoDiscrepancia(d: Discrepancia): EstadoDiscrepancia {
@@ -77,7 +104,10 @@ function aEstadoDiscrepancia(d: Discrepancia): EstadoDiscrepancia {
 }
 
 export class ConfirmarCantidadFinalUseCase {
-  constructor(private readonly cargas: CargaRepository) {}
+  constructor(
+    private readonly cargas: CargaRepository,
+    private readonly verificadorPin: VerificadorPin,
+  ) {}
 
   async ejecutar(
     entrada: EntradaConfirmarCantidadFinal,
@@ -121,7 +151,24 @@ export class ConfirmarCantidadFinalUseCase {
       );
     }
 
-    // 4. Persistir la confirmacion cruzada (paso 2).
+    // 4. Solo se confirma la cantidad que la persona tiene a la vista.
+    if (discrepancia.cantidadFinal !== entrada.cantidadFinal) {
+      return { exito: false, motivo: 'CANTIDAD_CAMBIO' };
+    }
+
+    // 5. Quien confirma demuestra ser quien dice con su propio PIN. Un PIN
+    //    incorrecto suma al mismo bloqueo temporal que el login.
+    const pin = await this.verificadorPin.verificar(
+      entrada.usuarioAppId,
+      entrada.pin,
+      ahora,
+    );
+    if (!pin.valido) {
+      const { valido: _valido, ...rechazo } = pin;
+      return { exito: false, ...rechazo };
+    }
+
+    // 6. Persistir la confirmacion cruzada (paso 2).
     const actualizada = await this.cargas.actualizarDiscrepancia(
       entrada.eventoId,
       entrada.productoCode,
@@ -131,7 +178,7 @@ export class ConfirmarCantidadFinalUseCase {
       },
     );
 
-    // 5. Si con esto quedaron TODAS las discrepancias del evento resueltas, el
+    // 7. Si con esto quedaron TODAS las discrepancias del evento resueltas, el
     //    evento avanza a EN_ESPERA_AUTORIZACION (RF-16), no a LISTA_PARA_ENVIAR:
     //    todavia falta que un supervisor autorice el envio. La transicion se
     //    valida siempre contra la maquina de estados del dominio.
@@ -141,7 +188,10 @@ export class ConfirmarCantidadFinalUseCase {
       todasResueltas(tras.map(aEstadoDiscrepancia)) &&
       puedeTransicionar(evento.estado, 'EN_ESPERA_AUTORIZACION')
     ) {
-      await this.cargas.cambiarEstado(entrada.eventoId, 'EN_ESPERA_AUTORIZACION');
+      await this.cargas.cambiarEstado(
+        entrada.eventoId,
+        'EN_ESPERA_AUTORIZACION',
+      );
       enEsperaAutorizacion = true;
     }
 

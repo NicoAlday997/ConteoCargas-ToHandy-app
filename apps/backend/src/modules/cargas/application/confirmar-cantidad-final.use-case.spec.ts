@@ -10,6 +10,10 @@ import {
   ConfirmarCantidadFinalUseCase,
   type ResultadoConfirmarCantidadFinal,
 } from './confirmar-cantidad-final.use-case';
+import type {
+  ResultadoVerificacionPin,
+  VerificadorPin,
+} from './verificador-pin.port';
 
 /**
  * Pruebas del caso de uso "confirmar cantidad final" (RF-15, paso 2). Sin base
@@ -148,6 +152,31 @@ class FakeCargaRepository implements CargaRepository {
   }
 }
 
+/** PIN correcto de cada usuario de prueba. */
+const PINES: Record<string, string> = {
+  'vendedor-1': '1111',
+  'contador-1': '2222',
+  'contador-2': '3333',
+};
+
+class FakeVerificadorPin implements VerificadorPin {
+  readonly llamadas: Array<{ usuarioAppId: string; pin: string }> = [];
+  bloqueados = new Set<string>();
+
+  async verificar(
+    usuarioAppId: string,
+    pin: string,
+  ): Promise<ResultadoVerificacionPin> {
+    this.llamadas.push({ usuarioAppId, pin });
+    if (this.bloqueados.has(usuarioAppId)) {
+      return { valido: false, motivo: 'BLOQUEADO', bloqueadoHasta: AHORA };
+    }
+    return PINES[usuarioAppId] === pin
+      ? { valido: true }
+      : { valido: false, motivo: 'PIN_INCORRECTO', intentosRestantes: 4 };
+  }
+}
+
 function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
   return {
     id: 'ev-1',
@@ -195,11 +224,13 @@ function exigirExito(
 
 describe('ConfirmarCantidadFinalUseCase', () => {
   let repo: FakeCargaRepository;
+  let verificador: FakeVerificadorPin;
   let useCase: ConfirmarCantidadFinalUseCase;
 
   beforeEach(() => {
     repo = new FakeCargaRepository();
-    useCase = new ConfirmarCantidadFinalUseCase(repo);
+    verificador = new FakeVerificadorPin();
+    useCase = new ConfirmarCantidadFinalUseCase(repo, verificador);
     repo.sembrarEvento(nuevoEvento());
   });
 
@@ -207,7 +238,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
 
     const resultado = await useCase.ejecutar(
-      { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'vendedor-1' },
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'vendedor-1',
+        pin: PINES['vendedor-1'],
+        cantidadFinal: 11,
+      },
       AHORA,
     );
 
@@ -221,6 +258,81 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     const [d] = await repo.listarDiscrepancias('ev-1');
     expect(d.confirmadaPor).toBeNull();
     expect(d.fechaConfirmacion).toBeNull();
+    // Ni siquiera se pidio verificar el PIN: no gasta intentos.
+    expect(verificador.llamadas).toEqual([]);
+  });
+
+  it('RECHAZA con PIN incorrecto de quien confirma y NO persiste nada', async () => {
+    repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+    const resultado = await useCase.ejecutar(
+      // El PIN del vendedor (que capturo) no sirve para confirmar como contador.
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-1',
+        pin: PINES['vendedor-1'],
+        cantidadFinal: 11,
+      },
+      AHORA,
+    );
+
+    expect(resultado).toEqual({
+      exito: false,
+      motivo: 'PIN_INCORRECTO',
+      intentosRestantes: 4,
+    });
+    expect(verificador.llamadas).toEqual([
+      {
+        usuarioAppId: 'contador-1',
+        pin: PINES['vendedor-1'],
+      },
+    ]);
+    expect(repo.actualizaciones).toEqual([]);
+    expect(repo.cambiosDeEstado).toEqual([]);
+  });
+
+  it('RECHAZA si la cantidad cambio desde que la persona la vio, sin gastar intentos de PIN', async () => {
+    // Capturada en 11; quien confirma todavia tiene en pantalla un 13 anterior.
+    repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+    const resultado = await useCase.ejecutar(
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-1',
+        pin: PINES['contador-1'],
+        cantidadFinal: 13,
+      },
+      AHORA,
+    );
+
+    expect(resultado).toEqual({ exito: false, motivo: 'CANTIDAD_CAMBIO' });
+    expect(verificador.llamadas).toEqual([]);
+    expect(repo.actualizaciones).toEqual([]);
+  });
+
+  it('RECHAZA si quien confirma esta bloqueado por intentos fallidos', async () => {
+    repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+    verificador.bloqueados.add('contador-1');
+
+    const resultado = await useCase.ejecutar(
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-1',
+        pin: PINES['contador-1'],
+        cantidadFinal: 11,
+      },
+      AHORA,
+    );
+
+    expect(resultado).toEqual({
+      exito: false,
+      motivo: 'BLOQUEADO',
+      bloqueadoHasta: AHORA,
+    });
+    expect(repo.actualizaciones).toEqual([]);
   });
 
   it('rechaza NO_HAY_CAPTURA_PREVIA y NO persiste si nadie capturo todavia', async () => {
@@ -233,7 +345,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     ]);
 
     const resultado = await useCase.ejecutar(
-      { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'contador-1' },
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-1',
+        pin: PINES['contador-1'],
+        cantidadFinal: 11,
+      },
       AHORA,
     );
 
@@ -250,7 +368,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
 
     const resultado = await useCase.ejecutar(
-      { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'contador-1' },
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-1',
+        pin: PINES['contador-1'],
+        cantidadFinal: 11,
+      },
       AHORA,
     );
 
@@ -262,7 +386,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
 
     const resultado = await useCase.ejecutar(
-      { eventoId: 'ev-1', productoCode: 'OTRO', usuarioAppId: 'contador-1' },
+      {
+        eventoId: 'ev-1',
+        productoCode: 'OTRO',
+        usuarioAppId: 'contador-1',
+        pin: PINES['contador-1'],
+        cantidadFinal: 11,
+      },
       AHORA,
     );
 
@@ -282,7 +412,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     ]);
 
     const resultado = await useCase.ejecutar(
-      { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'contador-2' },
+      {
+        eventoId: 'ev-1',
+        productoCode: 'P1',
+        usuarioAppId: 'contador-2',
+        pin: PINES['contador-2'],
+        cantidadFinal: 11,
+      },
       AHORA,
     );
 
@@ -295,7 +431,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
 
     const resultado = exigirExito(
       await useCase.ejecutar(
-        { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'contador-1' },
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          pin: PINES['contador-1'],
+          cantidadFinal: 11,
+        },
         AHORA,
       ),
     );
@@ -327,7 +469,13 @@ describe('ConfirmarCantidadFinalUseCase', () => {
 
     const resultado = exigirExito(
       await useCase.ejecutar(
-        { eventoId: 'ev-1', productoCode: 'P1', usuarioAppId: 'contador-1' },
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          pin: PINES['contador-1'],
+          cantidadFinal: 11,
+        },
         AHORA,
       ),
     );

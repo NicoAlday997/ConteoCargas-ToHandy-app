@@ -89,6 +89,19 @@ export const CapturarCantidadSchema = z.object({
   cantidadFinal: cantidadCapturada,
 });
 
+/**
+ * Body de `POST /eventos-carga/:id/discrepancias/:productoCode/confirmar`. Quien
+ * confirma teclea SU PIN en ese momento: la sesion abierta en el dispositivo no
+ * basta para probar quien confirma (CLAUDE.md, confirmacion cruzada).
+ */
+export const ConfirmarCantidadSchema = z.object({
+  /** La cantidad final que la persona tiene a la vista al confirmar. */
+  cantidadFinal: cantidadCapturada,
+  pin: z
+    .string()
+    .regex(/^[0-9]{4}$/, 'El PIN debe tener exactamente 4 digitos numericos'),
+});
+
 /** Motivo obligatorio que debe dar el supervisor al rechazar o modificar. */
 const motivoSupervisor = z
   .string()
@@ -130,5 +143,6 @@ export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
 export type CapturarCantidadDto = z.infer<typeof CapturarCantidadSchema>;
+export type ConfirmarCantidadDto = z.infer<typeof ConfirmarCantidadSchema>;
 export type RechazarProductosDto = z.infer<typeof RechazarProductosSchema>;
 export type ModificarCantidadDto = z.infer<typeof ModificarCantidadSchema>;

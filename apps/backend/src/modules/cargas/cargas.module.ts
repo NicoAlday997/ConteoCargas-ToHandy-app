@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
+import { AuthModule } from '../auth/auth.module';
+import { LoginUseCase } from '../auth/application/login.use-case';
 import { HandyGateway } from '../sincronizacion/application/handy.gateway';
 import { SincronizacionModule } from '../sincronizacion/sincronizacion.module';
 import { AbrirSesionUseCase } from './application/abrir-sesion.use-case';
@@ -9,19 +11,24 @@ import { AutorizarCargaUseCase } from './application/autorizar-carga.use-case';
 import { CapturarCantidadFinalUseCase } from './application/capturar-cantidad-final.use-case';
 import { CargaRepository } from './application/carga.repository';
 import { ConfirmarCantidadFinalUseCase } from './application/confirmar-cantidad-final.use-case';
+import { ConsultasCargaRepository } from './application/consultas-carga.repository';
 import { DesbloquearCargaUseCase } from './application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
 import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
+import { ListarPendientesVerificacionUseCase } from './application/listar-pendientes-verificacion.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
 import { ProductoConteoRepository } from './application/producto-conteo.repository';
 import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
+import { VerificadorPin } from './application/verificador-pin.port';
 import { VerificarCortePendienteUseCase } from './application/verificar-corte-pendiente.use-case';
+import { LoginVerificadorPinAdapter } from './infrastructure/login-verificador-pin.adapter';
 import { PrismaAsignacionRepository } from './infrastructure/prisma-asignacion.repository';
 import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository';
+import { PrismaConsultasCargaRepository } from './infrastructure/prisma-consultas-carga.repository';
 import { PrismaProductoConteoRepository } from './infrastructure/prisma-producto-conteo.repository';
 import { CargasController } from './interface/cargas.controller';
 
@@ -33,6 +40,9 @@ import { CargasController } from './interface/cargas.controller';
     // Aporta `HandyGateway` (lo exporta): `EnviarCargaUseCase` habla con Handy a
     // traves de ese puerto, sin re-implementar el adaptador HTTP.
     SincronizacionModule,
+    // Aporta `LoginUseCase` (lo exporta): la confirmacion cruzada verifica el
+    // PIN con la misma politica de intentos y bloqueo que el login.
+    AuthModule,
   ],
   controllers: [CargasController],
   providers: [
@@ -40,6 +50,16 @@ import { CargasController } from './interface/cargas.controller';
     // aplicacion solo conocen los puertos abstractos.
     { provide: CargaRepository, useClass: PrismaCargaRepository },
     { provide: AsignacionRepository, useClass: PrismaAsignacionRepository },
+    {
+      provide: ConsultasCargaRepository,
+      useClass: PrismaConsultasCargaRepository,
+    },
+    {
+      provide: VerificadorPin,
+      useFactory: (login: LoginUseCase) =>
+        new LoginVerificadorPinAdapter(login),
+      inject: [LoginUseCase],
+    },
     {
       provide: ProductoConteoRepository,
       useClass: PrismaProductoConteoRepository,
@@ -95,9 +115,15 @@ import { CargasController } from './interface/cargas.controller';
     },
     {
       provide: ConfirmarCantidadFinalUseCase,
-      useFactory: (cargas: CargaRepository) =>
-        new ConfirmarCantidadFinalUseCase(cargas),
-      inject: [CargaRepository],
+      useFactory: (cargas: CargaRepository, verificadorPin: VerificadorPin) =>
+        new ConfirmarCantidadFinalUseCase(cargas, verificadorPin),
+      inject: [CargaRepository, VerificadorPin],
+    },
+    {
+      provide: ListarPendientesVerificacionUseCase,
+      useFactory: (consultas: ConsultasCargaRepository) =>
+        new ListarPendientesVerificacionUseCase(consultas),
+      inject: [ConsultasCargaRepository],
     },
     {
       provide: EnviarCargaUseCase,

@@ -33,5 +33,8 @@ import { AuthController } from './interface/auth.controller';
       inject: [UsuarioRepository, HasherPort],
     },
   ],
+  // La confirmacion cruzada de discrepancias (modulo de cargas) verifica el PIN
+  // con este mismo caso de uso: una sola politica de intentos y bloqueo.
+  exports: [LoginUseCase],
 })
 export class AuthModule {}
