@@ -17,6 +17,7 @@ import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { ListarPermisosVigentesUseCase } from '../application/listar-permisos-vigentes.use-case';
+import { ListarRutasParaPermisoUseCase } from '../application/listar-rutas-para-permiso.use-case';
 import { OtorgarPermisoCargaUseCase } from '../application/otorgar-permiso-carga.use-case';
 import {
   OtorgarPermisoCargaSchema,
@@ -35,6 +36,7 @@ export class PermisosCargaController {
   constructor(
     private readonly otorgarPermisoCargaUseCase: OtorgarPermisoCargaUseCase,
     private readonly listarPermisosVigentesUseCase: ListarPermisosVigentesUseCase,
+    private readonly listarRutasParaPermisoUseCase: ListarRutasParaPermisoUseCase,
   ) {}
 
   /** Otorga el permiso. `otorgadoPorId` sale del JWT, nunca del body. */
@@ -81,11 +83,17 @@ export class PermisosCargaController {
     return { permiso: resultado.permiso };
   }
 
-  /** Permisos vigentes (sin usar y sin vencer). */
+  /** Permisos que no han vencido, usados o no (`usado`, `eventoCargaId`). */
   @Get()
   async listarVigentes() {
     return {
       permisos: await this.listarPermisosVigentesUseCase.ejecutar(new Date()),
     };
+  }
+
+  /** Rutas activas con su vendedor asignado, para elegir al otorgar. */
+  @Get('rutas')
+  async listarRutas() {
+    return { rutas: await this.listarRutasParaPermisoUseCase.ejecutar() };
   }
 }

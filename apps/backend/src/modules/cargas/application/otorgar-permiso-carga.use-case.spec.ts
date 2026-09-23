@@ -7,6 +7,7 @@ import {
   type DatosCrearPermiso,
   type PermisoCargaSinLiquidar,
   type PermisoVigenteDetallado,
+  type RutaParaPermiso,
 } from './permiso-carga.repository';
 
 /**
@@ -53,7 +54,10 @@ class FakePermisoCargaRepository extends PermisoCargaRepository {
     return permiso;
   }
 
-  listarVigentes(): Promise<PermisoVigenteDetallado[]> {
+  listarNoVencidos(): Promise<PermisoVigenteDetallado[]> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarRutasActivas(): Promise<RutaParaPermiso[]> {
     throw new Error('no usado en esta prueba');
   }
 }

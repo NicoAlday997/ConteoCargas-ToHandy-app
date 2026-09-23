@@ -3,6 +3,7 @@ import {
   PermisoCargaRepository,
   type PermisoCargaSinLiquidar,
   type PermisoVigenteDetallado,
+  type RutaParaPermiso,
 } from './permiso-carga.repository';
 
 const AHORA = new Date('2026-09-23T17:00:00-06:00');
@@ -13,10 +14,10 @@ class FakePermisoCargaRepository extends PermisoCargaRepository {
   permisos: PermisoVigenteDetallado[] = [];
   readonly consultas: Date[] = [];
 
-  async listarVigentes(ahora: Date): Promise<PermisoVigenteDetallado[]> {
+  async listarNoVencidos(ahora: Date): Promise<PermisoVigenteDetallado[]> {
     this.consultas.push(ahora);
     return this.permisos
-      .filter((p) => !p.usado && p.fechaExpiracion.getTime() > ahora.getTime())
+      .filter((p) => p.fechaExpiracion.getTime() > ahora.getTime())
       .sort(
         (a, b) => a.fechaExpiracion.getTime() - b.fechaExpiracion.getTime(),
       );
@@ -29,6 +30,9 @@ class FakePermisoCargaRepository extends PermisoCargaRepository {
     throw new Error('no usado en esta prueba');
   }
   crear(): Promise<PermisoCargaSinLiquidar> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarRutasActivas(): Promise<RutaParaPermiso[]> {
     throw new Error('no usado en esta prueba');
   }
 }
@@ -67,16 +71,21 @@ describe('ListarPermisosVigentesUseCase', () => {
     expect(permisos.consultas).toEqual([AHORA]);
   });
 
-  it('devuelve solo los vigentes: sin usar y sin vencer, con quien los otorgo', async () => {
+  it('devuelve los que no han vencido, usados o no, con quien los otorgo', async () => {
     permisos.permisos = [
       permiso('vigente'),
-      permiso('usado', { usado: true, eventoCargaId: 'ev-1' }),
+      permiso('usado', {
+        usado: true,
+        eventoCargaId: 'ev-1',
+        fechaExpiracion: new Date(AHORA.getTime() + 24 * HORA),
+      }),
       permiso('vencido', { fechaExpiracion: AHORA }),
     ];
 
     const resultado = await useCase.ejecutar(AHORA);
 
-    expect(resultado.map((p) => p.id)).toEqual(['vigente']);
+    expect(resultado.map((p) => p.id)).toEqual(['vigente', 'usado']);
+    expect(resultado[1]).toMatchObject({ usado: true, eventoCargaId: 'ev-1' });
     expect(resultado[0]).toMatchObject({
       rutaNombre: 'Ruta 7',
       otorgadoPorNombre: 'Ana Supervisora',

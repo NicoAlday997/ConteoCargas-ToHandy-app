@@ -94,6 +94,12 @@ export function diaDesdeApi(valor: string | null | undefined): string | null {
   return Number.isNaN(instante.getTime()) ? null : diaNegocio(instante);
 }
 
+/** "17:05": hora del negocio, en 24 h, sin depender de la zona del teléfono. */
+export function horaNegocio(instante: Date): string {
+  const utc = pared(instante);
+  return `${dosDigitos(utc.getUTCHours())}:${dosDigitos(utc.getUTCMinutes())}`;
+}
+
 /** "Jueves 24 de septiembre". */
 export function formatearDia(dia: string): string {
   const fecha = desdeTexto(dia);

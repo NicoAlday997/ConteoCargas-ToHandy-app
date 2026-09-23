@@ -121,8 +121,8 @@ export function useIniciarCarga() {
 }
 
 /**
- * Solo para leer la fecha operativa cuando no vino en la navegación (el
- * contador entra desde la cola). No cambia mientras se cuenta.
+ * Solo para leer la fecha operativa y cómo arrancó la carga cuando no vinieron
+ * en la navegación (el contador entra desde la cola). No cambian mientras se cuenta.
  */
 export function useEventoCarga(eventoId: string, habilitada: boolean) {
   return useQuery({

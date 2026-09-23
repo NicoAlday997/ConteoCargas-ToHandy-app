@@ -147,6 +147,18 @@ function Resumen({ carga }: { carga: CargaDetalle }) {
         {'  ·  '}
         Verificó <Text style={estilos.nombre}>{evento.contadorNombre ?? 'pendiente'}</Text>
       </Text>
+      {evento.sinLiquidar && (
+        <View style={estilos.marcaSinLiquidar}>
+          <Text style={estilos.tituloMarca}>Iniciada con la ruta anterior sin liquidar en Handy</Text>
+          <Text style={estilos.personas}>
+            Permiso de <Text style={estilos.nombre}>{evento.sinLiquidar.otorgadoPor ?? 'un supervisor'}</Text>
+            {evento.sinLiquidar.motivo ? `: “${evento.sinLiquidar.motivo}”` : ''}
+          </Text>
+        </View>
+      )}
+      {evento.liquidacionNoVerificada && (
+        <Text style={estilos.personas}>Al iniciarla no se pudo confirmar en Handy la liquidación anterior.</Text>
+      )}
       <View style={estilos.filaResumen}>
         <InsigniaEstado estado={evento.estado} />
         <Text style={estilos.totales}>
@@ -277,6 +289,17 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
   },
   nombre: {
+    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.texto,
+  },
+  marcaSinLiquidar: {
+    marginTop: ESPACIADO.xs,
+    paddingLeft: ESPACIADO.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORES.discrepancia,
+  },
+  tituloMarca: {
+    fontSize: TIPOGRAFIA.tamanos.sm,
     fontWeight: TIPOGRAFIA.pesos.negrita,
     color: COLORES.texto,
   },

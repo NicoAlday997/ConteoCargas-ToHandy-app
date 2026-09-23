@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { CargaHistorialApi, ProductoConsolidadoApi } from '../api/historial.ts';
-import { agruparPorDia, normalizarDetalle } from './modelo-historial.ts';
+import { agruparPorDia, normalizarDetalle, resumirSinLiquidar } from './modelo-historial.ts';
 
 function fila(id: string, fechaOperativa: string | null, extra: Partial<CargaHistorialApi> = {}): CargaHistorialApi {
   return {
@@ -79,6 +79,45 @@ describe('agruparPorDia', () => {
   });
 });
 
+const PERMISO = { rutaHandyId: 'H-9', permisoOtorgadoPorNombre: 'Sofía', permisoMotivo: 'Liquida mañana junto con hoy' };
+
+describe('marca de inicio sin liquidar', () => {
+  it('la fila lleva quién otorgó el permiso y el motivo', () => {
+    const [grupo] = agruparPorDia([
+      [
+        fila('a', '2026-09-24T06:00:00.000Z', { inicioSinLiquidar: PERMISO }),
+        fila('b', '2026-09-24T06:00:00.000Z', { liquidacionNoVerificada: true }),
+      ],
+    ]);
+    assert.deepEqual(grupo.data[0].sinLiquidar, { otorgadoPor: 'Sofía', motivo: 'Liquida mañana junto con hoy' });
+    assert.equal(grupo.data[0].liquidacionNoVerificada, false);
+    assert.equal(grupo.data[1].sinLiquidar, null);
+    assert.equal(grupo.data[1].liquidacionNoVerificada, true);
+  });
+
+  it('un servidor que no manda los campos no marca nada', () => {
+    const [grupo] = agruparPorDia([[fila('a', '2026-09-24T06:00:00.000Z')]]);
+    assert.equal(grupo.data[0].sinLiquidar, null);
+    assert.equal(grupo.data[0].liquidacionNoVerificada, false);
+  });
+});
+
+describe('resumirSinLiquidar', () => {
+  it('cuenta por vendedor, de más a menos, sin repetir filas', () => {
+    const resumen = resumirSinLiquidar([
+      fila('a', null, { vendedorNombre: 'Ana', inicioSinLiquidar: PERMISO }),
+      fila('b', null, { vendedorNombre: 'Beto', inicioSinLiquidar: PERMISO }),
+      fila('c', null, { vendedorNombre: 'Beto', inicioSinLiquidar: PERMISO }),
+      fila('c', null, { vendedorNombre: 'Beto', inicioSinLiquidar: PERMISO }),
+      fila('d', null, { vendedorNombre: 'Ana' }),
+    ]);
+    assert.deepEqual(resumen, [
+      { vendedor: 'Beto', cargas: 2 },
+      { vendedor: 'Ana', cargas: 1 },
+    ]);
+  });
+});
+
 describe('normalizarDetalle', () => {
   it('cuenta productos y discrepancias por familia', () => {
     const detalle = normalizarDetalle({
@@ -114,6 +153,7 @@ describe('normalizarDetalle', () => {
 
     assert.ok(detalle);
     assert.equal(detalle.evento.dia, '2026-09-24');
+    assert.equal(detalle.evento.sinLiquidar, null);
     assert.equal(detalle.totalProductos, 2);
     assert.equal(detalle.totalDiscrepancias, 1);
     assert.deepEqual(

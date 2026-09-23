@@ -13,7 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
+import {
+  ETIQUETAS_TIPO_CARGA,
+  esInicioCarga,
+  esTipoCarga,
+  inicioDeEvento,
+  type InicioCarga,
+} from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { obtenerUsuarioSesion } from '../../src/api/sesion';
@@ -97,11 +103,18 @@ function envioDe(item: ItemLocal | undefined): EnvioFila {
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 
 export default function PantallaConteo() {
-  const params = useLocalSearchParams<{ eventoId: string; sesionId: string; tipo: string; fechaOperativa: string }>();
+  const params = useLocalSearchParams<{
+    eventoId: string;
+    sesionId: string;
+    tipo: string;
+    fechaOperativa: string;
+    inicio: string;
+  }>();
   const eventoId = parametro(params.eventoId);
   const sesionId = parametro(params.sesionId);
   const tipo = parametro(params.tipo);
   const fechaOperativa = parametro(params.fechaOperativa);
+  const inicio = parametro(params.inicio);
 
   if (!eventoId || !sesionId) {
     return (
@@ -122,6 +135,7 @@ export default function PantallaConteo() {
       sesionId={sesionId}
       tituloCarga={esTipoCarga(tipo) ? ETIQUETAS_TIPO_CARGA[tipo] : 'Carga'}
       fechaOperativa={esDia(fechaOperativa) ? fechaOperativa : null}
+      inicio={esInicioCarga(inicio) ? inicio : null}
     />
   );
 }
@@ -132,12 +146,15 @@ interface PropsConteo {
   tituloCarga: string;
   /** `aaaa-mm-dd`; si no vino en la navegación (el contador entra desde la cola), se pide al servidor. */
   fechaOperativa: string | null;
+  /** Cómo arrancó respecto a la liquidación anterior; si no vino en la navegación, se pide al servidor. */
+  inicio: InicioCarga | null;
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion }: PropsConteo) {
+function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, inicio: inicioNavegacion }: PropsConteo) {
   const { esTablet, ancho } = useLayout();
-  const evento = useEventoCarga(eventoId, fechaNavegacion === null);
+  const evento = useEventoCarga(eventoId, fechaNavegacion === null || inicioNavegacion === null);
   const fechaOperativa = fechaNavegacion ?? diaDesdeApi(evento.data?.evento?.fechaOperativa);
+  const inicio = inicioNavegacion ?? inicioDeEvento(evento.data?.evento);
   const consulta = useProductosCarga(eventoId);
   const productos = useMemo(() => consulta.data?.productos ?? [], [consulta.data]);
   const familias = useMemo(() => consulta.data?.familias ?? [], [consulta.data]);
@@ -412,6 +429,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       <Encabezado
         titulo={tituloCarga}
         fechaOperativa={fechaOperativa}
+        inicio={inicio}
         subtitulo={usuario?.nombre ?? null}
         capturados={capturados}
         total={total}
@@ -512,6 +530,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 interface PropsEncabezado {
   titulo: string;
   fechaOperativa: string | null;
+  inicio: InicioCarga | null;
   subtitulo: string | null;
   capturados: number;
   total: number;
@@ -526,6 +545,7 @@ interface PropsEncabezado {
 function Encabezado({
   titulo,
   fechaOperativa,
+  inicio,
   subtitulo,
   capturados,
   total,
@@ -565,6 +585,17 @@ function Encabezado({
           {subtitulo && (
             <Text style={estilos.subtitulo} numberOfLines={1}>
               {subtitulo}
+            </Text>
+          )}
+          {/* Discreto: es contexto, no algo que haya que resolver para contar. */}
+          {inicio === 'permiso' && (
+            <Text style={estilos.notaInicio} numberOfLines={2}>
+              Iniciada con autorización del supervisor
+            </Text>
+          )}
+          {inicio === 'no-verificada' && (
+            <Text style={estilos.notaInicio} numberOfLines={2}>
+              No se pudo confirmar en Handy que la ruta anterior esté liquidada
             </Text>
           )}
         </View>
@@ -1099,6 +1130,11 @@ const estilos = StyleSheet.create({
   subtitulo: {
     fontSize: TIPOGRAFIA.tamanos.sm,
     fontWeight: TIPOGRAFIA.pesos.medio,
+    color: COLORES.textoSecundario,
+  },
+  notaInicio: {
+    fontSize: TIPOGRAFIA.tamanos.sm,
+    fontStyle: 'italic',
     color: COLORES.textoSecundario,
   },
   botonFinalizar: {

@@ -30,6 +30,15 @@ export interface PermisoVigenteDetallado extends PermisoCargaSinLiquidar {
   otorgadoPorNombre: string;
 }
 
+/** Ruta activa que el supervisor puede elegir al otorgar un permiso. */
+export interface RutaParaPermiso {
+  id: string;
+  nombre: string;
+  codigo: string;
+  /** Vendedor con asignacion vigente; `null` si la ruta no tiene. */
+  vendedorNombre: string | null;
+}
+
 export interface DatosCrearPermiso {
   rutaId: string;
   otorgadoPorId: string;
@@ -49,6 +58,13 @@ export abstract class PermisoCargaRepository {
 
   abstract crear(datos: DatosCrearPermiso): Promise<PermisoCargaSinLiquidar>;
 
-  /** Todos los permisos vigentes, del que vence antes al que vence despues. */
-  abstract listarVigentes(ahora: Date): Promise<PermisoVigenteDetallado[]>;
+  /**
+   * Permisos cuya ventana de 24 h no ha vencido, usados o no (el supervisor
+   * ve tambien el que ya se gasto hoy), del que vence antes al que vence
+   * despues.
+   */
+  abstract listarNoVencidos(ahora: Date): Promise<PermisoVigenteDetallado[]>;
+
+  /** Rutas activas, por nombre, con su vendedor asignado. */
+  abstract listarRutasActivas(): Promise<RutaParaPermiso[]>;
 }

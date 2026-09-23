@@ -20,6 +20,7 @@ import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
 import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from './application/listar-pendientes-verificacion.use-case';
 import { ListarPermisosVigentesUseCase } from './application/listar-permisos-vigentes.use-case';
+import { ListarRutasParaPermisoUseCase } from './application/listar-rutas-para-permiso.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
 import { OtorgarPermisoCargaUseCase } from './application/otorgar-permiso-carga.use-case';
@@ -100,6 +101,12 @@ import { PermisosCargaController } from './interface/permisos-carga.controller';
       provide: ListarPermisosVigentesUseCase,
       useFactory: (permisos: PermisoCargaRepository) =>
         new ListarPermisosVigentesUseCase(permisos),
+      inject: [PermisoCargaRepository],
+    },
+    {
+      provide: ListarRutasParaPermisoUseCase,
+      useFactory: (permisos: PermisoCargaRepository) =>
+        new ListarRutasParaPermisoUseCase(permisos),
       inject: [PermisoCargaRepository],
     },
     {

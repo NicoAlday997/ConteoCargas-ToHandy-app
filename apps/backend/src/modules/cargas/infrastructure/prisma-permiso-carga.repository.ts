@@ -7,6 +7,7 @@ import {
   type DatosCrearPermiso,
   type PermisoCargaSinLiquidar,
   type PermisoVigenteDetallado,
+  type RutaParaPermiso,
 } from '../application/permiso-carga.repository';
 
 /** Adaptador Prisma del puerto `PermisoCargaRepository`. */
@@ -42,9 +43,9 @@ export class PrismaPermisoCargaRepository extends PermisoCargaRepository {
     return this.aPermiso(row);
   }
 
-  async listarVigentes(ahora: Date): Promise<PermisoVigenteDetallado[]> {
+  async listarNoVencidos(ahora: Date): Promise<PermisoVigenteDetallado[]> {
     const rows = await this.prisma.permisoCargaSinLiquidar.findMany({
-      where: { usado: false, fechaExpiracion: { gt: ahora } },
+      where: { fechaExpiracion: { gt: ahora } },
       include: {
         ruta: { select: { nombre: true } },
         otorgadoPor: { select: { nombreCompleto: true } },
@@ -55,6 +56,30 @@ export class PrismaPermisoCargaRepository extends PermisoCargaRepository {
       ...this.aPermiso(row),
       rutaNombre: row.ruta.nombre,
       otorgadoPorNombre: row.otorgadoPor.nombreCompleto,
+    }));
+  }
+
+  async listarRutasActivas(): Promise<RutaParaPermiso[]> {
+    const rows = await this.prisma.ruta.findMany({
+      where: { activa: true },
+      select: {
+        id: true,
+        nombre: true,
+        codigo: true,
+        asignaciones: {
+          where: { vigenteHasta: null },
+          orderBy: { vigenteDesde: 'desc' },
+          take: 1,
+          select: { usuarioApp: { select: { nombreCompleto: true } } },
+        },
+      },
+      orderBy: { nombre: 'asc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      codigo: row.codigo,
+      vendedorNombre: row.asignaciones[0]?.usuarioApp.nombreCompleto ?? null,
     }));
   }
 

@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useHistorial } from '../../src/api/hooks-historial';
+import { DIAS_RESUMEN_SIN_LIQUIDAR, useHistorial, useResumenSinLiquidar } from '../../src/api/hooks-historial';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
 import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
 import {
@@ -14,7 +14,12 @@ import {
   EstadoCentral,
   InsigniaEstado,
 } from '../../src/historial/ComponentesHistorial';
-import { agruparPorDia, type FilaHistorial, type GrupoDia } from '../../src/historial/modelo-historial';
+import {
+  agruparPorDia,
+  type AcumuladoVendedor,
+  type FilaHistorial,
+  type GrupoDia,
+} from '../../src/historial/modelo-historial';
 import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
@@ -71,7 +76,9 @@ export default function PantallaHistorial() {
 }
 
 function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
-  const consulta = useHistorial(usuario.id);
+  const [soloSinLiquidar, setSoloSinLiquidar] = useState(false);
+  const consulta = useHistorial(usuario.id, soloSinLiquidar);
+  const resumen = useResumenSinLiquidar(usuario.id);
   const grupos = useMemo(() => agruparPorDia(consulta.data?.pages.map((p) => p?.items ?? []) ?? []), [consulta.data]);
   const hoy = diaNegocio(new Date());
   const alcance = usuario.rolApp ? ALCANCE_POR_ROL[usuario.rolApp] : null;
@@ -84,7 +91,7 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
 
   const refrescar = () => {
     setRefrescando(true);
-    void consulta.refetch().finally(() => setRefrescando(false));
+    void Promise.all([consulta.refetch(), resumen.refetch()]).finally(() => setRefrescando(false));
   };
 
   let contenido;
@@ -107,6 +114,14 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
               : 'Intenta de nuevo en un momento.'
         }
         accion={{ texto: 'Reintentar', onPress: () => void consulta.refetch() }}
+      />
+    );
+  } else if (grupos.length === 0 && soloSinLiquidar) {
+    contenido = (
+      <EstadoCentral
+        titulo="Ninguna carga se inició sin liquidar"
+        detalle="Todas las cargas iniciales de este historial arrancaron con la ruta anterior ya liquidada en Handy."
+        accion={{ texto: 'Ver todas las cargas', onPress: () => setSoloSinLiquidar(false) }}
       />
     );
   } else if (grupos.length === 0) {
@@ -158,8 +173,85 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
       <BarraSuperior titulo="Historial de cargas">
         {alcance && <Text style={estilos.alcance}>{alcance}</Text>}
       </BarraSuperior>
+      <AvisoSinLiquidar
+        vendedores={resumen.data?.vendedores ?? []}
+        incompleto={resumen.data?.incompleto ?? false}
+        esVendedor={usuario.rolApp === 'VENDEDOR'}
+        soloSinLiquidar={soloSinLiquidar}
+        onAlternar={() => setSoloSinLiquidar((actual) => !actual)}
+      />
       {contenido}
     </SafeAreaView>
+  );
+}
+
+/**
+ * Quién inició cargas con la ruta anterior sin liquidar en las últimas 2
+ * semanas, de más a menos: si alguien acumula, se ve sin abrir nada. Sin
+ * ninguna, no ocupa lugar. También alterna la lista a solo esas cargas.
+ */
+function AvisoSinLiquidar({
+  vendedores,
+  incompleto,
+  esVendedor,
+  soloSinLiquidar,
+  onAlternar,
+}: {
+  vendedores: AcumuladoVendedor[];
+  incompleto: boolean;
+  esVendedor: boolean;
+  soloSinLiquidar: boolean;
+  onAlternar: () => void;
+}) {
+  if (vendedores.length === 0 && !soloSinLiquidar) return null;
+
+  const total = vendedores.reduce((suma, v) => suma + v.cargas, 0);
+  const mas = incompleto ? ' o más' : '';
+  const periodo = `en los últimos ${DIAS_RESUMEN_SIN_LIQUIDAR} días`;
+  const titulo = esVendedor
+    ? total === 1
+      ? `Iniciaste 1 carga sin liquidar la ruta anterior ${periodo}`
+      : `Iniciaste ${total}${mas} cargas sin liquidar la ruta anterior ${periodo}`
+    : `Cargas iniciadas sin liquidar ${periodo}`;
+
+  return (
+    <View style={estilos.aviso}>
+      <View style={estilos.contenidoAviso}>
+        {vendedores.length > 0 && (
+          <Text style={estilos.tituloAviso} accessibilityRole="header">
+            {titulo}
+          </Text>
+        )}
+        {!esVendedor && vendedores.length > 0 && (
+          <View style={estilos.vendedoresAviso}>
+            {vendedores.map((v) => (
+              <View
+                key={v.vendedor}
+                style={[estilos.vendedorAviso, v.cargas > 1 && estilos.vendedorAcumula]}
+                accessibilityLabel={`${v.vendedor}: ${v.cargas}${mas} ${v.cargas === 1 ? 'carga' : 'cargas'} sin liquidar`}
+              >
+                <Text style={estilos.nombreVendedorAviso} numberOfLines={1}>
+                  {v.vendedor}
+                </Text>
+                <Text style={estilos.numeroVendedorAviso}>
+                  {v.cargas}
+                  {mas && '+'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+        <Pressable
+          onPress={onAlternar}
+          accessibilityRole="button"
+          style={({ pressed }) => [estilos.botonAviso, pressed && estilos.botonAvisoPresionado]}
+        >
+          <Text style={estilos.textoBotonAviso}>
+            {soloSinLiquidar ? 'Ver todas las cargas' : 'Ver solo las iniciadas sin liquidar'}
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -194,7 +286,14 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
     <Pressable
       onPress={() => router.push({ pathname: '/historial/[eventoId]', params: { eventoId: fila.id } })}
       accessibilityRole="button"
-      accessibilityLabel={`${fila.rutaNombre}, ${tipo}. ${textoDiscrepancias}. Ver detalle`}
+      accessibilityLabel={[
+        `${fila.rutaNombre}, ${tipo}`,
+        textoDiscrepancias,
+        fila.sinLiquidar ? `Iniciada sin liquidar con permiso de ${fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}` : null,
+        'Ver detalle',
+      ]
+        .filter(Boolean)
+        .join('. ')}
       style={({ pressed }) => [
         estilos.fila,
         conDiscrepancias && estilos.filaConDiscrepancia,
@@ -219,6 +318,21 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
           <Text style={estilos.personas} numberOfLines={1}>
             {personas.join(' · ')}
           </Text>
+        )}
+        {fila.sinLiquidar && (
+          <View style={estilos.marcaSinLiquidar}>
+            <Text style={estilos.tituloMarca}>
+              Sin liquidar · permiso de {fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}
+            </Text>
+            {fila.sinLiquidar.motivo && (
+              <Text style={estilos.motivoMarca} numberOfLines={2}>
+                “{fila.sinLiquidar.motivo}”
+              </Text>
+            )}
+          </View>
+        )}
+        {fila.liquidacionNoVerificada && (
+          <Text style={estilos.personas}>No se pudo confirmar en Handy la liquidación anterior</Text>
         )}
       </View>
       <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
@@ -348,6 +462,94 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   personas: {
+    fontSize: TIPOGRAFIA.tamanos.sm,
+    color: COLORES.textoSecundario,
+  },
+  // Ámbar como las discrepancias: pide atención, no bloquea (docs/06 §3.8).
+  aviso: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES.borde,
+    backgroundColor: COLORES.superficie,
+  },
+  contenidoAviso: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.md,
+  },
+  tituloAviso: {
+    fontSize: TIPOGRAFIA.tamanos.base,
+    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.texto,
+  },
+  vendedoresAviso: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: ESPACIADO.sm,
+  },
+  vendedorAviso: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+    maxWidth: '100%',
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.fondo,
+  },
+  // Dos o más: el que acumula resalta sin tener que leer los números.
+  vendedorAcumula: {
+    borderWidth: 2,
+    borderColor: COLORES.discrepancia,
+  },
+  nombreVendedorAviso: {
+    flexShrink: 1,
+    fontSize: TIPOGRAFIA.tamanos.sm,
+    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    color: COLORES.texto,
+  },
+  numeroVendedorAviso: {
+    fontSize: TIPOGRAFIA.tamanos.base,
+    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.texto,
+    fontVariant: ['tabular-nums'],
+  },
+  botonAviso: {
+    minHeight: TOQUE_MINIMO,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.md,
+    borderWidth: 2,
+    borderColor: COLORES.texto,
+    borderRadius: RADIOS.md,
+    backgroundColor: COLORES.fondo,
+  },
+  botonAvisoPresionado: {
+    backgroundColor: COLORES.superficie,
+  },
+  textoBotonAviso: {
+    fontSize: TIPOGRAFIA.tamanos.base,
+    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    color: COLORES.texto,
+    textAlign: 'center',
+  },
+  marcaSinLiquidar: {
+    alignSelf: 'stretch',
+    marginTop: ESPACIADO.xs,
+    paddingLeft: ESPACIADO.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORES.discrepancia,
+  },
+  tituloMarca: {
+    fontSize: TIPOGRAFIA.tamanos.sm,
+    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.texto,
+  },
+  motivoMarca: {
     fontSize: TIPOGRAFIA.tamanos.sm,
     color: COLORES.textoSecundario,
   },

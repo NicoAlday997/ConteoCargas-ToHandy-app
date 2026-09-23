@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
-import { normalizarDetalle } from '../historial/modelo-historial';
+import { diaNegocio, sumarDias } from '../conteo/fecha-operativa';
+import { normalizarDetalle, resumirSinLiquidar } from '../historial/modelo-historial';
 import { ErrorApi } from './cliente';
 import { listarHistorial, obtenerDetalleHistorial } from './historial';
 
@@ -10,7 +11,9 @@ const TAMANO_PAGINA = 50;
 export const clavesHistorial = {
   // El usuario va en la clave: el alcance cambia con quien pregunta, y al
   // cambiar de sesión en el mismo teléfono no debe verse la lista del anterior.
-  lista: (usuarioId: string) => ['historial', usuarioId, 'lista'] as const,
+  lista: (usuarioId: string, soloSinLiquidar = false) =>
+    ['historial', usuarioId, 'lista', soloSinLiquidar ? 'sin-liquidar' : 'todas'] as const,
+  resumenSinLiquidar: (usuarioId: string) => ['historial', usuarioId, 'resumen-sin-liquidar'] as const,
   detalle: (eventoId: string) => ['historial', 'detalle', eventoId] as const,
 };
 
@@ -20,10 +23,15 @@ function reintentar(fallos: number, error: unknown): boolean {
   return fallos < 2;
 }
 
-export function useHistorial(usuarioId: string) {
+/** El resumen mira lo reciente: una carga sin liquidar de hace meses ya no dice si hoy alguien acumula. */
+export const DIAS_RESUMEN_SIN_LIQUIDAR = 14;
+/** Lo más que acepta el servidor por página; de sobra para dos semanas de cinco rutas. */
+const TAMANO_RESUMEN = 100;
+
+export function useHistorial(usuarioId: string, soloSinLiquidar = false) {
   return useInfiniteQuery({
-    queryKey: clavesHistorial.lista(usuarioId),
-    queryFn: ({ pageParam }) => listarHistorial(pageParam, TAMANO_PAGINA),
+    queryKey: clavesHistorial.lista(usuarioId, soloSinLiquidar),
+    queryFn: ({ pageParam }) => listarHistorial(pageParam, TAMANO_PAGINA, { sinLiquidar: soloSinLiquidar }),
     initialPageParam: 1,
     getNextPageParam: (ultima, _todas, paginaActual) => {
       const total = ultima?.total ?? 0;
@@ -32,6 +40,29 @@ export function useHistorial(usuarioId: string) {
     enabled: usuarioId.length > 0,
     staleTime: 0,
     retry: reintentar,
+  });
+}
+
+/**
+ * Cargas iniciadas sin liquidar en las últimas 2 semanas, por vendedor. Al
+ * vendedor el servidor solo le devuelve las suyas.
+ */
+export function useResumenSinLiquidar(usuarioId: string) {
+  return useQuery({
+    queryKey: clavesHistorial.resumenSinLiquidar(usuarioId),
+    queryFn: () =>
+      listarHistorial(1, TAMANO_RESUMEN, {
+        sinLiquidar: true,
+        fechaInicio: sumarDias(diaNegocio(new Date()), -(DIAS_RESUMEN_SIN_LIQUIDAR - 1)),
+      }),
+    enabled: usuarioId.length > 0,
+    staleTime: 0,
+    retry: reintentar,
+    select: (pagina) => ({
+      vendedores: resumirSinLiquidar(pagina?.items ?? []),
+      /** Si hubo más de las que cupieron, los números son un mínimo. */
+      incompleto: (pagina?.total ?? 0) > (pagina?.items?.length ?? 0),
+    }),
   });
 }
 
