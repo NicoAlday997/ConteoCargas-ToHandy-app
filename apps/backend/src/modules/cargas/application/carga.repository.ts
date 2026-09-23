@@ -111,6 +111,21 @@ export interface ItemAGuardar {
   paquetes: number;
   sueltas: number;
   cantidad: number;
+  /** Hora del dispositivo al capturar; `null` si el cliente no la mando. */
+  capturadoEn: Date | null;
+  /** Cuando el servidor recibio este valor (lo decide el caso de uso). */
+  recibidoEn: Date;
+}
+
+/** Item tal como quedo guardado en la sesion, con su trazabilidad. */
+export interface CapturaGuardada {
+  productoCode: string;
+  paquetes: number;
+  sueltas: number;
+  cantidad: number;
+  capturadoEn: Date | null;
+  /** `null` en items guardados antes de existir el campo. */
+  recibidoEn: Date | null;
 }
 
 /**
@@ -254,6 +269,9 @@ export abstract class CargaRepository {
   abstract finalizarSesion(sesionId: string, ahora: Date): Promise<SesionConteo>;
 
   abstract listarItemsDeSesion(sesionId: string): Promise<ItemCapturado[]>;
+
+  /** Lo guardado en la sesion con paquetes, sueltas y fechas de captura/llegada. */
+  abstract listarCapturasDeSesion(sesionId: string): Promise<CapturaGuardada[]>;
 
   abstract listarSesionesDeEvento(eventoId: string): Promise<SesionConteo[]>;
 

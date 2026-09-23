@@ -27,6 +27,9 @@ const USUARIO_HANDY_ID = 42;
 const EVENTO_ID = 'ev-1';
 
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
 
   readonly desbloqueos: Array<{ eventoId: string; ahora: Date }> = [];

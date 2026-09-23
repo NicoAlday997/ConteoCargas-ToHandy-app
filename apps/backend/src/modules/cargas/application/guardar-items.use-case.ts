@@ -1,5 +1,6 @@
 import { aPiezas, sueltasExcedenPaquete } from '../domain/conversion-empaque';
 import type {
+  CapturaGuardada,
   CargaRepository,
   ItemAGuardar,
   SesionConteo,
@@ -18,6 +19,12 @@ import type { ProductoConteoRepository } from './producto-conteo.repository';
  * Reemplazo total: un producto que ya no venga en `items` queda eliminado de
  * la sesion. Si cualquier item se rechaza, no se persiste nada.
  *
+ * Trazabilidad del modo sin conexion: cada item puede traer `capturadoEn`
+ * (hora del dispositivo) y se sella `recibidoEn` (hora del servidor). Como la
+ * app reenvia la sesion completa en cada guardado, `recibidoEn` solo se mueve
+ * cuando el item cambia; si llega identico conserva la fecha de su primera
+ * llegada. Si no, cada reenvio borraria la evidencia de cuando llego.
+ *
  * Capa de aplicacion: solo depende del dominio y de los puertos.
  */
 
@@ -25,6 +32,8 @@ export interface ItemRecibido {
   productoCode: string;
   paquetes: number;
   sueltas: number;
+  /** Hora del dispositivo al capturar. No se valida contra el reloj del servidor: la diferencia ES el dato. */
+  capturadoEn?: Date;
 }
 
 export interface EntradaGuardarItems {
@@ -33,6 +42,8 @@ export interface EntradaGuardarItems {
   /** Id del usuario de la app que guarda (viaja en el JWT). */
   usuarioAppId: string;
   items: ItemRecibido[];
+  /** Instante de llegada (el controlador pasa `new Date()`). */
+  recibidoEn: Date;
 }
 
 /** Item ya guardado, con el total en piezas y el aviso para la app. */
@@ -113,18 +124,37 @@ export class GuardarItemsUseCase {
       };
     }
 
-    // 4. Total en piezas con el dominio. Un factor sin confirmar nunca se usa:
+    // 4. Lo ya guardado, para no mover `recibidoEn` de lo que llega igual.
+    const previos = new Map<string, CapturaGuardada>(
+      (await this.cargas.listarCapturasDeSesion(entrada.sesionId)).map((c) => [
+        c.productoCode,
+        c,
+      ]),
+    );
+
+    // 5. Total en piezas con el dominio. Un factor sin confirmar nunca se usa:
     //    ni para convertir ni para el aviso de sueltas.
     const items: ItemGuardado[] = entrada.items.map((i) => {
       const factor = factores.get(i.productoCode)!;
       const piezasPorPaquete = factor.factorConfirmado
         ? factor.piezasPorPaquete
         : null;
+      const capturadoEn = i.capturadoEn ?? null;
+      const previo = previos.get(i.productoCode);
+      const recibidoEn =
+        previo?.recibidoEn &&
+        previo.paquetes === i.paquetes &&
+        previo.sueltas === i.sueltas &&
+        previo.capturadoEn?.getTime() === capturadoEn?.getTime()
+          ? previo.recibidoEn
+          : entrada.recibidoEn;
       return {
         productoCode: i.productoCode,
         paquetes: i.paquetes,
         sueltas: i.sueltas,
         cantidad: aPiezas(i.paquetes, i.sueltas, piezasPorPaquete),
+        capturadoEn,
+        recibidoEn,
         sueltasExcedenPaquete: sueltasExcedenPaquete(
           i.sueltas,
           piezasPorPaquete,
@@ -134,12 +164,23 @@ export class GuardarItemsUseCase {
 
     await this.cargas.guardarItems(
       entrada.sesionId,
-      items.map(({ productoCode, paquetes, sueltas, cantidad }) => ({
-        productoCode,
-        paquetes,
-        sueltas,
-        cantidad,
-      })),
+      items.map(
+        ({
+          productoCode,
+          paquetes,
+          sueltas,
+          cantidad,
+          capturadoEn,
+          recibidoEn,
+        }) => ({
+          productoCode,
+          paquetes,
+          sueltas,
+          cantidad,
+          capturadoEn,
+          recibidoEn,
+        }),
+      ),
     );
 
     return { exito: true, sesion, items };

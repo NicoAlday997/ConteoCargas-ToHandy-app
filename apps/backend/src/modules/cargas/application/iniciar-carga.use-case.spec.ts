@@ -33,6 +33,9 @@ const AHORA = new Date('2026-09-08T07:30:00-06:00');
  * que una prueba falle si el caso de uso empieza a depender de mas.
  */
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   readonly eventosCreados: DatosCrearEvento[] = [];
   readonly sesionesCreadas: Array<{
     eventoId: string;

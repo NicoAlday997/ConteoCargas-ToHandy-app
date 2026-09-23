@@ -1,4 +1,5 @@
 import type {
+  CapturaGuardada,
   CargaRepository,
   DatosActualizarDiscrepancia,
   DatosCrearEvento,
@@ -26,7 +27,9 @@ import type {
  * Cubre: sesion inexistente/de otro evento/ajena, producto inexistente,
  * paquetes de un producto con factor sin confirmar (rechazo sin persistir),
  * conversion a piezas con factor confirmado, piezas sueltas de un producto sin
- * factor confirmado, y la bandera de sueltas que exceden el paquete.
+ * factor confirmado, la bandera de sueltas que exceden el paquete, y la
+ * trazabilidad sin conexion (`capturadoEn` del dispositivo, `recibidoEn` que
+ * no se mueve en reenvios identicos).
  */
 
 const AHORA = new Date('2026-09-22T08:00:00-06:00');
@@ -48,11 +51,18 @@ function sesionDePrueba(overrides: Partial<SesionConteo> = {}): SesionConteo {
 
 /**
  * Doble del repositorio de cargas: solo implementa lo que este caso de uso usa
- * (`buscarSesionPorId`, `guardarItems`). El resto lanza.
+ * (`buscarSesionPorId`, `listarCapturasDeSesion`, `guardarItems`). El resto
+ * lanza.
  */
 class FakeCargaRepository implements CargaRepository {
   sesion: SesionConteo | null = sesionDePrueba();
+  /** Lo que ya estaba guardado en la sesion antes del PATCH. */
+  previos: CapturaGuardada[] = [];
   readonly guardados: Array<{ sesionId: string; items: ItemAGuardar[] }> = [];
+
+  async listarCapturasDeSesion(): Promise<CapturaGuardada[]> {
+    return this.previos.map((c) => ({ ...c }));
+  }
 
   async buscarSesionPorId(): Promise<SesionConteo | null> {
     return this.sesion;
@@ -154,7 +164,13 @@ describe('GuardarItemsUseCase', () => {
   let productos: FakeProductoConteoRepository;
   let useCase: GuardarItemsUseCase;
 
-  const base = { eventoId: 'ev-1', sesionId: 'se-1', usuarioAppId: 'c1' };
+  const LLEGADA = new Date('2026-09-22T09:30:00-06:00');
+  const base = {
+    eventoId: 'ev-1',
+    sesionId: 'se-1',
+    usuarioAppId: 'c1',
+    recibidoEn: LLEGADA,
+  };
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
@@ -261,6 +277,8 @@ describe('GuardarItemsUseCase', () => {
           paquetes: 0,
           sueltas: 8,
           cantidad: 8,
+          capturadoEn: null,
+          recibidoEn: LLEGADA,
           sueltasExcedenPaquete: false,
         },
       ]);
@@ -285,6 +303,8 @@ describe('GuardarItemsUseCase', () => {
         paquetes: 5,
         sueltas: 3,
         cantidad: 63,
+        capturadoEn: null,
+        recibidoEn: LLEGADA,
         sueltasExcedenPaquete: false,
       },
       {
@@ -292,16 +312,32 @@ describe('GuardarItemsUseCase', () => {
         paquetes: 0,
         sueltas: 7,
         cantidad: 7,
+        capturadoEn: null,
+        recibidoEn: LLEGADA,
         sueltasExcedenPaquete: false,
       },
     ]);
-    // Al puerto solo llegan los tres valores persistibles, sin la bandera.
+    // Al puerto solo llegan los valores persistibles, sin la bandera.
     expect(cargas.guardados).toEqual([
       {
         sesionId: 'se-1',
         items: [
-          { productoCode: 'PEPSI-C12', paquetes: 5, sueltas: 3, cantidad: 63 },
-          { productoCode: 'CHICLE', paquetes: 0, sueltas: 7, cantidad: 7 },
+          {
+            productoCode: 'PEPSI-C12',
+            paquetes: 5,
+            sueltas: 3,
+            cantidad: 63,
+            capturadoEn: null,
+            recibidoEn: LLEGADA,
+          },
+          {
+            productoCode: 'CHICLE',
+            paquetes: 0,
+            sueltas: 7,
+            cantidad: 7,
+            capturadoEn: null,
+            recibidoEn: LLEGADA,
+          },
         ],
       },
     ]);
@@ -320,6 +356,112 @@ describe('GuardarItemsUseCase', () => {
       sueltasExcedenPaquete: true,
     });
     expect(cargas.guardados).toHaveLength(1);
+  });
+
+  describe('trazabilidad sin conexion', () => {
+    const CAPTURA = new Date('2026-09-22T08:15:00-06:00');
+    const LLEGADA_ANTERIOR = new Date('2026-09-22T08:16:00-06:00');
+
+    it('guarda capturadoEn del dispositivo junto con la hora de llegada', async () => {
+      exigirExito(
+        await useCase.ejecutar({
+          ...base,
+          items: [
+            {
+              productoCode: 'CHICLE',
+              paquetes: 0,
+              sueltas: 7,
+              capturadoEn: CAPTURA,
+            },
+          ],
+        }),
+      );
+
+      expect(cargas.guardados[0].items[0]).toMatchObject({
+        capturadoEn: CAPTURA,
+        recibidoEn: LLEGADA,
+      });
+    });
+
+    it('un reenvio identico conserva la hora de su primera llegada', async () => {
+      cargas.previos = [
+        {
+          productoCode: 'CHICLE',
+          paquetes: 0,
+          sueltas: 7,
+          cantidad: 7,
+          capturadoEn: CAPTURA,
+          recibidoEn: LLEGADA_ANTERIOR,
+        },
+      ];
+
+      exigirExito(
+        await useCase.ejecutar({
+          ...base,
+          items: [
+            {
+              productoCode: 'CHICLE',
+              paquetes: 0,
+              sueltas: 7,
+              capturadoEn: new Date(CAPTURA.getTime()),
+            },
+          ],
+        }),
+      );
+
+      expect(cargas.guardados[0].items[0].recibidoEn).toEqual(LLEGADA_ANTERIOR);
+    });
+
+    it.each([
+      ['otra cantidad', { sueltas: 8, capturadoEn: CAPTURA }],
+      [
+        'misma cantidad recapturada',
+        { sueltas: 7, capturadoEn: new Date('2026-09-22T08:40:00-06:00') },
+      ],
+      ['sin capturadoEn', { sueltas: 7, capturadoEn: undefined }],
+    ])('si cambia (%s) sella la llegada nueva', async (_caso, cambio) => {
+      cargas.previos = [
+        {
+          productoCode: 'CHICLE',
+          paquetes: 0,
+          sueltas: 7,
+          cantidad: 7,
+          capturadoEn: CAPTURA,
+          recibidoEn: LLEGADA_ANTERIOR,
+        },
+      ];
+
+      exigirExito(
+        await useCase.ejecutar({
+          ...base,
+          items: [{ productoCode: 'CHICLE', paquetes: 0, ...cambio }],
+        }),
+      );
+
+      expect(cargas.guardados[0].items[0].recibidoEn).toEqual(LLEGADA);
+    });
+
+    it('un item previo sin recibidoEn (anterior al campo) recibe la llegada actual', async () => {
+      cargas.previos = [
+        {
+          productoCode: 'CHICLE',
+          paquetes: 0,
+          sueltas: 7,
+          cantidad: 7,
+          capturadoEn: null,
+          recibidoEn: null,
+        },
+      ];
+
+      exigirExito(
+        await useCase.ejecutar({
+          ...base,
+          items: [{ productoCode: 'CHICLE', paquetes: 0, sueltas: 7 }],
+        }),
+      );
+
+      expect(cargas.guardados[0].items[0].recibidoEn).toEqual(LLEGADA);
+    });
   });
 
   it('items vacio deja la sesion sin productos (reemplazo total)', async () => {

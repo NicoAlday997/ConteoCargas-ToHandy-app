@@ -64,6 +64,9 @@ function sesionDePrueba(overrides: Partial<SesionConteo> = {}): SesionConteo {
  * lanza para que una prueba falle si el caso de uso empieza a depender de mas.
  */
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   evento: EventoCarga | null = eventoDePrueba();
   sesionesExistentes: SesionConteo[] = [];
   readonly sesionesCreadas: Array<{

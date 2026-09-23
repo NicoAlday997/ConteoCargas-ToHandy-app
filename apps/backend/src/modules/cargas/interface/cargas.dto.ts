@@ -43,6 +43,10 @@ const conteoEmpaque = (campo: string) =>
  * Se reciben `paquetes` y `sueltas` (lo que se cuenta en bodega). El total en
  * piezas lo calcula el backend: `cantidad` NO se acepta del cliente
  * (`z.strictObject` rechaza el campo si llega).
+ *
+ * `capturadoEn` (opcional, ISO 8601) es la hora del dispositivo al capturar:
+ * la app puede contar sin conexion y enviar despues. Se guarda tal cual junto
+ * a la hora de llegada al servidor.
  */
 export const GuardarItemsSchema = z.object({
   items: z
@@ -54,6 +58,13 @@ export const GuardarItemsSchema = z.object({
           .min(1, 'El codigo de producto es obligatorio'),
         paquetes: conteoEmpaque('Los paquetes').default(0),
         sueltas: conteoEmpaque('Las piezas sueltas').default(0),
+        capturadoEn: z.iso
+          .datetime({
+            offset: true,
+            message: 'capturadoEn debe ser una fecha ISO 8601',
+          })
+          .transform((valor) => new Date(valor))
+          .optional(),
       }),
     )
     .refine(

@@ -54,6 +54,31 @@ describe('GuardarItemsSchema', () => {
     expect(resultado.success).toBe(false);
   });
 
+  it('acepta capturadoEn ISO 8601 y lo convierte a fecha', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [
+        {
+          productoCode: 'CHICLE',
+          sueltas: 7,
+          capturadoEn: '2026-09-22T14:15:00.000Z',
+        },
+      ],
+    });
+
+    expect(resultado.success).toBe(true);
+    expect(resultado.data?.items[0].capturadoEn).toEqual(
+      new Date('2026-09-22T14:15:00.000Z'),
+    );
+  });
+
+  it('rechaza capturadoEn que no es fecha ISO', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [{ productoCode: 'CHICLE', sueltas: 7, capturadoEn: 'ayer' }],
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
   it('rechaza un producto repetido', () => {
     const resultado = GuardarItemsSchema.safeParse({
       items: [

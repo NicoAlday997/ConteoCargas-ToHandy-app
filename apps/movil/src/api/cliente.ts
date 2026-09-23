@@ -13,6 +13,8 @@ export interface CuerpoErrorApi {
   /** Solo en login: `PIN_INCORRECTO`, `USUARIO_BLOQUEADO`, `USUARIO_INACTIVO`, `CREDENCIALES_INVALIDAS`. */
   codigo?: string | null;
   intentosRestantes?: number | null;
+  /** Solo en `PATCH .../items` rechazado: los productos que el servidor no aceptó. */
+  productos?: unknown;
   /** ISO 8601. */
   bloqueadoHasta?: string | null;
 }

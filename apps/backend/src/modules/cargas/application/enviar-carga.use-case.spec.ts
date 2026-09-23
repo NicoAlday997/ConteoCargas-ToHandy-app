@@ -41,6 +41,9 @@ const INICIADA_EN = new Date('2026-09-08T20:00:00-06:00');
 const USUARIO_HANDY_ID = 42;
 
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly sesionesPorEvento = new Map<string, SesionConteo[]>();
   private readonly itemsPorSesion = new Map<string, ItemCapturado[]>();

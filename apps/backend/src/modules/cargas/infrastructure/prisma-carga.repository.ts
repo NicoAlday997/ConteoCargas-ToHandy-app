@@ -16,6 +16,7 @@ import {
   type DatosReabrirDiscrepancia,
   type Discrepancia,
   type DiscrepanciaAGuardar,
+  type CapturaGuardada,
   type EventoCarga,
   type ItemAGuardar,
   type ItemCapturado,
@@ -166,6 +167,8 @@ export class PrismaCargaRepository extends CargaRepository {
             paquetes: i.paquetes,
             sueltas: i.sueltas,
             cantidad: i.cantidad,
+            capturadoEn: i.capturadoEn,
+            recibidoEn: i.recibidoEn,
           })),
         });
       }
@@ -184,6 +187,21 @@ export class PrismaCargaRepository extends CargaRepository {
     return this.prisma.conteoItem.findMany({
       where: { sesionId },
       select: { productoCode: true, cantidad: true },
+      orderBy: { productoCode: 'asc' },
+    });
+  }
+
+  async listarCapturasDeSesion(sesionId: string): Promise<CapturaGuardada[]> {
+    return this.prisma.conteoItem.findMany({
+      where: { sesionId },
+      select: {
+        productoCode: true,
+        paquetes: true,
+        sueltas: true,
+        cantidad: true,
+        capturadoEn: true,
+        recibidoEn: true,
+      },
       orderBy: { productoCode: 'asc' },
     });
   }

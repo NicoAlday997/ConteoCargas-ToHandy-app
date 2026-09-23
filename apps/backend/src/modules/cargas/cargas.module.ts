@@ -14,6 +14,7 @@ import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
+import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
 import { ProductoConteoRepository } from './application/producto-conteo.repository';
@@ -65,6 +66,12 @@ import { CargasController } from './interface/cargas.controller';
         productos: ProductoConteoRepository,
       ) => new GuardarItemsUseCase(cargas, productos),
       inject: [CargaRepository, ProductoConteoRepository],
+    },
+    {
+      provide: ListarItemsDeSesionUseCase,
+      useFactory: (cargas: CargaRepository) =>
+        new ListarItemsDeSesionUseCase(cargas),
+      inject: [CargaRepository],
     },
     {
       provide: ListarProductosDePlantillaUseCase,

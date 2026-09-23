@@ -375,6 +375,14 @@ model ConteoItem {
   // nunca se recibe del cliente.
   // Int: Handy tiene fractionsInQuantityAllowed en false.
   cantidad     Int
+  // Hora del DISPOSITIVO al capturar (la app puede contar sin conexion). Es el
+  // reloj del cliente: solo tiene sentido junto a `recibidoEn`. La diferencia
+  // entre ambas es la ventana en que el dato vivio solo en el dispositivo.
+  // Nulo si el cliente no la mando.
+  capturadoEn  DateTime?
+  // Cuando el servidor recibio ESTE valor. Un reenvio de la misma captura no
+  // la mueve. Nulo en items anteriores a este campo.
+  recibidoEn   DateTime?
 
   sesion   SesionConteo @relation(fields: [sesionId], references: [id], onDelete: Cascade)
   producto Producto     @relation(fields: [productoCode], references: [code])

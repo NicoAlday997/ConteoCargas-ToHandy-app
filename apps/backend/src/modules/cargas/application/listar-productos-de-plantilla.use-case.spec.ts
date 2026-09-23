@@ -66,6 +66,9 @@ function producto(
 
 /** Doble: solo `buscarEventoPorId`; el resto lanza. */
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   evento: EventoCarga | null = eventoDePrueba();
 
   async buscarEventoPorId(): Promise<EventoCarga | null> {

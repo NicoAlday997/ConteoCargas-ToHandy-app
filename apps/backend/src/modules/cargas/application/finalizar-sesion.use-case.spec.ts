@@ -34,6 +34,9 @@ const AHORA = new Date('2026-09-08T09:00:00-06:00');
 const INICIADA_EN = new Date('2026-09-08T08:00:00-06:00');
 
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly sesiones = new Map<string, SesionConteo>();
   private readonly items = new Map<string, ItemCapturado[]>();
@@ -273,7 +276,14 @@ describe('FinalizarSesionUseCase', () => {
   it('primera sesion cerrada: pasa el evento a EN_ESPERA_CONTADOR', async () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       itemsVendedor: [
-        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+        {
+          productoCode: 'A',
+          paquetes: 0,
+          sueltas: 5,
+          cantidad: 5,
+          capturadoEn: null,
+          recibidoEn: AHORA,
+        },
       ],
     });
 
@@ -294,8 +304,22 @@ describe('FinalizarSesionUseCase', () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       estado: 'EN_ESPERA_CONTADOR',
       itemsVendedor: [
-        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
-        { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
+        {
+          productoCode: 'A',
+          paquetes: 0,
+          sueltas: 5,
+          cantidad: 5,
+          capturadoEn: null,
+          recibidoEn: AHORA,
+        },
+        {
+          productoCode: 'B',
+          paquetes: 0,
+          sueltas: 3,
+          cantidad: 3,
+          capturadoEn: null,
+          recibidoEn: AHORA,
+        },
       ],
     });
     await repo.finalizarSesion(sesionVendedor.id, AHORA);
@@ -306,8 +330,22 @@ describe('FinalizarSesionUseCase', () => {
       'contador-1',
     );
     await repo.guardarItems(sesionContador.id, [
-      { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
-      { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
+      {
+        productoCode: 'A',
+        paquetes: 0,
+        sueltas: 5,
+        cantidad: 5,
+        capturadoEn: null,
+        recibidoEn: AHORA,
+      },
+      {
+        productoCode: 'B',
+        paquetes: 0,
+        sueltas: 3,
+        cantidad: 3,
+        capturadoEn: null,
+        recibidoEn: AHORA,
+      },
     ]);
 
     const resultado = exigirExito(
@@ -329,8 +367,22 @@ describe('FinalizarSesionUseCase', () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       estado: 'EN_ESPERA_CONTADOR',
       itemsVendedor: [
-        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
-        { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
+        {
+          productoCode: 'A',
+          paquetes: 0,
+          sueltas: 5,
+          cantidad: 5,
+          capturadoEn: null,
+          recibidoEn: AHORA,
+        },
+        {
+          productoCode: 'B',
+          paquetes: 0,
+          sueltas: 3,
+          cantidad: 3,
+          capturadoEn: null,
+          recibidoEn: AHORA,
+        },
       ],
     });
     await repo.finalizarSesion(sesionVendedor.id, AHORA);
@@ -341,8 +393,22 @@ describe('FinalizarSesionUseCase', () => {
       'contador-1',
     );
     await repo.guardarItems(sesionContador.id, [
-      { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
-      { productoCode: 'B', paquetes: 0, sueltas: 99, cantidad: 99 },
+      {
+        productoCode: 'A',
+        paquetes: 0,
+        sueltas: 5,
+        cantidad: 5,
+        capturadoEn: null,
+        recibidoEn: AHORA,
+      },
+      {
+        productoCode: 'B',
+        paquetes: 0,
+        sueltas: 99,
+        cantidad: 99,
+        capturadoEn: null,
+        recibidoEn: AHORA,
+      },
     ]);
 
     const resultado = exigirExito(

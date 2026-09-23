@@ -32,6 +32,7 @@ import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from '../application/guardar-items.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
+import { ListarItemsDeSesionUseCase } from '../application/listar-items-de-sesion.use-case';
 import { ListarProductosDePlantillaUseCase } from '../application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
@@ -76,6 +77,7 @@ export class CargasController {
     private readonly iniciarCargaUseCase: IniciarCargaUseCase,
     private readonly abrirSesionUseCase: AbrirSesionUseCase,
     private readonly guardarItemsUseCase: GuardarItemsUseCase,
+    private readonly listarItemsDeSesionUseCase: ListarItemsDeSesionUseCase,
     private readonly listarProductosDePlantillaUseCase: ListarProductosDePlantillaUseCase,
     private readonly finalizarSesionUseCase: FinalizarSesionUseCase,
     private readonly capturarCantidadFinalUseCase: CapturarCantidadFinalUseCase,
@@ -255,6 +257,7 @@ export class CargasController {
       sesionId,
       usuarioAppId: usuario.usuarioAppId,
       items: dto.items,
+      recibidoEn: new Date(),
     });
 
     if (!resultado.exito) {
@@ -274,6 +277,8 @@ export class CargasController {
             statusCode: 404,
             mensaje: 'Alguno de los productos no existe en el catalogo.',
             detalle: `Productos: ${resultado.productos.join(', ')}`,
+            // La app marca como fallidos solo estos productos.
+            productos: resultado.productos,
           });
         case 'FACTOR_NO_CONFIRMADO':
           throw new ConflictException({
@@ -281,12 +286,49 @@ export class CargasController {
             mensaje:
               'Hay productos cuyas piezas por paquete aun no confirma un supervisor. Cuentalos en piezas sueltas o pide que confirmen el factor.',
             detalle: `Productos: ${resultado.productos.join(', ')}`,
+            productos: resultado.productos,
           });
       }
     }
 
     // Convencion docs/04 §1.7: la mutacion devuelve el recurso completo.
     return { sesion: resultado.sesion, items: resultado.items };
+  }
+
+  /**
+   * Lo guardado en la sesion del usuario autenticado, con `capturadoEn` y
+   * `recibidoEn` por item. La app lo usa al reabrir un conteo para reconciliar
+   * su copia local antes de volver a enviar (el PATCH reemplaza todo).
+   */
+  @Get(':id/sesiones/:sesionId/items')
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
+  async itemsDeSesion(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @Param('sesionId', new ZodValidationPipe(IdSchema)) sesionId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    const resultado = await this.listarItemsDeSesionUseCase.ejecutar({
+      eventoId,
+      sesionId,
+      usuarioAppId: usuario.usuarioAppId,
+    });
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'SESION_NO_ENCONTRADA':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'La sesion de conteo no existe.',
+          });
+        case 'SESION_AJENA':
+          throw new ForbiddenException({
+            statusCode: 403,
+            mensaje: 'Solo puedes consultar tu propia sesion de conteo.',
+          });
+      }
+    }
+
+    return { items: resultado.items };
   }
 
   /**

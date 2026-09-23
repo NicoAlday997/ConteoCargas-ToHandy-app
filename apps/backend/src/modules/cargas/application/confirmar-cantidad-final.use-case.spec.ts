@@ -27,6 +27,9 @@ const AHORA = new Date('2026-09-08T11:00:00-06:00');
 const CAPTURADA_EN = new Date('2026-09-08T10:30:00-06:00');
 
 class FakeCargaRepository implements CargaRepository {
+  listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly discrepanciasPorEvento = new Map<string, Discrepancia[]>();
 
