@@ -3,6 +3,13 @@ import type {
   ProductoLocal,
   VendedorHandyLocal,
 } from './catalogo.repository';
+import type {
+  DatosConfirmarFactor,
+  FactorEmpaqueRepository,
+  FactorGuardado,
+  FactorPendiente,
+  FactorProducto,
+} from './factor-empaque.repository';
 import {
   HandyGateway,
   type PaginaHandy,
@@ -80,6 +87,37 @@ class FakeCatalogoRepository implements CatalogoRepository {
   }
 }
 
+/**
+ * Doble de `FactorEmpaqueRepository`: sirve los factores ya guardados que se
+ * le siembran y un conteo fijo de pendientes.
+ */
+class FakeFactorEmpaqueRepository implements FactorEmpaqueRepository {
+  readonly guardados = new Map<string, FactorGuardado>();
+  pendientes = 0;
+
+  async buscarFactores(codes: string[]): Promise<Map<string, FactorGuardado>> {
+    return new Map(
+      codes
+        .filter((c) => this.guardados.has(c))
+        .map((c) => [c, this.guardados.get(c)!]),
+    );
+  }
+
+  async contarPendientes(): Promise<number> {
+    return this.pendientes;
+  }
+
+  listarPendientes(): Promise<FactorPendiente[]> {
+    throw new Error('no usado en estas pruebas');
+  }
+  buscarPorCode(): Promise<FactorProducto | null> {
+    throw new Error('no usado en estas pruebas');
+  }
+  confirmar(_datos: DatosConfirmarFactor): Promise<FactorProducto> {
+    throw new Error('no usado en estas pruebas');
+  }
+}
+
 describe('SincronizarCatalogoUseCase', () => {
   it('recorre las dos paginas y sincroniza todos los productos', async () => {
     const handy = new FakeHandyGateway([
@@ -98,7 +136,11 @@ describe('SincronizarCatalogoUseCase', () => {
       },
     ]);
     const catalogo = new FakeCatalogoRepository();
-    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+    const useCase = new SincronizarCatalogoUseCase(
+      handy,
+      catalogo,
+      new FakeFactorEmpaqueRepository(),
+    );
 
     const resultado = await useCase.ejecutar();
 
@@ -106,6 +148,7 @@ describe('SincronizarCatalogoUseCase', () => {
     expect(resultado).toEqual({
       productosSincronizados: 3,
       paginasProcesadas: 2,
+      factoresPendientesDeConfirmar: 0,
     });
     // Un upsert por pagina, con los productos de esa pagina.
     expect(catalogo.lotesProductos.map((l) => l.map((p) => p.code))).toEqual([
@@ -131,7 +174,11 @@ describe('SincronizarCatalogoUseCase', () => {
       },
     ]);
     const catalogo = new FakeCatalogoRepository();
-    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+    const useCase = new SincronizarCatalogoUseCase(
+      handy,
+      catalogo,
+      new FakeFactorEmpaqueRepository(),
+    );
 
     await useCase.ejecutar();
 
@@ -162,7 +209,11 @@ describe('SincronizarCatalogoUseCase', () => {
       },
     ]);
     const catalogo = new FakeCatalogoRepository();
-    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+    const useCase = new SincronizarCatalogoUseCase(
+      handy,
+      catalogo,
+      new FakeFactorEmpaqueRepository(),
+    );
 
     await useCase.ejecutar();
 
@@ -176,6 +227,8 @@ describe('SincronizarCatalogoUseCase', () => {
       familia: 'Bebidas',
       activo: false, // enabled: false => activo: false, sin eliminar
       lastUpdatedHandy: new Date('2026-08-20T12:30:00.000Z'),
+      // "Refresco 600ml" no trae patron de empaque.
+      piezasPorPaquetePropuesto: null,
     });
   });
 
@@ -197,7 +250,11 @@ describe('SincronizarCatalogoUseCase', () => {
       },
     ]);
     const catalogo = new FakeCatalogoRepository();
-    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+    const useCase = new SincronizarCatalogoUseCase(
+      handy,
+      catalogo,
+      new FakeFactorEmpaqueRepository(),
+    );
 
     await useCase.ejecutar();
 
@@ -216,7 +273,11 @@ describe('SincronizarCatalogoUseCase', () => {
       },
     ]);
     const catalogo = new FakeCatalogoRepository();
-    const useCase = new SincronizarCatalogoUseCase(handy, catalogo);
+    const useCase = new SincronizarCatalogoUseCase(
+      handy,
+      catalogo,
+      new FakeFactorEmpaqueRepository(),
+    );
 
     const resultado = await useCase.ejecutar();
 
@@ -224,6 +285,111 @@ describe('SincronizarCatalogoUseCase', () => {
     expect(resultado).toEqual({
       productosSincronizados: 1,
       paginasProcesadas: 1,
+      factoresPendientesDeConfirmar: 0,
+    });
+  });
+  describe('factor de empaque', () => {
+    function unaPagina(
+      ...items: ProductoHandy[]
+    ): PaginaHandy<ProductoHandy>[] {
+      return [{ items, totalPaginas: 1, totalRegistros: items.length }];
+    }
+
+    async function sincronizar(
+      items: ProductoHandy[],
+      factores = new FakeFactorEmpaqueRepository(),
+    ) {
+      const catalogo = new FakeCatalogoRepository();
+      const useCase = new SincronizarCatalogoUseCase(
+        new FakeHandyGateway(unaPagina(...items)),
+        catalogo,
+        factores,
+      );
+      const resultado = await useCase.ejecutar();
+      const propuestos = new Map(
+        catalogo.lotesProductos
+          .flat()
+          .map((p) => [p.code, p.piezasPorPaquetePropuesto]),
+      );
+      return { resultado, propuestos };
+    }
+
+    it('propone el factor del nombre para un producto nuevo', async () => {
+      const { propuestos } = await sincronizar([
+        productoHandy({ code: 'P-1', description: 'PEPSI 1.5 LT C/12' }),
+        productoHandy({ code: 'P-2', description: 'CANELS. c/70' }),
+      ]);
+
+      expect(propuestos.get('P-1')).toBe(12);
+      expect(propuestos.get('P-2')).toBe(70);
+    });
+
+    it('propone el factor para un producto existente sin factor guardado', async () => {
+      const factores = new FakeFactorEmpaqueRepository();
+      factores.guardados.set('P-1', {
+        piezasPorPaquete: null,
+        factorConfirmado: false,
+      });
+
+      const { propuestos } = await sincronizar(
+        [
+          productoHandy({
+            code: 'P-1',
+            description: 'BIG COLA 3.000 LT C / 6',
+          }),
+        ],
+        factores,
+      );
+
+      expect(propuestos.get('P-1')).toBe(6);
+    });
+
+    it('no propone nada si el nombre no trae patron', async () => {
+      const { propuestos } = await sincronizar([
+        productoHandy({ code: 'P-1', description: 'BLUE RIVERS' }),
+      ]);
+
+      expect(propuestos.get('P-1')).toBeNull();
+    });
+
+    it('no toca un factor confirmado aunque el nombre cambie', async () => {
+      const factores = new FakeFactorEmpaqueRepository();
+      factores.guardados.set('P-1', {
+        piezasPorPaquete: 12,
+        factorConfirmado: true,
+      });
+
+      const { propuestos } = await sincronizar(
+        // Handy renombro el producto a C/24: la confirmacion humana manda.
+        [productoHandy({ code: 'P-1', description: 'PEPSI 1.5 LT C/24' })],
+        factores,
+      );
+
+      expect(propuestos.get('P-1')).toBeNull();
+    });
+
+    it('no reemplaza una propuesta previa sin confirmar', async () => {
+      const factores = new FakeFactorEmpaqueRepository();
+      factores.guardados.set('P-1', {
+        piezasPorPaquete: 12,
+        factorConfirmado: false,
+      });
+
+      const { propuestos } = await sincronizar(
+        [productoHandy({ code: 'P-1', description: 'PEPSI 1.5 LT C/24' })],
+        factores,
+      );
+
+      expect(propuestos.get('P-1')).toBeNull();
+    });
+
+    it('devuelve cuantos productos quedaron pendientes de confirmar', async () => {
+      const factores = new FakeFactorEmpaqueRepository();
+      factores.pendientes = 37;
+
+      const { resultado } = await sincronizar([productoHandy()], factores);
+
+      expect(resultado.factoresPendientesDeConfirmar).toBe(37);
     });
   });
 });

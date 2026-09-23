@@ -28,6 +28,14 @@ export interface ProductoLocal {
   activo: boolean;
   /** `lastUpdated` de Handy ya interpretado como instante, o `null`. */
   lastUpdatedHandy: Date | null;
+  /**
+   * Factor de empaque propuesto desde el nombre, que se guarda SIN confirmar.
+   * `null` significa "no proponer nada": el adaptador no toca el factor
+   * guardado. El caso de uso solo lo llena cuando el producto aun no tiene
+   * factor; aun asi, el adaptador nunca lo aplica sobre un factor ya guardado
+   * o confirmado (p. ej. si un supervisor confirmo durante la sincronizacion).
+   */
+  piezasPorPaquetePropuesto: number | null;
 }
 
 /**

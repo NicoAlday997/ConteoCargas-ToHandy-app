@@ -166,6 +166,7 @@ model UsuarioApp {
   alertasResueltas            Alerta[]                       @relation("AlertaResueltaPor")
   dispositivosPush            DispositivoPush[]
   cargasAutorizadas           EventoCarga[]                  @relation("EventoCargaAutorizadaPor")
+  factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -219,12 +220,27 @@ model Producto {
   lastUpdatedHandy          DateTime?
   ultimaSincronizacionLocal DateTime  @default(now())
 
+  // Factor de empaque: en bodega se cuentan PAQUETES, Handy registra PIEZAS.
+  // Handy no tiene campo para este dato (confirmado con soporte): vive aqui.
+  // La sincronizacion lo PROPONE desde el nombre ("PEPSI 1.5 LT C/12" -> 12)
+  // con factorConfirmado = false; un factor equivocado corrompe en silencio
+  // todos los conteos del producto (el doble conteo no lo detecta porque
+  // ambos usan el mismo factor), asi que no se usa hasta que un supervisor lo
+  // confirma. Una vez confirmado, la sincronizacion ya no lo toca.
+  piezasPorPaquete        Int?
+  factorConfirmado        Boolean   @default(false)
+  factorConfirmadoPorId   String?
+  fechaConfirmacionFactor DateTime?
+
+  factorConfirmadoPor UsuarioApp? @relation("FactorConfirmadoPor", fields: [factorConfirmadoPorId], references: [id])
+
   frecuencias        FrecuenciaProductoRuta[]
   conteoItems        ConteoItem[]
   discrepancias      DiscrepanciaResuelta[]
   revisiones         RevisionSupervisor[]
   plantillaProductos PlantillaProducto[]
 
+  @@index([factorConfirmadoPorId])
   @@map("productos")
 }
 

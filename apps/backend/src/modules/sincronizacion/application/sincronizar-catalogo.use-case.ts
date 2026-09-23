@@ -1,6 +1,11 @@
+import { extraerFactorDeNombre } from '../domain/factor-empaque';
 import { desdeIsoHandy } from '../domain/fecha-handy';
 import { aCentavos } from '../domain/precio';
 import { CatalogoRepository, type ProductoLocal } from './catalogo.repository';
+import {
+  FactorEmpaqueRepository,
+  type FactorGuardado,
+} from './factor-empaque.repository';
 import {
   HandyGateway,
   PRIMERA_PAGINA_HANDY,
@@ -11,6 +16,11 @@ import {
 export interface ResultadoSincronizarCatalogo {
   productosSincronizados: number;
   paginasProcesadas: number;
+  /**
+   * Productos activos cuyo factor de empaque aun no confirma un supervisor
+   * (incluye los que no traen factor en el nombre y hay que capturar a mano).
+   */
+  factoresPendientesDeConfirmar: number;
 }
 
 /**
@@ -22,11 +32,18 @@ export interface ResultadoSincronizarCatalogo {
  * Recorre TODAS las paginas de Handy (`max=100` por pagina) hasta agotar
  * `totalPaginas`, convierte cada producto al formato local y lo entrega al
  * repositorio en bloques de una pagina.
+ *
+ * Factor de empaque: a un producto SIN factor guardado se le propone el que
+ * trae su nombre ("C/12" -> 12), sin confirmar. Un factor ya guardado no se
+ * toca aunque el nombre cambie: si esta confirmado, la confirmacion humana
+ * manda sobre la extraccion automatica; si solo esta propuesto, sigue a la
+ * espera de que un supervisor lo revise.
  */
 export class SincronizarCatalogoUseCase {
   constructor(
     private readonly handy: HandyGateway,
     private readonly catalogo: CatalogoRepository,
+    private readonly factores: FactorEmpaqueRepository,
   ) {}
 
   async ejecutar(): Promise<ResultadoSincronizarCatalogo> {
@@ -40,7 +57,12 @@ export class SincronizarCatalogoUseCase {
       const respuesta = await this.handy.listarProductos(pagina);
       totalPaginas = respuesta.totalPaginas;
 
-      const locales = respuesta.items.map((p) => this.aProductoLocal(p));
+      const guardados = await this.factores.buscarFactores(
+        respuesta.items.map((p) => p.code),
+      );
+      const locales = respuesta.items.map((p) =>
+        this.aProductoLocal(p, guardados.get(p.code)),
+      );
       await this.catalogo.upsertProductos(locales);
 
       productosSincronizados += locales.length;
@@ -48,10 +70,25 @@ export class SincronizarCatalogoUseCase {
       pagina += 1;
     } while (pagina <= totalPaginas);
 
-    return { productosSincronizados, paginasProcesadas };
+    const factoresPendientesDeConfirmar =
+      await this.factores.contarPendientes();
+
+    return {
+      productosSincronizados,
+      paginasProcesadas,
+      factoresPendientesDeConfirmar,
+    };
   }
 
-  private aProductoLocal(producto: ProductoHandy): ProductoLocal {
+  private aProductoLocal(
+    producto: ProductoHandy,
+    factorGuardado: FactorGuardado | undefined,
+  ): ProductoLocal {
+    const sinFactorGuardado =
+      factorGuardado === undefined ||
+      (factorGuardado.piezasPorPaquete === null &&
+        !factorGuardado.factorConfirmado);
+
     return {
       code: producto.code,
       nombre: producto.description,
@@ -66,6 +103,9 @@ export class SincronizarCatalogoUseCase {
       activo: producto.enabled,
       lastUpdatedHandy: producto.lastUpdated
         ? desdeIsoHandy(producto.lastUpdated)
+        : null,
+      piezasPorPaquetePropuesto: sinFactorGuardado
+        ? extraerFactorDeNombre(producto.description)
         : null,
     };
   }

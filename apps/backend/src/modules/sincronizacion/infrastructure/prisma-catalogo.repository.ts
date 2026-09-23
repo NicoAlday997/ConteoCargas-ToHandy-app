@@ -28,36 +28,57 @@ export class PrismaCatalogoRepository extends CatalogoRepository {
     }
     const sincronizadoEn = new Date();
 
-    await this.prisma.$transaction(
-      productos.map((p) =>
-        this.prisma.producto.upsert({
-          where: { code: p.code },
-          create: {
-            code: p.code,
-            nombre: p.nombre,
-            precioCentavos: p.precioCentavos,
-            unidadCode: p.unidadCode,
-            unidadDescripcion: p.unidadDescripcion,
-            familia: p.familia,
-            activo: p.activo,
-            lastUpdatedHandy: p.lastUpdatedHandy,
-            ultimaSincronizacionLocal: sincronizadoEn,
-          },
-          update: {
-            nombre: p.nombre,
-            precioCentavos: p.precioCentavos,
-            unidadCode: p.unidadCode,
-            unidadDescripcion: p.unidadDescripcion,
-            familia: p.familia,
-            // Un producto que dejo de estar habilitado en Handy queda con
-            // `activo = false`; el registro NO se elimina.
-            activo: p.activo,
-            lastUpdatedHandy: p.lastUpdatedHandy,
-            ultimaSincronizacionLocal: sincronizadoEn,
-          },
-        }),
-      ),
+    const upserts = productos.map((p) =>
+      this.prisma.producto.upsert({
+        where: { code: p.code },
+        create: {
+          code: p.code,
+          nombre: p.nombre,
+          precioCentavos: p.precioCentavos,
+          unidadCode: p.unidadCode,
+          unidadDescripcion: p.unidadDescripcion,
+          familia: p.familia,
+          activo: p.activo,
+          lastUpdatedHandy: p.lastUpdatedHandy,
+          ultimaSincronizacionLocal: sincronizadoEn,
+          // Producto nuevo: el factor nace propuesto, nunca confirmado.
+          piezasPorPaquete: p.piezasPorPaquetePropuesto,
+          factorConfirmado: false,
+        },
+        // El factor de empaque NO se actualiza aqui: ver `propuestas`.
+        update: {
+          nombre: p.nombre,
+          precioCentavos: p.precioCentavos,
+          unidadCode: p.unidadCode,
+          unidadDescripcion: p.unidadDescripcion,
+          familia: p.familia,
+          // Un producto que dejo de estar habilitado en Handy queda con
+          // `activo = false`; el registro NO se elimina.
+          activo: p.activo,
+          lastUpdatedHandy: p.lastUpdatedHandy,
+          ultimaSincronizacionLocal: sincronizadoEn,
+        },
+      }),
     );
+
+    // Propuesta de factor para productos existentes. El `where` repite en la
+    // base la regla del caso de uso (solo si no hay factor guardado ni
+    // confirmado) para que una confirmacion hecha por un supervisor mientras
+    // corre la sincronizacion nunca se pise.
+    const propuestas = productos
+      .filter((p) => p.piezasPorPaquetePropuesto !== null)
+      .map((p) =>
+        this.prisma.producto.updateMany({
+          where: {
+            code: p.code,
+            piezasPorPaquete: null,
+            factorConfirmado: false,
+          },
+          data: { piezasPorPaquete: p.piezasPorPaquetePropuesto },
+        }),
+      );
+
+    await this.prisma.$transaction([...upserts, ...propuestas]);
   }
 
   async upsertVendedores(vendedores: VendedorHandyLocal[]): Promise<void> {

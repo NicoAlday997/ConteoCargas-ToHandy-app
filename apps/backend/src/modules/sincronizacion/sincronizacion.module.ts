@@ -2,11 +2,14 @@ import { Module } from '@nestjs/common';
 
 import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
 import { CatalogoRepository } from './application/catalogo.repository';
+import { ConfirmarFactorEmpaqueUseCase } from './application/confirmar-factor-empaque.use-case';
+import { FactorEmpaqueRepository } from './application/factor-empaque.repository';
 import { HandyGateway } from './application/handy.gateway';
 import { SincronizarCatalogoUseCase } from './application/sincronizar-catalogo.use-case';
 import { SincronizarVendedoresUseCase } from './application/sincronizar-vendedores.use-case';
 import { HandyHttpGateway } from './infrastructure/handy-http.gateway';
 import { PrismaCatalogoRepository } from './infrastructure/prisma-catalogo.repository';
+import { PrismaFactorEmpaqueRepository } from './infrastructure/prisma-factor-empaque.repository';
 import { SincronizacionController } from './interface/sincronizacion.controller';
 
 @Module({
@@ -19,19 +22,32 @@ import { SincronizacionController } from './interface/sincronizacion.controller'
     // aplicacion solo conocen los puertos abstractos.
     { provide: HandyGateway, useClass: HandyHttpGateway },
     { provide: CatalogoRepository, useClass: PrismaCatalogoRepository },
+    {
+      provide: FactorEmpaqueRepository,
+      useClass: PrismaFactorEmpaqueRepository,
+    },
     // Los casos de uso son clases planas (sin @Injectable): se construyen a mano
     // inyectando los puertos ya resueltos.
     {
       provide: SincronizarCatalogoUseCase,
-      useFactory: (handy: HandyGateway, catalogo: CatalogoRepository) =>
-        new SincronizarCatalogoUseCase(handy, catalogo),
-      inject: [HandyGateway, CatalogoRepository],
+      useFactory: (
+        handy: HandyGateway,
+        catalogo: CatalogoRepository,
+        factores: FactorEmpaqueRepository,
+      ) => new SincronizarCatalogoUseCase(handy, catalogo, factores),
+      inject: [HandyGateway, CatalogoRepository, FactorEmpaqueRepository],
     },
     {
       provide: SincronizarVendedoresUseCase,
       useFactory: (handy: HandyGateway, catalogo: CatalogoRepository) =>
         new SincronizarVendedoresUseCase(handy, catalogo),
       inject: [HandyGateway, CatalogoRepository],
+    },
+    {
+      provide: ConfirmarFactorEmpaqueUseCase,
+      useFactory: (factores: FactorEmpaqueRepository) =>
+        new ConfirmarFactorEmpaqueUseCase(factores),
+      inject: [FactorEmpaqueRepository],
     },
   ],
   // `HandyGateway` se reexporta para que otros modulos (p. ej. `CargasModule`,

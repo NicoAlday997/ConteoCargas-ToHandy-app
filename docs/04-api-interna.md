@@ -49,6 +49,10 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 | GET | `/productos?ruta=&q=` | Vendedor, Contador, Supervisor | Catálogo activo, ordenado por frecuencia de uso de la ruta indicada; `q` filtra por búsqueda de texto. |
 | POST | `/admin/sincronizacion/productos` | Supervisor (admin) | Fuerza sincronización completa del catálogo. |
 | POST | `/admin/sincronizacion/usuarios-handy` | Supervisor (admin) | Fuerza sincronización de usuarios vendedores. |
+| GET | `/admin/sincronizacion/factores-pendientes` | Supervisor (admin) | Productos activos sin factor de empaque confirmado: `[{ code, nombre, familia, piezasPorPaqueteSugerido }]`. El sugerido sale del nombre (`C/12`, `X 12`, `12 pack`) o es `null` si hay que capturarlo. |
+| PATCH | `/admin/sincronizacion/productos/:code/factor` | Supervisor (admin) | Confirma o corrige las piezas por paquete. Body: `{ piezasPorPaquete }` (entero 1–500). Guarda quién y cuándo; desde ahí la sincronización ya no lo modifica. |
+
+`POST /admin/sincronizacion/productos` devuelve además `factoresPendientesDeConfirmar`: cuántos productos activos siguen sin factor confirmado.
 
 ### 1.4 Cargas (inicial y recarga)
 
