@@ -34,6 +34,9 @@ class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
     throw new Error('no usado en esta prueba');
   }
+  buscarCargaInicialDeFecha(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly discrepanciasPorEvento = new Map<string, Discrepancia[]>();
 
@@ -187,6 +190,7 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     usuarioHandyId: 42,
     estado: 'CONFLICTOS_PENDIENTES',
     fechaConteo: AHORA,
+    fechaOperativa: AHORA,
     autorizadaPorId: null,
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,

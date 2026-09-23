@@ -22,6 +22,8 @@ export interface CargaHistorial {
   rutaNombre: string;
   tipo: TipoCarga;
   estado: EstadoCarga;
+  /** Dia para el que sale el camion; el historial se organiza por esta fecha. */
+  fechaOperativa: Date;
   fechaConteo: Date | null;
   /** `null` si esa sesion (vendedor o contador) aun no existe para el evento. */
   vendedorNombre: string | null;
@@ -42,6 +44,12 @@ export interface CargaHistorial {
  */
 export interface FiltrosHistorial {
   rutaId?: string;
+  /**
+   * Solo cargas donde este usuario hizo el conteo del vendedor. Sale de la
+   * politica de alcance (`alcanceHistorial`), nunca del cliente.
+   */
+  vendedorUsuarioAppId?: string;
+  /** Rango sobre `fechaOperativa`, inclusivo en ambos extremos. */
   fechaInicio?: Date;
   fechaFin?: Date;
   estado?: EstadoCarga;
@@ -91,6 +99,7 @@ export interface EventoConsolidado {
   rutaNombre: string;
   tipo: TipoCarga;
   estado: EstadoCarga;
+  fechaOperativa: Date;
   fechaConteo: Date | null;
   vendedorNombre: string | null;
   contadorNombre: string | null;
@@ -105,6 +114,11 @@ export interface EventoConsolidado {
 export interface CargaConsolidada {
   evento: EventoConsolidado;
   productos: ProductoConsolidado[];
+  /**
+   * Quien hizo el conteo del vendedor (`null` si aun no hay esa sesion). Solo
+   * para decidir el alcance; no se expone en la respuesta.
+   */
+  vendedorUsuarioAppId: string | null;
 }
 
 // ---------------------------------------------------------------------------

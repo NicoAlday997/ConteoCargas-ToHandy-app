@@ -118,7 +118,8 @@ Evento_Carga
 - estado: BORRADOR → EN_ESPERA_CONTADOR → [BLOQUEADA_CORTE_PENDIENTE]
           → EN_COMPARACION → CONFLICTOS_PENDIENTES → LISTA_PARA_ENVIAR
           → ENVIADA | ERROR_ENVIO | ENVIO_INCIERTO
-- fecha_conteo, fecha_bloqueo_corte_pendiente, fecha_desbloqueo
+- fecha_conteo (cuándo se contó), fecha_operativa (día para el que sale el camión, inicio del día en America/Mexico_City; única por ruta cuando tipo = INICIAL)
+- fecha_bloqueo_corte_pendiente, fecha_desbloqueo
 - fecha_programada_envio, fecha_envio_real, id_handy (tras éxito)
 
 Sesion_Conteo

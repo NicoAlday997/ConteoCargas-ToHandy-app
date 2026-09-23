@@ -58,7 +58,7 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| POST | `/eventos-carga` | Vendedor | Inicia un evento de carga. Body: `{ tipo: INICIAL\|RECARGA }`. En `RECARGA`, el backend obtiene automáticamente el catálogo ya cargado ese día. |
+| POST | `/eventos-carga` | Vendedor | Inicia un evento de carga. Body: `{ tipo: INICIAL\|RECARGA, fechaOperativa: "aaaa-mm-dd" }`. `fechaOperativa` es el día para el que sale el camión (distinto de `fechaConteo`); la app propone hoy antes de las 12:00 y mañana después (hora de México), pero el usuario decide. **400** `FECHA_OPERATIVA_INVALIDA` si es un día pasado. Solo puede haber **una** carga `INICIAL` por ruta y `fechaOperativa` (en cualquier estado); una segunda responde **409** `YA_TIENE_CARGA_ABIERTA` con `eventoId` de la existente para que la app ofrezca continuarla. Las `RECARGA` pueden ser varias por día. En `RECARGA`, el backend obtiene automáticamente el catálogo ya cargado ese día. |
 | POST | `/eventos-carga/:id/sesiones` | Vendedor, Contador | Inicia la sesión de conteo del usuario autenticado sobre ese evento. Body (solo recarga, segundo conteo): `{ ubicacion: ALMACEN\|CALLE }`. |
 | GET | `/eventos-carga/:id/productos` | Vendedor, Contador, Supervisor | Productos para el grid de conteo: los activos de la plantilla snapshot del evento (o el catálogo activo completo si no tiene plantilla). Respuesta: `{ plantillaId, familias: [{ familia, productos: [{ code, nombre, unidadCode, familia, piezasPorPaquete, factorConfirmado }] }] }`, familias en orden alfabético (sin familia al final) y productos por nombre. |
 | PATCH | `/eventos-carga/:id/sesiones/:sesionId/items` | Vendedor, Contador (dueño de la sesión) | Guarda/actualiza lo contado (reemplazo total). Body: `{ items: [{ productoCode, paquetes, sueltas, capturadoEn? }] }`; `cantidad` (total en piezas) la calcula el backend y se rechaza si llega. `capturadoEn` (ISO 8601, opcional) es la hora del dispositivo al capturar —la app cuenta sin conexión—; se guarda junto a `recibidoEn` (hora de llegada al servidor), que no cambia si el item llega idéntico en un reenvío. Responde cada item con `paquetes`, `sueltas`, `cantidad`, `capturadoEn`, `recibidoEn` y `sueltasExcedenPaquete`. 409 si se mandan paquetes de un producto sin factor confirmado y 404 si un producto no existe; ambos traen `productos: [codigos]` con los afectados. |
@@ -76,8 +76,8 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | `/historial?ruta=&fechaInicio=&fechaFin=&discrepancia=&verificado=` | Supervisor | Listado filtrable de cargas comparadas. |
-| GET | `/historial/:id` | Supervisor | Detalle completo, producto por producto. |
+| GET | `/historial?rutaId=&fechaInicio=&fechaFin=&estado=&conDiscrepancia=&tipo=&page=&pageSize=` | Vendedor, Contador, Supervisor | Listado filtrable, ordenado por `fechaOperativa` (las fechas filtran sobre ella). Alcance por rol, decidido desde el JWT y nunca por parámetros: Vendedor solo las cargas que él contó, Contador las de todos; ambos hasta 14 días atrás (una `fechaInicio` anterior se ignora). Supervisor: todo, sin límite. |
+| GET | `/historial/:id` | Vendedor, Contador, Supervisor | Detalle completo, producto por producto. Mismo alcance que el listado: una carga fuera de él responde **403** `FUERA_DE_ALCANCE`. |
 | PATCH | `/historial/:id/evidencia-externa` | Supervisor | Body: `{ evidenciaExterna: string }`. |
 | POST | `/historial/:id/revision-supervisor` | Supervisor | Inicia la revisión tipo stepper. |
 | POST | `/historial/:id/revision-supervisor/:productoCode` | Supervisor | Body: `{ resultado: CORRECTO\|INCORRECTO, cantidadRealEncontrada? }`. |

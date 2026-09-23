@@ -37,6 +37,9 @@ class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
     throw new Error('no usado en esta prueba');
   }
+  buscarCargaInicialDeFecha(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly sesiones = new Map<string, SesionConteo>();
   private readonly items = new Map<string, ItemCapturado[]>();
@@ -61,6 +64,7 @@ class FakeCargaRepository implements CargaRepository {
       usuarioHandyId: datos.usuarioHandyId,
       estado: 'BORRADOR',
       fechaConteo: datos.fechaConteo,
+      fechaOperativa: datos.fechaOperativa,
       autorizadaPorId: null,
       fechaAutorizacion: null,
       fechaBloqueoCortePendiente: null,
@@ -220,6 +224,7 @@ async function sembrarEvento(
     usuarioHandyId: 42,
     tipoOperacion: 'AUTOVENTA',
     fechaConteo: AHORA,
+    fechaOperativa: AHORA,
   });
   const sesionVendedor = await repo.crearSesion(
     evento.id,

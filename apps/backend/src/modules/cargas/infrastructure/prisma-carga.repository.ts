@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type {
   EstadoCarga,
   EventoCarga as EventoCargaRow,
@@ -10,6 +11,7 @@ import type {
 
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
+  CargaInicialDuplicadaError,
   CargaRepository,
   type DatosActualizarDiscrepancia,
   type DatosCrearEvento,
@@ -39,6 +41,22 @@ export class PrismaCargaRepository extends CargaRepository {
   }
 
   async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
+    try {
+      return await this.insertarEvento(datos);
+    } catch (error) {
+      // P2002 = violacion de unicidad. En `eventos_carga` solo puede venir del
+      // indice parcial "una INICIAL por ruta y fecha operativa".
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new CargaInicialDuplicadaError();
+      }
+      throw error;
+    }
+  }
+
+  private async insertarEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
     const row = await this.prisma.eventoCarga.create({
       data: {
         // `rutaId`, `plantillaId` y `tipoOperacion` son SNAPSHOT del momento:
@@ -50,6 +68,7 @@ export class PrismaCargaRepository extends CargaRepository {
         tipo: datos.tipo,
         usuarioHandyId: datos.usuarioHandyId,
         fechaConteo: datos.fechaConteo,
+        fechaOperativa: datos.fechaOperativa,
         // `estado` se queda en el default `BORRADOR` del esquema.
       },
     });
@@ -58,6 +77,18 @@ export class PrismaCargaRepository extends CargaRepository {
 
   async buscarEventoPorId(id: string): Promise<EventoCarga | null> {
     const row = await this.prisma.eventoCarga.findUnique({ where: { id } });
+    return row === null ? null : this.aEventoCarga(row);
+  }
+
+  async buscarCargaInicialDeFecha(
+    rutaId: string,
+    fechaOperativa: Date,
+  ): Promise<EventoCarga | null> {
+    // No existe un estado "cancelada": cualquier INICIAL de ese dia cuenta.
+    const row = await this.prisma.eventoCarga.findFirst({
+      where: { rutaId, fechaOperativa, tipo: 'INICIAL' },
+      orderBy: { creadoEn: 'asc' },
+    });
     return row === null ? null : this.aEventoCarga(row);
   }
 
@@ -322,6 +353,7 @@ export class PrismaCargaRepository extends CargaRepository {
       usuarioHandyId: row.usuarioHandyId,
       estado: row.estado,
       fechaConteo: row.fechaConteo,
+      fechaOperativa: row.fechaOperativa,
       autorizadaPorId: row.autorizadaPorId,
       fechaAutorizacion: row.fechaAutorizacion,
       fechaBloqueoCortePendiente: row.fechaBloqueoCortePendiente,

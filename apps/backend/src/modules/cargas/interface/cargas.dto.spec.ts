@@ -1,4 +1,4 @@
-import { GuardarItemsSchema } from './cargas.dto';
+import { GuardarItemsSchema, IniciarCargaSchema } from './cargas.dto';
 
 /**
  * Pruebas del body de `PATCH /eventos-carga/:id/sesiones/:sesionId/items`:
@@ -96,5 +96,31 @@ describe('GuardarItemsSchema', () => {
     });
 
     expect(resultado.success).toBe(false);
+  });
+});
+
+describe('IniciarCargaSchema', () => {
+  it('convierte fechaOperativa aaaa-mm-dd al inicio de ese dia en Mexico', () => {
+    const resultado = IniciarCargaSchema.safeParse({
+      tipo: 'INICIAL',
+      fechaOperativa: '2026-09-24',
+    });
+
+    expect(resultado.data).toEqual({
+      tipo: 'INICIAL',
+      fechaOperativa: new Date('2026-09-24T00:00:00-06:00'),
+    });
+  });
+
+  it('exige fechaOperativa', () => {
+    expect(IniciarCargaSchema.safeParse({ tipo: 'INICIAL' }).success).toBe(false);
+  });
+
+  it('rechaza formatos distintos de aaaa-mm-dd y dias inexistentes', () => {
+    for (const fechaOperativa of ['24/09/2026', '2026-09-24T10:00:00Z', '2026-02-30']) {
+      expect(
+        IniciarCargaSchema.safeParse({ tipo: 'INICIAL', fechaOperativa }).success,
+      ).toBe(false);
+    }
   });
 });

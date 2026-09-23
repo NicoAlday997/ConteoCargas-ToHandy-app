@@ -30,6 +30,9 @@ class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
     throw new Error('no usado en esta prueba');
   }
+  buscarCargaInicialDeFecha(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
 
   readonly bloqueos: Array<{ eventoId: string; ahora: Date }> = [];
@@ -147,6 +150,7 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     usuarioHandyId: USUARIO_HANDY_ID,
     estado: 'EN_ESPERA_CONTADOR',
     fechaConteo: AHORA,
+    fechaOperativa: AHORA,
     autorizadaPorId: null,
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,

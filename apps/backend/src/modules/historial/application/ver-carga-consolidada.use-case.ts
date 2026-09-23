@@ -1,3 +1,8 @@
+import {
+  alcanceHistorial,
+  cargaDentroDeAlcance,
+} from '../domain/politica-historial';
+import type { SolicitanteHistorial } from './consultar-historial.use-case';
 import type {
   EventoConsolidado,
   HistorialRepository,
@@ -5,8 +10,9 @@ import type {
 } from './historial.repository';
 
 /**
- * Caso de uso: arma la vista de detalle de una carga para el supervisor
- * (RF-23, docs/04 `GET /historial/:id`).
+ * Caso de uso: arma la vista de detalle de una carga (RF-23, docs/04
+ * `GET /historial/:id`). Respeta el mismo alcance por rol que el listado
+ * (`alcanceHistorial`): una carga fuera de el es `FUERA_DE_ALCANCE`.
  *
  * El puerto devuelve los productos en una lista plana; agruparlos por familia
  * (Dulces, Cigarros, Bebidas, etc.) es responsabilidad de este caso de uso, no
@@ -30,15 +36,33 @@ export interface FamiliaConsolidada {
 
 export type ResultadoVerCargaConsolidada =
   | { exito: true; evento: EventoConsolidado; familias: FamiliaConsolidada[] }
-  | { exito: false; motivo: 'CARGA_NO_ENCONTRADA' };
+  | { exito: false; motivo: 'CARGA_NO_ENCONTRADA' | 'FUERA_DE_ALCANCE' };
 
 export class VerCargaConsolidadaUseCase {
   constructor(private readonly historial: HistorialRepository) {}
 
-  async ejecutar(eventoId: string): Promise<ResultadoVerCargaConsolidada> {
+  async ejecutar(
+    eventoId: string,
+    solicitante: SolicitanteHistorial,
+    ahora: Date,
+  ): Promise<ResultadoVerCargaConsolidada> {
     const consolidada = await this.historial.obtenerCargaConsolidada(eventoId);
     if (consolidada === null) {
       return { exito: false, motivo: 'CARGA_NO_ENCONTRADA' };
+    }
+
+    const alcance = alcanceHistorial(
+      solicitante.rolApp,
+      solicitante.usuarioAppId,
+      ahora,
+    );
+    if (
+      !cargaDentroDeAlcance(alcance, {
+        vendedorUsuarioAppId: consolidada.vendedorUsuarioAppId,
+        fechaOperativa: consolidada.evento.fechaOperativa,
+      })
+    ) {
+      return { exito: false, motivo: 'FUERA_DE_ALCANCE' };
     }
 
     return {

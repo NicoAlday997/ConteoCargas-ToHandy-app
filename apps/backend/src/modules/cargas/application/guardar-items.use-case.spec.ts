@@ -78,6 +78,9 @@ class FakeCargaRepository implements CargaRepository {
   buscarEventoPorId(): Promise<EventoCarga | null> {
     throw new Error('no usado en esta prueba');
   }
+  buscarCargaInicialDeFecha(): Promise<EventoCarga | null> {
+    throw new Error('no usado en esta prueba');
+  }
   cambiarEstado(): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
   }

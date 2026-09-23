@@ -40,6 +40,7 @@ function eventoDePrueba(overrides: Partial<EventoCarga> = {}): EventoCarga {
     usuarioHandyId: 42,
     estado: 'EN_ESPERA_CONTADOR',
     fechaConteo: AHORA,
+    fechaOperativa: AHORA,
     autorizadaPorId: null,
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
@@ -67,6 +68,9 @@ function producto(
 /** Doble: solo `buscarEventoPorId`; el resto lanza. */
 class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
+  buscarCargaInicialDeFecha(): never {
     throw new Error('no usado en esta prueba');
   }
   evento: EventoCarga | null = eventoDePrueba();

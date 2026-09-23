@@ -34,6 +34,8 @@ export interface EventoCarga {
   usuarioHandyId: number;
   estado: EstadoCarga;
   fechaConteo: Date | null;
+  /** Dia para el que sale el camion, al inicio del dia en zona del negocio. */
+  fechaOperativa: Date;
   /** Id del supervisor que autorizo el envio (EN_ESPERA_AUTORIZACION -> LISTA_PARA_ENVIAR). */
   autorizadaPorId: string | null;
   fechaAutorizacion: Date | null;
@@ -99,6 +101,21 @@ export interface DatosCrearEvento {
   tipoOperacion: TipoOperacion;
   /** Momento de negocio en que arranca el conteo. */
   fechaConteo: Date;
+  /** Dia para el que sale el camion, ya normalizado (`normalizarFechaOperativa`). */
+  fechaOperativa: Date;
+}
+
+/**
+ * Lo lanza `crearEvento` cuando la base de datos rechaza una segunda carga
+ * INICIAL para la misma ruta y fecha operativa (indice unico parcial). Cubre la
+ * carrera entre dos solicitudes simultaneas que pasaron la consulta previa de
+ * `buscarCargaInicialDeFecha`.
+ */
+export class CargaInicialDuplicadaError extends Error {
+  constructor() {
+    super('Ya existe una carga INICIAL para esa ruta y fecha operativa');
+    this.name = 'CargaInicialDuplicadaError';
+  }
 }
 
 /**
@@ -173,10 +190,22 @@ export interface DatosReabrirDiscrepancia {
 // ---------------------------------------------------------------------------
 
 export abstract class CargaRepository {
-  /** Crea un `EventoCarga` en estado `BORRADOR` y lo devuelve. */
+  /**
+   * Crea un `EventoCarga` en estado `BORRADOR` y lo devuelve. Lanza
+   * `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y fecha.
+   */
   abstract crearEvento(datos: DatosCrearEvento): Promise<EventoCarga>;
 
   abstract buscarEventoPorId(id: string): Promise<EventoCarga | null>;
+
+  /**
+   * La carga INICIAL de la ruta para esa fecha operativa (ya normalizada), en
+   * cualquier estado; `null` si no existe. Las RECARGAS no cuentan.
+   */
+  abstract buscarCargaInicialDeFecha(
+    rutaId: string,
+    fechaOperativa: Date,
+  ): Promise<EventoCarga | null>;
 
   /**
    * Fija el estado del evento al valor recibido y devuelve el evento

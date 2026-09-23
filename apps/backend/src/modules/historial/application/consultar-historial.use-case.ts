@@ -1,5 +1,9 @@
-import type { EstadoCarga, TipoCarga } from '@prisma/client';
+import type { EstadoCarga, RolApp, TipoCarga } from '@prisma/client';
 
+import {
+  alcanceHistorial,
+  fechaInicioEfectiva,
+} from '../domain/politica-historial';
 import type {
   FiltrosHistorial,
   HistorialRepository,
@@ -7,8 +11,13 @@ import type {
 } from './historial.repository';
 
 /**
- * Caso de uso: el supervisor consulta el historial de cargas con filtros
- * (RF-23, docs/04 `GET /historial`).
+ * Caso de uso: consulta del historial de cargas con filtros (RF-23, docs/04
+ * `GET /historial`), ordenado por fecha operativa.
+ *
+ * Lo que cada rol puede ver lo decide `alcanceHistorial` a partir de quien
+ * pregunta (JWT), nunca de los filtros: el vendedor solo ve sus cargas y,
+ * junto con el contador, solo 2 semanas hacia atras. Los filtros del cliente
+ * solo estrechan ese alcance.
  *
  * No hay restriccion de acceso por si la carga "cuadro" o no (CLAUDE.md,
  * docs/01 seccion 6 regla 4): `conDiscrepancia` es solo un filtro mas, igual
@@ -24,7 +33,16 @@ const PAGE_POR_DEFECTO = 1;
 const TAMANO_PAGINA_POR_DEFECTO = 20;
 const TAMANO_PAGINA_MAXIMO = 100;
 
-/** Filtros tal como llegan del controlador: `page`/`pageSize` opcionales. */
+/** Quien consulta, tal como viene en el JWT. */
+export interface SolicitanteHistorial {
+  usuarioAppId: string;
+  rolApp: RolApp;
+}
+
+/**
+ * Filtros tal como llegan del controlador: `page`/`pageSize` opcionales.
+ * `fechaInicio`/`fechaFin` se aplican sobre la fecha operativa.
+ */
 export interface EntradaConsultarHistorial {
   rutaId?: string;
   fechaInicio?: Date;
@@ -39,10 +57,21 @@ export interface EntradaConsultarHistorial {
 export class ConsultarHistorialUseCase {
   constructor(private readonly historial: HistorialRepository) {}
 
-  async ejecutar(entrada: EntradaConsultarHistorial): Promise<PaginaCargas> {
+  async ejecutar(
+    solicitante: SolicitanteHistorial,
+    entrada: EntradaConsultarHistorial,
+    ahora: Date,
+  ): Promise<PaginaCargas> {
+    const alcance = alcanceHistorial(
+      solicitante.rolApp,
+      solicitante.usuarioAppId,
+      ahora,
+    );
+
     const filtros: FiltrosHistorial = {
       rutaId: entrada.rutaId,
-      fechaInicio: entrada.fechaInicio,
+      vendedorUsuarioAppId: alcance.usuarioAppIdFiltro ?? undefined,
+      fechaInicio: fechaInicioEfectiva(alcance, entrada.fechaInicio),
       fechaFin: entrada.fechaFin,
       estado: entrada.estado,
       conDiscrepancia: entrada.conDiscrepancia,

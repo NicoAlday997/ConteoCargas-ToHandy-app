@@ -1,3 +1,4 @@
+import type { SolicitanteHistorial } from './consultar-historial.use-case';
 import type {
   CargaConsolidada,
   EventoConsolidado,
@@ -14,12 +15,20 @@ import { VerCargaConsolidadaUseCase } from './ver-carga-consolidada.use-case';
  * catalogo.
  */
 
+/** Hoy es 23 de septiembre por la tarde (hora de Mexico). */
+const AHORA = new Date('2026-09-23T18:00:00-06:00');
+
+const SUPERVISOR: SolicitanteHistorial = { usuarioAppId: 's1', rolApp: 'SUPERVISOR' };
+const CONTADOR: SolicitanteHistorial = { usuarioAppId: 'c1', rolApp: 'CONTADOR' };
+const VENDEDOR: SolicitanteHistorial = { usuarioAppId: 'v1', rolApp: 'VENDEDOR' };
+
 const EVENTO_BASE: EventoConsolidado = {
   id: 'ev-1',
   rutaNombre: 'Ruta 3',
   tipo: 'INICIAL',
   estado: 'EN_ESPERA_AUTORIZACION',
-  fechaConteo: new Date('2026-09-08T09:00:00-06:00'),
+  fechaOperativa: new Date('2026-09-20T00:00:00-06:00'),
+  fechaConteo: new Date('2026-09-19T17:00:00-06:00'),
   vendedorNombre: 'Juan Perez',
   contadorNombre: 'Ana Lopez',
   autorizada: false,
@@ -60,7 +69,7 @@ describe('VerCargaConsolidadaUseCase', () => {
       new FakeHistorialRepository(null),
     );
 
-    const resultado = await useCase.ejecutar('ev-fantasma');
+    const resultado = await useCase.ejecutar('ev-fantasma', SUPERVISOR, AHORA);
 
     expect(resultado).toEqual({
       exito: false,
@@ -75,10 +84,10 @@ describe('VerCargaConsolidadaUseCase', () => {
       producto({ productoCode: 'C1', nombre: 'Cigarro A', familia: 'Cigarros' }),
     ];
     const useCase = new VerCargaConsolidadaUseCase(
-      new FakeHistorialRepository({ evento: EVENTO_BASE, productos }),
+      new FakeHistorialRepository({ evento: EVENTO_BASE, vendedorUsuarioAppId: 'v1', productos }),
     );
 
-    const resultado = await useCase.ejecutar('ev-1');
+    const resultado = await useCase.ejecutar('ev-1', SUPERVISOR, AHORA);
 
     expect(resultado.exito).toBe(true);
     if (!resultado.exito) throw new Error('se esperaba exito');
@@ -97,10 +106,10 @@ describe('VerCargaConsolidadaUseCase', () => {
       producto({ productoCode: 'D3', nombre: 'Mazapan', familia: 'Dulces' }),
     ];
     const useCase = new VerCargaConsolidadaUseCase(
-      new FakeHistorialRepository({ evento: EVENTO_BASE, productos }),
+      new FakeHistorialRepository({ evento: EVENTO_BASE, vendedorUsuarioAppId: 'v1', productos }),
     );
 
-    const resultado = await useCase.ejecutar('ev-1');
+    const resultado = await useCase.ejecutar('ev-1', SUPERVISOR, AHORA);
 
     if (!resultado.exito) throw new Error('se esperaba exito');
     expect(resultado.familias).toHaveLength(1);
@@ -117,10 +126,10 @@ describe('VerCargaConsolidadaUseCase', () => {
       producto({ productoCode: 'B1', nombre: 'Cerveza', familia: 'Bebidas' }),
     ];
     const useCase = new VerCargaConsolidadaUseCase(
-      new FakeHistorialRepository({ evento: EVENTO_BASE, productos }),
+      new FakeHistorialRepository({ evento: EVENTO_BASE, vendedorUsuarioAppId: 'v1', productos }),
     );
 
-    const resultado = await useCase.ejecutar('ev-1');
+    const resultado = await useCase.ejecutar('ev-1', SUPERVISOR, AHORA);
 
     if (!resultado.exito) throw new Error('se esperaba exito');
     expect(resultado.familias.map((f) => f.familia)).toEqual([
@@ -143,14 +152,70 @@ describe('VerCargaConsolidadaUseCase', () => {
     });
     const useCase = new VerCargaConsolidadaUseCase(
       new FakeHistorialRepository({
-        evento: EVENTO_BASE,
+        evento: EVENTO_BASE, vendedorUsuarioAppId: 'v1',
         productos: [productoConDiscrepancia],
       }),
     );
 
-    const resultado = await useCase.ejecutar('ev-1');
+    const resultado = await useCase.ejecutar('ev-1', SUPERVISOR, AHORA);
 
     if (!resultado.exito) throw new Error('se esperaba exito');
     expect(resultado.familias[0]!.productos[0]).toEqual(productoConDiscrepancia);
+  });
+
+  describe('alcance por rol', () => {
+    function useCaseCon(
+      vendedorUsuarioAppId: string | null,
+      fechaOperativa: Date,
+    ): VerCargaConsolidadaUseCase {
+      return new VerCargaConsolidadaUseCase(
+        new FakeHistorialRepository({
+          evento: { ...EVENTO_BASE, fechaOperativa },
+          productos: [],
+          vendedorUsuarioAppId,
+        }),
+      );
+    }
+    const reciente = new Date('2026-09-20T00:00:00-06:00');
+    const vieja = new Date('2026-09-01T00:00:00-06:00');
+
+    it('el vendedor ve el detalle de su propia carga reciente', async () => {
+      const resultado = await useCaseCon('v1', reciente).ejecutar('ev-1', VENDEDOR, AHORA);
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('el vendedor NO ve el detalle de una carga ajena: FUERA_DE_ALCANCE', async () => {
+      const resultado = await useCaseCon('v2', reciente).ejecutar('ev-1', VENDEDOR, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FUERA_DE_ALCANCE' });
+    });
+
+    it('el vendedor NO ve su propia carga de hace mas de 2 semanas', async () => {
+      const resultado = await useCaseCon('v1', vieja).ejecutar('ev-1', VENDEDOR, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FUERA_DE_ALCANCE' });
+    });
+
+    it('el contador ve cargas de otros vendedores, pero no de hace mas de 2 semanas', async () => {
+      expect(
+        (await useCaseCon('v2', reciente).ejecutar('ev-1', CONTADOR, AHORA)).exito,
+      ).toBe(true);
+      expect(
+        await useCaseCon('v2', vieja).ejecutar('ev-1', CONTADOR, AHORA),
+      ).toEqual({ exito: false, motivo: 'FUERA_DE_ALCANCE' });
+    });
+
+    it('el supervisor ve cualquier carga, sin limite de fecha', async () => {
+      const resultado = await useCaseCon('v2', vieja).ejecutar('ev-1', SUPERVISOR, AHORA);
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('la respuesta no expone el id del vendedor', async () => {
+      const resultado = await useCaseCon('v1', reciente).ejecutar('ev-1', VENDEDOR, AHORA);
+
+      expect(resultado).not.toHaveProperty('vendedorUsuarioAppId');
+    });
   });
 });

@@ -23,7 +23,7 @@
 | Verificar carga (2º conteo) | ❌ | ✅ | ✅ |
 | Confirmar resolución de discrepancia (PIN cruzado) | ✅ | ✅ | ✅ |
 | Ver cola de verificación | ❌ | ✅ | ✅ |
-| Ver historial completo de cargas | ❌ | ❌ | ✅ |
+| Ver historial de cargas | ✅ solo las suyas, 2 semanas | ✅ todas, 2 semanas | ✅ todas, sin límite |
 | Iniciar revisión de supervisor sobre carga cerrada | ❌ | ❌ | ✅ |
 | Ver centro de alertas | ❌ | ❌ | ✅ |
 
@@ -63,7 +63,9 @@
 ### 3.7 Recarga — selección de ubicación del segundo conteo
 - Pregunta simple antes de iniciar la verificación: "Almacén" o "En calle" (camioneta de refuerzo) — solo para trazabilidad, sin cambiar permisos.
 
-### 3.8 Historial (Supervisor)
+### 3.8 Historial
+- Vendedor ve solo sus cargas y Contador las de todos, ambos hasta 2 semanas atrás; Supervisor ve todo sin límite (el alcance lo decide el backend).
+- Organizado por fecha operativa (día para el que salió el camión), no por fecha de conteo.
 - Tabla filtrable por fecha, ruta, presencia de discrepancia y estado de verificación.
 - Todas las filas son accesibles a detalle, incluidas las que no tuvieron discrepancia (principio de auditoría pareja, sección 1).
 - Fila resaltada en ámbar cuando hubo discrepancia durante el conteo original (informativo, no restrictivo).

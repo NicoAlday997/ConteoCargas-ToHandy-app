@@ -307,7 +307,16 @@ model EventoCarga {
   tipoOperacion              TipoOperacion @default(AUTOVENTA)
   usuarioHandyId             Int
   estado                     EstadoCarga   @default(BORRADOR)
+  // Cuando se conto: el instante real del conteo.
   fechaConteo                DateTime?
+  // Dia para el que SALE el camion, distinto de cuando se conto: la carga de la
+  // tarde del 23 (tras la devolucion) es la salida del 24; si el camion se
+  // descompone se cuenta el 24 en la mañana para salir ese mismo dia. Siempre
+  // normalizada al inicio del dia en America/Mexico_City. Una sola carga
+  // INICIAL por ruta y fechaOperativa: indice unico parcial creado con SQL
+  // manual en la migracion `fecha_operativa` (Prisma no soporta indices
+  // parciales en el esquema).
+  fechaOperativa             DateTime
   fechaBloqueoCortePendiente DateTime?
   fechaDesbloqueo            DateTime?
   fechaProgramadaEnvio       DateTime?
@@ -331,6 +340,7 @@ model EventoCarga {
   comparacion   ComparacionCarga?
 
   @@index([rutaId])
+  @@index([rutaId, fechaOperativa])
   @@index([usuarioHandyId])
   @@index([estado])
   @@index([plantillaId])

@@ -44,6 +44,9 @@ class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
     throw new Error('no usado en esta prueba');
   }
+  buscarCargaInicialDeFecha(): never {
+    throw new Error('no usado en esta prueba');
+  }
   private readonly eventos = new Map<string, EventoCarga>();
   private readonly sesionesPorEvento = new Map<string, SesionConteo[]>();
   private readonly itemsPorSesion = new Map<string, ItemCapturado[]>();
@@ -278,6 +281,7 @@ function sembrarCargaLista(
     usuarioHandyId: USUARIO_HANDY_ID,
     estado: opciones.estado ?? 'LISTA_PARA_ENVIAR',
     fechaConteo: INICIADA_EN,
+    fechaOperativa: INICIADA_EN,
     autorizadaPorId: null,
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,

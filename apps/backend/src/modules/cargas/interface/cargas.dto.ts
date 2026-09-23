@@ -1,6 +1,8 @@
 import { TipoCarga, UbicacionConteo } from '@prisma/client';
 import { z } from 'zod';
 
+import { fechaOperativaDesdeDia } from '../domain/fecha-operativa';
+
 /**
  * Esquemas de validacion de la capa HTTP del modulo de cargas
  * (`docs/04-api-interna.md` §1.4). El cuerpo entrante se valida con
@@ -16,10 +18,15 @@ export const IdSchema = z.cuid('El identificador no es valido');
 
 /**
  * Body de `POST /eventos-carga` (RF-12). El vendedor no elige ruta —sale de su
- * asignacion vigente—, solo el tipo de operacion.
+ * asignacion vigente—: solo el tipo de operacion y la fecha operativa (dia para
+ * el que sale el camion, `aaaa-mm-dd`). Que no sea un dia pasado lo valida el
+ * caso de uso, no este esquema.
  */
 export const IniciarCargaSchema = z.object({
   tipo: z.enum(TipoCarga),
+  fechaOperativa: z.iso
+    .date('fechaOperativa debe ser un dia con formato aaaa-mm-dd')
+    .transform((dia) => fechaOperativaDesdeDia(dia)),
 });
 
 /** Cantidad capturada de un producto: entero no negativo. */

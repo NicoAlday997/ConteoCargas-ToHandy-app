@@ -48,6 +48,7 @@ const includeConsolidada = {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
       tipo: true,
+      usuarioAppId: true,
       usuarioApp: { select: { nombreCompleto: true } },
       items: { select: { productoCode: true, cantidad: true } },
     },
@@ -81,7 +82,13 @@ export class PrismaHistorialRepository extends HistorialRepository {
       this.prisma.eventoCarga.findMany({
         where,
         include: includeListado,
-        orderBy: { fechaConteo: 'desc' },
+        // Organizado por el dia para el que salio el camion, no por cuando se
+        // conto; dentro del dia, lo mas reciente primero.
+        orderBy: [
+          { fechaOperativa: 'desc' },
+          { fechaConteo: 'desc' },
+          { creadoEn: 'desc' },
+        ],
         skip: (filtros.page - 1) * filtros.pageSize,
         take: filtros.pageSize,
       }),
@@ -174,7 +181,11 @@ export class PrismaHistorialRepository extends HistorialRepository {
       };
     });
 
-    return { evento: this.aEventoConsolidado(evento), productos };
+    return {
+      evento: this.aEventoConsolidado(evento),
+      productos,
+      vendedorUsuarioAppId: sesionVendedor?.usuarioAppId ?? null,
+    };
   }
 
   // -------------------------------------------------------------------------
@@ -186,10 +197,21 @@ export class PrismaHistorialRepository extends HistorialRepository {
       rutaId: filtros.rutaId,
       tipo: filtros.tipo,
       estado: filtros.estado,
-      fechaConteo:
+      fechaOperativa:
         filtros.fechaInicio !== undefined || filtros.fechaFin !== undefined
           ? { gte: filtros.fechaInicio, lte: filtros.fechaFin }
           : undefined,
+      // "Sus cargas" = las que conto como vendedor, aunque la ruta se haya
+      // reasignado despues.
+      sesiones:
+        filtros.vendedorUsuarioAppId === undefined
+          ? undefined
+          : {
+              some: {
+                tipo: 'VENDEDOR',
+                usuarioAppId: filtros.vendedorUsuarioAppId,
+              },
+            },
       // No hay restriccion por defecto entre "con" y "sin" discrepancia
       // (CLAUDE.md, docs/01 seccion 6 regla 4): `conDiscrepancia` es solo un
       // filtro mas que el supervisor puede o no aplicar.
@@ -215,6 +237,7 @@ export class PrismaHistorialRepository extends HistorialRepository {
       rutaNombre: row.ruta.nombre,
       tipo: row.tipo,
       estado: row.estado,
+      fechaOperativa: row.fechaOperativa,
       fechaConteo: row.fechaConteo,
       vendedorNombre: sesionVendedor?.usuarioApp.nombreCompleto ?? null,
       contadorNombre: sesionContador?.usuarioApp.nombreCompleto ?? null,
@@ -234,6 +257,7 @@ export class PrismaHistorialRepository extends HistorialRepository {
       rutaNombre: row.ruta.nombre,
       tipo: row.tipo,
       estado: row.estado,
+      fechaOperativa: row.fechaOperativa,
       fechaConteo: row.fechaConteo,
       vendedorNombre: sesionVendedor?.usuarioApp.nombreCompleto ?? null,
       contadorNombre: sesionContador?.usuarioApp.nombreCompleto ?? null,

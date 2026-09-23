@@ -21,7 +21,11 @@ export const IdSchema = z.cuid('El identificador no es valido');
  */
 const booleanDeQuery = z.enum(['true', 'false']).transform((v) => v === 'true');
 
-/** Query params de `GET /historial` (RF-23). */
+/**
+ * Query params de `GET /historial` (RF-23). `fechaInicio`/`fechaFin` filtran
+ * por fecha operativa. No hay parametro de vendedor: a quien ve cada rol lo
+ * decide la politica de alcance, no el cliente.
+ */
 export const FiltrosHistorialSchema = z.object({
   rutaId: z.cuid('La ruta no es valida').optional(),
   fechaInicio: z.coerce.date().optional(),

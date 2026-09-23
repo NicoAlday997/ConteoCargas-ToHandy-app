@@ -122,6 +122,7 @@ export class CargasController {
         usuarioAppId: usuario.usuarioAppId,
         tipo: dto.tipo,
         usuarioHandyId: usuario.usuarioHandyId,
+        fechaOperativa: dto.fechaOperativa,
       },
       new Date(),
     );
@@ -134,11 +135,21 @@ export class CargasController {
             mensaje:
               'No tienes una ruta asignada vigente. Pide a un supervisor que te asigne una antes de iniciar una carga.',
           });
+        case 'FECHA_OPERATIVA_INVALIDA':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'FECHA_OPERATIVA_INVALIDA',
+            mensaje:
+              'No se puede registrar una carga para un dia pasado. Elige hoy o una fecha posterior.',
+          });
         case 'YA_TIENE_CARGA_ABIERTA':
+          // `eventoId` permite a la app ofrecer continuar la carga existente.
           throw new ConflictException({
             statusCode: 409,
+            codigo: 'YA_TIENE_CARGA_ABIERTA',
             mensaje:
-              'Ya tienes una carga abierta hoy. Cierrala o enviala antes de iniciar otra.',
+              'Tu ruta ya tiene una carga inicial para esa fecha. Continua esa carga en lugar de crear otra.',
+            eventoId: resultado.eventoId,
           });
       }
     }
