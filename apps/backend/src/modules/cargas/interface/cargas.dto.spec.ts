@@ -1,0 +1,75 @@
+import { GuardarItemsSchema } from './cargas.dto';
+
+/**
+ * Pruebas del body de `PATCH /eventos-carga/:id/sesiones/:sesionId/items`:
+ * se reciben paquetes y sueltas; `cantidad` la calcula el backend y nunca se
+ * acepta del cliente.
+ */
+describe('GuardarItemsSchema', () => {
+  it('acepta paquetes y sueltas por producto', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [{ productoCode: 'PEPSI-C12', paquetes: 5, sueltas: 3 }],
+    });
+
+    expect(resultado.success).toBe(true);
+    expect(resultado.data).toEqual({
+      items: [{ productoCode: 'PEPSI-C12', paquetes: 5, sueltas: 3 }],
+    });
+  });
+
+  it('paquetes y sueltas omitidos valen 0', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [{ productoCode: 'CHICLE', sueltas: 7 }],
+    });
+
+    expect(resultado.data).toEqual({
+      items: [{ productoCode: 'CHICLE', paquetes: 0, sueltas: 7 }],
+    });
+  });
+
+  it('acepta items vacio (deja la sesion sin productos)', () => {
+    expect(GuardarItemsSchema.safeParse({ items: [] }).success).toBe(true);
+  });
+
+  it('rechaza `cantidad` enviada por el cliente', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [
+        { productoCode: 'PEPSI-C12', paquetes: 1, sueltas: 0, cantidad: 999 },
+      ],
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it.each([
+    ['paquetes negativos', { paquetes: -1, sueltas: 0 }],
+    ['sueltas negativas', { paquetes: 0, sueltas: -1 }],
+    ['paquetes decimales', { paquetes: 1.5, sueltas: 0 }],
+    ['sueltas como texto', { paquetes: 0, sueltas: '3' }],
+  ])('rechaza %s', (_caso, valores) => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [{ productoCode: 'PEPSI-C12', ...valores }],
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it('rechaza un producto repetido', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [
+        { productoCode: 'PEPSI-C12', paquetes: 1, sueltas: 0 },
+        { productoCode: 'PEPSI-C12', paquetes: 0, sueltas: 2 },
+      ],
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+
+  it('rechaza un productoCode vacio', () => {
+    const resultado = GuardarItemsSchema.safeParse({
+      items: [{ productoCode: '   ', paquetes: 1, sueltas: 0 }],
+    });
+
+    expect(resultado.success).toBe(false);
+  });
+});

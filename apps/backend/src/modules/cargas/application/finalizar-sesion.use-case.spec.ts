@@ -207,7 +207,7 @@ async function sembrarEvento(
     tipo?: TipoCarga;
     estado?: EstadoCarga;
     vendedorId?: string;
-    itemsVendedor?: ItemCapturado[];
+    itemsVendedor?: ItemAGuardar[];
   } = {},
 ): Promise<{ evento: EventoCarga; sesionVendedor: SesionConteo }> {
   const evento = await repo.crearEvento({
@@ -272,7 +272,9 @@ describe('FinalizarSesionUseCase', () => {
 
   it('primera sesion cerrada: pasa el evento a EN_ESPERA_CONTADOR', async () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
-      itemsVendedor: [{ productoCode: 'A', cantidad: 5 }],
+      itemsVendedor: [
+        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+      ],
     });
 
     const resultado = exigirExito(
@@ -292,8 +294,8 @@ describe('FinalizarSesionUseCase', () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       estado: 'EN_ESPERA_CONTADOR',
       itemsVendedor: [
-        { productoCode: 'A', cantidad: 5 },
-        { productoCode: 'B', cantidad: 3 },
+        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+        { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
       ],
     });
     await repo.finalizarSesion(sesionVendedor.id, AHORA);
@@ -304,8 +306,8 @@ describe('FinalizarSesionUseCase', () => {
       'contador-1',
     );
     await repo.guardarItems(sesionContador.id, [
-      { productoCode: 'A', cantidad: 5 },
-      { productoCode: 'B', cantidad: 3 },
+      { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+      { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
     ]);
 
     const resultado = exigirExito(
@@ -327,8 +329,8 @@ describe('FinalizarSesionUseCase', () => {
     const { evento, sesionVendedor } = await sembrarEvento(repo, {
       estado: 'EN_ESPERA_CONTADOR',
       itemsVendedor: [
-        { productoCode: 'A', cantidad: 5 },
-        { productoCode: 'B', cantidad: 3 },
+        { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+        { productoCode: 'B', paquetes: 0, sueltas: 3, cantidad: 3 },
       ],
     });
     await repo.finalizarSesion(sesionVendedor.id, AHORA);
@@ -339,8 +341,8 @@ describe('FinalizarSesionUseCase', () => {
       'contador-1',
     );
     await repo.guardarItems(sesionContador.id, [
-      { productoCode: 'A', cantidad: 5 },
-      { productoCode: 'B', cantidad: 99 },
+      { productoCode: 'A', paquetes: 0, sueltas: 5, cantidad: 5 },
+      { productoCode: 'B', paquetes: 0, sueltas: 99, cantidad: 99 },
     ]);
 
     const resultado = exigirExito(

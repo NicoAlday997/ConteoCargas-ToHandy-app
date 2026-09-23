@@ -28,21 +28,39 @@ const cantidadCapturada = z
   .int('La cantidad debe ser un numero entero')
   .min(0, 'La cantidad no puede ser negativa');
 
+/** Paquetes o piezas sueltas contados: entero no negativo. */
+const conteoEmpaque = (campo: string) =>
+  z
+    .number()
+    .int(`${campo} debe ser un numero entero`)
+    .min(0, `${campo} no puede ser negativo`);
+
 /**
  * Body de `PATCH /eventos-carga/:id/sesiones/:sesionId/items`. Reemplaza por
- * completo las cantidades capturadas de la sesion; un `items` vacio deja la
- * sesion sin ningun producto.
+ * completo lo capturado en la sesion; un `items` vacio deja la sesion sin
+ * ningun producto.
+ *
+ * Se reciben `paquetes` y `sueltas` (lo que se cuenta en bodega). El total en
+ * piezas lo calcula el backend: `cantidad` NO se acepta del cliente
+ * (`z.strictObject` rechaza el campo si llega).
  */
 export const GuardarItemsSchema = z.object({
-  items: z.array(
-    z.object({
-      productoCode: z
-        .string()
-        .trim()
-        .min(1, 'El codigo de producto es obligatorio'),
-      cantidad: cantidadCapturada,
-    }),
-  ),
+  items: z
+    .array(
+      z.strictObject({
+        productoCode: z
+          .string()
+          .trim()
+          .min(1, 'El codigo de producto es obligatorio'),
+        paquetes: conteoEmpaque('Los paquetes').default(0),
+        sueltas: conteoEmpaque('Las piezas sueltas').default(0),
+      }),
+    )
+    .refine(
+      (items) =>
+        new Set(items.map((i) => i.productoCode)).size === items.length,
+      'Un producto no puede venir mas de una vez',
+    ),
 });
 
 /**

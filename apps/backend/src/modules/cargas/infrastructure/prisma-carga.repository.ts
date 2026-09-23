@@ -163,6 +163,8 @@ export class PrismaCargaRepository extends CargaRepository {
           data: items.map((i) => ({
             sesionId,
             productoCode: i.productoCode,
+            paquetes: i.paquetes,
+            sueltas: i.sueltas,
             cantidad: i.cantidad,
           })),
         });

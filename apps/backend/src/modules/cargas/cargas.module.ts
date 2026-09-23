@@ -12,12 +12,16 @@ import { ConfirmarCantidadFinalUseCase } from './application/confirmar-cantidad-
 import { DesbloquearCargaUseCase } from './application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
+import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
+import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
+import { ProductoConteoRepository } from './application/producto-conteo.repository';
 import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from './application/verificar-corte-pendiente.use-case';
 import { PrismaAsignacionRepository } from './infrastructure/prisma-asignacion.repository';
 import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository';
+import { PrismaProductoConteoRepository } from './infrastructure/prisma-producto-conteo.repository';
 import { CargasController } from './interface/cargas.controller';
 
 @Module({
@@ -35,6 +39,10 @@ import { CargasController } from './interface/cargas.controller';
     // aplicacion solo conocen los puertos abstractos.
     { provide: CargaRepository, useClass: PrismaCargaRepository },
     { provide: AsignacionRepository, useClass: PrismaAsignacionRepository },
+    {
+      provide: ProductoConteoRepository,
+      useClass: PrismaProductoConteoRepository,
+    },
     // Los casos de uso son clases planas (sin @Injectable): se construyen a mano
     // inyectando los puertos ya resueltos.
     {
@@ -49,6 +57,22 @@ import { CargasController } from './interface/cargas.controller';
       provide: AbrirSesionUseCase,
       useFactory: (cargas: CargaRepository) => new AbrirSesionUseCase(cargas),
       inject: [CargaRepository],
+    },
+    {
+      provide: GuardarItemsUseCase,
+      useFactory: (
+        cargas: CargaRepository,
+        productos: ProductoConteoRepository,
+      ) => new GuardarItemsUseCase(cargas, productos),
+      inject: [CargaRepository, ProductoConteoRepository],
+    },
+    {
+      provide: ListarProductosDePlantillaUseCase,
+      useFactory: (
+        cargas: CargaRepository,
+        productos: ProductoConteoRepository,
+      ) => new ListarProductosDePlantillaUseCase(cargas, productos),
+      inject: [CargaRepository, ProductoConteoRepository],
     },
     {
       provide: FinalizarSesionUseCase,

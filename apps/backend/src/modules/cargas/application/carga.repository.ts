@@ -101,9 +101,15 @@ export interface DatosCrearEvento {
   fechaConteo: Date;
 }
 
-/** Item nuevo o actualizado dentro de una sesion. */
+/**
+ * Item nuevo o actualizado dentro de una sesion. `cantidad` es el total en
+ * piezas ya calculado por el caso de uso (`aPiezas` del dominio) a partir de
+ * `paquetes` y `sueltas`; nunca viene del cliente.
+ */
 export interface ItemAGuardar {
   productoCode: string;
+  paquetes: number;
+  sueltas: number;
   cantidad: number;
 }
 

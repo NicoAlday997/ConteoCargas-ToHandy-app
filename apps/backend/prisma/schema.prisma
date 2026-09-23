@@ -367,6 +367,12 @@ model ConteoItem {
   id           String @id @default(cuid())
   sesionId     String
   productoCode String
+  // Lo que se cuenta en bodega: paquetes completos + piezas sueltas.
+  paquetes     Int    @default(0)
+  sueltas      Int    @default(0)
+  // Total en PIEZAS (paquetes * piezasPorPaquete + sueltas). Es lo que se
+  // compara entre conteos y lo que se envia a Handy. Lo calcula el backend;
+  // nunca se recibe del cliente.
   // Int: Handy tiene fractionsInQuantityAllowed en false.
   cantidad     Int
 

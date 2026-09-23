@@ -30,7 +30,9 @@ import { ConfirmarCantidadFinalUseCase } from '../application/confirmar-cantidad
 import { DesbloquearCargaUseCase } from '../application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
+import { GuardarItemsUseCase } from '../application/guardar-items.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
+import { ListarProductosDePlantillaUseCase } from '../application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
@@ -73,6 +75,8 @@ export class CargasController {
     private readonly cargas: CargaRepository,
     private readonly iniciarCargaUseCase: IniciarCargaUseCase,
     private readonly abrirSesionUseCase: AbrirSesionUseCase,
+    private readonly guardarItemsUseCase: GuardarItemsUseCase,
+    private readonly listarProductosDePlantillaUseCase: ListarProductosDePlantillaUseCase,
     private readonly finalizarSesionUseCase: FinalizarSesionUseCase,
     private readonly capturarCantidadFinalUseCase: CapturarCantidadFinalUseCase,
     private readonly confirmarCantidadFinalUseCase: ConfirmarCantidadFinalUseCase,
@@ -208,9 +212,35 @@ export class CargasController {
   }
 
   /**
-   * Guarda/actualiza las cantidades capturadas en una sesion. Reemplazo total:
-   * un producto que ya no venga en `items` queda eliminado de la sesion. Solo el
-   * dueño de la sesion puede tocarla.
+   * Productos que la app muestra en el grid de conteo del evento: los activos
+   * de la plantilla snapshot del evento (o todo el catalogo activo si no tiene
+   * plantilla), agrupados por familia y ordenados por nombre. Incluye el
+   * factor de empaque para que la app sepa si puede capturar paquetes.
+   */
+  @Get(':id/productos')
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async productos(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+  ) {
+    const resultado = await this.listarProductosDePlantillaUseCase.ejecutar({
+      eventoId,
+    });
+
+    if (!resultado.exito) {
+      throw new NotFoundException({
+        statusCode: 404,
+        mensaje: 'El evento de carga no existe.',
+      });
+    }
+
+    return { plantillaId: resultado.plantillaId, familias: resultado.familias };
+  }
+
+  /**
+   * Guarda/actualiza lo capturado en una sesion: `paquetes` y `sueltas` por
+   * producto; el total en piezas (`cantidad`) lo calcula el backend. Reemplazo
+   * total: un producto que ya no venga en `items` queda eliminado de la
+   * sesion. Solo el dueño de la sesion puede tocarla.
    */
   @Patch(':id/sesiones/:sesionId/items')
   @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
@@ -220,28 +250,43 @@ export class CargasController {
     @UsuarioActual() usuario: UsuarioAutenticado,
     @Body(new ZodValidationPipe(GuardarItemsSchema)) dto: GuardarItemsDto,
   ) {
-    const sesion = await this.cargas.buscarSesionPorId(sesionId);
-    if (sesion === null || sesion.eventoCargaId !== eventoId) {
-      throw new NotFoundException({
-        statusCode: 404,
-        mensaje: 'La sesion de conteo no existe.',
-      });
-    }
+    const resultado = await this.guardarItemsUseCase.ejecutar({
+      eventoId,
+      sesionId,
+      usuarioAppId: usuario.usuarioAppId,
+      items: dto.items,
+    });
 
-    if (sesion.usuarioAppId !== usuario.usuarioAppId) {
-      throw new ForbiddenException({
-        statusCode: 403,
-        mensaje: 'Solo puedes modificar tu propia sesion de conteo.',
-      });
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'SESION_NO_ENCONTRADA':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'La sesion de conteo no existe.',
+          });
+        case 'SESION_AJENA':
+          throw new ForbiddenException({
+            statusCode: 403,
+            mensaje: 'Solo puedes modificar tu propia sesion de conteo.',
+          });
+        case 'PRODUCTO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'Alguno de los productos no existe en el catalogo.',
+            detalle: `Productos: ${resultado.productos.join(', ')}`,
+          });
+        case 'FACTOR_NO_CONFIRMADO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'Hay productos cuyas piezas por paquete aun no confirma un supervisor. Cuentalos en piezas sueltas o pide que confirmen el factor.',
+            detalle: `Productos: ${resultado.productos.join(', ')}`,
+          });
+      }
     }
-
-    await this.cargas.guardarItems(sesionId, dto.items);
 
     // Convencion docs/04 §1.7: la mutacion devuelve el recurso completo.
-    return {
-      sesion: await this.cargas.buscarSesionPorId(sesionId),
-      items: await this.cargas.listarItemsDeSesion(sesionId),
-    };
+    return { sesion: resultado.sesion, items: resultado.items };
   }
 
   /**
