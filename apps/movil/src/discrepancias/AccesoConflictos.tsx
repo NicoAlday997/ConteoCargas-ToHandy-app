@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
 import { Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, PESOS, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { CIFRAS, COLORES, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -34,10 +34,10 @@ export function AccesoConflictos() {
           >
             <View style={estilos.fila}>
               <View style={estilos.cuerpo}>
+                <Text style={estilos.tipo}>{tipo}</Text>
                 <Text style={estilos.ruta} numberOfLines={2}>
                   {ruta}
                 </Text>
-                <Text style={estilos.tipo}>{tipo}</Text>
               </View>
               {/* Lo que falta domina: es lo que hay que hacer. */}
               <View style={estilos.cifra}>
@@ -68,12 +68,11 @@ const estilos = StyleSheet.create({
   },
   ruta: {
     ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
   },
-  tipo: {
-    ...TIPOGRAFIA.cuerpo,
-    color: COLORES.textoSecundario,
-  },
+  // El tipo es el rótulo de la ruta: arriba, pegado, se retira.
+  tipo: ROTULO,
   cifra: {
     alignItems: 'flex-end',
   },
@@ -83,13 +82,13 @@ const estilos = StyleSheet.create({
     ...CIFRAS,
   },
   unidad: {
-    ...TIPOGRAFIA.micro,
+    ...ROTULO,
     color: COLORES.discrepanciaTexto,
-    textTransform: 'uppercase',
   },
+  // Solo dice "se abre": no compite con la cifra.
   flecha: {
-    ...TIPOGRAFIA.display,
+    ...TIPOGRAFIA.titulo,
     fontWeight: PESOS.regular,
-    color: COLORES.discrepancia,
+    color: COLORES.textoSecundario,
   },
 });

@@ -19,12 +19,8 @@ import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
 import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from './application/listar-pendientes-verificacion.use-case';
-import { ListarPermisosVigentesUseCase } from './application/listar-permisos-vigentes.use-case';
-import { ListarRutasParaPermisoUseCase } from './application/listar-rutas-para-permiso.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
-import { OtorgarPermisoCargaUseCase } from './application/otorgar-permiso-carga.use-case';
-import { PermisoCargaRepository } from './application/permiso-carga.repository';
 import { ProductoConteoRepository } from './application/producto-conteo.repository';
 import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
 import { VerificadorPin } from './application/verificador-pin.port';
@@ -33,10 +29,8 @@ import { LoginVerificadorPinAdapter } from './infrastructure/login-verificador-p
 import { PrismaAsignacionRepository } from './infrastructure/prisma-asignacion.repository';
 import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository';
 import { PrismaConsultasCargaRepository } from './infrastructure/prisma-consultas-carga.repository';
-import { PrismaPermisoCargaRepository } from './infrastructure/prisma-permiso-carga.repository';
 import { PrismaProductoConteoRepository } from './infrastructure/prisma-producto-conteo.repository';
 import { CargasController } from './interface/cargas.controller';
-import { PermisosCargaController } from './interface/permisos-carga.controller';
 
 @Module({
   imports: [
@@ -50,7 +44,7 @@ import { PermisosCargaController } from './interface/permisos-carga.controller';
     // PIN con la misma politica de intentos y bloqueo que el login.
     AuthModule,
   ],
-  controllers: [CargasController, PermisosCargaController],
+  controllers: [CargasController],
   providers: [
     // Binding de puertos a adaptadores de infraestructura. El dominio y la
     // aplicacion solo conocen los puertos abstractos.
@@ -70,10 +64,6 @@ import { PermisosCargaController } from './interface/permisos-carga.controller';
       provide: ProductoConteoRepository,
       useClass: PrismaProductoConteoRepository,
     },
-    {
-      provide: PermisoCargaRepository,
-      useClass: PrismaPermisoCargaRepository,
-    },
     // Los casos de uso son clases planas (sin @Injectable): se construyen a mano
     // inyectando los puertos ya resueltos.
     {
@@ -81,38 +71,16 @@ import { PermisosCargaController } from './interface/permisos-carga.controller';
       useFactory: (
         cargas: CargaRepository,
         asignaciones: AsignacionRepository,
-        handy: HandyGateway,
-        permisos: PermisoCargaRepository,
-      ) => new IniciarCargaUseCase(cargas, asignaciones, handy, permisos),
-      inject: [
-        CargaRepository,
-        AsignacionRepository,
-        HandyGateway,
-        PermisoCargaRepository,
-      ],
-    },
-    {
-      provide: OtorgarPermisoCargaUseCase,
-      useFactory: (permisos: PermisoCargaRepository) =>
-        new OtorgarPermisoCargaUseCase(permisos),
-      inject: [PermisoCargaRepository],
-    },
-    {
-      provide: ListarPermisosVigentesUseCase,
-      useFactory: (permisos: PermisoCargaRepository) =>
-        new ListarPermisosVigentesUseCase(permisos),
-      inject: [PermisoCargaRepository],
-    },
-    {
-      provide: ListarRutasParaPermisoUseCase,
-      useFactory: (permisos: PermisoCargaRepository) =>
-        new ListarRutasParaPermisoUseCase(permisos),
-      inject: [PermisoCargaRepository],
+      ) => new IniciarCargaUseCase(cargas, asignaciones),
+      inject: [CargaRepository, AsignacionRepository],
     },
     {
       provide: AbrirSesionUseCase,
-      useFactory: (cargas: CargaRepository) => new AbrirSesionUseCase(cargas),
-      inject: [CargaRepository],
+      useFactory: (
+        cargas: CargaRepository,
+        verificarCorte: VerificarCortePendienteUseCase,
+      ) => new AbrirSesionUseCase(cargas, verificarCorte),
+      inject: [CargaRepository, VerificarCortePendienteUseCase],
     },
     {
       provide: GuardarItemsUseCase,

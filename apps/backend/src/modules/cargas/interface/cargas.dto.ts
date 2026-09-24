@@ -1,7 +1,6 @@
 import { TipoCarga, UbicacionConteo } from '@prisma/client';
 import { z } from 'zod';
 
-import { LONGITUD_MINIMA_MOTIVO } from '../application/otorgar-permiso-carga.use-case';
 import { fechaOperativaDesdeDia } from '../domain/fecha-operativa';
 
 /**
@@ -147,23 +146,7 @@ export const ModificarCantidadSchema = z.object({
   motivo: motivoSupervisor,
 });
 
-/**
- * Body de `POST /admin/permisos-carga`: permiso puntual para que la ruta inicie
- * su carga INICIAL con la ruta anterior del vendedor sin liquidar en Handy.
- */
-export const OtorgarPermisoCargaSchema = z.object({
-  rutaId: z.cuid('La ruta no es valida'),
-  motivo: z
-    .string()
-    .trim()
-    .min(
-      LONGITUD_MINIMA_MOTIVO,
-      `El motivo debe tener al menos ${LONGITUD_MINIMA_MOTIVO} caracteres`,
-    ),
-});
-
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
-export type OtorgarPermisoCargaDto = z.infer<typeof OtorgarPermisoCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
 export type CapturarCantidadDto = z.infer<typeof CapturarCantidadSchema>;

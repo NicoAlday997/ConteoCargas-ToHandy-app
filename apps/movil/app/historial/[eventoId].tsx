@@ -9,22 +9,23 @@ import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion } from '../../src/api/sesion';
 import {
   BloqueError,
+  Datos,
   EstadoVacio,
   Esqueleto,
   Etiqueta,
-  FilaDato,
   LineaEsqueleto,
   Personas,
   Tarjeta,
   TarjetaEsqueleto,
+  type Persona,
 } from '../../src/componentes/base';
 import { factorEfectivo, unidadCompleta, type ProductoConteo } from '../../src/conteo/estado-conteo';
 import { diaNegocio, textoSalida } from '../../src/conteo/fecha-operativa';
 import { EtiquetaFactor } from '../../src/conteo/FilaProducto';
-import { formatearEnPaquetes, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
+import { formatearCifra, formatearEnPaquetes, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from '../../src/historial/modelo-historial';
-import { CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Vista consolidada de una carga. Es la que el supervisor abre en el celular
@@ -168,45 +169,41 @@ function Pantalla({
 }
 
 /**
- * Al frente de la lista, como el total de un pedido: el estado en la banda y
- * las cifras en grande. Día, ruta y tipo ya van en el encabezado.
+ * Al frente de la lista, como el total de un pedido. Tres bloques separados por
+ * aire: el estado; el total de piezas (el único dato en grande) con productos y
+ * discrepancias; y quién participó. Día, ruta y tipo ya van en el encabezado.
  */
 function Resumen({ carga }: { carga: CargaDetalle }) {
-  const { evento, totalProductos, totalDiscrepancias } = carga;
+  const { evento, totalProductos, totalDiscrepancias, totalPiezas, sinResolver } = carga;
+  const personas: Persona[] = [
+    { rol: 'Contó', nombre: evento.vendedorNombre },
+    { rol: 'Verificó', nombre: evento.contadorNombre },
+  ];
+  if (evento.autorizadaPorNombre) personas.push({ rol: 'Autorizó', nombre: evento.autorizadaPorNombre });
+
   return (
     <Tarjeta conAcento={bandaDeEstado(evento.estado)} style={estilos.resumen}>
-      <View style={estilos.cifras}>
-        <View style={estilos.cifra} accessible accessibilityLabel={`${totalProductos} productos`}>
-          <Text style={estilos.numero}>{totalProductos}</Text>
-          <Text style={estilos.unidad}>{totalProductos === 1 ? 'producto' : 'productos'}</Text>
+      <View style={estilos.grupo}>
+        <View accessible accessibilityLabel={`${totalPiezas} piezas en total${sinResolver > 0 ? ', sin contar las que faltan por resolver' : ''}`}>
+          <Text style={estilos.rotulo}>{sinResolver > 0 ? 'Piezas resueltas' : 'Piezas en total'}</Text>
+          <Text style={estilos.numero}>{formatearCifra(totalPiezas)}</Text>
         </View>
-        {totalDiscrepancias > 0 ? (
-          <View
-            style={[estilos.cifra, estilos.cifraTintada]}
-            accessible
-            accessibilityLabel={`${totalDiscrepancias} con discrepancia`}
-          >
-            <Text style={[estilos.numero, estilos.numeroDiscrepancia]}>{totalDiscrepancias}</Text>
-            <Text style={[estilos.unidad, estilos.unidadDiscrepancia]}>con discrepancia</Text>
-          </View>
-        ) : (
-          <Etiqueta texto="Sin discrepancias" tono="capturado" relleno="tintada" tamano="destacada" />
-        )}
-      </View>
-      <View>
-        <FilaDato etiqueta="Contó" valor={evento.vendedorNombre ?? '—'} separado />
-        <FilaDato etiqueta="Verificó" valor={evento.contadorNombre ?? 'pendiente'} />
-      </View>
-      {evento.sinLiquidar && (
-        <View style={estilos.marcaSinLiquidar}>
-          <Text style={estilos.tituloMarca}>Iniciada con la ruta anterior sin liquidar en Handy</Text>
-          <Personas personas={[{ rol: 'Permiso de', nombre: evento.sinLiquidar.otorgadoPor ?? 'un supervisor' }]} />
-          {evento.sinLiquidar.motivo && <Text style={estilos.textoMarca}>“{evento.sinLiquidar.motivo}”</Text>}
+        <View style={estilos.filaDatos}>
+          <Datos datos={[{ rotulo: 'Productos', valor: String(totalProductos), cifra: true }]} />
+          {totalDiscrepancias > 0 ? (
+            <Etiqueta
+              texto={totalDiscrepancias === 1 ? '1 con discrepancia' : `${totalDiscrepancias} con discrepancia`}
+              tono="discrepancia"
+            />
+          ) : (
+            <Etiqueta texto="Sin discrepancias" tono="capturado" />
+          )}
+          {sinResolver > 0 && <Etiqueta texto={`${sinResolver} sin resolver`} tono="error" />}
         </View>
-      )}
-      {evento.liquidacionNoVerificada && (
-        <Text style={estilos.nota}>Al iniciarla no se pudo confirmar en Handy la liquidación anterior.</Text>
-      )}
+      </View>
+      <View style={estilos.grupo}>
+        <Personas personas={personas} />
+      </View>
     </Tarjeta>
   );
 }
@@ -246,6 +243,11 @@ function cantidad(piezas: number | null, producto: ProductoConteo): string {
   return piezas === null ? 'Sin dato' : formatearEnPaquetes(piezas, factorEfectivo(producto), unidadCompleta(producto));
 }
 
+/**
+ * Un solo punto focal: la cantidad final, que es lo que se sube al camión. El
+ * nombre y el empaque la acompañan; la discrepancia, si hubo, va aparte en un
+ * bloque tintado con dos grupos: cuánto contó cada quien y quién la resolvió.
+ */
 function FilaProducto({ producto }: { producto: ProductoDetalle }) {
   const factor = factorEfectivo(producto);
   const { discrepancia, cantidadFinal } = producto;
@@ -255,12 +257,14 @@ function FilaProducto({ producto }: { producto: ProductoDetalle }) {
     // Ámbar a la izquierda: se distingue de un vistazo al recorrer la lista.
     <Tarjeta compacta acento={discrepancia ? 'discrepancia' : undefined} style={estilos.fila}>
       <View style={estilos.lineaProducto}>
-        <EtiquetaFactor producto={producto} grande />
+        <EtiquetaFactor producto={producto} />
         <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
       </View>
       {/* A la derecha y con dígitos del mismo ancho: las cantidades de todas las tarjetas quedan en columna. */}
       {sinResolver ? (
-        <Text style={[estilos.cantidadFinal, estilos.sinResolver]}>Sin resolver</Text>
+        <View style={estilos.lineaCantidad}>
+          <Etiqueta texto="Sin resolver" tono="error" tamano="destacada" />
+        </View>
       ) : (
         <View style={estilos.lineaCantidad}>
           {factor !== null && cantidadFinal !== null && cantidadFinal >= factor && (
@@ -270,13 +274,21 @@ function FilaProducto({ producto }: { producto: ProductoDetalle }) {
         </View>
       )}
       {discrepancia && (
-        <Tarjeta elevacion={0} tintada="discrepancia" compacta>
+        <Tarjeta elevacion={0} tintada="discrepancia" compacta style={estilos.bloqueDiscrepancia}>
           <Text style={estilos.tituloDiscrepancia}>Tuvo discrepancia</Text>
-          <View>
-              <FilaDato etiqueta="Vendedor contó" valor={cantidad(discrepancia.vendedor, producto)} />
-              <FilaDato etiqueta="Contador contó" valor={cantidad(discrepancia.contador, producto)} />
-              <FilaDato etiqueta="Final capturada por" valor={discrepancia.capturadaPor ?? 'nadie aún'} separado />
-              <FilaDato etiqueta="Confirmada por" valor={discrepancia.confirmadaPor ?? 'nadie aún'} />
+          <Datos
+            datos={[
+              { rotulo: 'Vendedor contó', valor: cantidad(discrepancia.vendedor, producto), cifra: true },
+              { rotulo: 'Contador contó', valor: cantidad(discrepancia.contador, producto), cifra: true },
+            ]}
+          />
+          <View style={estilos.grupoDiscrepancia}>
+            <Personas
+              personas={[
+                { rol: 'Capturó la final', nombre: discrepancia.capturadaPor },
+                { rol: 'Confirmó', nombre: discrepancia.confirmadaPor },
+              ]}
+            />
           </View>
         </Tarjeta>
       )}
@@ -347,61 +359,27 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     padding: RITMO.margen,
   },
+  // Entre grupos del resumen, aire de grupo; dentro, poco.
   resumen: {
     marginTop: RITMO.margen,
+    gap: RITMO.grupo,
   },
-  cifras: {
+  grupo: {
+    gap: RITMO.relacionado,
+  },
+  filaDatos: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: RITMO.margen,
+    gap: RITMO.grupo,
+    rowGap: RITMO.relacionado,
   },
-  cifra: {
-    alignItems: 'flex-start',
-  },
-  cifraTintada: {
-    paddingHorizontal: RITMO.margen,
-    paddingVertical: ESPACIADO.sm,
-    backgroundColor: COLORES.discrepanciaFondo,
-    borderRadius: RADIOS.medio,
-  },
+  rotulo: ROTULO,
+  // El único dato en grande de la pantalla: lo que se sube al camión.
   numero: {
     ...TIPOGRAFIA.numero,
     color: COLORES.marcaOscuro,
     ...CIFRAS,
-  },
-  numeroDiscrepancia: {
-    color: COLORES.discrepanciaTexto,
-  },
-  unidad: {
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-  },
-  unidadDiscrepancia: {
-    color: COLORES.discrepanciaTexto,
-  },
-  nota: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
-  marcaSinLiquidar: {
-    gap: ESPACIADO.xs,
-    padding: RITMO.relacionado,
-    backgroundColor: COLORES.discrepanciaFondo,
-    borderRadius: RADIOS.chico,
-  },
-  tituloMarca: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.discrepanciaTexto,
-  },
-  textoMarca: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.texto,
   },
   lista: {
     flex: 1,
@@ -413,15 +391,15 @@ const estilos = StyleSheet.create({
     paddingHorizontal: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
-  // Igual que en el conteo: la familia fija arriba mientras se recorre. Más
-  // aire arriba que abajo: agrupa los productos que siguen.
+  // Igual que en el conteo: la familia fija arriba mientras se recorre. Mucho
+  // aire arriba y casi nada abajo: agrupa los productos que siguen.
   encabezadoFamilia: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: RITMO.interno,
+    gap: RITMO.relacionado,
     marginHorizontal: -RITMO.margen,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xl,
+    paddingTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xs,
     backgroundColor: COLORES.fondoPantalla,
   },
@@ -431,16 +409,16 @@ const estilos = StyleSheet.create({
     fontWeight: PESOS.extraNegrita,
     color: COLORES.marcaOscuro,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   discrepanciasFamilia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.discrepanciaTexto,
     ...CIFRAS,
   },
   fila: {
-    marginTop: RITMO.relacionado,
+    marginTop: ESPACIADO.sm,
   },
   lineaProducto: {
     flexDirection: 'row',
@@ -458,7 +436,7 @@ const estilos = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
-    gap: RITMO.interno,
+    gap: ESPACIADO.sm,
   },
   // La cantidad final domina la tarjeta: es lo que se carga al camión.
   cantidadFinal: {
@@ -473,13 +451,17 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
     ...CIFRAS,
   },
-  sinResolver: {
-    color: COLORES.error,
+  bloqueDiscrepancia: {
+    gap: RITMO.relacionado,
+  },
+  grupoDiscrepancia: {
+    marginTop: RITMO.grupo - RITMO.relacionado,
   },
   tituloDiscrepancia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.discrepanciaTexto,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

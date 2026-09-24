@@ -68,6 +68,8 @@ export function BloqueError({
 }
 
 const TAMANO_SIGNO = ESPACIADO.xl;
+/** Entre el signo y el texto: el texto queda en una columna propia. */
+const HUECO_SIGNO = ESPACIADO.sm;
 
 const estilos = StyleSheet.create({
   bloque: {
@@ -79,7 +81,7 @@ const estilos = StyleSheet.create({
   cabecera: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: RITMO.interno,
+    gap: HUECO_SIGNO,
   },
   signo: {
     width: TAMANO_SIGNO,
@@ -100,17 +102,18 @@ const estilos = StyleSheet.create({
   },
   // Alineado con el título, no bajo el signo.
   detalle: {
-    marginLeft: TAMANO_SIGNO + RITMO.interno,
+    marginLeft: TAMANO_SIGNO + HUECO_SIGNO,
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   // Bajo el texto que explican, alineadas con él.
   acciones: {
-    marginLeft: TAMANO_SIGNO + RITMO.interno,
+    marginLeft: TAMANO_SIGNO + HUECO_SIGNO,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: RITMO.relacionado,
-    marginTop: ESPACIADO.xs,
+    // Otro grupo: lo que se puede hacer va aparte de lo que pasó.
+    marginTop: ESPACIADO.md,
   },
   boton: {
     minWidth: ESPACIADO.xxxl * 3,

@@ -17,7 +17,7 @@ import { BloqueError, EstadoVacio, Esqueleto, LineaEsqueleto, SEPARACION_TARJETA
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ELEVACION, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ELEVACION, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Corto: la transición orienta al usuario, no debe hacerlo esperar. */
 const DURACION_TRANSICION_MS = 180;
@@ -176,10 +176,10 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
         <Text style={estilos.textoAvatar}>{iniciales(nombre)}</Text>
       </View>
       <View style={estilos.datosUsuario}>
+        {rol && <Text style={estilos.rolUsuario}>{rol}</Text>}
         <Text style={estilos.nombreUsuario} numberOfLines={2}>
           {nombre}
         </Text>
-        {rol && <Text style={estilos.rolUsuario}>{rol}</Text>}
       </View>
       <Text style={estilos.flecha}>›</Text>
     </Tarjeta>
@@ -369,8 +369,8 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
         detalle = `Te quedan ${n} intentos antes del bloqueo temporal.`;
       }
       return (
-        <View accessibilityRole="alert">
-          <Text style={[estilos.tituloAviso, { color: COLORES.error }]}>PIN incorrecto</Text>
+        <View accessibilityRole="alert" style={estilos.recuadroError}>
+          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>PIN incorrecto</Text>
           <Text style={estilos.detalleAviso}>{detalle}</Text>
         </View>
       );
@@ -384,8 +384,8 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
       );
     case 'otro':
       return (
-        <View accessibilityRole="alert">
-          <Text style={[estilos.tituloAviso, { color: COLORES.error }]}>No se pudo iniciar sesión</Text>
+        <View accessibilityRole="alert" style={estilos.recuadroError}>
+          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>No se pudo iniciar sesión</Text>
           <Text style={estilos.detalleAviso}>{aviso.mensaje}</Text>
         </View>
       );
@@ -504,20 +504,19 @@ const estilos = StyleSheet.create({
   datosUsuario: {
     flex: 1,
   },
+  // El nombre es lo que se busca: domina la fila.
   nombreUsuario: {
     ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
   },
-  // El rol se retira: acompaña al nombre, no compite con él.
-  rolUsuario: {
-    ...TIPOGRAFIA.etiqueta,
+  // El rol es su rótulo, arriba y pegado: se retira.
+  rolUsuario: ROTULO,
+  // Solo dice "se abre": no compite con el nombre.
+  flecha: {
+    ...TIPOGRAFIA.titulo,
     fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
-  },
-  flecha: {
-    ...TIPOGRAFIA.display,
-    fontWeight: PESOS.regular,
-    color: COLORES.marca,
   },
   filaSkeleton: {
     ...ELEVACION[1],
@@ -582,11 +581,18 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
     textAlign: 'center',
   },
-  // El fondo ámbar basta para separarlo: sin contorno.
+  // Un aviso es un bloque tintado de su estado, no texto de color: se lee de
+  // reojo. El fondo basta para separarlo: sin contorno.
   recuadroRed: {
     paddingVertical: RITMO.interno,
     paddingHorizontal: RITMO.relacionado,
     backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
+  },
+  recuadroError: {
+    paddingVertical: RITMO.interno,
+    paddingHorizontal: RITMO.relacionado,
+    backgroundColor: COLORES.errorFondo,
     borderRadius: RADIOS.medio,
   },
   panelBloqueo: {

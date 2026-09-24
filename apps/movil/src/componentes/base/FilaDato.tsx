@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
+import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, PESOS, ROTULO, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
 
 interface Props {
   /** Qué es: rótulo pequeño en mayúsculas, se retira, a la izquierda. */
   etiqueta: string;
-  /** El dato: domina, a la derecha. */
-  valor: string;
+  /** El dato: domina, a la derecha. `null` = todavía no existe (se muestra `ausente`, sin peso). */
+  valor: string | null;
+  /** Qué decir cuando falta el dato. */
+  ausente?: string;
   /** Aclaración bajo el valor, p. ej. "(18 piezas)". */
   detalle?: string | null;
   /** Colorea etiqueta y valor: el renglón comunica un estado (la diferencia, un error). */
@@ -15,7 +17,7 @@ interface Props {
   principal?: boolean;
   /** Etiqueta arriba y valor abajo, a todo el ancho: para textos largos (un motivo). */
   apilado?: boolean;
-  /** Línea arriba: cierra una tabla (p. ej. el total bajo los sumandos). */
+  /** Aire arriba: empieza otro grupo (p. ej. el resultado bajo los sumandos). Espacio, nunca una línea. */
   separado?: boolean;
   accessibilityLabel?: string;
 }
@@ -24,6 +26,7 @@ interface Props {
 export function FilaDato({
   etiqueta,
   valor,
+  ausente = 'Pendiente',
   detalle,
   tono,
   principal = false,
@@ -32,18 +35,20 @@ export function FilaDato({
   accessibilityLabel,
 }: Props) {
   const color = tono ? { color: COLORES[tono] } : null;
+  const texto = valor ?? ausente;
+  const estiloValor = valor === null ? estilos.valorAusente : principal ? estilos.valorPrincipal : estilos.valor;
 
   return (
     <View
       style={[apilado ? estilos.apilado : estilos.fila, separado && estilos.separado]}
       accessible
-      accessibilityLabel={accessibilityLabel ?? [`${etiqueta}: ${valor}`, detalle].filter(Boolean).join(', ')}
+      accessibilityLabel={accessibilityLabel ?? [`${etiqueta}: ${texto}`, detalle].filter(Boolean).join(', ')}
     >
       <Text style={[estilos.etiqueta, apilado && estilos.etiquetaApilada, color]} numberOfLines={apilado ? undefined : 2}>
         {etiqueta}
       </Text>
       <View style={apilado ? null : estilos.columnaValor}>
-        <Text style={[principal ? estilos.valorPrincipal : estilos.valor, !apilado && estilos.alDerecha, color]}>{valor}</Text>
+        <Text style={[estiloValor, !apilado && estilos.alDerecha, valor !== null && color]}>{texto}</Text>
         {detalle && <Text style={[estilos.detalle, !apilado && estilos.alDerecha]}>{detalle}</Text>}
       </View>
     </View>
@@ -57,26 +62,19 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.md,
     paddingVertical: ESPACIADO.xs,
   },
+  // Rótulo pegado a su dato: son un solo bloque.
   apilado: {
-    gap: ESPACIADO.xs,
     paddingVertical: ESPACIADO.xs,
   },
-  // La única línea de una tabla: cierra los sumandos antes del total.
+  // Otro grupo: lo separa el aire, no un divisor.
   separado: {
-    marginTop: ESPACIADO.xs,
-    paddingTop: ESPACIADO.sm,
-    borderTopWidth: BORDES.fino,
-    borderTopColor: COLORES.divisor,
+    marginTop: ESPACIADO.md,
   },
   // El rótulo se retira y el dato domina: nunca el mismo estilo para los dos,
   // o "Contó Irvin Alday" se lee como una frase donde todo pesa igual.
   etiqueta: {
     flex: 1,
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.medio,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...ROTULO,
   },
   etiquetaApilada: {
     flex: 0,
@@ -86,11 +84,10 @@ const estilos = StyleSheet.create({
     alignItems: 'flex-end',
   },
   valor: {
-    ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.texto,
+    ...DATO,
     ...CIFRAS,
   },
+  valorAusente: DATO_AUSENTE,
   valorPrincipal: {
     ...TIPOGRAFIA.titulo,
     color: COLORES.texto,

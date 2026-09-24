@@ -10,8 +10,9 @@ import {
   Boton,
   EstadoVacio,
   Esqueleto,
+  Datos,
+  Etiqueta,
   LineaEsqueleto,
-  Personas,
   Seccion,
   TarjetaEsqueleto,
   TituloSeccion,
@@ -19,7 +20,20 @@ import {
 import type { CargaAbierta } from '../conteo/almacen-conteo';
 import { estaConectado } from '../conteo/cola-sincronizacion';
 import { horaNegocio } from '../conteo/fecha-operativa';
-import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  ANCHO_MODAL,
+  BORDES,
+  COLORES,
+  ESPACIADO,
+  OPACIDAD,
+  PESOS,
+  RADIOS,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+  type ColorTono,
+} from '../theme/tokens';
 
 const MENSAJE_SIN_RED =
   'Para empezar a verificar necesitas señal: el servidor abre tu conteo y te manda la lista de productos. Ya abierto, puedes contar sin señal.';
@@ -239,58 +253,62 @@ function FilaCarga({
   onPress?: (carga: CargaEnCola) => void;
 }) {
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
+  const hora = carga.fechaConteo ? horaNegocio(carga.fechaConteo) : null;
   const detalle = [
     carga.totalProductos !== null ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}` : null,
-    carga.fechaConteo ? `terminó a las ${horaNegocio(carga.fechaConteo)}` : null,
+    hora ? `terminó a las ${hora}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
 
   let accion: string | null = null;
-  let estadoTexto: string | null = null;
+  let estado: { texto: string; tono: ColorTono } | null = null;
   switch (carga.estado) {
     case 'lista':
       accion = abriendo ? 'Abriendo…' : 'Verificar ›';
       break;
     case 'propia':
       accion = 'Continuar ›';
-      estadoTexto = 'Ya empezaste a verificarla';
+      estado = { texto: 'Ya empezaste a verificarla', tono: 'marca' };
       break;
     case 'bloqueada':
       accion = 'Ver ›';
-      estadoTexto = 'El vendedor tiene un corte de venta pendiente en Handy';
+      estado = { texto: 'Corte de venta pendiente en Handy', tono: 'discrepancia' };
       break;
     case 'otro':
-      estadoTexto = carga.verificandoPor ? `La está verificando ${carga.verificandoPor}` : 'Otra persona la está verificando';
+      estado = {
+        texto: carga.verificandoPor ? `La verifica ${carga.verificandoPor}` : 'La verifica otra persona',
+        tono: 'pendiente',
+      };
       break;
   }
 
+  // Un solo punto focal: la ruta. El tipo es su rótulo; abajo, separados por
+  // aire, quién contó y cuánto, como rótulo y dato; el estado, como bloque.
   const contenido = (presionada: boolean) => (
     <>
       <View style={[estilos.barraEstado, { backgroundColor: COLOR_ESTADO[carga.estado] }]} />
       <View style={estilos.cuerpoFila}>
-        <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={1}>
-          {carga.rutaNombre}
-        </Text>
-        <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>{tipo}</Text>
-        {carga.vendedorNombre && (
-          <Personas personas={[{ rol: 'Contó', nombre: carga.vendedorNombre }]} invertido={presionada} />
-        )}
-        {detalle.length > 0 && (
-          <Text style={[estilos.detalle, presionada && estilos.textoInvertido]} numberOfLines={2}>
-            {detalle}
+        <View>
+          <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>{tipo}</Text>
+          <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={1}>
+            {carga.rutaNombre}
           </Text>
-        )}
-        {estadoTexto && (
-          <Text
-            style={[
-              estilos.estadoTexto,
-              carga.estado === 'bloqueada' && estilos.estadoBloqueada,
-              presionada && estilos.textoInvertido,
-            ]}
-          >
-            {estadoTexto}
-          </Text>
+        </View>
+        <Datos
+          invertido={presionada}
+          datos={[
+            { rotulo: 'Contó', valor: carga.vendedorNombre, ausente: 'Sin nombre' },
+            ...(carga.totalProductos !== null
+              ? [{ rotulo: 'Productos', valor: String(carga.totalProductos), cifra: true }]
+              : []),
+            ...(hora ? [{ rotulo: 'Terminó', valor: hora, cifra: true }] : []),
+          ]}
+        />
+        {estado && (
+          <View style={estilos.filaEstado}>
+            <Etiqueta texto={estado.texto} tono={estado.tono} />
+          </View>
         )}
       </View>
       {accion && <Text style={[estilos.accion, presionada && estilos.textoInvertido]}>{accion}</Text>}
@@ -299,7 +317,7 @@ function FilaCarga({
 
   if (!onPress) {
     return (
-      <View style={[estilos.fila, estilos.filaInactiva]} accessible accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${estadoTexto ?? ''}`}>
+      <View style={[estilos.fila, estilos.filaInactiva]} accessible accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${estado?.texto ?? ''}`}>
         {contenido(false)}
       </View>
     );
@@ -310,7 +328,7 @@ function FilaCarga({
       onPress={() => onPress(carga)}
       disabled={deshabilitada}
       accessibilityRole="button"
-      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estadoTexto ?? ''}`}
+      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}
       style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada, deshabilitada && !abriendo && estilos.deshabilitado]}
     >
@@ -439,7 +457,7 @@ const estilos = StyleSheet.create({
   // Del título a los grupos, más aire que dentro de cada grupo.
   contenedor: {
     width: '100%',
-    gap: ESPACIADO.xl,
+    gap: RITMO.grupo,
   },
   fila: {
     minHeight: TOQUE_MINIMO + ESPACIADO.xl,
@@ -462,33 +480,20 @@ const estilos = StyleSheet.create({
     alignSelf: 'stretch',
     width: BORDES.acento,
   },
+  // Entre la ruta y sus datos, aire de grupo: se leen como dos bloques.
   cuerpoFila: {
     flex: 1,
+    gap: RITMO.relacionado,
     paddingVertical: RITMO.margen,
   },
+  tipo: ROTULO,
   ruta: {
     ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
   },
-  tipo: {
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
-    color: COLORES.texto,
-  },
-  detalle: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
-  estadoTexto: {
-    marginTop: ESPACIADO.xs,
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
-  estadoBloqueada: {
-    color: COLORES.discrepanciaTexto,
-    fontWeight: PESOS.negrita,
+  filaEstado: {
+    flexDirection: 'row',
   },
   accion: {
     ...TIPOGRAFIA.subtitulo,

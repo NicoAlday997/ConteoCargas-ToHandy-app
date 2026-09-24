@@ -92,18 +92,20 @@ export const ESPACIADO = {
 export type ClaveEspaciado = keyof typeof ESPACIADO;
 
 /**
- * Ritmo: los mismos tres saltos en toda la app. Todo valor de espaciado es
- * múltiplo de 4 y sale de aquí o de ESPACIADO; nada inventado caso por caso.
- * Cuanto más lejos en la jerarquía, más aire: un título de sección queda más
- * cerca de lo que agrupa que de la sección anterior.
+ * Ritmo. Lo que hace que el ojo agrupe solo es la PROPORCIÓN: poco aire dentro
+ * de un grupo y mucho entre grupos, nunca divisores. Todo valor es múltiplo de
+ * 4 y sale de aquí o de ESPACIADO; nada inventado caso por caso. Un rótulo va
+ * pegado a su dato (sin hueco: el interlineado basta).
  */
 export const RITMO = {
-  /** Dentro de un componente: título y detalle, icono y texto. */
-  interno: ESPACIADO.sm,
-  /** Entre componentes relacionados: tarjetas de una lista, botones de un grupo. */
+  /** Dentro de un grupo: título y detalle, datos de un mismo bloque. */
+  interno: ESPACIADO.xs,
+  /** Entre componentes hermanos: tarjetas de una lista, botones de un grupo. */
   relacionado: ESPACIADO.md,
-  /** Entre secciones distintas. */
-  seccion: ESPACIADO.xxl,
+  /** Entre grupos de datos dentro de una tarjeta o un panel (quién contó / cuánto). */
+  grupo: ESPACIADO.xl,
+  /** Entre secciones distintas de una pantalla. */
+  seccion: ESPACIADO.xxxl,
   /** Margen lateral de la pantalla y relleno de los bloques. */
   margen: ESPACIADO.lg,
 } as const;
@@ -129,14 +131,13 @@ interface EstiloTexto {
  * Escala tipográfica. Cada nivel se lee claramente distinto del de al lado:
  * el dato principal se lee de lejos y lo secundario se retira.
  *
- * - numero: la cifra que domina la pantalla (total de piezas de una carga,
- *   progreso, cantidad final), como el total de un pedido.
- * - display: el número que se busca con la mirada (dígitos del PIN, el 0 de "no lleva").
- * - titulo: título de pantalla o de modal; valores capturados.
- * - subtitulo: lo principal de una tarjeta (ruta, producto, cantidad final).
+ * - numero: la cifra que domina la pantalla (total de piezas de una carga).
+ * - display: el número que se busca con la mirada (dígitos del PIN, avance del conteo).
+ * - titulo: título de pantalla o de modal; lo que domina una tarjeta (la ruta).
+ * - subtitulo: el dato bajo su rótulo (un nombre, una cantidad), el nombre de un producto.
  * - cuerpo: texto corrido e instrucciones.
- * - etiqueta: rótulos, datos secundarios, texto de etiquetas.
- * - micro: rótulos de campo en mayúsculas y unidades.
+ * - etiqueta: texto de las etiquetas de estado, notas.
+ * - micro: rótulos en mayúsculas ("CONTÓ", "RUTA") y unidades.
  */
 export const TIPOGRAFIA = {
   numero: { fontSize: 48, fontWeight: PESOS.extraNegrita, lineHeight: 54 },
@@ -147,6 +148,41 @@ export const TIPOGRAFIA = {
   etiqueta: { fontSize: 14, fontWeight: PESOS.semiNegrita, lineHeight: 18 },
   micro: { fontSize: 12, fontWeight: PESOS.semiNegrita, lineHeight: 16 },
 } as const satisfies Record<string, EstiloTexto>;
+
+/**
+ * Rótulo de un dato ("CONTÓ", "VERIFICÓ", "RUTA", "FECHA"). Pequeño, en
+ * mayúsculas, espaciado, color secundario y peso medio: se reconoce como
+ * rótulo sin leerlo y nunca compite con su dato.
+ */
+export const ROTULO = {
+  ...TIPOGRAFIA.micro,
+  fontWeight: PESOS.medio,
+  color: COLORES.textoSecundario,
+  textTransform: 'uppercase',
+  letterSpacing: 0.8,
+} as const satisfies TextStyle;
+
+/**
+ * El dato bajo su rótulo ("Irvin Alday"): tres niveles más grande que el
+ * rótulo, fuerte y en el color principal. La distancia entre los dos es lo que
+ * hace que "CONTÓ Irvin Alday" se lea como rótulo y dato, no como una frase.
+ */
+export const DATO = {
+  ...TIPOGRAFIA.subtitulo,
+  fontWeight: PESOS.negrita,
+  color: COLORES.texto,
+} as const satisfies TextStyle;
+
+/**
+ * Un dato que todavía no existe ("Pendiente", "Sin dato"): mismo tamaño que
+ * DATO para que la fila no salte, pero sin peso y en secundario, así no se
+ * confunde con un nombre.
+ */
+export const DATO_AUSENTE = {
+  ...TIPOGRAFIA.subtitulo,
+  fontWeight: PESOS.regular,
+  color: COLORES.textoSecundario,
+} as const satisfies TextStyle;
 
 export type NivelTipografia = keyof typeof TIPOGRAFIA;
 

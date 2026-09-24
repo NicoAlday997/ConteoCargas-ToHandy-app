@@ -203,11 +203,13 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO.sm,
   },
+  // Rótulo del campo: se lee de reojo ("¿paquetes o sueltas?") sin competir con la cifra.
   campo: {
-    ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   visor: {
     minWidth: ANCHO_VISOR,
@@ -218,8 +220,12 @@ const estilos = StyleSheet.create({
   visorConAviso: {
     borderBottomColor: COLORES.discrepancia,
   },
+  // Lo que se teclea domina el panel. Mismo alto de línea que un título: el
+  // teclado no crece (los dígitos no tienen descendentes).
   valor: {
     ...TIPOGRAFIA.titulo,
+    fontSize: 30,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
     textAlign: 'right',
     ...CIFRAS,

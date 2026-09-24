@@ -65,3 +65,8 @@ export function formatearPiezas(piezas: number): string {
 export function formatearTotalPiezas(piezas: number): string {
   return `(${formatearPiezas(piezas)})`;
 }
+
+/** "1,240": separador de miles para las cifras grandes que se leen de un vistazo. */
+export function formatearCifra(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

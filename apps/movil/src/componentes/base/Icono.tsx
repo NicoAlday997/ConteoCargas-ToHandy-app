@@ -7,7 +7,7 @@ import { BORDES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TONOS, type ColorTono } f
  * Solo acompañan a un estado vacío o a un error; nunca decoran un botón o una fila.
  * - lista: un historial o registro (aquí aparecerán las cargas).
  * - listo: nada pendiente (la cola está al día, todo resuelto).
- * - reloj: algo con vigencia (permisos).
+ * - reloj: algo con vigencia o en espera.
  * - personas: usuarios.
  * - caja: productos de una carga.
  * - candado: sin acceso.

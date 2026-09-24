@@ -32,7 +32,6 @@ export const FiltrosHistorialSchema = z.object({
   fechaFin: z.coerce.date().optional(),
   estado: z.enum(EstadoCarga).optional(),
   conDiscrepancia: booleanDeQuery.optional(),
-  sinLiquidar: booleanDeQuery.optional(),
   tipo: z.enum(TipoCarga).optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),

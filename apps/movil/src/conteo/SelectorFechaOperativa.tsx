@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { BloqueError, Boton } from '../componentes/base';
 import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
-import { diaNegocio, formatearDia, horaNegocio, opcionesFechaOperativa } from './fecha-operativa';
+import { diaNegocio, formatearDia, opcionesFechaOperativa } from './fecha-operativa';
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
 export interface ConflictoFecha {
@@ -12,30 +12,16 @@ export interface ConflictoFecha {
   dia: string;
 }
 
-/**
- * El servidor no dejó iniciar la carga inicial: la ruta anterior del vendedor
- * sigue sin liquidar en Handy. Es la regla funcionando, no una falla.
- */
-export interface BloqueoLiquidacion {
-  dia: string;
-  /** Cuántas veces se ha revisado con el servidor, contando la primera. */
-  revisiones: number;
-  revisadoEn: Date;
-}
-
 interface Props {
   /** `null` = cerrado. */
   tipo: TipoCarga | null;
   conflicto: ConflictoFecha | null;
-  sinLiquidar: BloqueoLiquidacion | null;
   /** Creando la carga o abriendo la existente: botones bloqueados. */
   ocupado: boolean;
   error: string | null;
   onElegir: (dia: string) => void;
   onContinuarExistente: (conflicto: ConflictoFecha) => void;
   onElegirOtra: () => void;
-  /** Vuelve a intentar crear la carga para el mismo día: puede que ya la hayan liquidado. */
-  onReintentarLiquidacion: (bloqueo: BloqueoLiquidacion) => void;
   onCerrar: () => void;
 }
 
@@ -65,13 +51,11 @@ export function SelectorFechaOperativa(props: Props) {
 function Contenido({
   tipo,
   conflicto,
-  sinLiquidar,
   ocupado,
   error,
   onElegir,
   onContinuarExistente,
   onElegirOtra,
-  onReintentarLiquidacion,
   onCerrar,
 }: Props & { tipo: TipoCarga }) {
   const [ahora, setAhora] = useState(() => new Date());
@@ -97,31 +81,7 @@ function Contenido({
   return (
     <View style={estilos.fondo}>
       <View style={estilos.tarjeta}>
-        {sinLiquidar ? (
-          <>
-            <Text style={estilos.titulo} accessibilityRole="header">
-              Primero hay que liquidar tu ruta anterior
-            </Text>
-            <Text style={estilos.detalle}>
-              Handy todavía muestra abierta tu ruta anterior. La carga inicial del{' '}
-              {formatearDia(sinLiquidar.dia).toLowerCase()} se puede iniciar en cuanto esa ruta quede liquidada.
-            </Text>
-            <Text style={estilos.detalle} accessibilityLiveRegion="polite">
-              {sinLiquidar.revisiones > 1
-                ? `Revisado de nuevo a las ${horaNegocio(sinLiquidar.revisadoEn)}: sigue sin liquidar.`
-                : 'Si ya la liquidaron, revisa de nuevo.'}
-            </Text>
-            {mensaje && <BloqueError titulo="No se pudo revisar" detalle={mensaje} tono={tonoMensaje} />}
-            <Boton
-              texto="Revisar de nuevo"
-              cargando={ocupado}
-              textoCargando="Revisando…"
-              onPress={() => onReintentarLiquidacion(sinLiquidar)}
-            />
-            <Boton texto="Cerrar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
-            <Text style={estilos.nota}>Si es urgente, un supervisor puede autorizar esta carga desde su cuenta.</Text>
-          </>
-        ) : conflicto ? (
+        {conflicto ? (
           <>
             <Text style={estilos.titulo} accessibilityRole="header">
               Ya hay una carga inicial para el {formatearDia(conflicto.dia).toLowerCase()}
@@ -293,12 +253,5 @@ const estilos = StyleSheet.create({
   },
   deshabilitado: {
     opacity: OPACIDAD.deshabilitado,
-  },
-  // Aparte de los botones por espacio, no por una línea.
-  nota: {
-    marginTop: ESPACIADO.xs,
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
   },
 });

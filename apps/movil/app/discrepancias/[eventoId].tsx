@@ -46,7 +46,20 @@ import {
   type Discrepancia,
 } from '../../src/discrepancias/estado-discrepancia';
 import { useLayout } from '../../src/theme/breakpoints';
-import { ANCHO_MODAL, BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../../src/theme/tokens';
+import {
+  ANCHO_MODAL,
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  PESOS,
+  RADIOS,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+  TONOS,
+  TOQUE_MINIMO,
+} from '../../src/theme/tokens';
 import type { ColorEstado } from '../../src/theme/tokens';
 
 /** Igual que en el conteo: 9999 ya es un error de dedo. */
@@ -378,7 +391,9 @@ function Resolucion({ eventoId }: { eventoId: string }) {
               accessibilityLiveRegion="polite"
               accessibilityLabel={`${faltan === 1 ? 'Falta 1' : `Faltan ${faltan}`} de ${total}`}
             >
-              <Text style={estilos.numeroProgreso}>{faltan}</Text> {faltan === 1 ? 'falta' : 'faltan'} de {total}
+              <Text style={estilos.numeroProgreso}>{faltan}</Text>
+              {`  ${faltan === 1 ? 'falta' : 'faltan'} de `}
+              <Text style={estilos.totalProgreso}>{total}</Text>
             </Text>
             <View style={estilos.barra} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: resueltas }}>
               <View style={[estilos.rellenoBarra, { width: `${(resueltas / total) * 100}%` }]} />
@@ -490,9 +505,9 @@ function TarjetaDiscrepancia({
   const soyQuienCapturo = d.capturadaPor !== null && d.capturadaPor === usuarioId;
 
   return (
-    <Tarjeta conAcento={BANDA_ESTADO[estado]}>
+    <Tarjeta conAcento={BANDA_ESTADO[estado]} style={estilos.tarjeta}>
       <View style={estilos.lineaProducto}>
-        <EtiquetaFactor producto={d.producto} grande />
+        <EtiquetaFactor producto={d.producto} />
         <Text style={estilos.nombreProducto} numberOfLines={2}>
           {d.producto.nombre}
         </Text>
@@ -530,9 +545,6 @@ function TarjetaDiscrepancia({
             />
           ) : (
             <>
-              <Text style={estilos.estadoEspera} accessibilityLiveRegion="polite">
-                Esperando confirmación
-              </Text>
               <Personas personas={[{ rol: 'Capturó', nombre: soyQuienCapturo ? 'Tú' : (d.capturadaPorNombre ?? 'otra persona') }]} />
               {soyQuienCapturo && (
                 <Text style={estilos.aviso}>Otra persona debe confirmarla con su propio PIN.</Text>
@@ -828,13 +840,23 @@ const estilos = StyleSheet.create({
   },
 
   // Sobre el azul del encabezado.
+  // La línea toma el alto del número grande para que no se recorte.
   progreso: {
     ...TIPOGRAFIA.cuerpo,
+    lineHeight: 36,
     color: COLORES.marcaClaro,
     ...CIFRAS,
   },
+  // Lo que se busca al levantar la vista: cuántas faltan.
   numeroProgreso: {
-    ...TIPOGRAFIA.titulo,
+    ...TIPOGRAFIA.display,
+    lineHeight: 36,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.textoSobreColor,
+    ...CIFRAS,
+  },
+  totalProgreso: {
+    ...TIPOGRAFIA.subtitulo,
     fontWeight: PESOS.extraNegrita,
     color: COLORES.textoSobreColor,
     ...CIFRAS,
@@ -864,7 +886,8 @@ const estilos = StyleSheet.create({
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.lg,
+    // Más aire entre diferencias que entre los grupos de cada una.
+    gap: ESPACIADO.xxl,
     padding: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
@@ -889,10 +912,14 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
 
+  // Entre producto, conteos y resultado, aire de grupo: tres bloques sin líneas.
+  tarjeta: {
+    gap: RITMO.grupo,
+  },
   lineaProducto: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: RITMO.interno,
+    gap: ESPACIADO.sm,
   },
   nombreProducto: {
     flex: 1,
@@ -903,17 +930,13 @@ const estilos = StyleSheet.create({
   final: {
     gap: RITMO.relacionado,
   },
+  // Rótulo pegado a la cifra: un solo bloque.
   bloqueFinal: {
-    gap: ESPACIADO.xs,
     padding: RITMO.margen,
     borderRadius: RADIOS.medio,
   },
-  etiquetaFinal: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.texto,
-    textTransform: 'uppercase',
-  },
+  etiquetaFinal: ROTULO,
+  // El único número grande de la tarjeta: lo que se carga al camión.
   valorFinal: {
     ...TIPOGRAFIA.display,
     fontWeight: PESOS.extraNegrita,
@@ -930,19 +953,20 @@ const estilos = StyleSheet.create({
     fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
-  estadoEspera: {
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.discrepanciaTexto,
-  },
   aviso: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
+  // Bloque tintado, no texto de color: se lee de reojo.
   error: {
+    paddingVertical: RITMO.interno,
+    paddingHorizontal: RITMO.relacionado,
+    backgroundColor: COLORES.errorFondo,
+    borderRadius: RADIOS.medio,
+    overflow: 'hidden',
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
-    color: COLORES.error,
+    fontWeight: PESOS.negrita,
+    color: COLORES.errorTexto,
     textAlign: 'center',
   },
 
@@ -978,9 +1002,7 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSobreColor,
   },
   etiquetaCampo: {
-    ...TIPOGRAFIA.micro,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
+    ...ROTULO,
     textAlign: 'right',
   },
   valorCampo: {

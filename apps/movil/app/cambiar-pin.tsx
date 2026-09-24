@@ -10,7 +10,7 @@ import { Encabezado } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../src/theme/tokens';
 
 const ANCHO_MAXIMO_PIN = 440;
 
@@ -19,7 +19,8 @@ type Etapa = 'nuevo' | 'confirmar';
 interface Aviso {
   titulo: string;
   detalle: string;
-  color: string;
+  /** El aviso es un bloque tintado de su estado, con el texto oscuro del mismo tono. */
+  tono: 'error' | 'discrepancia';
 }
 
 /**
@@ -89,7 +90,7 @@ export default function PantallaCambiarPin() {
             setAviso({
               titulo: 'Sin conexión con el servidor',
               detalle: 'Tu PIN no se cambió. Verifica la conexión y vuelve a confirmarlo.',
-              color: COLORES.discrepancia,
+              tono: 'discrepancia',
             });
             return;
           }
@@ -101,7 +102,7 @@ export default function PantallaCambiarPin() {
             {
               titulo: 'No se pudo cambiar el PIN',
               detalle: error.message || 'Intenta de nuevo con otro PIN.',
-              color: COLORES.error,
+              tono: 'error',
             },
             true,
           );
@@ -114,7 +115,7 @@ export default function PantallaCambiarPin() {
     if (etapa === 'nuevo') {
       if (pin === pinActual) {
         reiniciar(
-          { titulo: 'Elige un PIN distinto', detalle: 'El PIN nuevo no puede ser igual al temporal.', color: COLORES.error },
+          { titulo: 'Elige un PIN distinto', detalle: 'El PIN nuevo no puede ser igual al temporal.', tono: 'error' },
           true,
         );
         return;
@@ -128,7 +129,7 @@ export default function PantallaCambiarPin() {
 
     if (pin !== pinNuevoRef.current) {
       reiniciar(
-        { titulo: 'Los PIN no coinciden', detalle: 'Empieza de nuevo: teclea tu PIN nuevo.', color: COLORES.error },
+        { titulo: 'Los PIN no coinciden', detalle: 'Empieza de nuevo: teclea tu PIN nuevo.', tono: 'error' },
         true,
       );
       return;
@@ -188,8 +189,8 @@ export default function PantallaCambiarPin() {
               <Text style={estilos.textoGuardando}>Guardando…</Text>
             ) : (
               aviso && (
-                <View accessibilityRole="alert">
-                  <Text style={[estilos.tituloAviso, { color: aviso.color }]}>{aviso.titulo}</Text>
+                <View accessibilityRole="alert" style={[estilos.recuadroAviso, { backgroundColor: TONOS[aviso.tono].fondo }]}>
+                  <Text style={[estilos.tituloAviso, { color: TONOS[aviso.tono].texto }]}>{aviso.titulo}</Text>
                   <Text style={estilos.detalleAviso}>{aviso.detalle}</Text>
                 </View>
               )
@@ -253,6 +254,11 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.subtitulo,
     fontWeight: PESOS.medio,
     color: COLORES.textoSecundario,
+  },
+  recuadroAviso: {
+    paddingVertical: RITMO.interno,
+    paddingHorizontal: RITMO.relacionado,
+    borderRadius: RADIOS.medio,
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,

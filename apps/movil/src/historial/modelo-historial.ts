@@ -3,7 +3,6 @@ import type {
   CargaHistorialApi,
   DetalleHistorialApi,
   EstadoCargaApi,
-  InicioSinLiquidarApi,
   ProductoConsolidadoApi,
 } from '../api/historial';
 import { modalidadDesdeApi, type ProductoConteo } from '../conteo/estado-conteo.ts';
@@ -38,21 +37,6 @@ const texto = (valor: string | null | undefined): string | null => valor?.trim()
 const entero = (valor: unknown): number | null =>
   typeof valor === 'number' && Number.isInteger(valor) && valor >= 0 ? valor : null;
 
-/**
- * La carga inicial arrancó con la ruta anterior sin liquidar en Handy, con
- * permiso del supervisor. Se muestra igual en lista y detalle.
- */
-export interface MarcaSinLiquidar {
-  otorgadoPor: string | null;
-  motivo: string | null;
-}
-
-/** Todos los campos del servidor pueden faltar; basta con que el objeto venga. */
-function marcaSinLiquidar(api: InicioSinLiquidarApi | null | undefined): MarcaSinLiquidar | null {
-  if (!api || typeof api !== 'object') return null;
-  return { otorgadoPor: texto(api.permisoOtorgadoPorNombre), motivo: texto(api.permisoMotivo) };
-}
-
 // ---------------------------------------------------------------------------
 // Listado
 // ---------------------------------------------------------------------------
@@ -69,9 +53,6 @@ export interface FilaHistorial {
   totalProductos: number | null;
   /** Productos que tuvieron discrepancia, resuelta o no. */
   discrepancias: number;
-  sinLiquidar: MarcaSinLiquidar | null;
-  /** Handy no respondió al revisar la liquidación anterior; se dejó iniciar. */
-  liquidacionNoVerificada: boolean;
 }
 
 export interface GrupoDia {
@@ -92,8 +73,6 @@ function normalizarFila(fila: CargaHistorialApi): FilaHistorial | null {
     contadorNombre: texto(fila.contadorNombre),
     totalProductos: entero(fila.totalProductos),
     discrepancias: entero(fila.productosConDiscrepancia) ?? 0,
-    sinLiquidar: marcaSinLiquidar(fila.inicioSinLiquidar),
-    liquidacionNoVerificada: fila.liquidacionNoVerificada === true,
   };
 }
 
@@ -120,30 +99,6 @@ export function agruparPorDia(paginas: readonly (readonly CargaHistorialApi[])[]
   return [...grupos.entries()]
     .sort(([a], [b]) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a < b ? 1 : -1))
     .map(([dia, data]) => ({ dia, data }));
-}
-
-export interface AcumuladoVendedor {
-  vendedor: string;
-  cargas: number;
-}
-
-/**
- * Cuántas cargas inició cada vendedor con la ruta anterior sin liquidar, de
- * más a menos: quien acumula se ve primero. Filas repetidas cuentan una vez.
- */
-export function resumirSinLiquidar(filas: readonly CargaHistorialApi[]): AcumuladoVendedor[] {
-  const vistas = new Set<string>();
-  const cuenta = new Map<string, number>();
-  for (const api of filas) {
-    const fila = normalizarFila(api);
-    if (!fila || !fila.sinLiquidar || vistas.has(fila.id)) continue;
-    vistas.add(fila.id);
-    const vendedor = fila.vendedorNombre ?? 'Vendedor sin nombre';
-    cuenta.set(vendedor, (cuenta.get(vendedor) ?? 0) + 1);
-  }
-  return [...cuenta.entries()]
-    .map(([vendedor, cargas]) => ({ vendedor, cargas }))
-    .sort((a, b) => b.cargas - a.cargas || a.vendedor.localeCompare(b.vendedor));
 }
 
 // ---------------------------------------------------------------------------
@@ -184,8 +139,6 @@ export interface EventoDetalle {
   vendedorNombre: string | null;
   contadorNombre: string | null;
   autorizadaPorNombre: string | null;
-  sinLiquidar: MarcaSinLiquidar | null;
-  liquidacionNoVerificada: boolean;
 }
 
 export interface CargaDetalle {
@@ -193,6 +146,10 @@ export interface CargaDetalle {
   familias: FamiliaDetalle[];
   totalProductos: number;
   totalDiscrepancias: number;
+  /** Suma de las cantidades finales, en piezas: lo que se sube al camión. */
+  totalPiezas: number;
+  /** Productos con discrepancia aún sin cantidad final: no entran en `totalPiezas`. */
+  sinResolver: number;
 }
 
 function normalizarProducto(p: ProductoConsolidadoApi): ProductoDetalle | null {
@@ -228,6 +185,8 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
   const familias: FamiliaDetalle[] = [];
   let totalProductos = 0;
   let totalDiscrepancias = 0;
+  let totalPiezas = 0;
+  let sinResolver = 0;
   for (const grupo of api.familias ?? []) {
     const productos = (grupo.productos ?? []).map(normalizarProducto).filter((p): p is ProductoDetalle => p !== null);
     if (productos.length === 0) continue;
@@ -235,6 +194,10 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
     familias.push({ familia: texto(grupo.familia) ?? 'Sin familia', productos, conDiscrepancia });
     totalProductos += productos.length;
     totalDiscrepancias += conDiscrepancia;
+    for (const p of productos) {
+      if (p.cantidadFinal === null) sinResolver += 1;
+      else totalPiezas += p.cantidadFinal;
+    }
   }
 
   return {
@@ -247,11 +210,11 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
       vendedorNombre: texto(evento.vendedorNombre),
       contadorNombre: texto(evento.contadorNombre),
       autorizadaPorNombre: texto(evento.autorizadaPorNombre),
-      sinLiquidar: marcaSinLiquidar(evento.inicioSinLiquidar),
-      liquidacionNoVerificada: evento.liquidacionNoVerificada === true,
     },
     familias,
     totalProductos,
     totalDiscrepancias,
+    totalPiezas,
+    sinResolver,
   };
 }

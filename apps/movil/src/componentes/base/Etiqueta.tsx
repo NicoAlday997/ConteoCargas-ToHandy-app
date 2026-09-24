@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
 
 /**
- * - Un estado (`capturado`, `discrepancia`…): fondo del color del estado, texto blanco.
+ * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
  * - `marca`: datos que identifican, como el factor de empaque.
  * - `fuerte`: fondo oscuro; lo que debe resaltar sin ser un estado.
  * - `neutro`: fondo gris claro; para lo que no pide ninguna decisión.
@@ -11,9 +11,9 @@ import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TONOS, T
 export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro';
 
 /**
- * - solida: fondo del color con texto blanco. Lo que exige atención.
- * - tintada: fondo claro del mismo color con texto oscuro. Una píldora con
- *   presencia que no grita; la forma de mostrar un dato con color.
+ * - tintada (por omisión): fondo claro del color con texto oscuro del mismo
+ *   tono y peso fuerte. Así se muestra un ESTADO: se lee de reojo sin gritar.
+ * - solida: fondo del color con texto blanco. Solo lo que exige actuar ya.
  * - contorno: solo el borde y el texto en el color. Algo sin confirmar.
  */
 export type RellenoEtiqueta = 'solida' | 'tintada' | 'contorno';
@@ -47,7 +47,7 @@ const COLORES_TONO: Record<TonoEtiqueta, { solido: string; fondo: string; texto:
 export function Etiqueta({
   texto,
   tono = 'neutro',
-  relleno = 'solida',
+  relleno = 'tintada',
   tamano = 'normal',
   anchoFijo = false,
   ajustar = false,
@@ -121,7 +121,7 @@ const estilos = StyleSheet.create({
   },
   texto_normal: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
+    fontWeight: PESOS.extraNegrita,
   },
   texto_destacada: {
     ...TIPOGRAFIA.subtitulo,

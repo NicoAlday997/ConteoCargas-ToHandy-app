@@ -43,13 +43,6 @@ export interface EventoCarga {
   fechaBloqueoCortePendiente: Date | null;
   /** Momento en que se confirmo que el corte se cerro y el evento volvio a EN_ESPERA_CONTADOR. */
   fechaDesbloqueo: Date | null;
-  /**
-   * Id en Handy de la ruta anterior que seguia sin liquidar cuando se inicio
-   * esta carga INICIAL (solo posible con permiso del supervisor); `null` si no.
-   */
-  rutaHandySinLiquidarId: string | null;
-  /** Handy no respondio al verificar la liquidacion al iniciar; se permitio igual. */
-  liquidacionNoVerificada: boolean;
   creadoEn: Date;
 }
 
@@ -110,14 +103,6 @@ export interface DatosCrearEvento {
   fechaConteo: Date;
   /** Dia para el que sale el camion, ya normalizado (`normalizarFechaOperativa`). */
   fechaOperativa: Date;
-  /**
-   * La INICIAL arranca con la ruta anterior sin liquidar en Handy gracias a un
-   * permiso del supervisor. `crearEvento` consume ese permiso en la misma
-   * operacion que crea el evento (ver `PermisoCargaNoDisponibleError`).
-   */
-  permisoSinLiquidar?: { permisoId: string; rutaHandyId: string };
-  /** Handy no respondio al verificar la liquidacion; el evento queda marcado. */
-  liquidacionNoVerificada?: boolean;
 }
 
 /**
@@ -130,18 +115,6 @@ export class CargaInicialDuplicadaError extends Error {
   constructor() {
     super('Ya existe una carga INICIAL para esa ruta y fecha operativa');
     this.name = 'CargaInicialDuplicadaError';
-  }
-}
-
-/**
- * Lo lanza `crearEvento` cuando el permiso recibido en `permisoSinLiquidar` ya
- * no puede consumirse (otra solicitud lo gasto, o vencio entre la consulta y
- * el alta). En ese caso el evento NO se crea.
- */
-export class PermisoCargaNoDisponibleError extends Error {
-  constructor() {
-    super('El permiso de carga sin liquidar ya fue usado o vencio');
-    this.name = 'PermisoCargaNoDisponibleError';
   }
 }
 
@@ -220,11 +193,6 @@ export abstract class CargaRepository {
   /**
    * Crea un `EventoCarga` en estado `BORRADOR` y lo devuelve. Lanza
    * `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y fecha.
-   *
-   * Con `permisoSinLiquidar`, en la misma transaccion marca el permiso como
-   * usado y lo vincula al evento, solo si sigue sin usar y sin vencer respecto
-   * a `fechaConteo`; si no, lanza `PermisoCargaNoDisponibleError` y no crea
-   * nada.
    */
   abstract crearEvento(datos: DatosCrearEvento): Promise<EventoCarga>;
 

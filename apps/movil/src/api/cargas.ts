@@ -21,13 +21,6 @@ export interface EventoCargaApi {
   fechaConteo: string | null;
   /** Inicio del día para el que sale el camión, en hora de México (ISO 8601). */
   fechaOperativa: string | null;
-  /**
-   * Id en Handy de la ruta anterior que seguía sin liquidar al iniciar esta
-   * carga inicial: solo pasa con permiso del supervisor. `null` si no.
-   */
-  rutaHandySinLiquidarId?: string | null;
-  /** Handy no respondió al revisar la liquidación anterior y se dejó iniciar igual. */
-  liquidacionNoVerificada?: boolean | null;
   creadoEn: string | null;
 }
 
@@ -57,32 +50,6 @@ export interface RespuestaEvento {
 export const CODIGO_YA_TIENE_CARGA = 'YA_TIENE_CARGA_ABIERTA';
 /** 400 de `POST /eventos-carga`: la fecha es un día pasado (reloj del teléfono atrasado). */
 export const CODIGO_FECHA_INVALIDA = 'FECHA_OPERATIVA_INVALIDA';
-/**
- * 409 de `POST /eventos-carga` (solo carga inicial): el vendedor tiene una
- * ruta abierta en Handy y la ruta no tiene permiso vigente del supervisor.
- */
-export const CODIGO_RUTA_SIN_LIQUIDAR = 'RUTA_ANTERIOR_SIN_LIQUIDAR';
-
-/**
- * Cómo arrancó la carga respecto a la liquidación de la ruta anterior:
- * `permiso` = seguía sin liquidar y la autorizó un supervisor;
- * `no-verificada` = Handy no respondió y se dejó pasar; `normal` = nada que avisar.
- */
-export type InicioCarga = 'permiso' | 'no-verificada' | 'normal';
-
-export function esInicioCarga(valor: unknown): valor is InicioCarga {
-  return valor === 'permiso' || valor === 'no-verificada' || valor === 'normal';
-}
-
-/** `null` si el evento no trae con qué decidirlo (servidor viejo o respuesta rara). */
-export function inicioDeEvento(evento: EventoCargaApi | null | undefined): InicioCarga | null {
-  if (!evento) return null;
-  if (evento.rutaHandySinLiquidarId) return 'permiso';
-  if (evento.liquidacionNoVerificada === true) return 'no-verificada';
-  if (evento.liquidacionNoVerificada === false) return 'normal';
-  return null;
-}
-
 export interface ProductoApi {
   code: string | null;
   nombre: string | null;

@@ -5,6 +5,10 @@ import {
   type ResultadoAbrirSesion,
 } from './abrir-sesion.use-case';
 import type {
+  ResultadoVerificarCortePendiente,
+  VerificarCortePendienteUseCase,
+} from './verificar-corte-pendiente.use-case';
+import type {
   CargaRepository,
   DatosActualizarDiscrepancia,
   DatosCrearEvento,
@@ -17,9 +21,10 @@ import type {
 } from './carga.repository';
 
 /**
- * Pruebas del caso de uso "abrir sesion" (docs/04 §1.4), foco en el guardarail
- * de una sesion por usuario por evento. Sin base de datos: doble en memoria
- * del puerto `CargaRepository`.
+ * Pruebas del caso de uso "abrir sesion" (docs/04 §1.4): el guardarail de una
+ * sesion por usuario por evento y el bloqueo por liquidacion, que aplica solo
+ * al CONTADOR (docs/01 §6 regla 2). Sin base de datos: dobles en memoria de
+ * `CargaRepository` y de `VerificarCortePendienteUseCase`.
  */
 
 const AHORA = new Date('2026-09-17T08:00:00-06:00');
@@ -39,8 +44,6 @@ function eventoDePrueba(overrides: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
-    rutaHandySinLiquidarId: null,
-    liquidacionNoVerificada: false,
     creadoEn: AHORA,
     ...overrides,
   };
@@ -173,23 +176,56 @@ function exigirExito(
   return resultado;
 }
 
+/**
+ * Doble de la verificacion de corte: se le fija si el vendedor tiene la ruta
+ * anterior sin liquidar y registra cada llamada.
+ */
+class FakeVerificarCorte implements Pick<
+  VerificarCortePendienteUseCase,
+  'ejecutar'
+> {
+  rutaSinLiquidar = false;
+  readonly llamadas: string[] = [];
+
+  async ejecutar(entrada: {
+    eventoId: string;
+  }): Promise<ResultadoVerificarCortePendiente> {
+    this.llamadas.push(entrada.eventoId);
+    if (!this.rutaSinLiquidar) {
+      return { exito: true, bloqueado: false };
+    }
+    return {
+      exito: true,
+      bloqueado: true,
+      evento: eventoDePrueba({ estado: 'BLOQUEADA_CORTE_PENDIENTE' }),
+      rutaHandyId: 'handy-ruta-99',
+      generarAlertaMedia: true,
+    };
+  }
+}
+
 describe('AbrirSesionUseCase', () => {
   let cargas: FakeCargaRepository;
+  let verificarCorte: FakeVerificarCorte;
   let useCase: AbrirSesionUseCase;
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
-    useCase = new AbrirSesionUseCase(cargas);
+    verificarCorte = new FakeVerificarCorte();
+    useCase = new AbrirSesionUseCase(cargas, verificarCorte);
   });
 
   it('devuelve EVENTO_NO_ENCONTRADO y no crea nada si el evento no existe', async () => {
     cargas.evento = null;
 
-    const resultado = await useCase.ejecutar({
-      eventoId: 'ev-inexistente',
-      usuarioAppId: 'v1',
-      tipo: 'VENDEDOR',
-    });
+    const resultado = await useCase.ejecutar(
+      {
+        eventoId: 'ev-inexistente',
+        usuarioAppId: 'v1',
+        tipo: 'VENDEDOR',
+      },
+      AHORA,
+    );
 
     expect(resultado).toEqual({ exito: false, motivo: 'EVENTO_NO_ENCONTRADO' });
     expect(cargas.sesionesCreadas).toHaveLength(0);
@@ -200,11 +236,14 @@ describe('AbrirSesionUseCase', () => {
       sesionDePrueba({ usuarioAppId: 'v1', estado: 'ABIERTA' }),
     ];
 
-    const resultado = await useCase.ejecutar({
-      eventoId: 'ev-1',
-      usuarioAppId: 'v1',
-      tipo: 'VENDEDOR',
-    });
+    const resultado = await useCase.ejecutar(
+      {
+        eventoId: 'ev-1',
+        usuarioAppId: 'v1',
+        tipo: 'VENDEDOR',
+      },
+      AHORA,
+    );
 
     expect(resultado).toEqual({
       exito: false,
@@ -218,11 +257,14 @@ describe('AbrirSesionUseCase', () => {
       sesionDePrueba({ usuarioAppId: 'v1', estado: 'CERRADA' }),
     ];
 
-    const resultado = await useCase.ejecutar({
-      eventoId: 'ev-1',
-      usuarioAppId: 'v1',
-      tipo: 'VENDEDOR',
-    });
+    const resultado = await useCase.ejecutar(
+      {
+        eventoId: 'ev-1',
+        usuarioAppId: 'v1',
+        tipo: 'VENDEDOR',
+      },
+      AHORA,
+    );
 
     expect(resultado).toEqual({
       exito: false,
@@ -237,27 +279,38 @@ describe('AbrirSesionUseCase', () => {
     ];
 
     const resultado = exigirExito(
-      await useCase.ejecutar({
-        eventoId: 'ev-1',
-        usuarioAppId: 'c1',
-        tipo: 'CONTADOR',
-      }),
+      await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          usuarioAppId: 'c1',
+          tipo: 'CONTADOR',
+        },
+        AHORA,
+      ),
     );
 
     expect(resultado.sesion.usuarioAppId).toBe('c1');
     expect(resultado.sesion.tipo).toBe('CONTADOR');
     expect(cargas.sesionesCreadas).toEqual([
-      { eventoId: 'ev-1', tipo: 'CONTADOR', usuarioAppId: 'c1', ubicacion: undefined },
+      {
+        eventoId: 'ev-1',
+        tipo: 'CONTADOR',
+        usuarioAppId: 'c1',
+        ubicacion: undefined,
+      },
     ]);
   });
 
   it('crea la sesion cuando el usuario no tiene ninguna previa en ese evento', async () => {
     const resultado = exigirExito(
-      await useCase.ejecutar({
-        eventoId: 'ev-1',
-        usuarioAppId: 'v1',
-        tipo: 'VENDEDOR',
-      }),
+      await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          usuarioAppId: 'v1',
+          tipo: 'VENDEDOR',
+        },
+        AHORA,
+      ),
     );
 
     expect(resultado.sesion.eventoCargaId).toBe('ev-1');
@@ -267,17 +320,78 @@ describe('AbrirSesionUseCase', () => {
 
   it('propaga la ubicacion recibida a la sesion creada', async () => {
     const resultado = exigirExito(
-      await useCase.ejecutar({
-        eventoId: 'ev-1',
-        usuarioAppId: 'c1',
-        tipo: 'CONTADOR',
-        ubicacion: 'CALLE',
-      }),
+      await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          usuarioAppId: 'c1',
+          tipo: 'CONTADOR',
+          ubicacion: 'CALLE',
+        },
+        AHORA,
+      ),
     );
 
     expect(resultado.sesion.ubicacion).toBe('CALLE');
     expect(cargas.sesionesCreadas).toEqual([
-      { eventoId: 'ev-1', tipo: 'CONTADOR', usuarioAppId: 'c1', ubicacion: 'CALLE' },
+      {
+        eventoId: 'ev-1',
+        tipo: 'CONTADOR',
+        usuarioAppId: 'c1',
+        ubicacion: 'CALLE',
+      },
     ]);
+  });
+
+  describe('bloqueo por ruta anterior sin liquidar', () => {
+    it('el VENDEDOR abre su sesion sin revisar la liquidacion, aunque tenga ruta sin liquidar', async () => {
+      verificarCorte.rutaSinLiquidar = true;
+      cargas.evento = eventoDePrueba({ estado: 'BORRADOR' });
+
+      const resultado = exigirExito(
+        await useCase.ejecutar(
+          { eventoId: 'ev-1', usuarioAppId: 'v1', tipo: 'VENDEDOR' },
+          AHORA,
+        ),
+      );
+
+      expect(verificarCorte.llamadas).toEqual([]);
+      expect(resultado.sesion.tipo).toBe('VENDEDOR');
+    });
+
+    it('el CONTADOR revisa la liquidacion y, si esta liquidada, abre su sesion', async () => {
+      const resultado = exigirExito(
+        await useCase.ejecutar(
+          { eventoId: 'ev-1', usuarioAppId: 'c1', tipo: 'CONTADOR' },
+          AHORA,
+        ),
+      );
+
+      expect(verificarCorte.llamadas).toEqual(['ev-1']);
+      expect(resultado.sesion.tipo).toBe('CONTADOR');
+    });
+
+    it('el CONTADOR con la ruta anterior sin liquidar recibe CORTE_PENDIENTE y no abre sesion', async () => {
+      verificarCorte.rutaSinLiquidar = true;
+
+      const resultado = await useCase.ejecutar(
+        { eventoId: 'ev-1', usuarioAppId: 'c1', tipo: 'CONTADOR' },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'CORTE_PENDIENTE' });
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it('el CONTADOR tampoco abre sesion sobre una carga que ya estaba bloqueada', async () => {
+      cargas.evento = eventoDePrueba({ estado: 'BLOQUEADA_CORTE_PENDIENTE' });
+
+      const resultado = await useCase.ejecutar(
+        { eventoId: 'ev-1', usuarioAppId: 'c1', tipo: 'CONTADOR' },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'CORTE_PENDIENTE' });
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
   });
 });

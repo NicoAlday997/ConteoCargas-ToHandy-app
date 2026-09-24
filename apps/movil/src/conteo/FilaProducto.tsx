@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Etiqueta } from '../componentes/base';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   admitePaquetes,
   admiteSueltas,
@@ -22,15 +22,15 @@ import { unidadEnPlural, unidadEnSingular } from './formato-cantidad';
 /** Un destello corto: confirma el toque sin hacer esperar al siguiente. */
 const DURACION_DESTELLO_MS = 280;
 const OPACIDAD_DESTELLO = 0.3;
-const ANCHO_TOTAL = 72;
-/** Alto de la línea del nombre: la de la etiqueta del factor en grande, que es la más alta. */
-const ALTO_ENCABEZADO = TIPOGRAFIA.titulo.lineHeight;
+const ANCHO_TOTAL = 84;
+/** Alto de la línea del nombre: la de la etiqueta del factor, que es la más alta. */
+const ALTO_ENCABEZADO = TIPOGRAFIA.subtitulo.lineHeight;
 /**
- * La cifra de un campo, más grande que un título pero en su mismo alto de
- * línea (los dígitos no tienen descendentes): rótulo + cifra caben en el
- * toque mínimo sin que la fila crezca.
+ * El total de la fila: el único número grande, dos niveles arriba de lo que se
+ * teclea en los campos. Alto de línea igual al tamaño (los dígitos no tienen
+ * descendentes): cifra + unidad caben en el toque mínimo y la fila no crece.
  */
-const CIFRA_CAMPO = { fontSize: 28, lineHeight: TIPOGRAFIA.titulo.lineHeight } as const;
+const CIFRA_TOTAL = { fontSize: 40, lineHeight: 40 } as const;
 
 /** "Cajas" para lo que se vende completo; "Paquetes" / "Sueltas" para lo demás. */
 export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): string {
@@ -137,11 +137,15 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
       />
 
       <View style={estilos.encabezado}>
-        <EtiquetaFactor producto={producto} grande />
+        <EtiquetaFactor producto={producto} />
         <Text style={estilos.nombre} numberOfLines={2}>
           {producto.nombre}
         </Text>
-        {estado === 'en-cero' && <Text style={estilos.marcaCero}>No lleva</Text>}
+        {estado === 'en-cero' && (
+          <View style={estilos.marcaCero}>
+            <Text style={estilos.textoMarcaCero}>No lleva</Text>
+          </View>
+        )}
         <MarcaEnvio envio={envio} />
       </View>
 
@@ -343,9 +347,10 @@ const estilos = StyleSheet.create({
   // va entre tarjetas (lo pone la lista). El estado va en el FONDO de toda la
   // tarjeta y se refuerza con la barra izquierda, nunca con un contorno: así
   // todas miden lo mismo en cualquier estado.
+  // Poco aire dentro de la tarjeta; entre tarjetas, el triple (lo pone la lista).
   fila: {
     flex: 1,
-    gap: ESPACIADO.sm,
+    gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.sm,
     borderRadius: RADIOS.medio,
@@ -384,11 +389,18 @@ const estilos = StyleSheet.create({
     fontWeight: PESOS.negrita,
     color: COLORES.texto,
   },
+  // Estado como bloque: blanco sobre el gris de la fila, texto oscuro y fuerte.
   marcaCero: {
+    paddingHorizontal: ESPACIADO.sm,
+    borderRadius: RADIOS.chico,
+    backgroundColor: COLORES.fondo,
+  },
+  textoMarcaCero: {
     ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.negrita,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.pendienteTexto,
     textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   captura: {
     flexDirection: 'row',
@@ -419,16 +431,12 @@ const estilos = StyleSheet.create({
   // Rótulo y cifra a la derecha: en la lista, los campos forman columnas de
   // números alineados (120 sobre 99), como en una hoja de conteo.
   etiquetaCampo: {
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.medio,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
+    ...ROTULO,
     textAlign: 'right',
   },
+  // Lo que se teclea: claro, pero un escalón abajo del total para no competir.
   valorCampo: {
     ...TIPOGRAFIA.titulo,
-    ...CIFRA_CAMPO,
-    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
     textAlign: 'right',
     ...CIFRAS,
@@ -440,14 +448,14 @@ const estilos = StyleSheet.create({
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
-  // El total es el dato que domina la fila: lo que se carga al camión.
+  // El único punto focal de la fila: la cantidad final, lo que se carga al camión.
   total: {
     width: ANCHO_TOTAL,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
   numeroTotal: {
-    ...TIPOGRAFIA.display,
+    ...CIFRA_TOTAL,
     fontWeight: PESOS.extraNegrita,
     color: COLORES.textoSecundario,
     textAlign: 'right',
@@ -459,12 +467,7 @@ const estilos = StyleSheet.create({
   numeroTotalEnCero: {
     color: COLORES.pendienteTexto,
   },
-  unidadTotal: {
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.medio,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-  },
+  unidadTotal: ROTULO,
   botonCero: {
     width: TOQUE_MINIMO,
     minHeight: TOQUE_MINIMO,

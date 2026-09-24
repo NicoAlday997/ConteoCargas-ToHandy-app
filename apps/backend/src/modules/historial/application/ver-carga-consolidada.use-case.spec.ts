@@ -33,8 +33,6 @@ const EVENTO_BASE: EventoConsolidado = {
   contadorNombre: 'Ana Lopez',
   autorizada: false,
   autorizadaPorNombre: null,
-  inicioSinLiquidar: null,
-  liquidacionNoVerificada: false,
 };
 
 function producto(

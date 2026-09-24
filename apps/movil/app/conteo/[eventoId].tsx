@@ -12,13 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import {
-  ETIQUETAS_TIPO_CARGA,
-  esInicioCarga,
-  esTipoCarga,
-  inicioDeEvento,
-  type InicioCarga,
-} from '../../src/api/cargas';
+import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { obtenerUsuarioSesion } from '../../src/api/sesion';
@@ -55,7 +49,20 @@ import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
 import { diaDesdeApi, diaNegocio, esDia, textoSalida } from '../../src/conteo/fecha-operativa';
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
-import { ANCHO_MODAL, BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import {
+  ANCHO_MODAL,
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  OPACIDAD,
+  PESOS,
+  RADIOS,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../src/theme/tokens';
 
 /** 9999 piezas sueltas o paquetes ya es un error de dedo, no una carga. */
 const MAX_DIGITOS = 4;
@@ -65,10 +72,12 @@ const ANCHO_MINIMO_FILA = 330;
 /** Tras cambiar el alto de la lista (se abre el teclado) hay que esperar al layout. */
 const RETRASO_SCROLL_MS = 60;
 /**
- * Entre productos: lo justo para que un renglón no se confunda con el siguiente.
- * Densa a propósito: el contador recorre 73 productos y cada punto cuenta.
+ * Entre productos: el triple del aire que hay dentro de cada uno, así cada
+ * renglón se lee como un bloque sin líneas. Lo que se agrega aquí sale de
+ * adentro de la fila (menos hueco interno, etiqueta del empaque más baja): la
+ * lista no pierde productos por pantalla.
  */
-const SEPARACION_FILAS = RITMO.interno;
+const SEPARACION_FILAS = RITMO.relacionado;
 /** Filas de relleno del esqueleto: más de las que caben, para que no se vea el final. */
 const FILAS_ESQUELETO = 6;
 
@@ -124,13 +133,11 @@ export default function PantallaConteo() {
     sesionId: string;
     tipo: string;
     fechaOperativa: string;
-    inicio: string;
   }>();
   const eventoId = parametro(params.eventoId);
   const sesionId = parametro(params.sesionId);
   const tipo = parametro(params.tipo);
   const fechaOperativa = parametro(params.fechaOperativa);
-  const inicio = parametro(params.inicio);
 
   if (!eventoId || !sesionId) {
     return (
@@ -151,7 +158,6 @@ export default function PantallaConteo() {
       sesionId={sesionId}
       tituloCarga={esTipoCarga(tipo) ? ETIQUETAS_TIPO_CARGA[tipo] : 'Carga'}
       fechaOperativa={esDia(fechaOperativa) ? fechaOperativa : null}
-      inicio={esInicioCarga(inicio) ? inicio : null}
     />
   );
 }
@@ -162,15 +168,12 @@ interface PropsConteo {
   tituloCarga: string;
   /** `aaaa-mm-dd`; si no vino en la navegación (el contador entra desde la cola), se pide al servidor. */
   fechaOperativa: string | null;
-  /** Cómo arrancó respecto a la liquidación anterior; si no vino en la navegación, se pide al servidor. */
-  inicio: InicioCarga | null;
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, inicio: inicioNavegacion }: PropsConteo) {
+function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion }: PropsConteo) {
   const { esTablet, ancho } = useLayout();
-  const evento = useEventoCarga(eventoId, fechaNavegacion === null || inicioNavegacion === null);
+  const evento = useEventoCarga(eventoId, fechaNavegacion === null);
   const fechaOperativa = fechaNavegacion ?? diaDesdeApi(evento.data?.evento?.fechaOperativa);
-  const inicio = inicioNavegacion ?? inicioDeEvento(evento.data?.evento);
   const consulta = useProductosCarga(eventoId);
   const productos = useMemo(() => consulta.data?.productos ?? [], [consulta.data]);
   const familias = useMemo(() => consulta.data?.familias ?? [], [consulta.data]);
@@ -447,7 +450,6 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       <Encabezado
         titulo={tituloCarga}
         fechaOperativa={fechaOperativa}
-        inicio={inicio}
         subtitulo={usuario?.nombre ?? null}
         capturados={capturados}
         total={total}
@@ -548,7 +550,6 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 interface PropsEncabezado {
   titulo: string;
   fechaOperativa: string | null;
-  inicio: InicioCarga | null;
   subtitulo: string | null;
   capturados: number;
   total: number;
@@ -563,7 +564,6 @@ interface PropsEncabezado {
 function Encabezado({
   titulo,
   fechaOperativa,
-  inicio,
   subtitulo,
   capturados,
   total,
@@ -612,9 +612,14 @@ function Encabezado({
       inferior={
         <>
           <View style={estilos.filaProgreso}>
-            <Text style={estilos.textoProgreso} accessibilityLiveRegion="polite">
-              <Text style={estilos.numeroProgreso}>{capturados}</Text> de <Text style={estilos.totalProgreso}>{total}</Text>{' '}
-              capturados
+            <Text
+              style={estilos.textoProgreso}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${capturados} de ${total} capturados`}
+            >
+              <Text style={estilos.numeroProgreso}>{capturados}</Text>
+              {'  de '}
+              <Text style={estilos.totalProgreso}>{total}</Text>
             </Text>
             <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
           </View>
@@ -635,11 +640,6 @@ function Encabezado({
       }
     >
       {subtitulo && <NotaEncabezado lineas={1}>{subtitulo}</NotaEncabezado>}
-      {/* Discreto: es contexto, no algo que haya que resolver para contar. */}
-      {inicio === 'permiso' && <NotaEncabezado>Iniciada con autorización del supervisor</NotaEncabezado>}
-      {inicio === 'no-verificada' && (
-        <NotaEncabezado>No se pudo confirmar en Handy que la ruta anterior esté liquidada</NotaEncabezado>
-      )}
     </EncabezadoBase>
   );
 }
@@ -1112,22 +1112,25 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: ESPACIADO.md,
   },
+  // La línea toma el alto del número grande para que no se recorte.
   textoProgreso: {
     ...TIPOGRAFIA.cuerpo,
+    lineHeight: 36,
     color: COLORES.marcaClaro,
     ...CIFRAS,
   },
-  // Lo que se busca al levantar la vista: cuántos van. Mismo alto de línea que
-  // el subtítulo, así el encabezado no crece.
+  // Lo que se busca al levantar la vista: cuántos van. El número más grande
+  // del encabezado; alto de línea ajustado (los dígitos no tienen descendentes).
   numeroProgreso: {
-    ...TIPOGRAFIA.subtitulo,
-    fontSize: TIPOGRAFIA.titulo.fontSize,
+    ...TIPOGRAFIA.display,
+    lineHeight: 36,
     fontWeight: PESOS.extraNegrita,
     color: COLORES.textoSobreColor,
     ...CIFRAS,
   },
   totalProgreso: {
-    fontWeight: PESOS.negrita,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.textoSobreColor,
     ...CIFRAS,
   },
@@ -1297,18 +1300,12 @@ const estilos = StyleSheet.create({
     flexGrow: 0,
   },
   contenidoListaModal: {
-    gap: ESPACIADO.lg,
+    gap: RITMO.grupo,
   },
   grupoModal: {
     gap: ESPACIADO.xs,
   },
-  familiaModal: {
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.negrita,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  familiaModal: ROTULO,
   // Renglón sobre fondo gris claro: se distingue del blanco del panel sin contorno.
   pendiente: {
     minHeight: TOQUE_MINIMO,

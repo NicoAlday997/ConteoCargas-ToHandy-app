@@ -13,7 +13,6 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   CargaInicialDuplicadaError,
   CargaRepository,
-  PermisoCargaNoDisponibleError,
   type DatosActualizarDiscrepancia,
   type DatosCrearEvento,
   type DatosReabrirDiscrepancia,
@@ -43,7 +42,22 @@ export class PrismaCargaRepository extends CargaRepository {
 
   async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
     try {
-      return await this.insertarEvento(datos);
+      const row = await this.prisma.eventoCarga.create({
+        data: {
+          // `rutaId`, `plantillaId` y `tipoOperacion` son SNAPSHOT del momento:
+          // se copian de la asignacion vigente y no cambian si el vendedor se
+          // reasigna despues.
+          rutaId: datos.rutaId,
+          plantillaId: datos.plantillaId,
+          tipoOperacion: datos.tipoOperacion,
+          tipo: datos.tipo,
+          usuarioHandyId: datos.usuarioHandyId,
+          fechaConteo: datos.fechaConteo,
+          fechaOperativa: datos.fechaOperativa,
+          // `estado` se queda en el default `BORRADOR` del esquema.
+        },
+      });
+      return this.aEventoCarga(row);
     } catch (error) {
       // P2002 = violacion de unicidad. En `eventos_carga` solo puede venir del
       // indice parcial "una INICIAL por ruta y fecha operativa".
@@ -55,60 +69,6 @@ export class PrismaCargaRepository extends CargaRepository {
       }
       throw error;
     }
-  }
-
-  private async insertarEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
-    const permiso = datos.permisoSinLiquidar;
-    if (permiso === undefined) {
-      return this.aEventoCarga(
-        await this.prisma.eventoCarga.create({
-          data: this.aDatosEvento(datos),
-        }),
-      );
-    }
-
-    // Evento y consumo del permiso en una sola transaccion: si el permiso ya no
-    // esta disponible, el evento tampoco se crea.
-    const row = await this.prisma.$transaction(async (tx) => {
-      const evento = await tx.eventoCarga.create({
-        data: this.aDatosEvento(datos),
-      });
-      // Actualizacion condicional: la condicion `usado = false` hace que, de
-      // dos solicitudes simultaneas con el mismo permiso, solo una lo consuma.
-      const { count } = await tx.permisoCargaSinLiquidar.updateMany({
-        where: {
-          id: permiso.permisoId,
-          usado: false,
-          fechaExpiracion: { gt: datos.fechaConteo },
-        },
-        data: { usado: true, eventoCargaId: evento.id },
-      });
-      if (count !== 1) {
-        throw new PermisoCargaNoDisponibleError();
-      }
-      return evento;
-    });
-    return this.aEventoCarga(row);
-  }
-
-  private aDatosEvento(
-    datos: DatosCrearEvento,
-  ): Prisma.EventoCargaUncheckedCreateInput {
-    return {
-      // `rutaId`, `plantillaId` y `tipoOperacion` son SNAPSHOT del momento:
-      // se copian de la asignacion vigente y no cambian si el vendedor se
-      // reasigna despues.
-      rutaId: datos.rutaId,
-      plantillaId: datos.plantillaId,
-      tipoOperacion: datos.tipoOperacion,
-      tipo: datos.tipo,
-      usuarioHandyId: datos.usuarioHandyId,
-      fechaConteo: datos.fechaConteo,
-      fechaOperativa: datos.fechaOperativa,
-      rutaHandySinLiquidarId: datos.permisoSinLiquidar?.rutaHandyId ?? null,
-      liquidacionNoVerificada: datos.liquidacionNoVerificada ?? false,
-      // `estado` se queda en el default `BORRADOR` del esquema.
-    };
   }
 
   async buscarEventoPorId(id: string): Promise<EventoCarga | null> {
@@ -394,8 +354,6 @@ export class PrismaCargaRepository extends CargaRepository {
       fechaAutorizacion: row.fechaAutorizacion,
       fechaBloqueoCortePendiente: row.fechaBloqueoCortePendiente,
       fechaDesbloqueo: row.fechaDesbloqueo,
-      rutaHandySinLiquidarId: row.rutaHandySinLiquidarId,
-      liquidacionNoVerificada: row.liquidacionNoVerificada,
       creadoEn: row.creadoEn,
     };
   }

@@ -20,16 +20,6 @@ export type EstadoCargaApi =
   | 'ERROR_ENVIO'
   | 'ENVIO_INCIERTO';
 
-/**
- * La carga inicial arrancó con la ruta anterior del vendedor sin liquidar en
- * Handy, con permiso del supervisor.
- */
-export interface InicioSinLiquidarApi {
-  rutaHandyId: string | null;
-  permisoOtorgadoPorNombre: string | null;
-  permisoMotivo: string | null;
-}
-
 /** Fila de `GET /historial`. */
 export interface CargaHistorialApi {
   id: string | null;
@@ -45,8 +35,6 @@ export interface CargaHistorialApi {
   productosConDiscrepancia: number | null;
   autorizada: boolean | null;
   autorizadaPorNombre: string | null;
-  inicioSinLiquidar?: InicioSinLiquidarApi | null;
-  liquidacionNoVerificada?: boolean | null;
 }
 
 export interface PaginaHistorialApi {
@@ -89,8 +77,6 @@ export interface EventoConsolidadoApi {
   contadorNombre: string | null;
   autorizada: boolean | null;
   autorizadaPorNombre: string | null;
-  inicioSinLiquidar?: InicioSinLiquidarApi | null;
-  liquidacionNoVerificada?: boolean | null;
 }
 
 export interface FamiliaConsolidadaApi {
@@ -103,22 +89,8 @@ export interface DetalleHistorialApi {
   familias: FamiliaConsolidadaApi[] | null;
 }
 
-export interface FiltrosHistorialApp {
-  /** Solo las cargas iniciadas con la ruta anterior sin liquidar. */
-  sinLiquidar?: boolean;
-  /** `aaaa-mm-dd`, sobre la fecha operativa. Para el vendedor y el contador el servidor recorta a 2 semanas. */
-  fechaInicio?: string;
-}
-
-export function listarHistorial(
-  page: number,
-  pageSize: number,
-  filtros: FiltrosHistorialApp = {},
-): Promise<PaginaHistorialApi | null> {
-  const query = [`page=${page}`, `pageSize=${pageSize}`];
-  if (filtros.sinLiquidar) query.push('sinLiquidar=true');
-  if (filtros.fechaInicio) query.push(`fechaInicio=${encodeURIComponent(filtros.fechaInicio)}`);
-  return peticion<PaginaHistorialApi | null>(`/historial?${query.join('&')}`);
+export function listarHistorial(page: number, pageSize: number): Promise<PaginaHistorialApi | null> {
+  return peticion<PaginaHistorialApi | null>(`/historial?page=${page}&pageSize=${pageSize}`);
 }
 
 export function obtenerDetalleHistorial(eventoId: string): Promise<DetalleHistorialApi | null> {

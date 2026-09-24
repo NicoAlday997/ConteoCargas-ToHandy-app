@@ -10,6 +10,7 @@ import {
   PESOS,
   RADIOS,
   RITMO,
+  ROTULO,
   TIPOGRAFIA,
   TONOS,
   type ColorEstado,
@@ -20,9 +21,10 @@ import {
 /** Espacio entre tarjetas de una lista: que un renglón no se confunda con el siguiente. */
 export const SEPARACION_TARJETAS = RITMO.relacionado;
 
-const TAMANO_PUNTO = ESPACIADO.sm;
-
-/** Primera línea de la tarjeta: un punto del color del estado y su nombre en ese color. */
+/**
+ * Primera línea de la tarjeta: el estado como BLOQUE (fondo tintado, texto
+ * oscuro del mismo tono, peso fuerte), no como texto de color. Se lee de reojo.
+ */
 export interface BandaTarjeta {
   titulo: string;
   tono: ColorTono;
@@ -37,9 +39,9 @@ interface Props {
   /** Barra de color a la izquierda: el estado se ve sin leer. */
   acento?: ColorEstado;
   /**
-   * El estado como primera línea: punto de color y nombre en el color del
-   * estado, con un detalle a la derecha. Color sin bloques: la tarjeta sigue
-   * siendo blanca y el estado se lee antes que nada.
+   * El estado como primera línea: un bloque tintado con su nombre, y un
+   * detalle a la derecha como rótulo. La tarjeta sigue blanca; el estado es lo
+   * único de color.
    */
   conAcento?: BandaTarjeta;
   /** Fondo tintado del tono en vez de blanco: un bloque que comunica un estado. */
@@ -82,11 +84,16 @@ export function Tarjeta({
   const contenido = conAcento ? (
     <>
       <View style={estilos.banda}>
-        <View style={[estilos.punto, { backgroundColor: TONOS[conAcento.tono].solido }]} />
-        <Text style={[estilos.tituloBanda, { color: TONOS[conAcento.tono].texto }]} accessibilityRole="header" numberOfLines={2}>
-          {conAcento.titulo}
-        </Text>
-        {conAcento.detalle ? <Text style={estilos.detalleBanda}>{conAcento.detalle}</Text> : null}
+        <View style={[estilos.bloqueEstado, { backgroundColor: TONOS[conAcento.tono].fondo }]}>
+          <Text style={[estilos.tituloBanda, { color: TONOS[conAcento.tono].texto }]} accessibilityRole="header" numberOfLines={2}>
+            {conAcento.titulo}
+          </Text>
+        </View>
+        {conAcento.detalle ? (
+          <Text style={estilos.detalleBanda} numberOfLines={1}>
+            {conAcento.detalle}
+          </Text>
+        ) : null}
       </View>
       {children}
     </>
@@ -134,24 +141,22 @@ const estilos = StyleSheet.create({
   banda: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: RITMO.interno,
+    justifyContent: 'space-between',
+    gap: RITMO.relacionado,
   },
-  punto: {
-    width: TAMANO_PUNTO,
-    height: TAMANO_PUNTO,
-    borderRadius: RADIOS.completo,
+  // Del ancho de su texto: un bloque que se reconoce como estado, no una franja.
+  bloqueEstado: {
+    flexShrink: 1,
+    paddingHorizontal: ESPACIADO.sm,
+    paddingVertical: ESPACIADO.xs,
+    borderRadius: RADIOS.chico,
   },
   tituloBanda: {
-    flex: 1,
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontWeight: PESOS.extraNegrita,
   },
   detalleBanda: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
+    ...ROTULO,
     ...CIFRAS,
   },
   // Tinte de marca y la tarjeta se hunde un poco: el toque se nota al instante.

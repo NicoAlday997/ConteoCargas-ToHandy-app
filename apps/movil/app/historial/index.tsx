@@ -5,30 +5,24 @@ import { router } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { DIAS_RESUMEN_SIN_LIQUIDAR, useHistorial, useResumenSinLiquidar } from '../../src/api/hooks-historial';
+import { useHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
 import {
   BloqueError,
-  Boton,
+  Datos,
   EstadoVacio,
   Esqueleto,
   Etiqueta,
   LineaEsqueleto,
   NotaEncabezado,
-  Personas,
   Tarjeta,
   TarjetaEsqueleto,
-  type Persona,
+  type Dato,
 } from '../../src/componentes/base';
 import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior } from '../../src/historial/ComponentesHistorial';
-import {
-  agruparPorDia,
-  type AcumuladoVendedor,
-  type FilaHistorial,
-  type GrupoDia,
-} from '../../src/historial/modelo-historial';
-import { CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { agruparPorDia, type FilaHistorial, type GrupoDia } from '../../src/historial/modelo-historial';
+import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Historial de cargas por fecha operativa (docs/06 §3.8). Lo primero que se
@@ -85,9 +79,7 @@ export default function PantallaHistorial() {
 }
 
 function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
-  const [soloSinLiquidar, setSoloSinLiquidar] = useState(false);
-  const consulta = useHistorial(usuario.id, soloSinLiquidar);
-  const resumen = useResumenSinLiquidar(usuario.id);
+  const consulta = useHistorial(usuario.id);
   const grupos = useMemo(() => agruparPorDia(consulta.data?.pages.map((p) => p?.items ?? []) ?? []), [consulta.data]);
   const hoy = diaNegocio(new Date());
   const alcance = usuario.rolApp ? ALCANCE_POR_ROL[usuario.rolApp] : null;
@@ -100,7 +92,7 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
 
   const refrescar = () => {
     setRefrescando(true);
-    void Promise.all([consulta.refetch(), resumen.refetch()]).finally(() => setRefrescando(false));
+    void consulta.refetch().finally(() => setRefrescando(false));
   };
 
   let contenido;
@@ -124,16 +116,6 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
           reintentando={consulta.isFetching}
         />
       </View>
-    );
-  } else if (grupos.length === 0 && soloSinLiquidar) {
-    contenido = (
-      <EstadoVacio
-        icono="listo"
-        tono="capturado"
-        titulo="Ninguna carga se inició sin liquidar"
-        detalle="Todas las cargas iniciales de este historial arrancaron con la ruta anterior ya liquidada en Handy."
-        accion={{ texto: 'Ver todas las cargas', onPress: () => setSoloSinLiquidar(false) }}
-      />
     );
   } else if (grupos.length === 0) {
     contenido = (
@@ -186,76 +168,8 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
       <BarraSuperior titulo="Historial de cargas">
         {alcance && <NotaEncabezado>{alcance}</NotaEncabezado>}
       </BarraSuperior>
-      <AvisoSinLiquidar
-        vendedores={resumen.data?.vendedores ?? []}
-        incompleto={resumen.data?.incompleto ?? false}
-        esVendedor={usuario.rolApp === 'VENDEDOR'}
-        soloSinLiquidar={soloSinLiquidar}
-        onAlternar={() => setSoloSinLiquidar((actual) => !actual)}
-      />
       {contenido}
     </SafeAreaView>
-  );
-}
-
-/**
- * Quién inició cargas con la ruta anterior sin liquidar en las últimas 2
- * semanas, de más a menos: si alguien acumula, se ve sin abrir nada. Sin
- * ninguna, no ocupa lugar. También alterna la lista a solo esas cargas.
- */
-function AvisoSinLiquidar({
-  vendedores,
-  incompleto,
-  esVendedor,
-  soloSinLiquidar,
-  onAlternar,
-}: {
-  vendedores: AcumuladoVendedor[];
-  incompleto: boolean;
-  esVendedor: boolean;
-  soloSinLiquidar: boolean;
-  onAlternar: () => void;
-}) {
-  if (vendedores.length === 0 && !soloSinLiquidar) return null;
-
-  const total = vendedores.reduce((suma, v) => suma + v.cargas, 0);
-  const mas = incompleto ? ' o más' : '';
-  const periodo = `en los últimos ${DIAS_RESUMEN_SIN_LIQUIDAR} días`;
-  const titulo = esVendedor
-    ? total === 1
-      ? `Iniciaste 1 carga sin liquidar la ruta anterior ${periodo}`
-      : `Iniciaste ${total}${mas} cargas sin liquidar la ruta anterior ${periodo}`
-    : `Cargas iniciadas sin liquidar ${periodo}`;
-
-  return (
-    <View style={estilos.aviso}>
-      <View style={estilos.contenidoAviso}>
-        {vendedores.length > 0 && (
-          <Text style={estilos.tituloAviso} accessibilityRole="header">
-            {titulo}
-          </Text>
-        )}
-        {!esVendedor && vendedores.length > 0 && (
-          <View style={estilos.vendedoresAviso}>
-            {vendedores.map((v) => (
-              <Etiqueta
-                key={v.vendedor}
-                texto={`${v.vendedor}  ${v.cargas}${mas && '+'}`}
-                // Dos o más: el que acumula resalta sin tener que leer los números.
-                tono={v.cargas > 1 ? 'discrepancia' : 'neutro'}
-                relleno={v.cargas > 1 ? 'solida' : 'contorno'}
-                accessibilityLabel={`${v.vendedor}: ${v.cargas}${mas} ${v.cargas === 1 ? 'carga' : 'cargas'} sin liquidar`}
-              />
-            ))}
-          </View>
-        )}
-        <Boton
-          texto={soloSinLiquidar ? 'Ver todas las cargas' : 'Ver solo las iniciadas sin liquidar'}
-          variante="secundario"
-          onPress={onAlternar}
-        />
-      </View>
-    </View>
   );
 }
 
@@ -287,12 +201,19 @@ function EsqueletoHistorial() {
   );
 }
 
+/**
+ * Un solo punto focal: la ruta (el día ya lo dice el encabezado del grupo).
+ * Arriba, el estado como bloque tintado; abajo, separados por aire, quién
+ * contó y verificó y cuántos productos, como rótulo y dato. Las discrepancias
+ * solo aparecen cuando hubo: lo que resalta es lo que pide mirar.
+ */
 function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor: boolean }) {
   const conDiscrepancias = fila.discrepancias > 0;
   const tipo = fila.tipo ? ETIQUETAS_TIPO_CARGA[fila.tipo] : 'Carga';
-  const personas: Persona[] = [];
-  if (mostrarVendedor && fila.vendedorNombre) personas.push({ rol: 'Contó', nombre: fila.vendedorNombre });
-  if (fila.contadorNombre) personas.push({ rol: 'Verificó', nombre: fila.contadorNombre });
+  const datos: Dato[] = [];
+  if (mostrarVendedor) datos.push({ rotulo: 'Contó', valor: fila.vendedorNombre });
+  datos.push({ rotulo: 'Verificó', valor: fila.contadorNombre });
+  if (fila.totalProductos !== null) datos.push({ rotulo: 'Productos', valor: String(fila.totalProductos), cifra: true });
   const textoDiscrepancias = conDiscrepancias
     ? fila.discrepancias === 1
       ? '1 discrepancia'
@@ -303,8 +224,8 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
   return (
     <Tarjeta
       onPress={() => router.push({ pathname: '/historial/[eventoId]', params: { eventoId: fila.id } })}
-      // El estado en la banda; las discrepancias, en ámbar: informativo, no
-      // restrictivo (docs/06 §3.8). El detalle se abre igual.
+      // Las discrepancias son informativas, no restrictivas (docs/06 §3.8): el
+      // detalle se abre igual, tenga o no.
       conAcento={banda}
       style={estilos.fila}
       accessibilityLabel={[
@@ -312,55 +233,33 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
         banda.titulo,
         fila.totalProductos !== null ? `${fila.totalProductos} productos` : null,
         textoDiscrepancias,
-        fila.sinLiquidar ? `Iniciada sin liquidar con permiso de ${fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}` : null,
         'Ver detalle',
       ]
         .filter(Boolean)
         .join('. ')}
     >
-      <View style={estilos.contenidoFila}>
-        <View style={estilos.cuerpoFila}>
-          <Text style={estilos.ruta} numberOfLines={2}>
-            {fila.rutaNombre}
-          </Text>
-          <Personas personas={personas} />
-          {/* Solo cuando hubo: lo que resalta en la lista es lo que pide mirar. */}
-          {conDiscrepancias && (
-            <View style={estilos.filaEtiquetas}>
-              <Etiqueta texto={textoDiscrepancias} tono="discrepancia" relleno="tintada" />
-            </View>
-          )}
-        </View>
-        {fila.totalProductos !== null && (
-          <View style={estilos.cifra}>
-            <Text style={estilos.numeroCifra}>{fila.totalProductos}</Text>
-            <Text style={estilos.unidadCifra}>productos</Text>
-          </View>
-        )}
+      <View style={estilos.lineaRuta}>
+        <Text style={estilos.ruta} numberOfLines={2}>
+          {fila.rutaNombre}
+        </Text>
         <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
           ›
         </Text>
       </View>
-      {fila.sinLiquidar && (
-        <View style={estilos.marcaSinLiquidar}>
-          <Text style={estilos.tituloMarca}>Iniciada sin liquidar</Text>
-          <Personas personas={[{ rol: 'Permiso de', nombre: fila.sinLiquidar.otorgadoPor ?? 'un supervisor' }]} />
-          {fila.sinLiquidar.motivo && (
-            <Text style={estilos.motivoMarca} numberOfLines={2}>
-              “{fila.sinLiquidar.motivo}”
-            </Text>
-          )}
-        </View>
-      )}
-      {fila.liquidacionNoVerificada && (
-        <Text style={estilos.nota}>No se pudo confirmar en Handy la liquidación anterior</Text>
-      )}
+      <View style={estilos.grupoDatos}>
+        <Datos datos={datos} />
+        {conDiscrepancias && (
+          <View style={estilos.filaEtiquetas}>
+            <Etiqueta texto={textoDiscrepancias} tono="discrepancia" />
+          </View>
+        )}
+      </View>
     </Tarjeta>
   );
 }
 
 const estilos = StyleSheet.create({
-  // Lectura pausada: tarjetas blancas sobre el fondo tintado, con aire entre ellas.
+  // Lectura pausada: tarjetas blancas sobre el fondo tintado.
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondoPantalla,
@@ -369,7 +268,7 @@ const estilos = StyleSheet.create({
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.lg,
+    gap: RITMO.relacionado,
     paddingHorizontal: RITMO.margen,
   },
   encabezadoDiaEsqueleto: {
@@ -392,7 +291,8 @@ const estilos = StyleSheet.create({
     paddingBottom: ESPACIADO.xxxl,
   },
   // La fecha al frente: es lo primero que se busca ("qué cargué el martes").
-  // Más aire arriba que abajo: el día agrupa las tarjetas que siguen.
+  // Mucho aire arriba (separa del día anterior) y casi nada abajo: el día se
+  // lee pegado a sus cargas.
   encabezadoDia: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -400,7 +300,7 @@ const estilos = StyleSheet.create({
     gap: RITMO.relacionado,
     marginHorizontal: -RITMO.margen,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xxl,
+    paddingTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xs,
     backgroundColor: COLORES.fondoPantalla,
   },
@@ -416,97 +316,39 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
   },
   cantidadDia: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
+    ...ROTULO,
     ...CIFRAS,
   },
   fila: {
     marginTop: ESPACIADO.lg,
   },
-  contenidoFila: {
+  lineaRuta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: RITMO.relacionado,
   },
-  cuerpoFila: {
-    flex: 1,
-    gap: RITMO.interno,
-  },
+  // El punto focal de la tarjeta: nada más en ella tiene este tamaño ni peso.
   ruta: {
+    flex: 1,
     ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
+  },
+  // Aire de grupo sobre los datos: la ruta y quién la contó son dos bloques.
+  grupoDatos: {
+    gap: RITMO.relacionado,
+    marginTop: RITMO.grupo - RITMO.relacionado,
   },
   filaEtiquetas: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: RITMO.interno,
   },
-  // La cifra domina la tarjeta, como el total de un pedido; alineada a la derecha
-  // para que los totales de todas las tarjetas queden en columna.
-  cifra: {
-    alignItems: 'flex-end',
-  },
-  numeroCifra: {
-    ...TIPOGRAFIA.display,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
-    textAlign: 'right',
-    ...CIFRAS,
-  },
-  unidadCifra: {
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-  },
-  nota: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
-  // Ámbar como las discrepancias: pide atención, no bloquea (docs/06 §3.8).
-  aviso: {
-    backgroundColor: COLORES.discrepanciaFondo,
-  },
-  contenidoAviso: {
-    width: '100%',
-    maxWidth: ANCHO_MAXIMO_LISTA,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: RITMO.margen,
-  },
-  tituloAviso: {
-    ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.discrepanciaTexto,
-  },
-  vendedoresAviso: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: RITMO.interno,
-  },
-  marcaSinLiquidar: {
-    alignSelf: 'stretch',
-    gap: ESPACIADO.xs,
-    padding: RITMO.relacionado,
-    backgroundColor: COLORES.discrepanciaFondo,
-    borderRadius: RADIOS.chico,
-  },
-  tituloMarca: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.discrepanciaTexto,
-  },
-  motivoMarca: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.texto,
-  },
+  // Solo dice "se abre": no compite con la ruta.
   flecha: {
-    ...TIPOGRAFIA.display,
+    ...TIPOGRAFIA.titulo,
     fontWeight: PESOS.regular,
-    color: COLORES.marca,
+    color: COLORES.textoSecundario,
   },
   pie: {
     marginTop: ESPACIADO.lg,

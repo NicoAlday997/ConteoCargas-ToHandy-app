@@ -8,10 +8,8 @@ import { Redirect, router, useFocusEffect } from 'expo-router';
 import { ETIQUETAS_ROL } from '../src/api/auth';
 import {
   CODIGO_FECHA_INVALIDA,
-  CODIGO_RUTA_SIN_LIQUIDAR,
   CODIGO_YA_TIENE_CARGA,
   ETIQUETAS_TIPO_CARGA,
-  inicioDeEvento,
   obtenerEvento,
   type TipoCarga,
 } from '../src/api/cargas';
@@ -34,11 +32,7 @@ import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
 import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operativa';
-import {
-  SelectorFechaOperativa,
-  type BloqueoLiquidacion,
-  type ConflictoFecha,
-} from '../src/conteo/SelectorFechaOperativa';
+import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
@@ -84,9 +78,8 @@ export default function PantallaInicio() {
 
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
-  // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo, solo
-  // sus permisos para cargar sin liquidar. El historial es para los tres: qué
-  // ve cada quien lo decide el servidor.
+  // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo. El
+  // historial es para los tres: qué ve cada quien lo decide el servidor.
   // Densidad generosa: son pocas acciones y cada una importa. Banda de marca
   // arriba (quién está en sesión) y, debajo, las acciones sobre el fondo
   // tintado, separadas por aire. El margen inferior lo pone la lista para que
@@ -112,13 +105,6 @@ export default function PantallaInicio() {
           </>
         )}
         <GrupoMenu>
-          {usuario?.rolApp === 'SUPERVISOR' && (
-            <FilaMenu
-              texto="Permisos para cargar sin liquidar"
-              detalle="Autoriza a una ruta a cargar aunque la anterior siga abierta en Handy"
-              onPress={() => router.push('/permisos')}
-            />
-          )}
           {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
           <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
         </GrupoMenu>
@@ -251,7 +237,6 @@ function irAConteo(carga: CargaAbierta) {
       sesionId: carga.sesionId,
       tipo: carga.tipo ?? '',
       fechaOperativa: carga.fechaOperativa ?? '',
-      inicio: carga.inicio ?? '',
     },
   });
 }
@@ -284,7 +269,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   // Selector de fecha abierto para este tipo de carga (`null` = cerrado).
   const [tipoAIniciar, setTipoAIniciar] = useState<TipoCarga | null>(null);
   const [conflicto, setConflicto] = useState<ConflictoFecha | null>(null);
-  const [sinLiquidar, setSinLiquidar] = useState<BloqueoLiquidacion | null>(null);
   const [abriendoExistente, setAbriendoExistente] = useState(false);
   // Lo que se intentaba cuando faltó la señal: "Reintentar" vuelve a eso.
   const [tipoSinRed, setTipoSinRed] = useState<TipoCarga | null>(null);
@@ -321,7 +305,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const cerrarSelector = () => {
     setTipoAIniciar(null);
     setConflicto(null);
-    setSinLiquidar(null);
     setError(null);
   };
 
@@ -336,7 +319,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       return;
     }
     setConflicto(null);
-    setSinLiquidar(null);
     setTipoAIniciar(tipo);
   };
 
@@ -345,7 +327,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     setCargaAbierta(carga);
     setTipoAIniciar(null);
     setConflicto(null);
-    setSinLiquidar(null);
     irAConteo(carga);
   };
 
@@ -365,25 +346,13 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         sesionId,
         tipo: respuesta?.evento?.tipo ?? tipo,
         fechaOperativa: diaDesdeApi(respuesta?.evento?.fechaOperativa) ?? fechaOperativa,
-        // Con permiso del supervisor, o sin poder revisar Handy: el conteo lo avisa.
-        inicio: inicioDeEvento(respuesta?.evento),
       });
     } catch (e) {
       // Una sola carga inicial por ruta y día (hasta que una pase la
       // verificación no se generan otras versiones): se ofrece la que ya existe.
       const existente = e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_YA_TIENE_CARGA ? e.cuerpo.eventoId : null;
       if (existente) {
-        setSinLiquidar(null);
         setConflicto({ eventoId: existente, dia: fechaOperativa });
-        return;
-      }
-      // Regla del negocio, no falla: la ruta anterior sigue sin liquidar en Handy.
-      if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_RUTA_SIN_LIQUIDAR) {
-        setSinLiquidar((previo) => ({
-          dia: fechaOperativa,
-          revisiones: previo?.dia === fechaOperativa ? previo.revisiones + 1 : 1,
-          revisadoEn: new Date(),
-        }));
         return;
       }
       setError(mensajeDeError(e, 'No se pudo iniciar la carga.'));
@@ -407,7 +376,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
           sesionId: mia.id,
           tipo: evento?.tipo ?? 'INICIAL',
           fechaOperativa: diaDesdeApi(evento?.fechaOperativa) ?? dia,
-          inicio: inicioDeEvento(evento),
         });
         return;
       }
@@ -489,7 +457,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       <SelectorFechaOperativa
         tipo={tipoAIniciar}
         conflicto={conflicto}
-        sinLiquidar={sinLiquidar}
         ocupado={ocupado}
         error={error}
         onElegir={(dia) => {
@@ -499,9 +466,6 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         onElegirOtra={() => {
           setConflicto(null);
           setError(null);
-        }}
-        onReintentarLiquidacion={(bloqueo) => {
-          if (tipoAIniciar) void iniciarCarga(tipoAIniciar, bloqueo.dia);
         }}
         onCerrar={cerrarSelector}
       />

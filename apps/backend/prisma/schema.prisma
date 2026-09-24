@@ -102,10 +102,9 @@ model Ruta {
   activa   Boolean  @default(true)
   creadaEn DateTime @default(now())
 
-  asignaciones             AsignacionRutaVendedor[]
-  eventosCarga             EventoCarga[]
-  frecuencias              FrecuenciaProductoRuta[]
-  permisosCargaSinLiquidar PermisoCargaSinLiquidar[]
+  asignaciones AsignacionRutaVendedor[]
+  eventosCarga EventoCarga[]
+  frecuencias  FrecuenciaProductoRuta[]
 
   @@map("rutas")
 }
@@ -168,7 +167,6 @@ model UsuarioApp {
   dispositivosPush            DispositivoPush[]
   cargasAutorizadas           EventoCarga[]                  @relation("EventoCargaAutorizadaPor")
   factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
-  permisosCargaOtorgados      PermisoCargaSinLiquidar[]      @relation("PermisoCargaOtorgadoPor")
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -342,12 +340,6 @@ model EventoCarga {
   // el tercer par de ojos, la haya revisado fisicamente o no.
   autorizadaPorId            String?
   fechaAutorizacion          DateTime?
-  // Carga INICIAL iniciada con la ruta anterior del vendedor sin liquidar en
-  // Handy (solo posible con un PermisoCargaSinLiquidar): id de esa ruta.
-  rutaHandySinLiquidarId     String?
-  // Handy no respondio al verificar la liquidacion al iniciar: la carga se
-  // permitio (una caida de Handy no detiene la bodega) pero queda marcada.
-  liquidacionNoVerificada    Boolean       @default(false)
   creadoEn                   DateTime      @default(now())
   actualizadoEn              DateTime      @updatedAt
 
@@ -356,10 +348,9 @@ model EventoCarga {
   plantilla     PlantillaCarga? @relation(fields: [plantillaId], references: [id])
   autorizadaPor UsuarioApp?     @relation("EventoCargaAutorizadaPor", fields: [autorizadaPorId], references: [id])
 
-  sesiones                SesionConteo[]
-  discrepancias           DiscrepanciaResuelta[]
-  comparacion             ComparacionCarga?
-  permisoCargaSinLiquidar PermisoCargaSinLiquidar?
+  sesiones      SesionConteo[]
+  discrepancias DiscrepanciaResuelta[]
+  comparacion   ComparacionCarga?
 
   @@index([rutaId])
   @@index([rutaId, fechaOperativa])
@@ -368,32 +359,6 @@ model EventoCarga {
   @@index([plantillaId])
   @@index([autorizadaPorId])
   @@map("eventos_carga")
-}
-
-// Permiso puntual del supervisor para que una ruta inicie su carga INICIAL con
-// la ruta anterior del vendedor todavia sin liquidar en Handy (a veces liquidan
-// un dia despues, o dos dias juntos, pero el camion si tiene que cargar).
-// Vence a las 24 horas y es de UN SOLO USO: un permiso permanente equivaldria a
-// quitar la regla. Al consumirse se marca `usado` y se vincula al evento.
-model PermisoCargaSinLiquidar {
-  id              String   @id @default(cuid())
-  rutaId          String
-  otorgadoPorId   String
-  motivo          String
-  fechaOtorgado   DateTime @default(now())
-  fechaExpiracion DateTime
-  usado           Boolean  @default(false)
-  // Se llena al consumirse; un evento consume a lo mucho un permiso.
-  eventoCargaId   String?  @unique
-
-  ruta        Ruta         @relation(fields: [rutaId], references: [id])
-  otorgadoPor UsuarioApp   @relation("PermisoCargaOtorgadoPor", fields: [otorgadoPorId], references: [id])
-  eventoCarga EventoCarga? @relation(fields: [eventoCargaId], references: [id])
-
-  @@index([rutaId])
-  @@index([usado])
-  @@index([otorgadoPorId])
-  @@map("permisos_carga_sin_liquidar")
 }
 
 model SesionConteo {

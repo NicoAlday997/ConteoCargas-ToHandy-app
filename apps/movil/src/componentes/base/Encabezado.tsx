@@ -109,8 +109,9 @@ export function NotaEncabezado({ children, lineas = 2 }: { children: ReactNode; 
 
 const estilos = StyleSheet.create({
   // El cambio de fondo separa la barra del contenido: sin línea inferior.
+  // Título y lo que va debajo (progreso) son dos grupos.
   barra: {
-    gap: RITMO.interno,
+    gap: ESPACIADO.sm,
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.sm,
     paddingBottom: ESPACIADO.md,

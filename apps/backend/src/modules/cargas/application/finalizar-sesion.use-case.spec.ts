@@ -69,8 +69,6 @@ class FakeCargaRepository implements CargaRepository {
       fechaAutorizacion: null,
       fechaBloqueoCortePendiente: null,
       fechaDesbloqueo: null,
-      rutaHandySinLiquidarId: null,
-      liquidacionNoVerificada: false,
       creadoEn: datos.fechaConteo,
     };
     this.eventos.set(evento.id, evento);

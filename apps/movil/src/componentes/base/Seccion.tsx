@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { COLORES, CIFRAS, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { COLORES, CIFRAS, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
 
 interface PropsTitulo {
   texto: string;
@@ -61,8 +61,9 @@ export function Seccion({
 }
 
 const estilos = StyleSheet.create({
+  // El título pegado a lo que agrupa; entre secciones, el contenedor pone mucho más.
   bloque: {
-    gap: RITMO.interno,
+    gap: ESPACIADO.sm,
   },
   contenido: {
     gap: RITMO.relacionado,
@@ -82,11 +83,7 @@ const estilos = StyleSheet.create({
   },
   grupo: {
     flex: 1,
-    ...TIPOGRAFIA.micro,
-    fontWeight: PESOS.negrita,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...ROTULO,
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,

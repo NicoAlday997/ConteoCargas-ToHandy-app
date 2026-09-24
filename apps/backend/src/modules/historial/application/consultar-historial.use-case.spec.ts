@@ -96,12 +96,6 @@ describe('ConsultarHistorialUseCase', () => {
     });
   });
 
-  it('pasa el filtro sinLiquidar para ver cargas iniciadas con la ruta anterior sin liquidar', async () => {
-    await useCase.ejecutar(SUPERVISOR, { sinLiquidar: true }, AHORA);
-
-    expect(repo.ultimosFiltros?.sinLiquidar).toBe(true);
-  });
-
   it('devuelve exactamente lo que el puerto responde', async () => {
     const resultado = await useCase.ejecutar(SUPERVISOR, { page: 2, pageSize: 15 }, AHORA);
 

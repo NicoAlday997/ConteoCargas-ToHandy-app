@@ -1,18 +1,11 @@
 import type { TipoSesion, UbicacionConteo } from '@prisma/client';
 
-import {
-  HandyErrorServidorError,
-  HandyGateway,
-  HandySinRespuestaError,
-  type RutaHandy,
-} from '../../sincronizacion/application/handy.gateway';
 import type {
   AsignacionRepository,
   AsignacionVigente,
 } from './asignacion.repository';
 import {
   CargaInicialDuplicadaError,
-  PermisoCargaNoDisponibleError,
   type CargaRepository,
   type DatosCrearEvento,
   type Discrepancia,
@@ -27,15 +20,11 @@ import {
   IniciarCargaUseCase,
   type ResultadoIniciarCarga,
 } from './iniciar-carga.use-case';
-import type {
-  PermisoCargaRepository,
-  PermisoCargaSinLiquidar,
-} from './permiso-carga.repository';
 
 /**
  * Pruebas del caso de uso "iniciar carga" (RF-12). Sin base de datos: dobles en
- * memoria de los puertos `CargaRepository`, `AsignacionRepository`,
- * `HandyGateway` y `PermisoCargaRepository`.
+ * memoria de los puertos `CargaRepository` y `AsignacionRepository`. El caso de
+ * uso no conoce Handy: el vendedor nunca se bloquea por liquidacion.
  */
 
 const AHORA = new Date('2026-09-08T07:30:00-06:00');
@@ -67,11 +56,6 @@ class FakeCargaRepository implements CargaRepository {
    * nuestro y la base de datos rechaza el alta por el indice unico.
    */
   ganadorDeCarrera: EventoCarga | null = null;
-  /**
-   * Permisos que "existen" en la base. `crearEvento` consume el recibido con la
-   * misma condicion que el adaptador real (sin usar y sin vencer).
-   */
-  permisos: PermisoCargaSinLiquidar[] = [];
   private secuencia = 0;
 
   async buscarCargaInicialDeFecha(
@@ -94,16 +78,6 @@ class FakeCargaRepository implements CargaRepository {
       this.ganadorDeCarrera = null;
       throw new CargaInicialDuplicadaError();
     }
-    const permisoId = datos.permisoSinLiquidar?.permisoId;
-    const permiso = this.permisos.find((p) => p.id === permisoId);
-    if (
-      permisoId !== undefined &&
-      (permiso === undefined ||
-        permiso.usado ||
-        permiso.fechaExpiracion.getTime() <= datos.fechaConteo.getTime())
-    ) {
-      throw new PermisoCargaNoDisponibleError();
-    }
     this.secuencia += 1;
     this.eventosCreados.push(datos);
     const evento: EventoCarga = {
@@ -121,14 +95,8 @@ class FakeCargaRepository implements CargaRepository {
       fechaAutorizacion: null,
       fechaBloqueoCortePendiente: null,
       fechaDesbloqueo: null,
-      rutaHandySinLiquidarId: datos.permisoSinLiquidar?.rutaHandyId ?? null,
-      liquidacionNoVerificada: datos.liquidacionNoVerificada ?? false,
       creadoEn: datos.fechaConteo,
     };
-    if (permiso !== undefined) {
-      permiso.usado = true;
-      permiso.eventoCargaId = evento.id;
-    }
     this.eventos.push(evento);
     return evento;
   }
@@ -222,64 +190,6 @@ class FakeAsignacionRepository implements AsignacionRepository {
   }
 }
 
-/**
- * Doble de Handy: solo `consultarRutaAbierta`. `rutaAbierta = null` es el 404
- * de Handy (sin ruta abierta); `falla` simula que Handy no responde.
- */
-class FakeHandyGateway implements Pick<HandyGateway, 'consultarRutaAbierta'> {
-  rutaAbierta: RutaHandy | null = null;
-  falla: Error | null = null;
-  readonly consultas: number[] = [];
-
-  async consultarRutaAbierta(
-    usuarioHandyId: number,
-  ): Promise<RutaHandy | null> {
-    this.consultas.push(usuarioHandyId);
-    if (this.falla !== null) {
-      throw this.falla;
-    }
-    return this.rutaAbierta;
-  }
-}
-
-/** Doble de permisos: lee de la misma lista que consume `FakeCargaRepository`. */
-class FakePermisoCargaRepository implements Pick<
-  PermisoCargaRepository,
-  'buscarVigente'
-> {
-  constructor(private readonly cargas: FakeCargaRepository) {}
-
-  async buscarVigente(
-    rutaId: string,
-    ahora: Date,
-  ): Promise<PermisoCargaSinLiquidar | null> {
-    return (
-      this.cargas.permisos.find(
-        (p) =>
-          p.rutaId === rutaId &&
-          !p.usado &&
-          p.fechaExpiracion.getTime() > ahora.getTime(),
-      ) ?? null
-    );
-  }
-}
-
-function permiso(
-  datos: Partial<PermisoCargaSinLiquidar> = {},
-): PermisoCargaSinLiquidar {
-  return {
-    id: 'permiso-1',
-    rutaId: 'ruta-7',
-    otorgadoPorId: 'sup-1',
-    motivo: 'Liquida mañana junto con hoy',
-    fechaOtorgado: new Date(AHORA.getTime() - 60 * 60 * 1000),
-    fechaExpiracion: new Date(AHORA.getTime() + 23 * 60 * 60 * 1000),
-    usado: false,
-    eventoCargaId: null,
-    ...datos,
-  };
-}
-
 function exigirExito(
   resultado: ResultadoIniciarCarga,
 ): Extract<ResultadoIniciarCarga, { exito: true }> {
@@ -292,19 +202,12 @@ function exigirExito(
 describe('IniciarCargaUseCase', () => {
   let cargas: FakeCargaRepository;
   let asignaciones: FakeAsignacionRepository;
-  let handy: FakeHandyGateway;
   let useCase: IniciarCargaUseCase;
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
     asignaciones = new FakeAsignacionRepository();
-    handy = new FakeHandyGateway();
-    useCase = new IniciarCargaUseCase(
-      cargas,
-      asignaciones,
-      handy as unknown as HandyGateway,
-      new FakePermisoCargaRepository(cargas) as unknown as PermisoCargaRepository,
-    );
+    useCase = new IniciarCargaUseCase(cargas, asignaciones);
   });
 
   it('sin asignacion vigente: devuelve SIN_RUTA_ASIGNADA y no crea nada', async () => {
@@ -537,8 +440,6 @@ describe('IniciarCargaUseCase', () => {
         fechaAutorizacion: null,
         fechaBloqueoCortePendiente: null,
         fechaDesbloqueo: null,
-        rutaHandySinLiquidarId: null,
-        liquidacionNoVerificada: false,
         creadoEn: AHORA,
       };
 
@@ -550,177 +451,6 @@ describe('IniciarCargaUseCase', () => {
         eventoId: 'ev-ganador',
       });
       expect(cargas.sesionesCreadas).toHaveLength(0);
-    });
-  });
-
-  describe('ruta anterior sin liquidar en Handy', () => {
-    const entradaInicial = {
-      usuarioAppId: 'v1',
-      tipo: 'INICIAL' as const,
-      usuarioHandyId: 42,
-      fechaOperativa: MANANA,
-    };
-
-    beforeEach(() => {
-      asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
-    });
-
-    it('sin ruta abierta procede normal y consulta Handy con el id del vendedor', async () => {
-      const resultado = exigirExito(
-        await useCase.ejecutar(entradaInicial, AHORA),
-      );
-
-      expect(handy.consultas).toEqual([42]);
-      expect(resultado.evento.rutaHandySinLiquidarId).toBeNull();
-      expect(resultado.evento.liquidacionNoVerificada).toBe(false);
-    });
-
-    it('con ruta abierta y sin permiso devuelve RUTA_ANTERIOR_SIN_LIQUIDAR con el id de Handy y no crea nada', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-
-      const resultado = await useCase.ejecutar(entradaInicial, AHORA);
-
-      expect(resultado).toEqual({
-        exito: false,
-        motivo: 'RUTA_ANTERIOR_SIN_LIQUIDAR',
-        rutaHandyId: 'handy-ruta-99',
-      });
-      expect(cargas.eventosCreados).toHaveLength(0);
-      expect(cargas.sesionesCreadas).toHaveLength(0);
-    });
-
-    it('con ruta abierta y permiso vigente procede, consume el permiso y lo vincula al evento', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-      cargas.permisos = [permiso()];
-
-      const resultado = exigirExito(
-        await useCase.ejecutar(entradaInicial, AHORA),
-      );
-
-      expect(cargas.eventosCreados[0].permisoSinLiquidar).toEqual({
-        permisoId: 'permiso-1',
-        rutaHandyId: 'handy-ruta-99',
-      });
-      expect(resultado.evento.rutaHandySinLiquidarId).toBe('handy-ruta-99');
-      expect(cargas.permisos[0].usado).toBe(true);
-      expect(cargas.permisos[0].eventoCargaId).toBe(resultado.evento.id);
-    });
-
-    it('el permiso es de un solo uso: la siguiente INICIAL sin liquidar vuelve a bloquearse', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-      cargas.permisos = [permiso()];
-      exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
-
-      const pasadoMañana = new Date('2026-09-10T00:00:00-06:00');
-      const segunda = await useCase.ejecutar(
-        { ...entradaInicial, fechaOperativa: pasadoMañana },
-        AHORA,
-      );
-
-      expect(segunda).toMatchObject({ motivo: 'RUTA_ANTERIOR_SIN_LIQUIDAR' });
-      expect(cargas.eventosCreados).toHaveLength(1);
-    });
-
-    it('un permiso vencido no cuenta', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-      cargas.permisos = [permiso({ fechaExpiracion: AHORA })];
-
-      const resultado = await useCase.ejecutar(entradaInicial, AHORA);
-
-      expect(resultado).toMatchObject({ motivo: 'RUTA_ANTERIOR_SIN_LIQUIDAR' });
-      expect(cargas.permisos[0].usado).toBe(false);
-    });
-
-    it('un permiso de otra ruta no cuenta', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-      cargas.permisos = [permiso({ rutaId: 'ruta-9' })];
-
-      const resultado = await useCase.ejecutar(entradaInicial, AHORA);
-
-      expect(resultado).toMatchObject({ motivo: 'RUTA_ANTERIOR_SIN_LIQUIDAR' });
-    });
-
-    it('si otra solicitud gasta el permiso entre la consulta y el alta, bloquea sin crear nada', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-      const elPermiso = permiso();
-      cargas.permisos = [elPermiso];
-      const crearOriginal = cargas.crearEvento.bind(cargas);
-      jest
-        .spyOn(cargas, 'crearEvento')
-        .mockImplementationOnce(async (datos) => {
-          elPermiso.usado = true;
-          return crearOriginal(datos);
-        });
-
-      const resultado = await useCase.ejecutar(entradaInicial, AHORA);
-
-      expect(resultado).toEqual({
-        exito: false,
-        motivo: 'RUTA_ANTERIOR_SIN_LIQUIDAR',
-        rutaHandyId: 'handy-ruta-99',
-      });
-      expect(cargas.eventosCreados).toHaveLength(0);
-      expect(cargas.sesionesCreadas).toHaveLength(0);
-    });
-
-    it.each([
-      [
-        'sin respuesta (red)',
-        new HandySinRespuestaError('/user/42/route/current', null),
-      ],
-      [
-        'error de servidor',
-        new HandyErrorServidorError('/user/42/route/current', 503),
-      ],
-    ])(
-      'si Handy falla (%s) NO bloquea: crea la carga marcada como no verificada',
-      async (_caso, falla) => {
-        handy.falla = falla;
-
-        const resultado = exigirExito(
-          await useCase.ejecutar(entradaInicial, AHORA),
-        );
-
-        expect(cargas.eventosCreados[0].liquidacionNoVerificada).toBe(true);
-        expect(resultado.evento.liquidacionNoVerificada).toBe(true);
-        expect(resultado.evento.rutaHandySinLiquidarId).toBeNull();
-      },
-    );
-
-    it('un error que no es de Handy se propaga', async () => {
-      handy.falla = new TypeError('defecto propio');
-
-      await expect(useCase.ejecutar(entradaInicial, AHORA)).rejects.toThrow(
-        TypeError,
-      );
-      expect(cargas.eventosCreados).toHaveLength(0);
-    });
-
-    it('las RECARGAS no consultan Handy ni se bloquean', async () => {
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-
-      exigirExito(
-        await useCase.ejecutar({ ...entradaInicial, tipo: 'RECARGA' }, AHORA),
-      );
-
-      expect(handy.consultas).toEqual([]);
-    });
-
-    it('conviven las dos reglas: si ya hay INICIAL para esa fecha, ofrece continuarla sin consultar Handy', async () => {
-      const primera = exigirExito(
-        await useCase.ejecutar(entradaInicial, AHORA),
-      );
-      handy.consultas.length = 0;
-      handy.rutaAbierta = { id: 'handy-ruta-99' };
-
-      const segunda = await useCase.ejecutar(entradaInicial, AHORA);
-
-      expect(segunda).toEqual({
-        exito: false,
-        motivo: 'YA_TIENE_CARGA_ABIERTA',
-        eventoId: primera.evento.id,
-      });
-      expect(handy.consultas).toEqual([]);
     });
   });
 });

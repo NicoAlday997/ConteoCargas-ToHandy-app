@@ -151,14 +151,6 @@ export class CargasController {
               'Tu ruta ya tiene una carga inicial para esa fecha. Continua esa carga en lugar de crear otra.',
             eventoId: resultado.eventoId,
           });
-        case 'RUTA_ANTERIOR_SIN_LIQUIDAR':
-          throw new ConflictException({
-            statusCode: 409,
-            codigo: 'RUTA_ANTERIOR_SIN_LIQUIDAR',
-            mensaje:
-              'Tu ruta anterior sigue sin liquidar en Handy. Liquidala antes de iniciar la carga, o pide a un supervisor un permiso para cargar sin liquidar.',
-            rutaHandyId: resultado.rutaHandyId,
-          });
       }
     }
 
@@ -197,12 +189,10 @@ export class CargasController {
    * contador verifica, docs/02 §3); `ubicacion` solo aplica al segundo conteo de
    * una recarga y es informativa.
    *
-   * Si quien abre la sesion es el CONTADOR, antes se verifica que el vendedor no
-   * tenga un corte de venta anterior pendiente en Handy (RF-13, docs/01 §6 regla
-   * 2; docs/02 §4.5): de haberlo, el evento queda `BLOQUEADA_CORTE_PENDIENTE` y
-   * la apertura se rechaza con 409. Esta verificacion NUNCA corre para el
-   * VENDEDOR: el bloqueo es exclusivo de la verificacion del contador, el
-   * vendedor siempre puede contar sin restriccion.
+   * Si quien abre la sesion es el CONTADOR, el caso de uso revisa antes que el
+   * vendedor no tenga la ruta anterior sin liquidar en Handy (RF-13, docs/01
+   * §6 regla 2): de tenerla, el evento queda `BLOQUEADA_CORTE_PENDIENTE` y se
+   * responde 409. El VENDEDOR nunca pasa por esa revision.
    */
   @Post(':id/sesiones')
   @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
@@ -211,39 +201,20 @@ export class CargasController {
     @UsuarioActual() usuario: UsuarioAutenticado,
     @Body(new ZodValidationPipe(FinalizarSesionSchema)) dto: FinalizarSesionDto,
   ) {
-    const evento = await this.cargas.buscarEventoPorId(eventoId);
-    if (evento === null) {
-      throw new NotFoundException({
-        statusCode: 404,
-        mensaje: 'El evento de carga no existe.',
-      });
-    }
-
     // SUPERVISOR no llega aca: el endpoint es exclusivo de VENDEDOR y CONTADOR,
     // asi que el rol mapea 1:1 al tipo de sesion.
     const tipoSesion: TipoSesion =
       usuario.rolApp === RolApp.CONTADOR ? 'CONTADOR' : 'VENDEDOR';
 
-    if (tipoSesion === 'CONTADOR') {
-      const verificacion = await this.verificarCortePendienteUseCase.ejecutar(
-        { eventoId },
-        new Date(),
-      );
-      if (verificacion.exito && verificacion.bloqueado) {
-        throw new ConflictException({
-          statusCode: 409,
-          mensaje:
-            'El vendedor tiene un corte de venta pendiente en Handy (una ruta anterior sin cerrar). Debe cerrarlo antes de que puedas verificar esta carga.',
-        });
-      }
-    }
-
-    const resultado = await this.abrirSesionUseCase.ejecutar({
-      eventoId,
-      usuarioAppId: usuario.usuarioAppId,
-      tipo: tipoSesion,
-      ubicacion: dto.ubicacion,
-    });
+    const resultado = await this.abrirSesionUseCase.ejecutar(
+      {
+        eventoId,
+        usuarioAppId: usuario.usuarioAppId,
+        tipo: tipoSesion,
+        ubicacion: dto.ubicacion,
+      },
+      new Date(),
+    );
 
     if (!resultado.exito) {
       switch (resultado.motivo) {
@@ -257,6 +228,13 @@ export class CargasController {
             statusCode: 409,
             mensaje:
               'Ya tienes una sesion abierta en esta carga. Continua esa sesion en vez de abrir una nueva.',
+          });
+        case 'CORTE_PENDIENTE':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'CORTE_PENDIENTE',
+            mensaje:
+              'El vendedor tiene un corte de venta pendiente en Handy (una ruta anterior sin cerrar). Debe cerrarlo antes de que puedas verificar esta carga.',
           });
       }
     }
