@@ -7,5 +7,6 @@ export { Etiqueta, type RellenoEtiqueta, type TamanoEtiqueta, type TonoEtiqueta 
 export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
 export { Icono, type NombreIcono } from './Icono';
+export { Personas, type Persona } from './Personas';
 export { Seccion, TituloSeccion } from './Seccion';
 export { SEPARACION_TARJETAS, Tarjeta, type BandaTarjeta } from './Tarjeta';

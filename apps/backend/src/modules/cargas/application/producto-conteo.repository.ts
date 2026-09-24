@@ -8,8 +8,14 @@
  * vive en `infrastructure/`.
  */
 
-/** Factor de empaque de un producto tal como lo necesita el conteo. */
+import type { ModalidadVenta } from '../domain/conversion-empaque';
+
+/**
+ * Factor de empaque de un producto tal como lo necesita el conteo. La
+ * modalidad se confirma junto con el factor: sin confirmar no es confiable.
+ */
 export interface FactorDeConteo {
+  modalidadVenta: ModalidadVenta;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean;
 }
@@ -19,7 +25,10 @@ export interface ProductoDeConteo {
   code: string;
   nombre: string;
   unidadCode: string;
+  /** Nombre de la unidad en Handy ("Caja", "Cajetilla"): rotula lo que se vende completo. */
+  unidadDescripcion: string;
   familia: string | null;
+  modalidadVenta: ModalidadVenta;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean;
 }

@@ -4,11 +4,30 @@
  * las filas memoizadas re-renderizar solo cuando cambia su producto.
  */
 
+/**
+ * Cómo se vende. `COMPLETO`: el paquete es la unidad de venta (los dulces:
+ * Handy cobra la bolsa y el "c/70" del nombre no es factor); se cuenta 1 a 1
+ * en un solo campo. `POR_PIEZA`: el paquete se rompe y `piezasPorPaquete` es
+ * el factor real.
+ */
+export type ModalidadVenta = 'COMPLETO' | 'POR_PIEZA';
+
+/**
+ * Lo que no llegue como `COMPLETO` se trata como por pieza: es lo que hace el
+ * backend con las filas previas a la modalidad, y sin confirmar da igual.
+ */
+export function modalidadDesdeApi(valor: unknown): ModalidadVenta {
+  return valor === 'COMPLETO' ? 'COMPLETO' : 'POR_PIEZA';
+}
+
 /** Producto ya validado para contarse (ver `normalizarProductos` en hooks-cargas). */
 export interface ProductoConteo {
   code: string;
   nombre: string;
   familia: string | null;
+  /** Nombre de la unidad en Handy ("Caja"): rotula lo que se vende completo. */
+  unidadDescripcion: string;
+  modalidadVenta: ModalidadVenta;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean;
 }
@@ -40,18 +59,48 @@ export function capturaDe(estado: EstadoConteo, code: string): CapturaProducto {
 }
 
 /**
+ * Se vende completo y el supervisor ya lo confirmó. Igual que el backend: sin
+ * confirmar, la modalidad no es confiable y el producto solo admite sueltas.
+ */
+export function seVendeCompleto(producto: ProductoConteo): boolean {
+  return producto.factorConfirmado && producto.modalidadVenta === 'COMPLETO';
+}
+
+/**
  * Factor con el que se convierte a piezas. Igual que el backend: un factor sin
  * confirmar por el supervisor nunca se usa, ni para convertir ni para avisar.
+ * Lo que se vende completo no tiene factor.
  */
 export function factorEfectivo(producto: ProductoConteo): number | null {
   const { piezasPorPaquete, factorConfirmado } = producto;
-  if (!factorConfirmado || piezasPorPaquete === null) return null;
+  if (!factorConfirmado || seVendeCompleto(producto) || piezasPorPaquete === null) return null;
   return Number.isInteger(piezasPorPaquete) && piezasPorPaquete >= 1 ? piezasPorPaquete : null;
 }
 
-/** Sin factor efectivo el producto solo se cuenta en piezas sueltas. */
+/**
+ * Nombre de la unidad en Handy si el producto se vende completo; `null` si
+ * se vende por pieza. Es lo que recibe `formatearEnPaquetes`.
+ */
+export function unidadCompleta(producto: ProductoConteo): string | null {
+  return seVendeCompleto(producto) ? producto.unidadDescripcion : null;
+}
+
+/**
+ * Lo completo se captura en el campo `paquetes` (su unidad: bolsas, cajas);
+ * lo que se vende por pieza, solo con factor efectivo.
+ */
 export function admitePaquetes(producto: ProductoConteo): boolean {
-  return factorEfectivo(producto) !== null;
+  return seVendeCompleto(producto) || factorEfectivo(producto) !== null;
+}
+
+/** Lo completo no se rompe: no tiene piezas sueltas. */
+export function admiteSueltas(producto: ProductoConteo): boolean {
+  return !seVendeCompleto(producto);
+}
+
+/** El primer campo que se captura de un producto al llegar a él. */
+export function primerCampo(producto: ProductoConteo): CampoCaptura {
+  return admitePaquetes(producto) ? 'paquetes' : 'sueltas';
 }
 
 export function estaCapturado(captura: CapturaProducto): boolean {
@@ -59,23 +108,26 @@ export function estaCapturado(captura: CapturaProducto): boolean {
 }
 
 /**
- * Misma fórmula que `aPiezas` del backend: `paquetes * piezasPorPaquete + sueltas`.
- * Un campo sin capturar cuenta como 0 si el otro ya tiene valor.
+ * Misma fórmula que `aPiezas` del backend: `paquetes * piezasPorPaquete + sueltas`
+ * si se vende por pieza; `paquetes` tal cual si se vende completo. Un campo
+ * sin capturar cuenta como 0 si el otro ya tiene valor.
  *
- * `null` si el producto no está capturado, o si trae paquetes sin factor
- * (el backend lo rechaza: no hay forma honesta de convertirlos).
+ * `null` si el producto no está capturado, si trae paquetes sin factor, o
+ * sueltas de algo que se vende completo (el backend rechaza ambos).
  */
-export function totalPiezas(captura: CapturaProducto, piezasPorPaquete: number | null): number | null {
+export function totalPiezas(captura: CapturaProducto, producto: ProductoConteo): number | null {
   if (!estaCapturado(captura)) return null;
   const paquetes = captura.paquetes ?? 0;
   const sueltas = captura.sueltas ?? 0;
-  if (piezasPorPaquete === null) return paquetes > 0 ? null : sueltas;
-  return paquetes * piezasPorPaquete + sueltas;
+  if (seVendeCompleto(producto)) return sueltas > 0 ? null : paquetes;
+  const factor = factorEfectivo(producto);
+  if (factor === null) return paquetes > 0 ? null : sueltas;
+  return paquetes * factor + sueltas;
 }
 
-export function estadoFila(captura: CapturaProducto, piezasPorPaquete: number | null): EstadoFila {
+export function estadoFila(captura: CapturaProducto, producto: ProductoConteo): EstadoFila {
   if (!estaCapturado(captura)) return 'sin-capturar';
-  const total = totalPiezas(captura, piezasPorPaquete);
+  const total = totalPiezas(captura, producto);
   // Un total incalculable no es "cero": algo se capturó y hay que revisarlo.
   return total === 0 ? 'en-cero' : 'con-cantidad';
 }
@@ -121,7 +173,10 @@ export function fijarCampo(
 
 /** El gesto más repetido del día: "revisado, no lleva". */
 export function fijarCero(estado: EstadoConteo, producto: ProductoConteo): EstadoConteo {
-  const cero: CapturaProducto = { paquetes: admitePaquetes(producto) ? 0 : null, sueltas: 0 };
+  const cero: CapturaProducto = {
+    paquetes: admitePaquetes(producto) ? 0 : null,
+    sueltas: admiteSueltas(producto) ? 0 : null,
+  };
   const actual = capturaDe(estado, producto.code);
   if (actual.paquetes === cero.paquetes && actual.sueltas === cero.sueltas) return estado;
   return { ...estado, [producto.code]: cero };

@@ -18,12 +18,18 @@ export class PrismaProductoConteoRepository extends ProductoConteoRepository {
     if (codes.length === 0) return new Map();
     const rows = await this.prisma.producto.findMany({
       where: { code: { in: codes } },
-      select: { code: true, piezasPorPaquete: true, factorConfirmado: true },
+      select: {
+        code: true,
+        modalidadVenta: true,
+        piezasPorPaquete: true,
+        factorConfirmado: true,
+      },
     });
     return new Map(
       rows.map((r) => [
         r.code,
         {
+          modalidadVenta: r.modalidadVenta,
           piezasPorPaquete: r.piezasPorPaquete,
           factorConfirmado: r.factorConfirmado,
         },
@@ -43,7 +49,9 @@ export class PrismaProductoConteoRepository extends ProductoConteoRepository {
         code: true,
         nombre: true,
         unidadCode: true,
+        unidadDescripcion: true,
         familia: true,
+        modalidadVenta: true,
         piezasPorPaquete: true,
         factorConfirmado: true,
       },

@@ -8,7 +8,7 @@ import {
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
-import { EtiquetaFactor } from './FilaProducto';
+import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 
 /** Cabe una cantidad de 4 dígitos al tamaño de título. */
 const ANCHO_VISOR = ESPACIADO.xxxl + ESPACIADO.xxl + ESPACIADO.sm;
@@ -20,11 +20,6 @@ const FILAS: readonly (readonly string[])[] = [
   ['4', '5', '6'],
   ['7', '8', '9'],
 ];
-
-const ETIQUETAS_CAMPO: Record<CampoCaptura, string> = {
-  paquetes: 'Paquetes',
-  sueltas: 'Sueltas',
-};
 
 interface Props {
   producto: ProductoConteo;
@@ -66,6 +61,7 @@ export function TecladoCantidad({
   const factor = factorEfectivo(producto);
   const avisoSueltas = campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
   const altoTecla = lateral ? ALTO_TECLA_LATERAL : TOQUE_MINIMO;
+  const etiquetaCampo = nombreCampo(producto, campo);
 
   return (
     <View style={[estilos.panel, lateral && estilos.panelLateral]}>
@@ -78,11 +74,11 @@ export function TecladoCantidad({
             </Text>
           </View>
           <View style={estilos.lineaValor}>
-            <Text style={estilos.campo}>{ETIQUETAS_CAMPO[campo]}</Text>
+            <Text style={estilos.campo}>{etiquetaCampo}</Text>
             <View
               style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
               accessible
-              accessibilityLabel={`${ETIQUETAS_CAMPO[campo]}: ${texto === '' ? 'sin capturar' : texto}`}
+              accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
             >
               <Text style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]} numberOfLines={1}>
                 {texto === '' ? '—' : texto}

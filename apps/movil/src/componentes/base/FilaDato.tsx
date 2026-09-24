@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
 
 interface Props {
-  /** Qué es: se retira, a la izquierda. */
+  /** Qué es: rótulo pequeño en mayúsculas, se retira, a la izquierda. */
   etiqueta: string;
   /** El dato: domina, a la derecha. */
   valor: string;
@@ -68,15 +68,18 @@ const estilos = StyleSheet.create({
     borderTopWidth: BORDES.fino,
     borderTopColor: COLORES.divisor,
   },
+  // El rótulo se retira y el dato domina: nunca el mismo estilo para los dos,
+  // o "Contó Irvin Alday" se lee como una frase donde todo pesa igual.
   etiqueta: {
     flex: 1,
-    ...TIPOGRAFIA.cuerpo,
+    ...TIPOGRAFIA.micro,
+    fontWeight: PESOS.medio,
     color: COLORES.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   etiquetaApilada: {
     flex: 0,
-    ...TIPOGRAFIA.micro,
-    textTransform: 'uppercase',
   },
   columnaValor: {
     flexShrink: 1,

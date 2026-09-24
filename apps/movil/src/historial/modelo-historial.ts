@@ -6,7 +6,7 @@ import type {
   InicioSinLiquidarApi,
   ProductoConsolidadoApi,
 } from '../api/historial';
-import type { ProductoConteo } from '../conteo/estado-conteo';
+import { modalidadDesdeApi, type ProductoConteo } from '../conteo/estado-conteo.ts';
 import { diaDesdeApi } from '../conteo/fecha-operativa.ts';
 
 /**
@@ -202,6 +202,8 @@ function normalizarProducto(p: ProductoConsolidadoApi): ProductoDetalle | null {
     code,
     nombre: texto(p.nombre) ?? code,
     familia: texto(p.familia),
+    unidadDescripcion: texto(p.unidadDescripcion) ?? '',
+    modalidadVenta: modalidadDesdeApi(p.modalidadVenta),
     piezasPorPaquete: typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
     factorConfirmado: p.factorConfirmado === true,
     cantidadFinal: entero(p.cantidadFinal),

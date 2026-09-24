@@ -19,6 +19,7 @@ function factorProducto(over: Partial<FactorProducto> = {}): FactorProducto {
   return {
     code: 'P-1',
     nombre: 'PEPSI 1.5 LT C/12',
+    modalidadVenta: 'POR_PIEZA',
     piezasPorPaquete: 12,
     factorConfirmado: false,
     factorConfirmadoPorId: null,
@@ -47,6 +48,7 @@ class FakeFactorEmpaqueRepository implements FactorEmpaqueRepository {
     }
     const confirmado: FactorProducto = {
       ...actual,
+      modalidadVenta: datos.modalidadVenta,
       piezasPorPaquete: datos.piezasPorPaquete,
       factorConfirmado: true,
       factorConfirmadoPorId: datos.confirmadoPorId,
@@ -81,6 +83,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
     const resultado = await useCase.ejecutar({
       productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
       piezasPorPaquete: 12,
       usuarioAppId: SUPERVISOR_ID,
       ahora: AHORA,
@@ -98,6 +101,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
     expect(repo.confirmaciones).toEqual([
       {
         productoCode: 'P-1',
+        modalidadVenta: 'POR_PIEZA',
         piezasPorPaquete: 12,
         confirmadoPorId: SUPERVISOR_ID,
         fecha: AHORA,
@@ -110,6 +114,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
     const resultado = await useCase.ejecutar({
       productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
       piezasPorPaquete: 24,
       usuarioAppId: SUPERVISOR_ID,
       ahora: AHORA,
@@ -127,6 +132,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
     const resultado = await useCase.ejecutar({
       productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
       piezasPorPaquete: 6,
       usuarioAppId: SUPERVISOR_ID,
       ahora: AHORA,
@@ -149,6 +155,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
     const resultado = await useCase.ejecutar({
       productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
       piezasPorPaquete: 8,
       usuarioAppId: SUPERVISOR_ID,
       ahora: AHORA,
@@ -170,6 +177,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
     for (const piezasPorPaquete of [1, 500]) {
       const resultado = await useCase.ejecutar({
         productoCode: 'P-1',
+        modalidadVenta: 'POR_PIEZA',
         piezasPorPaquete,
         usuarioAppId: SUPERVISOR_ID,
         ahora: AHORA,
@@ -185,6 +193,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
       const resultado = await useCase.ejecutar({
         productoCode: 'P-1',
+        modalidadVenta: 'POR_PIEZA',
         piezasPorPaquete,
         usuarioAppId: SUPERVISOR_ID,
         ahora: AHORA,
@@ -196,9 +205,79 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
     },
   );
 
+  it('confirma un dulce como COMPLETO y descarta el "c/70" del nombre', async () => {
+    repo.sembrar(
+      factorProducto({ nombre: 'CANELS. c/70', piezasPorPaquete: 70 }),
+    );
+
+    const resultado = await useCase.ejecutar({
+      productoCode: 'P-1',
+      modalidadVenta: 'COMPLETO',
+      piezasPorPaquete: 70,
+      usuarioAppId: SUPERVISOR_ID,
+      ahora: AHORA,
+    });
+
+    expect(resultado.exito).toBe(true);
+    expect(repo.confirmaciones).toEqual([
+      {
+        productoCode: 'P-1',
+        modalidadVenta: 'COMPLETO',
+        piezasPorPaquete: null,
+        confirmadoPorId: SUPERVISOR_ID,
+        fecha: AHORA,
+      },
+    ]);
+    expect(repo.productos.get('P-1')).toEqual(
+      expect.objectContaining({
+        modalidadVenta: 'COMPLETO',
+        piezasPorPaquete: null,
+        factorConfirmado: true,
+      }),
+    );
+  });
+
+  it('corrige un producto confirmado por pieza a COMPLETO', async () => {
+    repo.sembrar(
+      factorProducto({
+        nombre: 'CANELS. c/70',
+        piezasPorPaquete: 70,
+        factorConfirmado: true,
+      }),
+    );
+
+    const resultado = await useCase.ejecutar({
+      productoCode: 'P-1',
+      modalidadVenta: 'COMPLETO',
+      piezasPorPaquete: null,
+      usuarioAppId: SUPERVISOR_ID,
+      ahora: AHORA,
+    });
+
+    expect(resultado.exito).toBe(true);
+    expect(repo.productos.get('P-1')?.modalidadVenta).toBe('COMPLETO');
+    expect(repo.productos.get('P-1')?.piezasPorPaquete).toBeNull();
+  });
+
+  it('rechaza POR_PIEZA sin piezas por paquete', async () => {
+    repo.sembrar(factorProducto());
+
+    const resultado = await useCase.ejecutar({
+      productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
+      piezasPorPaquete: null,
+      usuarioAppId: SUPERVISOR_ID,
+      ahora: AHORA,
+    });
+
+    expect(resultado).toEqual({ exito: false, motivo: 'FACTOR_INVALIDO' });
+    expect(repo.confirmaciones).toEqual([]);
+  });
+
   it('responde PRODUCTO_NO_ENCONTRADO si el code no existe', async () => {
     const resultado = await useCase.ejecutar({
       productoCode: 'NO-EXISTE',
+      modalidadVenta: 'POR_PIEZA',
       piezasPorPaquete: 12,
       usuarioAppId: SUPERVISOR_ID,
       ahora: AHORA,

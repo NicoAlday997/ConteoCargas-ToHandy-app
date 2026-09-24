@@ -14,6 +14,7 @@ import {
   Esqueleto,
   FilaDato,
   LineaEsqueleto,
+  Personas,
   Tarjeta,
   TarjetaEsqueleto,
 } from '../../src/componentes/base';
@@ -21,12 +22,16 @@ import { IndicadoresPin, LONGITUD_PIN } from '../../src/componentes/IndicadoresP
 import { TecladoPin } from '../../src/componentes/TecladoPin';
 import {
   admitePaquetes,
+  admiteSueltas,
   factorEfectivo,
+  primerCampo,
+  seVendeCompleto,
   totalPiezas,
+  unidadCompleta,
   type CampoCaptura,
   type CapturaProducto,
 } from '../../src/conteo/estado-conteo';
-import { EtiquetaFactor } from '../../src/conteo/FilaProducto';
+import { EtiquetaFactor, nombreCampo } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearPiezas, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
 import {
@@ -72,9 +77,9 @@ function textoAValor(texto: string): number | null {
   return texto === '' ? null : Number(texto);
 }
 
-/** En la unidad en que se cuenta en bodega; sin factor confirmado, en piezas. */
+/** En la unidad en que se cuenta en bodega; sin factor confirmado, en piezas; completo, en su unidad. */
 function enPaquetes(piezas: number, d: Discrepancia): string {
-  return formatearEnPaquetes(piezas, factorEfectivo(d.producto));
+  return formatearEnPaquetes(piezas, factorEfectivo(d.producto), unidadCompleta(d.producto));
 }
 
 /** "(18 piezas)" debajo de la cantidad en paquetes; sin factor sería repetir lo mismo. */
@@ -171,7 +176,7 @@ function Resolucion({ eventoId }: { eventoId: string }) {
 
   const empezarCaptura = (d: Discrepancia) => {
     fijarError(d.code, null);
-    abrirCampo(d.code, admitePaquetes(d.producto) ? 'paquetes' : 'sueltas', capturaInicial(d));
+    abrirCampo(d.code, primerCampo(d.producto), capturaInicial(d));
   };
 
   const alDigito = useCallback(
@@ -200,7 +205,7 @@ function Resolucion({ eventoId }: { eventoId: string }) {
   const cancelar = () => fijarEdicion(null);
 
   const guardar = (d: Discrepancia, captura: CapturaProducto) => {
-    const piezas = totalPiezas(captura, factorEfectivo(d.producto));
+    const piezas = totalPiezas(captura, d.producto);
     if (piezas === null) {
       fijarError(d.code, 'Captura cuántos paquetes o sueltas hay antes de guardar.');
       return;
@@ -230,11 +235,11 @@ function Resolucion({ eventoId }: { eventoId: string }) {
     const actual = edicionRef.current;
     if (!actual) return;
     const asentada = asentar(actual);
-    if (actual.campo === 'paquetes') {
+    const d = discrepancias.find((x) => x.code === actual.code);
+    if (actual.campo === 'paquetes' && d && admiteSueltas(d.producto)) {
       abrirCampo(actual.code, 'sueltas', asentada.captura);
       return;
     }
-    const d = discrepancias.find((x) => x.code === actual.code);
     fijarEdicion({ ...asentada, tecladoAbierto: false });
     if (d) guardar(d, asentada.captura);
   };
@@ -343,7 +348,13 @@ function Resolucion({ eventoId }: { eventoId: string }) {
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion)}
-        etiquetaSiguiente={edicion.campo === 'paquetes' ? 'Sueltas ›' : capturar.isPending ? 'Guardando…' : 'Guardar'}
+        etiquetaSiguiente={
+          edicion.campo === 'paquetes' && admiteSueltas(editada.producto)
+            ? 'Sueltas ›'
+            : capturar.isPending
+              ? 'Guardando…'
+              : 'Guardar'
+        }
         lateral={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
@@ -511,14 +522,18 @@ function TarjetaDiscrepancia({
           )}
           {esAtipica(d) && <Text style={estilos.notaAtipica}>No coincide con ninguno de los dos conteos.</Text>}
           {estado === 'confirmada' ? (
-            <Text style={estilos.estadoConfirmada}>
-              Capturó {d.capturadaPorNombre ?? 'otra persona'} · confirmó {d.confirmadaPorNombre ?? 'otra persona'}
-            </Text>
+            <Personas
+              personas={[
+                { rol: 'Capturó', nombre: d.capturadaPorNombre ?? 'otra persona' },
+                { rol: 'Confirmó', nombre: d.confirmadaPorNombre ?? 'otra persona' },
+              ]}
+            />
           ) : (
             <>
               <Text style={estilos.estadoEspera} accessibilityLiveRegion="polite">
-                Esperando confirmación · capturó {soyQuienCapturo ? 'tú' : (d.capturadaPorNombre ?? 'otra persona')}
+                Esperando confirmación
               </Text>
+              <Personas personas={[{ rol: 'Capturó', nombre: soyQuienCapturo ? 'Tú' : (d.capturadaPorNombre ?? 'otra persona') }]} />
               {soyQuienCapturo && (
                 <Text style={estilos.aviso}>Otra persona debe confirmarla con su propio PIN.</Text>
               )}
@@ -592,8 +607,10 @@ function EditorCantidad({
   onCancelar: () => void;
 }) {
   const captura = capturaVisible(edicion);
-  const total = totalPiezas(captura, factorEfectivo(d.producto));
-  const campos: CampoCaptura[] = admitePaquetes(d.producto) ? ['paquetes', 'sueltas'] : ['sueltas'];
+  const total = totalPiezas(captura, d.producto);
+  const campos = (['paquetes', 'sueltas'] as const).filter((campo) =>
+    campo === 'paquetes' ? admitePaquetes(d.producto) : admiteSueltas(d.producto),
+  );
 
   return (
     <View style={estilos.editor}>
@@ -607,13 +624,13 @@ function EditorCantidad({
               key={campo}
               onPress={() => onAbrirCampo(campo)}
               accessibilityRole="button"
-              accessibilityLabel={`${campo === 'paquetes' ? 'Paquetes' : 'Sueltas'}: ${valor ?? 'sin capturar'}`}
+              accessibilityLabel={`${nombreCampo(d.producto, campo)}: ${valor ?? 'sin capturar'}`}
               style={({ pressed }) => [estilos.campoEditor, (activo || pressed) && estilos.campoEditorActivo]}
             >
               {({ pressed }) => (
                 <>
                   <Text style={[estilos.etiquetaCampo, (activo || pressed) && estilos.textoInvertido]}>
-                    {campo === 'paquetes' ? 'Paquetes' : 'Sueltas'}
+                    {nombreCampo(d.producto, campo)}
                   </Text>
                   <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
                 </>
@@ -621,7 +638,10 @@ function EditorCantidad({
             </Pressable>
           );
         })}
-        <Text style={estilos.totalEditor}>{total === null ? '' : `= ${formatearPiezas(total)}`}</Text>
+        {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
+        <Text style={estilos.totalEditor}>
+          {total === null || seVendeCompleto(d.producto) ? '' : `= ${formatearPiezas(total)}`}
+        </Text>
       </View>
       <View style={estilos.botones}>
         <Boton texto="Cancelar" variante="secundario" onPress={onCancelar} deshabilitado={ocupado} style={estilos.botonFila} />
@@ -914,11 +934,6 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.cuerpo,
     fontWeight: PESOS.negrita,
     color: COLORES.discrepanciaTexto,
-  },
-  estadoConfirmada: {
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.capturadoTexto,
   },
   aviso: {
     ...TIPOGRAFIA.cuerpo,

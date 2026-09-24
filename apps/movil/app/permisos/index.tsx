@@ -28,6 +28,7 @@ import {
   Esqueleto,
   FilaDato,
   NotaEncabezado,
+  Personas,
   Seccion,
   Tarjeta,
   TarjetaEsqueleto,
@@ -241,10 +242,10 @@ function TarjetaPermiso({ permiso, ahora }: { permiso: Permiso; ahora: Date }) {
         </View>
       )}
 
-      <Text style={estilos.textoSecundario}>
-        Lo otorgó <Text style={estilos.negrita}>{permiso.otorgadoPorNombre ?? 'un supervisor'}</Text>
-        {permiso.otorgado ? ` ${momentoLegible(permiso.otorgado, ahora)}` : ''}
-      </Text>
+      <View style={estilos.otorgado}>
+        <Personas personas={[{ rol: 'Otorgó', nombre: permiso.otorgadoPorNombre ?? 'un supervisor' }]} />
+        {permiso.otorgado && <Text style={estilos.textoSecundario}>{momentoLegible(permiso.otorgado, ahora)}</Text>}
+      </View>
       {permiso.motivo && <Text style={estilos.motivo}>“{permiso.motivo}”</Text>}
 
       {eventoId && (
@@ -579,9 +580,12 @@ const estilos = StyleSheet.create({
     fontStyle: 'italic',
     color: COLORES.texto,
   },
-  negrita: {
-    fontWeight: PESOS.negrita,
-    color: COLORES.texto,
+  // Quién lo otorgó y, al lado y retirado, cuándo.
+  otorgado: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    columnGap: ESPACIADO.sm,
   },
   textoSecundario: {
     ...TIPOGRAFIA.etiqueta,

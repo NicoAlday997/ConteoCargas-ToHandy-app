@@ -10,7 +10,21 @@
  * en silencio todos los conteos del producto, y el doble conteo no lo detecta
  * porque vendedor y contador usarian el mismo factor malo. Nunca se usa sin
  * confirmacion de un supervisor.
+ *
+ * Y antes del numero va la pregunta que decide si el numero importa: ¿el
+ * producto se vende completo o por pieza? Los dulces se venden COMPLETOS
+ * (Handy cobra la bolsa de "CANELS. c/70" a $71; el "c/70" solo distingue
+ * productos) y ahi el factor no existe. Solo lo que se vende POR_PIEZA
+ * (cigarros por cajetilla, refrescos) usa piezas por paquete.
  */
+
+/** Como se vende un producto. Mismos valores que el enum de la base. */
+export type ModalidadVenta = 'COMPLETO' | 'POR_PIEZA';
+
+export const MODALIDADES_VENTA: readonly ModalidadVenta[] = [
+  'COMPLETO',
+  'POR_PIEZA',
+];
 
 export const PIEZAS_POR_PAQUETE_MINIMO = 1;
 export const PIEZAS_POR_PAQUETE_MAXIMO = 500;

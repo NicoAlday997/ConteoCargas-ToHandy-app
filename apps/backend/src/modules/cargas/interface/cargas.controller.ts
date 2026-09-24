@@ -339,6 +339,14 @@ export class CargasController {
             detalle: `Productos: ${resultado.productos.join(', ')}`,
             productos: resultado.productos,
           });
+        case 'SUELTAS_EN_PRODUCTO_COMPLETO':
+          throw new ConflictException({
+            statusCode: 409,
+            mensaje:
+              'Hay productos que se venden completos y se capturaron con piezas sueltas. Cuentalos solo en su unidad (bolsas, cajas).',
+            detalle: `Productos: ${resultado.productos.join(', ')}`,
+            productos: resultado.productos,
+          });
       }
     }
 

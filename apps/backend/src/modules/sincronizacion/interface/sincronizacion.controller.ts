@@ -81,7 +81,8 @@ export class SincronizacionController {
 
   /**
    * Productos activos cuyo factor de empaque aun no confirma un supervisor,
-   * con el valor propuesto desde el nombre (`null` si hay que capturarlo).
+   * con su modalidad de venta actual y el factor propuesto desde el nombre
+   * (`null` si hay que capturarlo; solo aplica si se vende por pieza).
    */
   @Get('factores-pendientes')
   async listarFactoresPendientes() {
@@ -89,7 +90,8 @@ export class SincronizacionController {
   }
 
   /**
-   * Confirma o corrige las piezas por paquete de un producto. Queda traza de
+   * Confirma o corrige como se vende un producto (`COMPLETO` o `POR_PIEZA`)
+   * y, si es por pieza, cuantas piezas trae el paquete. Queda traza de
    * quien y cuando; `usuarioAppId` sale del JWT, nunca del body. Una vez
    * confirmado, la sincronizacion ya no modifica el factor.
    */
@@ -102,7 +104,9 @@ export class SincronizacionController {
   ) {
     const resultado = await this.confirmarFactorEmpaqueUseCase.ejecutar({
       productoCode: code,
-      piezasPorPaquete: dto.piezasPorPaquete,
+      modalidadVenta: dto.modalidadVenta,
+      piezasPorPaquete:
+        dto.modalidadVenta === 'POR_PIEZA' ? dto.piezasPorPaquete : null,
       usuarioAppId: supervisor.usuarioAppId,
       ahora: new Date(),
     });
@@ -113,7 +117,7 @@ export class SincronizacionController {
           throw new BadRequestException({
             statusCode: 400,
             mensaje:
-              'Las piezas por paquete deben ser un numero entero entre 1 y 500.',
+              'Si el producto se vende por pieza, las piezas por paquete deben ser un numero entero entre 1 y 500.',
           });
         case 'PRODUCTO_NO_ENCONTRADO':
           throw new NotFoundException({

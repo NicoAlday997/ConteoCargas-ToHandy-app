@@ -12,6 +12,7 @@
 import type { EstadoSesion, TipoCarga, TipoSesion } from '@prisma/client';
 
 import type { Discrepancia } from './carga.repository';
+import type { ModalidadVenta } from '../domain/conversion-empaque';
 
 /** Una carga que el vendedor ya conto y espera el segundo conteo. */
 export interface CargaPendienteVerificacion {
@@ -65,6 +66,9 @@ export interface LadoDiscrepancia {
 /** Discrepancia con lo que la pantalla de resolucion necesita mostrar. */
 export interface DiscrepanciaDetalle extends Discrepancia {
   productoNombre: string;
+  /** Nombre de la unidad en Handy: rotula lo que se vende completo. */
+  unidadDescripcion: string;
+  modalidadVenta: ModalidadVenta;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean;
   capturadaPorNombre: string | null;

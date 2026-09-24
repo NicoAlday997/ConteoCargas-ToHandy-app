@@ -14,10 +14,11 @@ import {
   Etiqueta,
   FilaDato,
   LineaEsqueleto,
+  Personas,
   Tarjeta,
   TarjetaEsqueleto,
 } from '../../src/componentes/base';
-import { factorEfectivo } from '../../src/conteo/estado-conteo';
+import { factorEfectivo, unidadCompleta, type ProductoConteo } from '../../src/conteo/estado-conteo';
 import { diaNegocio, textoSalida } from '../../src/conteo/fecha-operativa';
 import { EtiquetaFactor } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
@@ -199,10 +200,8 @@ function Resumen({ carga }: { carga: CargaDetalle }) {
       {evento.sinLiquidar && (
         <View style={estilos.marcaSinLiquidar}>
           <Text style={estilos.tituloMarca}>Iniciada con la ruta anterior sin liquidar en Handy</Text>
-          <Text style={estilos.textoMarca}>
-            Permiso de <Text style={estilos.nombre}>{evento.sinLiquidar.otorgadoPor ?? 'un supervisor'}</Text>
-            {evento.sinLiquidar.motivo ? `: “${evento.sinLiquidar.motivo}”` : ''}
-          </Text>
+          <Personas personas={[{ rol: 'Permiso de', nombre: evento.sinLiquidar.otorgadoPor ?? 'un supervisor' }]} />
+          {evento.sinLiquidar.motivo && <Text style={estilos.textoMarca}>“{evento.sinLiquidar.motivo}”</Text>}
         </View>
       )}
       {evento.liquidacionNoVerificada && (
@@ -242,8 +241,9 @@ function EsqueletoDetalle() {
   );
 }
 
-function cantidad(piezas: number | null, factor: number | null): string {
-  return piezas === null ? 'Sin dato' : formatearEnPaquetes(piezas, factor);
+/** En la unidad en que se contó: paquetes y piezas, o la unidad de lo que se vende completo. */
+function cantidad(piezas: number | null, producto: ProductoConteo): string {
+  return piezas === null ? 'Sin dato' : formatearEnPaquetes(piezas, factorEfectivo(producto), unidadCompleta(producto));
 }
 
 function FilaProducto({ producto }: { producto: ProductoDetalle }) {
@@ -266,15 +266,15 @@ function FilaProducto({ producto }: { producto: ProductoDetalle }) {
           {factor !== null && cantidadFinal !== null && cantidadFinal >= factor && (
             <Text style={estilos.totalPiezas}>{formatearTotalPiezas(cantidadFinal)}</Text>
           )}
-          <Text style={estilos.cantidadFinal}>{cantidad(cantidadFinal, factor)}</Text>
+          <Text style={estilos.cantidadFinal}>{cantidad(cantidadFinal, producto)}</Text>
         </View>
       )}
       {discrepancia && (
         <Tarjeta elevacion={0} tintada="discrepancia" compacta>
           <Text style={estilos.tituloDiscrepancia}>Tuvo discrepancia</Text>
           <View>
-              <FilaDato etiqueta="Vendedor contó" valor={cantidad(discrepancia.vendedor, factor)} />
-              <FilaDato etiqueta="Contador contó" valor={cantidad(discrepancia.contador, factor)} />
+              <FilaDato etiqueta="Vendedor contó" valor={cantidad(discrepancia.vendedor, producto)} />
+              <FilaDato etiqueta="Contador contó" valor={cantidad(discrepancia.contador, producto)} />
               <FilaDato etiqueta="Final capturada por" valor={discrepancia.capturadaPor ?? 'nadie aún'} separado />
               <FilaDato etiqueta="Confirmada por" valor={discrepancia.confirmadaPor ?? 'nadie aún'} />
           </View>
@@ -381,9 +381,6 @@ const estilos = StyleSheet.create({
   },
   unidadDiscrepancia: {
     color: COLORES.discrepanciaTexto,
-  },
-  nombre: {
-    fontWeight: PESOS.negrita,
   },
   nota: {
     ...TIPOGRAFIA.etiqueta,

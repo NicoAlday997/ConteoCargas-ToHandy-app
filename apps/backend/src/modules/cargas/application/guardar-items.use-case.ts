@@ -1,20 +1,28 @@
-import { aPiezas, sueltasExcedenPaquete } from '../domain/conversion-empaque';
+import {
+  aPiezas,
+  sueltasExcedenPaquete,
+  type ModalidadVenta,
+} from '../domain/conversion-empaque';
 import type {
   CapturaGuardada,
   CargaRepository,
   ItemAGuardar,
   SesionConteo,
 } from './carga.repository';
-import type { ProductoConteoRepository } from './producto-conteo.repository';
+import type {
+  FactorDeConteo,
+  ProductoConteoRepository,
+} from './producto-conteo.repository';
 
 /**
  * Caso de uso: guardar las cantidades capturadas en una sesion de conteo
  * (docs/04 `PATCH /eventos-carga/:id/sesiones/:sesionId/items`).
  *
- * En bodega se cuentan PAQUETES y piezas sueltas; Handy recibe PIEZAS. El
- * cliente manda `paquetes` y `sueltas` por producto y el total en piezas
+ * En bodega se cuentan PAQUETES y piezas sueltas; Handy recibe unidades de
+ * venta. El cliente manda `paquetes` y `sueltas` por producto y el total
  * (`cantidad`) se calcula aca con `aPiezas` del dominio: nunca se recibe del
- * cliente.
+ * cliente. Un producto que se vende COMPLETO cuenta 1 a 1 (5 bolsas = 5) y
+ * solo admite `paquetes`.
  *
  * Reemplazo total: un producto que ya no venga en `items` queda eliminado de
  * la sesion. Si cualquier item se rechaza, no se persiste nada.
@@ -61,17 +69,39 @@ export interface ItemGuardado extends ItemAGuardar {
  *   ha confirmado un supervisor (o que no tiene factor). Un factor sin
  *   confirmar corrompe el conteo en silencio: el doble conteo no lo detecta
  *   porque ambos conteos usarian el mismo factor.
+ * - `SUELTAS_EN_PRODUCTO_COMPLETO`: se mandaron sueltas de un producto que se
+ *   vende completo (el paquete no se rompe).
  *
- * Los dos ultimos traen `productos` con los codigos afectados.
+ * Los tres ultimos traen `productos` con los codigos afectados.
  */
 export type ResultadoGuardarItems =
   | { exito: true; sesion: SesionConteo; items: ItemGuardado[] }
   | { exito: false; motivo: 'SESION_NO_ENCONTRADA' | 'SESION_AJENA' }
   | {
       exito: false;
-      motivo: 'PRODUCTO_NO_ENCONTRADO' | 'FACTOR_NO_CONFIRMADO';
+      motivo:
+        | 'PRODUCTO_NO_ENCONTRADO'
+        | 'FACTOR_NO_CONFIRMADO'
+        | 'SUELTAS_EN_PRODUCTO_COMPLETO';
       productos: string[];
     };
+
+/**
+ * Modalidad y factor que se pueden usar para convertir. Sin confirmar, ni la
+ * modalidad ni el factor son confiables: el producto solo admite sueltas.
+ */
+function empaqueEfectivo(factor: FactorDeConteo): {
+  modalidad: ModalidadVenta;
+  piezasPorPaquete: number | null;
+} {
+  if (!factor.factorConfirmado) {
+    return { modalidad: 'POR_PIEZA', piezasPorPaquete: null };
+  }
+  return {
+    modalidad: factor.modalidadVenta,
+    piezasPorPaquete: factor.piezasPorPaquete,
+  };
+}
 
 export class GuardarItemsUseCase {
   constructor(
@@ -105,14 +135,19 @@ export class GuardarItemsUseCase {
       };
     }
 
-    // 3. Paquetes solo con factor confirmado. Sin paquetes el factor no
-    //    interviene y el producto puede contarse por piezas sueltas.
+    // 3. Paquetes solo con modalidad y factor confirmados. Sin paquetes el
+    //    factor no interviene y el producto puede contarse por piezas sueltas.
+    //    Lo que se vende completo no necesita factor: cuenta 1 a 1.
+    const empaques = new Map(
+      [...factores].map(([code, f]) => [code, empaqueEfectivo(f)]),
+    );
     const sinFactorConfirmado = entrada.items
       .filter((i) => {
-        const factor = factores.get(i.productoCode)!;
+        const empaque = empaques.get(i.productoCode)!;
         return (
           i.paquetes > 0 &&
-          (!factor.factorConfirmado || factor.piezasPorPaquete === null)
+          empaque.modalidad === 'POR_PIEZA' &&
+          empaque.piezasPorPaquete === null
         );
       })
       .map((i) => i.productoCode);
@@ -124,6 +159,21 @@ export class GuardarItemsUseCase {
       };
     }
 
+    const sueltasEnCompleto = entrada.items
+      .filter(
+        (i) =>
+          i.sueltas > 0 &&
+          empaques.get(i.productoCode)!.modalidad === 'COMPLETO',
+      )
+      .map((i) => i.productoCode);
+    if (sueltasEnCompleto.length > 0) {
+      return {
+        exito: false,
+        motivo: 'SUELTAS_EN_PRODUCTO_COMPLETO',
+        productos: sueltasEnCompleto,
+      };
+    }
+
     // 4. Lo ya guardado, para no mover `recibidoEn` de lo que llega igual.
     const previos = new Map<string, CapturaGuardada>(
       (await this.cargas.listarCapturasDeSesion(entrada.sesionId)).map((c) => [
@@ -132,13 +182,10 @@ export class GuardarItemsUseCase {
       ]),
     );
 
-    // 5. Total en piezas con el dominio. Un factor sin confirmar nunca se usa:
-    //    ni para convertir ni para el aviso de sueltas.
+    // 5. Total con el dominio. Un factor sin confirmar nunca se usa: ni para
+    //    convertir ni para el aviso de sueltas.
     const items: ItemGuardado[] = entrada.items.map((i) => {
-      const factor = factores.get(i.productoCode)!;
-      const piezasPorPaquete = factor.factorConfirmado
-        ? factor.piezasPorPaquete
-        : null;
+      const { modalidad, piezasPorPaquete } = empaques.get(i.productoCode)!;
       const capturadoEn = i.capturadoEn ?? null;
       const previo = previos.get(i.productoCode);
       const recibidoEn =
@@ -152,12 +199,13 @@ export class GuardarItemsUseCase {
         productoCode: i.productoCode,
         paquetes: i.paquetes,
         sueltas: i.sueltas,
-        cantidad: aPiezas(i.paquetes, i.sueltas, piezasPorPaquete),
+        cantidad: aPiezas(i.paquetes, i.sueltas, piezasPorPaquete, modalidad),
         capturadoEn,
         recibidoEn,
         sueltasExcedenPaquete: sueltasExcedenPaquete(
           i.sueltas,
           piezasPorPaquete,
+          modalidad,
         ),
       };
     });

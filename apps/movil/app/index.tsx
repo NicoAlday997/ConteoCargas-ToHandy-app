@@ -531,10 +531,13 @@ const estilos = StyleSheet.create({
     fontWeight: PESOS.extraNegrita,
     color: COLORES.textoSobreColor,
   },
+  // El rol es un rótulo: pequeño, en mayúsculas, se retira. El nombre domina.
   rol: {
-    ...TIPOGRAFIA.subtitulo,
+    ...TIPOGRAFIA.etiqueta,
     fontWeight: PESOS.medio,
     color: COLORES.marcaClaro,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   cuerpo: {
     flex: 1,

@@ -11,6 +11,7 @@ import {
   EstadoVacio,
   Esqueleto,
   LineaEsqueleto,
+  Personas,
   Seccion,
   TarjetaEsqueleto,
   TituloSeccion,
@@ -239,7 +240,6 @@ function FilaCarga({
 }) {
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
   const detalle = [
-    carga.vendedorNombre ? `Contó ${carga.vendedorNombre}` : null,
     carga.totalProductos !== null ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}` : null,
     carga.fechaConteo ? `terminó a las ${horaNegocio(carga.fechaConteo)}` : null,
   ]
@@ -273,6 +273,9 @@ function FilaCarga({
           {carga.rutaNombre}
         </Text>
         <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>{tipo}</Text>
+        {carga.vendedorNombre && (
+          <Personas personas={[{ rol: 'Contó', nombre: carga.vendedorNombre }]} invertido={presionada} />
+        )}
         {detalle.length > 0 && (
           <Text style={[estilos.detalle, presionada && estilos.textoInvertido]} numberOfLines={2}>
             {detalle}
@@ -307,7 +310,7 @@ function FilaCarga({
       onPress={() => onPress(carga)}
       disabled={deshabilitada}
       accessibilityRole="button"
-      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${detalle}. ${estadoTexto ?? ''}`}
+      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estadoTexto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}
       style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada, deshabilitada && !abriendo && estilos.deshabilitado]}
     >

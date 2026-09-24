@@ -36,13 +36,13 @@ import { olvidarCarga } from '../../src/conteo/almacen-conteo';
 import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
 import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
 import {
-  admitePaquetes,
+  admiteSueltas,
   capturaDe,
   estadoFila,
-  factorEfectivo,
   fijarCampo,
   fijarCero,
   productosPendientes,
+  primerCampo,
   progreso,
   SIN_CAPTURA,
   type CampoCaptura,
@@ -283,14 +283,16 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     fijarEdicion({ ...actual, texto: actual.reemplazar ? '' : actual.texto.slice(0, -1), reemplazar: false });
   }, [fijarEdicion]);
 
-  /** Paquetes → Sueltas → siguiente producto: el orden del recorrido. */
+  /** Paquetes → Sueltas → siguiente producto: el orden del recorrido. Lo completo no tiene sueltas. */
   const destinoSiguiente = useCallback(
     (actual: Edicion): { code: string; campo: CampoCaptura } | null => {
-      if (actual.campo === 'paquetes') return { code: actual.code, campo: 'sueltas' };
       const indice = productos.findIndex((p) => p.code === actual.code);
+      if (actual.campo === 'paquetes' && productos[indice] && admiteSueltas(productos[indice])) {
+        return { code: actual.code, campo: 'sueltas' };
+      }
       const siguiente = productos[indice + 1];
       if (!siguiente) return null;
-      return { code: siguiente.code, campo: admitePaquetes(siguiente) ? 'paquetes' : 'sueltas' };
+      return { code: siguiente.code, campo: primerCampo(siguiente) };
     },
     [productos],
   );
@@ -419,9 +421,10 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const irAPendiente = (producto: ProductoConteo) => {
     setPanel('ninguno');
-    abrirCampo(producto.code, admitePaquetes(producto) ? 'paquetes' : 'sueltas');
+    abrirCampo(producto.code, primerCampo(producto));
   };
 
+  const siguienteEsSueltas = edicion?.campo === 'paquetes' && productoEditado !== undefined && admiteSueltas(productoEditado);
   const teclado =
     edicion && productoEditado ? (
       <TecladoCantidad
@@ -430,7 +433,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion.code)}
-        etiquetaSiguiente={edicion.campo === 'paquetes' ? 'Sueltas ›' : destinoSiguiente(edicion) ? 'Siguiente ›' : 'Terminar'}
+        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas ›' : destinoSiguiente(edicion) ? 'Siguiente ›' : 'Terminar'}
         lateral={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
@@ -498,7 +501,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
           <View style={estilos.lateral}>
             {teclado ?? (
               <View style={estilos.lateralVacio}>
-                <Text style={estilos.textoLateralVacio}>Toca Paquetes o Sueltas de un producto para capturar.</Text>
+                <Text style={estilos.textoLateralVacio}>Toca un campo de un producto para capturar.</Text>
                 <Text style={estilos.detalleLateralVacio}>Si no lleva, toca su botón 0.</Text>
               </View>
             )}
@@ -713,20 +716,27 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   );
 }
 
+/**
+ * Banda de marca: al recorrer la lista, el cambio de familia se ve sin leer.
+ * Fija arriba mientras se recorre su familia. Completa, el avance pasa a una
+ * píldora verde: la familia ya no pide nada.
+ */
 function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conteo: EstadoConteo }) {
   const { capturados, total } = progreso(seccion.productos, conteo);
   const completa = capturados === total;
   return (
     <View style={estilos.encabezadoFamilia} accessibilityRole="header">
-      <Text style={estilos.nombreFamilia} numberOfLines={1}>
-        {seccion.titulo}
-      </Text>
-      <Text
-        style={[estilos.conteoFamilia, completa && estilos.conteoFamiliaCompleta]}
-        accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
-      >
-        {capturados} de {total}
-      </Text>
+      <View style={estilos.bandaFamilia}>
+        <Text style={estilos.nombreFamilia} numberOfLines={1}>
+          {seccion.titulo}
+        </Text>
+        <Text
+          style={[estilos.conteoFamilia, completa && estilos.conteoFamiliaCompleta]}
+          accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
+        >
+          {completa ? `✓ ${total} de ${total}` : `${capturados} de ${total}`}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -925,8 +935,8 @@ function PanelConfirmar({
   const [fase, setFase] = useState<'confirmando' | 'finalizando'>('confirmando');
   const [error, setError] = useState<string | null>(null);
 
-  const conCantidad = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), factorEfectivo(p)) === 'con-cantidad').length;
-  const enCero = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), factorEfectivo(p)) === 'en-cero').length;
+  const conCantidad = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), p) === 'con-cantidad').length;
+  const enCero = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), p) === 'en-cero').length;
 
   const ocupado = fase !== 'confirmando';
   // Pudo perderse la señal con el panel abierto.
@@ -1036,7 +1046,9 @@ function EsqueletoConteo({ titulo }: { titulo: string }) {
       </EncabezadoBase>
       <Esqueleto etiqueta="Cargando productos" style={estilos.contenidoLista}>
         <View style={estilos.encabezadoFamilia}>
-          <LineaEsqueleto nivel="cuerpo" ancho="40%" />
+          <View style={estilos.bandaFamilia}>
+            <LineaEsqueleto nivel="cuerpo" ancho="40%" sobreMarca />
+          </View>
         </View>
         {Array.from({ length: FILAS_ESQUELETO }, (_, i) => (
           <View key={i} style={[estilos.filaColumnas, estilos.filaEsqueleto]}>
@@ -1176,34 +1188,44 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     paddingBottom: ESPACIADO.xxxl,
   },
-  // Más aire arriba que abajo: la familia agrupa lo que sigue. Mide lo mismo
-  // que antes (16 de relleno en total): no cuesta productos por pantalla.
+  // Aire arriba (separa de la familia anterior) y la banda de marca a todo el
+  // ancho. Mide lo mismo que el encabezado de texto de antes (16 de relleno +
+  // una línea de cuerpo): no cuesta productos por pantalla.
   encabezadoFamilia: {
+    marginHorizontal: -ESPACIADO.md,
+    paddingTop: ESPACIADO.sm,
+    backgroundColor: COLORES.fondoPantalla,
+  },
+  bandaFamilia: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: ESPACIADO.md,
-    marginHorizontal: -ESPACIADO.md,
     paddingHorizontal: ESPACIADO.md,
-    paddingTop: ESPACIADO.lg,
-    backgroundColor: COLORES.fondoPantalla,
+    paddingVertical: ESPACIADO.xs,
+    backgroundColor: COLORES.marca,
   },
   nombreFamilia: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
     fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    color: COLORES.textoSobreColor,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  // Texto, no píldora: el avance de la familia informa, no pide acción.
+  // Texto sobre la banda: el avance informa, no pide acción.
   conteoFamilia: {
     ...TIPOGRAFIA.etiqueta,
     fontWeight: PESOS.negrita,
-    color: COLORES.textoSecundario,
+    color: COLORES.marcaClaro,
     ...CIFRAS,
   },
+  // Completa: píldora verde, se lee "ya está" sin leer los números.
   conteoFamiliaCompleta: {
+    overflow: 'hidden',
+    paddingHorizontal: ESPACIADO.sm,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.capturadoFondo,
     color: COLORES.capturadoTexto,
   },
   // Más aire entre productos que dentro de cada uno: un renglón no se confunde con el siguiente.

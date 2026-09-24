@@ -87,7 +87,9 @@ export interface ProductoApi {
   code: string | null;
   nombre: string | null;
   unidadCode: string | null;
+  unidadDescripcion: string | null;
   familia: string | null;
+  modalidadVenta: string | null;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean | null;
 }
@@ -225,6 +227,8 @@ export interface CargaConConflictosApi {
 export interface DiscrepanciaApi {
   productoCode: string | null;
   productoNombre: string | null;
+  unidadDescripcion: string | null;
+  modalidadVenta: string | null;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean | null;
   /** Primer conteo (el vendedor en autoventa), en piezas. */

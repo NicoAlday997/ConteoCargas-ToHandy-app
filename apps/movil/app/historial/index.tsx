@@ -15,8 +15,10 @@ import {
   Etiqueta,
   LineaEsqueleto,
   NotaEncabezado,
+  Personas,
   Tarjeta,
   TarjetaEsqueleto,
+  type Persona,
 } from '../../src/componentes/base';
 import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior } from '../../src/historial/ComponentesHistorial';
@@ -288,10 +290,9 @@ function EsqueletoHistorial() {
 function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor: boolean }) {
   const conDiscrepancias = fila.discrepancias > 0;
   const tipo = fila.tipo ? ETIQUETAS_TIPO_CARGA[fila.tipo] : 'Carga';
-  const personas = [
-    mostrarVendedor && fila.vendedorNombre ? `Contó ${fila.vendedorNombre}` : null,
-    fila.contadorNombre ? `Verificó ${fila.contadorNombre}` : null,
-  ].filter(Boolean);
+  const personas: Persona[] = [];
+  if (mostrarVendedor && fila.vendedorNombre) personas.push({ rol: 'Contó', nombre: fila.vendedorNombre });
+  if (fila.contadorNombre) personas.push({ rol: 'Verificó', nombre: fila.contadorNombre });
   const textoDiscrepancias = conDiscrepancias
     ? fila.discrepancias === 1
       ? '1 discrepancia'
@@ -322,11 +323,7 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
           <Text style={estilos.ruta} numberOfLines={2}>
             {fila.rutaNombre}
           </Text>
-          {personas.length > 0 && (
-            <Text style={estilos.personas} numberOfLines={2}>
-              {personas.join(' · ')}
-            </Text>
-          )}
+          <Personas personas={personas} />
           {/* Solo cuando hubo: lo que resalta en la lista es lo que pide mirar. */}
           {conDiscrepancias && (
             <View style={estilos.filaEtiquetas}>
@@ -346,7 +343,8 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
       </View>
       {fila.sinLiquidar && (
         <View style={estilos.marcaSinLiquidar}>
-          <Text style={estilos.tituloMarca}>Sin liquidar · permiso de {fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}</Text>
+          <Text style={estilos.tituloMarca}>Iniciada sin liquidar</Text>
+          <Personas personas={[{ rol: 'Permiso de', nombre: fila.sinLiquidar.otorgadoPor ?? 'un supervisor' }]} />
           {fila.sinLiquidar.motivo && (
             <Text style={estilos.motivoMarca} numberOfLines={2}>
               “{fila.sinLiquidar.motivo}”
@@ -355,7 +353,7 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
         </View>
       )}
       {fila.liquidacionNoVerificada && (
-        <Text style={estilos.personas}>No se pudo confirmar en Handy la liquidación anterior</Text>
+        <Text style={estilos.nota}>No se pudo confirmar en Handy la liquidación anterior</Text>
       )}
     </Tarjeta>
   );
@@ -462,7 +460,7 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
     textTransform: 'uppercase',
   },
-  personas: {
+  nota: {
     ...TIPOGRAFIA.etiqueta,
     fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,

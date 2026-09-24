@@ -88,6 +88,8 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
         producto: {
           select: {
             nombre: true,
+            unidadDescripcion: true,
+            modalidadVenta: true,
             piezasPorPaquete: true,
             factorConfirmado: true,
           },
@@ -146,6 +148,8 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
       confirmadaPor: r.confirmadaPor,
       fechaConfirmacion: r.fechaConfirmacion,
       productoNombre: r.producto.nombre,
+      unidadDescripcion: r.producto.unidadDescripcion,
+      modalidadVenta: r.producto.modalidadVenta,
       piezasPorPaquete: r.producto.piezasPorPaquete,
       factorConfirmado: r.producto.factorConfirmado,
       capturadaPorNombre: r.usuarioCaptura?.nombreCompleto ?? null,

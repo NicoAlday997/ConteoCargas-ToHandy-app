@@ -1,3 +1,5 @@
+import type { ModalidadVenta } from '../domain/factor-empaque';
+
 /**
  * Puerto de persistencia del factor de empaque (piezas por paquete) de cada
  * producto. Ver `domain/factor-empaque.ts` para el porque del factor y de su
@@ -15,7 +17,12 @@ export interface FactorPendiente {
   code: string;
   nombre: string;
   familia: string | null;
-  /** Valor propuesto por la sincronizacion; `null` si el nombre no lo trae. */
+  /** Modalidad guardada hoy (sin confirmar: solo el default o la anterior). */
+  modalidadVenta: ModalidadVenta;
+  /**
+   * Valor propuesto por la sincronizacion; `null` si el nombre no lo trae.
+   * Solo aplica si el supervisor responde que se vende POR_PIEZA.
+   */
   piezasPorPaqueteSugerido: number | null;
 }
 
@@ -23,6 +30,7 @@ export interface FactorPendiente {
 export interface FactorProducto {
   code: string;
   nombre: string;
+  modalidadVenta: ModalidadVenta;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean;
   factorConfirmadoPorId: string | null;
@@ -31,7 +39,9 @@ export interface FactorProducto {
 
 export interface DatosConfirmarFactor {
   productoCode: string;
-  piezasPorPaquete: number;
+  modalidadVenta: ModalidadVenta;
+  /** `null` si se vende COMPLETO: ahi el paquete no tiene factor. */
+  piezasPorPaquete: number | null;
   confirmadoPorId: string;
   fecha: Date;
 }

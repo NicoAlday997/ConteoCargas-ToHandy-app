@@ -42,7 +42,9 @@ function producto(
 ): ProductoConsolidado {
   return {
     unidadCode: 'PZA',
+    unidadDescripcion: 'Pieza',
     familia: null,
+    modalidadVenta: 'POR_PIEZA',
     piezasPorPaquete: null,
     factorConfirmado: false,
     cantidadFinal: 10,

@@ -65,7 +65,9 @@ export interface ProductoConsolidadoApi {
   productoCode: string | null;
   nombre: string | null;
   unidadCode: string | null;
+  unidadDescripcion: string | null;
   familia: string | null;
+  modalidadVenta: string | null;
   piezasPorPaquete: number | null;
   factorConfirmado: boolean | null;
   cantidadFinal: number | null;

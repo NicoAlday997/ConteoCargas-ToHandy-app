@@ -6,7 +6,7 @@
  * siquiera ofrece confirmar a quien capturó; el servidor lo rechaza igual.
  */
 
-import { factorEfectivo, type CapturaProducto, type ProductoConteo } from '../conteo/estado-conteo';
+import { factorEfectivo, seVendeCompleto, type CapturaProducto, type ProductoConteo } from '../conteo/estado-conteo';
 
 /** Un lado de la discrepancia: lo que contó una sesión. */
 export interface ConteoLado {
@@ -83,9 +83,11 @@ export function progresoResolucion(discrepancias: readonly Discrepancia[]): { re
 
 /**
  * Piezas a paquetes completos + sueltas, con el mismo factor que el conteo.
- * Sin factor efectivo todo son sueltas.
+ * Sin factor efectivo todo son sueltas. Lo que se vende completo ya está en
+ * su unidad: todo va a `paquetes` y no hay sueltas.
  */
-export function desglose(piezas: number, producto: ProductoConteo): { paquetes: number | null; sueltas: number } {
+export function desglose(piezas: number, producto: ProductoConteo): { paquetes: number | null; sueltas: number | null } {
+  if (seVendeCompleto(producto)) return { paquetes: piezas, sueltas: null };
   const factor = factorEfectivo(producto);
   if (factor === null) return { paquetes: null, sueltas: piezas };
   return { paquetes: Math.floor(piezas / factor), sueltas: piezas % factor };

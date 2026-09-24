@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { guardarProductosLocal, obtenerProductosLocal } from '../conteo/almacen-local';
-import type { FamiliaConteo, ProductoConteo } from '../conteo/estado-conteo';
+import { modalidadDesdeApi, type FamiliaConteo, type ProductoConteo } from '../conteo/estado-conteo';
 import { estadoDe, type ConteoLado, type Discrepancia } from '../discrepancias/estado-discrepancia';
 import {
   abrirSesion,
@@ -64,6 +64,8 @@ function normalizarProductos(respuesta: RespuestaProductos | null): ProductosDeC
         code,
         nombre: p.nombre?.trim() || code,
         familia,
+        unidadDescripcion: p.unidadDescripcion?.trim() ?? '',
+        modalidadVenta: modalidadDesdeApi(p.modalidadVenta),
         piezasPorPaquete: typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
         factorConfirmado: p.factorConfirmado === true,
       });
@@ -211,6 +213,8 @@ function normalizarDiscrepancias(filas: DiscrepanciaApi[]): Discrepancia[] {
         code,
         nombre: f.productoNombre?.trim() || code,
         familia: null,
+        unidadDescripcion: f.unidadDescripcion?.trim() ?? '',
+        modalidadVenta: modalidadDesdeApi(f.modalidadVenta),
         piezasPorPaquete: typeof f.piezasPorPaquete === 'number' ? f.piezasPorPaquete : null,
         factorConfirmado: f.factorConfirmado === true,
       },

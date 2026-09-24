@@ -207,6 +207,12 @@ model UsuarioHandy {
   @@map("usuarios_handy")
 }
 
+/// Como se vende un producto en ruta (ver Producto.modalidadVenta).
+enum ModalidadVenta {
+  COMPLETO
+  POR_PIEZA
+}
+
 model Producto {
   // code es la PK: es el identificador que exige la API de Handy en los payloads
   // y debe tratarse como inmutable en el cache.
@@ -229,8 +235,15 @@ model Producto {
   // todos los conteos del producto (el doble conteo no lo detecta porque
   // ambos usan el mismo factor), asi que no se usa hasta que un supervisor lo
   // confirma. Una vez confirmado, la sincronizacion ya no lo toca.
+  //
+  // Modalidad de venta: NO todo paquete se rompe. COMPLETO = el paquete es la
+  // unidad de venta (dulces: Handy cobra la bolsa; el "c/70" del nombre no es
+  // factor) y piezasPorPaquete se ignora. POR_PIEZA = el paquete se rompe y
+  // piezasPorPaquete es el factor real. Se confirma junto con el factor: el
+  // default POR_PIEZA solo existe para no romper filas previas.
+  modalidadVenta          ModalidadVenta @default(POR_PIEZA)
   piezasPorPaquete        Int?
-  factorConfirmado        Boolean   @default(false)
+  factorConfirmado        Boolean        @default(false)
   factorConfirmadoPorId   String?
   fechaConfirmacionFactor DateTime?
 

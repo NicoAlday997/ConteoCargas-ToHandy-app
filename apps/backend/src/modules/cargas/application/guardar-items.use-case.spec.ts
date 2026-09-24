@@ -132,11 +132,50 @@ class FakeCargaRepository implements CargaRepository {
 class FakeProductoConteoRepository implements ProductoConteoRepository {
   readonly factores = new Map<string, FactorDeConteo>([
     // Factor confirmado por supervisor.
-    ['PEPSI-C12', { piezasPorPaquete: 12, factorConfirmado: true }],
+    [
+      'PEPSI-C12',
+      {
+        modalidadVenta: 'POR_PIEZA',
+        piezasPorPaquete: 12,
+        factorConfirmado: true,
+      },
+    ],
     // Factor propuesto por la sincronizacion, sin confirmar.
-    ['BIGCOLA-C6', { piezasPorPaquete: 6, factorConfirmado: false }],
+    [
+      'BIGCOLA-C6',
+      {
+        modalidadVenta: 'POR_PIEZA',
+        piezasPorPaquete: 6,
+        factorConfirmado: false,
+      },
+    ],
     // Producto que no trae paquete en el nombre.
-    ['CHICLE', { piezasPorPaquete: null, factorConfirmado: false }],
+    [
+      'CHICLE',
+      {
+        modalidadVenta: 'POR_PIEZA',
+        piezasPorPaquete: null,
+        factorConfirmado: false,
+      },
+    ],
+    // Dulce que se vende completo: la bolsa es la unidad, sin factor.
+    [
+      'CANELS-C70',
+      {
+        modalidadVenta: 'COMPLETO',
+        piezasPorPaquete: null,
+        factorConfirmado: true,
+      },
+    ],
+    // Marcado COMPLETO pero sin confirmar: no se confia en la modalidad.
+    [
+      'BUBALO-C47',
+      {
+        modalidadVenta: 'COMPLETO',
+        piezasPorPaquete: 47,
+        factorConfirmado: false,
+      },
+    ],
   ]);
 
   async buscarFactores(codes: string[]): Promise<Map<string, FactorDeConteo>> {
@@ -359,6 +398,55 @@ describe('GuardarItemsUseCase', () => {
       sueltasExcedenPaquete: true,
     });
     expect(cargas.guardados).toHaveLength(1);
+  });
+
+  describe('productos que se venden completos', () => {
+    it('5 bolsas de CANELS c/70 se guardan como 5, no como 350', async () => {
+      const { items } = exigirExito(
+        await useCase.ejecutar({
+          ...base,
+          items: [{ productoCode: 'CANELS-C70', paquetes: 5, sueltas: 0 }],
+        }),
+      );
+
+      expect(items[0]).toMatchObject({
+        paquetes: 5,
+        sueltas: 0,
+        cantidad: 5,
+        sueltasExcedenPaquete: false,
+      });
+      expect(cargas.guardados[0].items[0].cantidad).toBe(5);
+    });
+
+    it('rechaza sueltas de un producto completo sin guardar nada', async () => {
+      const resultado = await useCase.ejecutar({
+        ...base,
+        items: [
+          { productoCode: 'PEPSI-C12', paquetes: 1, sueltas: 0 },
+          { productoCode: 'CANELS-C70', paquetes: 5, sueltas: 3 },
+        ],
+      });
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'SUELTAS_EN_PRODUCTO_COMPLETO',
+        productos: ['CANELS-C70'],
+      });
+      expect(cargas.guardados).toHaveLength(0);
+    });
+
+    it('sin confirmar, un producto marcado COMPLETO no acepta paquetes', async () => {
+      const resultado = await useCase.ejecutar({
+        ...base,
+        items: [{ productoCode: 'BUBALO-C47', paquetes: 2, sueltas: 0 }],
+      });
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'FACTOR_NO_CONFIRMADO',
+        productos: ['BUBALO-C47'],
+      });
+    });
   });
 
   describe('trazabilidad sin conexion', () => {

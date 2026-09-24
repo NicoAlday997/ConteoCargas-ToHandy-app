@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { formatearEnPaquetes, formatearTotalPiezas } from './formato-cantidad.ts';
+import { formatearEnPaquetes, formatearTotalPiezas, unidadEnPlural } from './formato-cantidad.ts';
 
 describe('formatearEnPaquetes', () => {
   it('sin factor devuelve solo piezas', () => {
@@ -49,6 +49,44 @@ describe('formatearEnPaquetes', () => {
         assert.doesNotMatch(formatearEnPaquetes(piezas, factor), /[.,]/);
       }
     }
+  });
+});
+
+describe('formatearEnPaquetes de un producto que se vende completo', () => {
+  it('se dice en su unidad: 5 bolsas de CANELS c/70, no 5 paquetes ni 350 piezas', () => {
+    assert.equal(formatearEnPaquetes(5, null, 'Bolsa'), '5 bolsas');
+    assert.equal(formatearEnPaquetes(5, null, 'Caja'), '5 cajas');
+  });
+
+  it('ignora cualquier factor', () => {
+    assert.equal(formatearEnPaquetes(5, 70, 'Bolsa'), '5 bolsas');
+  });
+
+  it('singular y cero', () => {
+    assert.equal(formatearEnPaquetes(1, null, 'Caja'), '1 caja');
+    assert.equal(formatearEnPaquetes(0, null, 'Caja'), '0 cajas');
+  });
+
+  it('sin nombre de unidad en Handy dice unidades', () => {
+    assert.equal(formatearEnPaquetes(3, null, ''), '3 unidades');
+    assert.equal(formatearEnPaquetes(1, null, '  '), '1 unidad');
+  });
+});
+
+describe('unidadEnPlural', () => {
+  it('plurales de las unidades del catálogo', () => {
+    assert.equal(unidadEnPlural('Caja'), 'cajas');
+    assert.equal(unidadEnPlural('Cajetilla'), 'cajetillas');
+    assert.equal(unidadEnPlural('Paquete'), 'paquetes');
+    assert.equal(unidadEnPlural('PIEZA'), 'piezas');
+    assert.equal(unidadEnPlural('Bolsa'), 'bolsas');
+  });
+
+  it('consonante final, z y abreviaturas', () => {
+    assert.equal(unidadEnPlural('Rollo'), 'rollos');
+    assert.equal(unidadEnPlural('Blíster'), 'blísteres');
+    assert.equal(unidadEnPlural('Cruz'), 'cruces');
+    assert.equal(unidadEnPlural('Cajet.'), 'cajet.');
   });
 });
 

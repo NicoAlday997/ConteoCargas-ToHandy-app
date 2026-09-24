@@ -13,6 +13,7 @@ import {
 const SELECT_FACTOR_PRODUCTO = {
   code: true,
   nombre: true,
+  modalidadVenta: true,
   piezasPorPaquete: true,
   factorConfirmado: true,
   factorConfirmadoPorId: true,
@@ -59,6 +60,7 @@ export class PrismaFactorEmpaqueRepository extends FactorEmpaqueRepository {
         code: true,
         nombre: true,
         familia: true,
+        modalidadVenta: true,
         piezasPorPaquete: true,
       },
       orderBy: { nombre: 'asc' },
@@ -67,6 +69,7 @@ export class PrismaFactorEmpaqueRepository extends FactorEmpaqueRepository {
       code: f.code,
       nombre: f.nombre,
       familia: f.familia,
+      modalidadVenta: f.modalidadVenta,
       piezasPorPaqueteSugerido: f.piezasPorPaquete,
     }));
   }
@@ -86,6 +89,7 @@ export class PrismaFactorEmpaqueRepository extends FactorEmpaqueRepository {
     return this.prisma.producto.update({
       where: { code: datos.productoCode },
       data: {
+        modalidadVenta: datos.modalidadVenta,
         piezasPorPaquete: datos.piezasPorPaquete,
         factorConfirmado: true,
         factorConfirmadoPorId: datos.confirmadoPorId,

@@ -99,7 +99,11 @@ export interface ProductoConsolidado {
   productoCode: string;
   nombre: string;
   unidadCode: string;
+  /** Nombre de la unidad en Handy: rotula lo que se vende completo. */
+  unidadDescripcion: string;
   familia: string | null;
+  /** `COMPLETO`: la cantidad ya esta en su unidad (bolsas, cajas), sin factor. */
+  modalidadVenta: 'COMPLETO' | 'POR_PIEZA';
   /**
    * Factor de empaque del catalogo, para mostrar las cantidades en paquetes y
    * sueltas como se cuentan en bodega. `null` si el producto no tiene factor.
