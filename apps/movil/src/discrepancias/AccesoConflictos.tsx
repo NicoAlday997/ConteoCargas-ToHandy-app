@@ -1,11 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
-
-const ANCHO_BARRA_ESTADO = 6;
+import { Tarjeta } from '../componentes/base';
+import { CIFRAS, COLORES, PESOS, RITMO, TIPOGRAFIA } from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -27,29 +26,27 @@ export function AccesoConflictos() {
         const ruta = c.rutaNombre?.trim() || 'Ruta sin nombre';
         const cuantas = faltan === 1 ? 'Falta 1 diferencia' : `Faltan ${faltan} diferencias`;
         return (
-          <Pressable
+          <Tarjeta
             key={c.id}
+            conAcento={{ titulo: 'Resolver diferencias', tono: 'discrepancia' }}
             onPress={() => router.push({ pathname: '/discrepancias/[eventoId]', params: { eventoId: c.id } })}
-            accessibilityRole="button"
             accessibilityLabel={`Resolver diferencias de ${ruta}, ${tipo}. ${cuantas} de ${total}.`}
-            style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada]}
           >
-            {({ pressed }) => (
-              <>
-                <View style={estilos.barraEstado} />
-                <View style={estilos.cuerpo}>
-                  <Text style={[estilos.titulo, pressed && estilos.textoInvertido]}>Resolver diferencias</Text>
-                  <Text style={[estilos.detalle, pressed && estilos.textoInvertido]} numberOfLines={1}>
-                    {ruta} · {tipo}
-                  </Text>
-                  <Text style={[estilos.cuantas, pressed && estilos.textoInvertido]}>
-                    {cuantas} de {total}
-                  </Text>
-                </View>
-                <Text style={[estilos.flecha, pressed && estilos.textoInvertido]}>›</Text>
-              </>
-            )}
-          </Pressable>
+            <View style={estilos.fila}>
+              <View style={estilos.cuerpo}>
+                <Text style={estilos.ruta} numberOfLines={2}>
+                  {ruta}
+                </Text>
+                <Text style={estilos.tipo}>{tipo}</Text>
+              </View>
+              {/* Lo que falta domina: es lo que hay que hacer. */}
+              <View style={estilos.cifra}>
+                <Text style={estilos.numero}>{faltan}</Text>
+                <Text style={estilos.unidad}>de {total} por resolver</Text>
+              </View>
+              <Text style={estilos.flecha}>›</Text>
+            </View>
+          </Tarjeta>
         );
       })}
     </View>
@@ -59,54 +56,40 @@ export function AccesoConflictos() {
 const estilos = StyleSheet.create({
   contenedor: {
     width: '100%',
-    gap: ESPACIADO.sm,
+    gap: RITMO.relacionado,
   },
   fila: {
-    minHeight: TOQUE_MINIMO + ESPACIADO.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.md,
-    paddingRight: ESPACIADO.md,
-    backgroundColor: COLORES.fondo,
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-    borderRadius: RADIOS.md,
-    overflow: 'hidden',
-  },
-  filaPresionada: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
-  },
-  barraEstado: {
-    alignSelf: 'stretch',
-    width: ANCHO_BARRA_ESTADO,
-    backgroundColor: COLORES.discrepancia,
+    gap: RITMO.relacionado,
   },
   cuerpo: {
     flex: 1,
-    paddingVertical: ESPACIADO.md,
-    gap: 2,
   },
-  titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+  ruta: {
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
-  detalle: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+  tipo: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.textoSecundario,
   },
-  cuantas: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.discrepancia,
+  cifra: {
+    alignItems: 'flex-end',
+  },
+  numero: {
+    ...TIPOGRAFIA.numero,
+    color: COLORES.discrepanciaTexto,
+    ...CIFRAS,
+  },
+  unidad: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.discrepanciaTexto,
+    textTransform: 'uppercase',
   },
   flecha: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    color: COLORES.texto,
-  },
-  textoInvertido: {
-    color: COLORES.textoSobreColor,
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.regular,
+    color: COLORES.discrepancia,
   },
 });

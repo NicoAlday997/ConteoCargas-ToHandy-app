@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -20,7 +19,20 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useOtorgarPermiso, usePermisosCarga, useRutasPermiso } from '../../src/api/hooks-permisos';
 import { CODIGO_YA_EXISTE_PERMISO, LONGITUD_MINIMA_MOTIVO, VIGENCIA_PERMISO_HORAS } from '../../src/api/permisos';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, EstadoCentral, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  BloqueError,
+  BloqueEsqueleto,
+  Boton,
+  Encabezado,
+  EstadoVacio,
+  Esqueleto,
+  FilaDato,
+  NotaEncabezado,
+  Seccion,
+  Tarjeta,
+  TarjetaEsqueleto,
+} from '../../src/componentes/base';
+import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import {
   momentoLegible,
   motivoValido,
@@ -29,7 +41,7 @@ import {
   type Permiso,
   type RutaPermiso,
 } from '../../src/permisos/modelo-permisos';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
  * Permisos para que una ruta haga su carga inicial aunque la ruta anterior del
@@ -68,7 +80,7 @@ export default function PantallaPermisos() {
     return (
       <SafeAreaView style={estilos.pantalla}>
         <BarraSuperior titulo={TITULO} />
-        <ActivityIndicator style={estilos.cargandoSesion} size="large" color={COLORES.texto} />
+        <EsqueletoPermisos />
       </SafeAreaView>
     );
   }
@@ -77,7 +89,8 @@ export default function PantallaPermisos() {
     return (
       <SafeAreaView style={estilos.pantalla}>
         <BarraSuperior titulo={TITULO} />
-        <EstadoCentral
+        <EstadoVacio
+          icono="candado"
           titulo="Solo para supervisores"
           detalle="Estos permisos los otorga un supervisor desde su cuenta."
           accion={{ texto: 'Volver', onPress: volver }}
@@ -119,26 +132,26 @@ function Permisos() {
 
   let contenido;
   if (consulta.isPending) {
-    contenido = (
-      <View style={estilos.centrado}>
-        <ActivityIndicator size="large" color={COLORES.texto} />
-        <Text style={estilos.textoSecundario}>Cargando permisos…</Text>
-      </View>
-    );
+    contenido = <EsqueletoPermisos />;
   } else if (consulta.isError && permisos.length === 0) {
     contenido = (
-      <EstadoCentral
-        titulo="No se pudieron cargar los permisos"
-        detalle={mensajeError(consulta.error, 'Intenta de nuevo en un momento.')}
-        accion={{ texto: 'Reintentar', onPress: () => void consulta.refetch() }}
-      />
+      <View style={estilos.contenedorAviso}>
+        <BloqueError
+          titulo="No se pudieron cargar los permisos"
+          detalle={mensajeError(consulta.error, 'Intenta de nuevo en un momento.')}
+          tono={consulta.error instanceof ErrorRed ? 'atencion' : 'error'}
+          onReintentar={() => void consulta.refetch()}
+          reintentando={consulta.isFetching}
+        />
+      </View>
     );
   } else if (permisos.length === 0) {
     contenido = (
-      <EstadoCentral
+      <EstadoVacio
+        icono="reloj"
         titulo="No hay permisos vigentes"
-        detalle="Ninguna ruta tiene permiso para cargar sin liquidar. Otórgalo solo cuando el camión tenga que salir antes de que liquiden la ruta anterior."
-        accion={{ texto: 'Actualizar', onPress: refrescar }}
+        detalle="Aquí aparecerán los permisos que otorgues, con el tiempo que les queda. Otórgalo solo cuando el camión tenga que salir antes de que liquiden la ruta anterior."
+        accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
       />
     );
   } else {
@@ -156,11 +169,11 @@ function Permisos() {
   }
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantallaLista}>
       <BarraSuperior titulo={TITULO}>
-        <Text style={estilos.explicacion}>
+        <NotaEncabezado>
           Dejan que una ruta haga su carga inicial aunque la ruta anterior siga sin liquidar en Handy.
-        </Text>
+        </NotaEncabezado>
       </BarraSuperior>
       <View style={estilos.cabecera}>
         {confirmacion && (
@@ -168,13 +181,7 @@ function Permisos() {
             {confirmacion}
           </Text>
         )}
-        <Pressable
-          onPress={abrirFormulario}
-          accessibilityRole="button"
-          style={({ pressed }) => [estilos.botonPrincipal, pressed && estilos.botonPrincipalPresionado]}
-        >
-          <Text style={estilos.textoBotonPrincipal}>Otorgar permiso</Text>
-        </Pressable>
+        <Boton texto="Otorgar permiso" onPress={abrirFormulario} />
       </View>
       {contenido}
       <FormularioPermiso
@@ -190,14 +197,26 @@ function Permisos() {
   );
 }
 
+/** La forma de la lista mientras llega: tarjetas del alto de un permiso. */
+function EsqueletoPermisos() {
+  return (
+    <Esqueleto etiqueta="Cargando permisos" style={estilos.contenidoLista}>
+      <TarjetaEsqueleto titulo="titulo" lineas={['50%', '70%']} />
+      <TarjetaEsqueleto titulo="titulo" lineas={['50%', '70%']} />
+    </Esqueleto>
+  );
+}
+
 function TarjetaPermiso({ permiso, ahora }: { permiso: Permiso; ahora: Date }) {
   const vencido = permiso.expira.getTime() <= ahora.getTime();
   const estado = permiso.usado ? 'Ya se usó' : vencido ? 'Vencido' : 'Sin usar';
   const eventoId = permiso.eventoCargaId;
+  const disponible = !permiso.usado && !vencido;
 
   return (
-    <View
-      style={[estilos.tarjeta, !permiso.usado && !vencido && estilos.tarjetaDisponible]}
+    <Tarjeta
+      // Ámbar mientras siga disponible: es lo que un supervisor tiene que vigilar.
+      conAcento={{ titulo: estado, tono: disponible ? 'discrepancia' : 'pendiente' }}
       accessible={!eventoId}
       accessibilityLabel={[
         permiso.rutaNombre,
@@ -209,24 +228,17 @@ function TarjetaPermiso({ permiso, ahora }: { permiso: Permiso; ahora: Date }) {
         .filter(Boolean)
         .join('. ')}
     >
-      <View style={estilos.filaTarjeta}>
-        <Text style={estilos.ruta} numberOfLines={1}>
-          {permiso.rutaNombre}
-        </Text>
-        <View style={[estilos.insignia, permiso.usado || vencido ? estilos.insigniaGastada : estilos.insigniaDisponible]}>
-          <Text style={[estilos.textoInsignia, !(permiso.usado || vencido) && estilos.textoInvertido]}>{estado}</Text>
-        </View>
-      </View>
-
+      <Text style={estilos.ruta}>{permiso.rutaNombre}</Text>
       {permiso.usado ? (
         <Text style={estilos.vigencia}>Se gastó en una carga inicial: ya no sirve para otra.</Text>
       ) : vencido ? (
         <Text style={estilos.vigencia}>Venció sin usarse.</Text>
       ) : (
-        <Text style={estilos.vigencia}>
-          <Text style={estilos.negrita}>{tiempoRestante(permiso.expira, ahora)}</Text>
-          {` · vence ${momentoLegible(permiso.expira, ahora)}`}
-        </Text>
+        // La cuenta regresiva domina: es lo que el supervisor viene a ver.
+        <View style={estilos.bloqueVigencia}>
+          <Text style={estilos.restante}>{tiempoRestante(permiso.expira, ahora)}</Text>
+          <Text style={estilos.vence}>Vence {momentoLegible(permiso.expira, ahora)}</Text>
+        </View>
       )}
 
       <Text style={estilos.textoSecundario}>
@@ -236,15 +248,14 @@ function TarjetaPermiso({ permiso, ahora }: { permiso: Permiso; ahora: Date }) {
       {permiso.motivo && <Text style={estilos.motivo}>“{permiso.motivo}”</Text>}
 
       {eventoId && (
-        <Pressable
+        <Boton
+          texto="Ver la carga que lo usó"
+          variante="secundario"
           onPress={() => router.push({ pathname: '/historial/[eventoId]', params: { eventoId } })}
-          accessibilityRole="button"
-          style={({ pressed }) => [estilos.botonSecundario, pressed && estilos.botonSecundarioPresionado]}
-        >
-          <Text style={estilos.textoBotonSecundario}>Ver la carga que lo usó</Text>
-        </Pressable>
+          style={estilos.botonTarjeta}
+        />
       )}
-    </View>
+    </Tarjeta>
   );
 }
 
@@ -311,64 +322,63 @@ function ContenidoFormulario({ permisos, onCerrar, onOtorgado }: PropsFormulario
   return (
     <SafeAreaView style={estilos.pantalla}>
       <KeyboardAvoidingView style={estilos.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={estilos.barraModal}>
-          <Text style={estilos.tituloModal} accessibilityRole="header">
-            {paso === 'datos' ? 'Otorgar permiso' : 'Confirma el permiso'}
-          </Text>
-        </View>
+        <Encabezado titulo={paso === 'datos' ? 'Otorgar permiso' : 'Confirma el permiso'} marca />
         <ScrollView contentContainerStyle={estilos.contenidoModal} keyboardShouldPersistTaps="handled">
           {paso === 'datos' ? (
             <>
-              <Text style={estilos.etiquetaCampo}>Ruta</Text>
-              <SelectorRuta
-                cargando={rutas.isPending}
-                error={rutas.isError ? mensajeError(rutas.error, 'No se pudieron cargar las rutas.') : null}
-                rutas={rutas.data ?? []}
-                ocupadas={ocupadas}
-                elegida={rutaId}
-                onElegir={setRutaId}
-                onReintentar={() => void rutas.refetch()}
-              />
+              <Seccion texto="Ruta">
+                <SelectorRuta
+                  cargando={rutas.isPending}
+                  error={rutas.isError ? mensajeError(rutas.error, 'No se pudieron cargar las rutas.') : null}
+                  rutas={rutas.data ?? []}
+                  ocupadas={ocupadas}
+                  elegida={rutaId}
+                  onElegir={setRutaId}
+                  onReintentar={() => void rutas.refetch()}
+                />
+              </Seccion>
 
-              <Text style={estilos.etiquetaCampo}>Motivo</Text>
-              <TextInput
-                value={motivo}
-                onChangeText={setMotivo}
-                onBlur={() => setMotivoTocado(true)}
-                placeholder="Ej. Liquida mañana junto con hoy; el camión tiene que salir."
-                placeholderTextColor={COLORES.textoSecundario}
-                multiline
-                maxLength={500}
-                accessibilityLabel="Motivo del permiso"
-                accessibilityHint={`Obligatorio, al menos ${LONGITUD_MINIMA_MOTIVO} caracteres`}
-                style={estilos.campoMotivo}
-              />
-              <Text style={[estilos.ayudaCampo, motivoTocado && !motivoOk && estilos.ayudaError]}>
-                Obligatorio, al menos {LONGITUD_MINIMA_MOTIVO} caracteres. Queda registrado junto con tu nombre.
-              </Text>
+              <Seccion texto="Motivo">
+                <TextInput
+                  value={motivo}
+                  onChangeText={setMotivo}
+                  onBlur={() => setMotivoTocado(true)}
+                  placeholder="Ej. Liquida mañana junto con hoy; el camión tiene que salir."
+                  placeholderTextColor={COLORES.textoSecundario}
+                  multiline
+                  maxLength={500}
+                  accessibilityLabel="Motivo del permiso"
+                  accessibilityHint={`Obligatorio, al menos ${LONGITUD_MINIMA_MOTIVO} caracteres`}
+                  style={estilos.campoMotivo}
+                />
+                <Text style={[estilos.ayudaCampo, motivoTocado && !motivoOk && estilos.ayudaError]}>
+                  Obligatorio, al menos {LONGITUD_MINIMA_MOTIVO} caracteres. Queda registrado junto con tu nombre.
+                </Text>
+              </Seccion>
 
               <ReglasPermiso />
 
-              <BotonModal
-                texto="Revisar y confirmar"
-                principal
-                deshabilitado={!listo}
-                onPress={() => {
-                  setError(null);
-                  setAlConfirmar(new Date());
-                  setPaso('confirmar');
-                }}
-              />
-              <BotonModal texto="Cancelar" onPress={onCerrar} />
+              <View style={estilos.acciones}>
+                <Boton
+                  texto="Revisar y confirmar"
+                  deshabilitado={!listo}
+                  onPress={() => {
+                    setError(null);
+                    setAlConfirmar(new Date());
+                    setPaso('confirmar');
+                  }}
+                />
+                <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} />
+              </View>
             </>
           ) : (
             ruta && (
               <>
-                <View style={estilos.resumen}>
-                  <FilaResumen etiqueta="Ruta" valor={ruta.nombre} />
-                  {ruta.vendedorNombre && <FilaResumen etiqueta="Vendedor" valor={ruta.vendedorNombre} />}
-                  <FilaResumen etiqueta="Motivo" valor={`“${motivo.trim()}”`} />
-                </View>
+                <Tarjeta>
+                  <Text style={estilos.ruta}>{ruta.nombre}</Text>
+                  {ruta.vendedorNombre && <FilaDato etiqueta="Vendedor" valor={ruta.vendedorNombre} apilado />}
+                  <FilaDato etiqueta="Motivo" valor={`“${motivo.trim()}”`} apilado />
+                </Tarjeta>
 
                 <View style={estilos.reglasConfirmar}>
                   <Text style={estilos.reglaDestacada}>
@@ -381,18 +391,21 @@ function ContenidoFormulario({ permisos, onCerrar, onOtorgado }: PropsFormulario
                   <Text style={estilos.textoSecundario}>Si nadie lo usa en ese plazo, vence solo.</Text>
                 </View>
 
-                {error && (
-                  <Text style={estilos.error} accessibilityRole="alert">
-                    {error}
-                  </Text>
-                )}
-                <BotonModal
-                  texto={otorgar.isPending ? 'Otorgando…' : 'Otorgar permiso'}
-                  principal
-                  deshabilitado={otorgar.isPending}
-                  onPress={() => void confirmar()}
-                />
-                <BotonModal texto="Corregir" deshabilitado={otorgar.isPending} onPress={() => setPaso('datos')} />
+                {error && <BloqueError titulo="No se otorgó el permiso" detalle={error} />}
+                <View style={estilos.acciones}>
+                  <Boton
+                    texto="Otorgar permiso"
+                    cargando={otorgar.isPending}
+                    textoCargando="Otorgando…"
+                    onPress={() => void confirmar()}
+                  />
+                  <Boton
+                    texto="Corregir"
+                    variante="secundario"
+                    deshabilitado={otorgar.isPending}
+                    onPress={() => setPaso('datos')}
+                  />
+                </View>
               </>
             )
           )}
@@ -404,12 +417,12 @@ function ContenidoFormulario({ permisos, onCerrar, onOtorgado }: PropsFormulario
 
 function ReglasPermiso() {
   return (
-    <View style={estilos.reglas}>
+    <Tarjeta elevacion={0} tintada="marca" compacta>
       <Text style={estilos.tituloReglas}>Cómo funciona</Text>
       <Text style={estilos.regla}>• Dura {VIGENCIA_PERMISO_HORAS} horas desde que lo otorgas.</Text>
       <Text style={estilos.regla}>• Sirve una sola vez: para una carga inicial de esa ruta.</Text>
       <Text style={estilos.regla}>• La carga queda marcada en el historial con tu nombre y el motivo.</Text>
-    </View>
+    </Tarjeta>
   );
 }
 
@@ -427,25 +440,24 @@ interface PropsSelectorRuta {
 function SelectorRuta({ cargando, error, rutas, ocupadas, elegida, onElegir, onReintentar }: PropsSelectorRuta) {
   if (cargando) {
     return (
-      <View style={estilos.estadoRutas}>
-        <ActivityIndicator color={COLORES.texto} />
-        <Text style={estilos.textoSecundario}>Cargando rutas…</Text>
-      </View>
+      <Esqueleto etiqueta="Cargando rutas" style={estilos.rutas}>
+        {[0, 1, 2].map((i) => (
+          <BloqueEsqueleto key={i} alto={TOQUE_MINIMO + ESPACIADO.md} />
+        ))}
+      </Esqueleto>
     );
   }
   if (error) {
-    return (
-      <View style={estilos.estadoRutas}>
-        <Text style={estilos.error}>{error}</Text>
-        <BotonModal texto="Reintentar" onPress={onReintentar} />
-      </View>
-    );
+    return <BloqueError titulo="No se pudieron cargar las rutas" detalle={error} onReintentar={onReintentar} />;
   }
   if (rutas.length === 0) {
     return (
-      <View style={estilos.estadoRutas}>
-        <Text style={estilos.textoSecundario}>No hay rutas activas.</Text>
-      </View>
+      <EstadoVacio
+        enLinea
+        icono="lista"
+        titulo="No hay rutas activas"
+        detalle="Un administrador debe dar de alta la ruta antes de que puedas otorgarle un permiso."
+      />
     );
   }
   return (
@@ -470,10 +482,17 @@ function SelectorRuta({ cargando, error, rutas, ocupadas, elegida, onElegir, onR
               ocupada && estilos.deshabilitado,
             ]}
           >
-            <Text style={[estilos.nombreRuta, seleccionada && estilos.textoInvertido]}>{r.nombre}</Text>
-            <Text style={[estilos.detalleRuta, seleccionada && estilos.textoInvertido]}>
-              {ocupada ? 'Ya tiene un permiso sin usar' : (r.vendedorNombre ?? 'Sin vendedor asignado')}
-            </Text>
+            {({ pressed }) => {
+              const invertido = seleccionada || pressed;
+              return (
+                <>
+                  <Text style={[estilos.nombreRuta, invertido && estilos.textoInvertido]}>{r.nombre}</Text>
+                  <Text style={[estilos.detalleRuta, invertido && estilos.textoInvertido]}>
+                    {ocupada ? 'Ya tiene un permiso sin usar' : (r.vendedorNombre ?? 'Sin vendedor asignado')}
+                  </Text>
+                </>
+              );
+            }}
           </Pressable>
         );
       })}
@@ -481,98 +500,41 @@ function SelectorRuta({ cargando, error, rutas, ocupadas, elegida, onElegir, onR
   );
 }
 
-function FilaResumen({ etiqueta, valor }: { etiqueta: string; valor: string }) {
-  return (
-    <View style={estilos.filaResumen}>
-      <Text style={estilos.etiquetaResumen}>{etiqueta}</Text>
-      <Text style={estilos.valorResumen}>{valor}</Text>
-    </View>
-  );
-}
-
-function BotonModal({
-  texto,
-  onPress,
-  principal = false,
-  deshabilitado = false,
-}: {
-  texto: string;
-  onPress: () => void;
-  principal?: boolean;
-  deshabilitado?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: deshabilitado }}
-      style={({ pressed }) => [
-        estilos.botonModal,
-        principal && estilos.botonModalPrincipal,
-        pressed && estilos.botonModalPresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      {({ pressed }) => (
-        <Text style={[estilos.textoBotonModal, (principal || pressed) && estilos.textoInvertido]}>{texto}</Text>
-      )}
-    </Pressable>
-  );
-}
-
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
+  },
+  // Lista de lectura: tarjetas blancas sobre el fondo tintado, cada permiso un bloque aparte.
+  pantallaLista: {
+    flex: 1,
+    backgroundColor: COLORES.fondoPantalla,
   },
   flex: {
     flex: 1,
   },
-  cargandoSesion: {
-    marginTop: ESPACIADO.xxxl,
-  },
-  centrado: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
-  },
-  explicacion: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
-    paddingLeft: TOQUE_MINIMO,
+  contenedorAviso: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    padding: RITMO.margen,
   },
   cabecera: {
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    paddingTop: ESPACIADO.md,
+    gap: RITMO.relacionado,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: RITMO.margen,
   },
   confirmacion: {
-    padding: ESPACIADO.md,
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.capturado,
-    color: COLORES.textoSobreColor,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-  },
-  botonPrincipal: {
-    minHeight: TOQUE_MINIMO,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.texto,
-  },
-  botonPrincipalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-  },
-  textoBotonPrincipal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSobreColor,
+    padding: RITMO.margen,
+    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.capturadoFondo,
+    color: COLORES.capturadoTexto,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    overflow: 'hidden',
   },
   lista: {
     flex: 1,
@@ -581,236 +543,140 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
   },
   contenidoLista: {
-    padding: ESPACIADO.md,
-    gap: ESPACIADO.md,
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: ESPACIADO.lg,
+    padding: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
-  tarjeta: {
-    gap: ESPACIADO.xs,
-    padding: ESPACIADO.md,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    borderLeftWidth: 6,
-    borderLeftColor: COLORES.borde,
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.fondo,
-  },
-  tarjetaDisponible: {
-    borderLeftColor: COLORES.discrepancia,
-  },
-  filaTarjeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ESPACIADO.sm,
-  },
   ruta: {
-    flexShrink: 1,
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
-  insignia: {
-    paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: 2,
-    borderRadius: RADIOS.sm,
+  bloqueVigencia: {
+    gap: ESPACIADO.xs,
+    padding: RITMO.relacionado,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
   },
-  insigniaDisponible: {
-    backgroundColor: COLORES.texto,
+  restante: {
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.discrepanciaTexto,
+    ...CIFRAS,
   },
-  insigniaGastada: {
-    backgroundColor: COLORES.superficie,
-  },
-  textoInsignia: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+  vence: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.discrepanciaTexto,
   },
   vigencia: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   motivo: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     fontStyle: 'italic',
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
   },
   textoSecundario: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
-  botonSecundario: {
-    minHeight: TOQUE_MINIMO,
+  botonTarjeta: {
     marginTop: ESPACIADO.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
   },
-  botonSecundarioPresionado: {
-    backgroundColor: COLORES.superficie,
-  },
-  textoBotonSecundario: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  // Formulario
-  barraModal: {
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.md,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORES.texto,
-  },
-  tituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
+  // Formulario: cada campo es una sección; entre campos, más aire que dentro de cada uno.
   contenidoModal: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: ESPACIADO.xl,
+    padding: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
-  etiquetaCampo: {
-    marginTop: ESPACIADO.sm,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  estadoRutas: {
-    alignItems: 'center',
-    gap: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.md,
+  acciones: {
+    gap: RITMO.relacionado,
   },
   rutas: {
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
   },
   opcionRuta: {
     minHeight: TOQUE_MINIMO,
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.sm,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    paddingHorizontal: RITMO.relacionado,
+    paddingVertical: RITMO.interno,
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.medio,
   },
   opcionRutaElegida: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
   },
+  // Inversión completa: el toque se nota aun con poca luz.
   opcionRutaPresionada: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.marcaOscuro,
+    borderColor: COLORES.marcaOscuro,
   },
   nombreRuta: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
   },
   detalleRuta: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   campoMotivo: {
     minHeight: TOQUE_MINIMO * 2,
-    padding: ESPACIADO.md,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-    fontSize: TIPOGRAFIA.tamanos.base,
+    padding: RITMO.relacionado,
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.medio,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
     textAlignVertical: 'top',
   },
   ayudaCampo: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   ayudaError: {
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.error,
   },
-  reglas: {
-    gap: ESPACIADO.xs,
-    marginTop: ESPACIADO.sm,
-    padding: ESPACIADO.md,
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.superficie,
-  },
   tituloReglas: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
   },
   regla: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.texto,
-  },
-  resumen: {
-    gap: ESPACIADO.sm,
-  },
-  filaResumen: {
-    gap: 2,
-  },
-  etiquetaResumen: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-  },
-  valorResumen: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   reglasConfirmar: {
-    gap: ESPACIADO.sm,
-    padding: ESPACIADO.md,
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-    borderRadius: RADIOS.md,
+    gap: RITMO.interno,
+    padding: RITMO.margen,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.grande,
   },
   reglaDestacada: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  error: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.error,
-  },
-  botonModal: {
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonModalPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonModalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBotonModal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.discrepanciaTexto,
   },
   deshabilitado: {
-    opacity: 0.5,
+    opacity: OPACIDAD.deshabilitado,
   },
 });

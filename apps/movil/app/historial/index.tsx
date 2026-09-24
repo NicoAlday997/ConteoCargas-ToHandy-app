@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -7,20 +7,26 @@ import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { DIAS_RESUMEN_SIN_LIQUIDAR, useHistorial, useResumenSinLiquidar } from '../../src/api/hooks-historial';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
-import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
 import {
-  ANCHO_MAXIMO_LISTA,
-  BarraSuperior,
-  EstadoCentral,
-  InsigniaEstado,
-} from '../../src/historial/ComponentesHistorial';
+  BloqueError,
+  Boton,
+  EstadoVacio,
+  Esqueleto,
+  Etiqueta,
+  LineaEsqueleto,
+  NotaEncabezado,
+  Tarjeta,
+  TarjetaEsqueleto,
+} from '../../src/componentes/base';
+import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
+import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior } from '../../src/historial/ComponentesHistorial';
 import {
   agruparPorDia,
   type AcumuladoVendedor,
   type FilaHistorial,
   type GrupoDia,
 } from '../../src/historial/modelo-historial';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Historial de cargas por fecha operativa (docs/06 §3.8). Lo primero que se
@@ -54,7 +60,7 @@ export default function PantallaHistorial() {
     return (
       <SafeAreaView style={estilos.pantalla}>
         <BarraSuperior titulo="Historial de cargas" />
-        <ActivityIndicator style={estilos.cargando} size="large" color={COLORES.texto} />
+        <EsqueletoHistorial />
       </SafeAreaView>
     );
   }
@@ -63,9 +69,10 @@ export default function PantallaHistorial() {
     return (
       <SafeAreaView style={estilos.pantalla}>
         <BarraSuperior titulo="Historial de cargas" />
-        <EstadoCentral
+        <EstadoVacio
+          icono="candado"
           titulo="Tu sesión terminó"
-          detalle="Entra de nuevo para ver el historial."
+          detalle="Entra de nuevo con tu PIN para ver el historial."
           accion={{ texto: 'Entrar', onPress: () => router.replace('/login') }}
         />
       </SafeAreaView>
@@ -96,29 +103,31 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
 
   let contenido;
   if (consulta.isPending) {
-    contenido = (
-      <View style={estilos.centrado}>
-        <ActivityIndicator size="large" color={COLORES.texto} />
-        <Text style={estilos.textoCargando}>Cargando historial…</Text>
-      </View>
-    );
+    contenido = <EsqueletoHistorial />;
   } else if (consulta.isError && grupos.length === 0) {
+    const sinRed = consulta.error instanceof ErrorRed;
     contenido = (
-      <EstadoCentral
-        titulo="No se pudo cargar el historial"
-        detalle={
-          consulta.error instanceof ErrorRed
-            ? 'Sin conexión. El historial se consulta en el servidor: revisa tu señal.'
-            : consulta.error instanceof Error && consulta.error.message
-              ? consulta.error.message
-              : 'Intenta de nuevo en un momento.'
-        }
-        accion={{ texto: 'Reintentar', onPress: () => void consulta.refetch() }}
-      />
+      <View style={estilos.contenedorAviso}>
+        <BloqueError
+          titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar el historial'}
+          detalle={
+            sinRed
+              ? 'El historial se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+              : consulta.error instanceof Error && consulta.error.message
+                ? consulta.error.message
+                : 'Intenta de nuevo en un momento.'
+          }
+          tono={sinRed ? 'atencion' : 'error'}
+          onReintentar={() => void consulta.refetch()}
+          reintentando={consulta.isFetching}
+        />
+      </View>
     );
   } else if (grupos.length === 0 && soloSinLiquidar) {
     contenido = (
-      <EstadoCentral
+      <EstadoVacio
+        icono="listo"
+        tono="capturado"
         titulo="Ninguna carga se inició sin liquidar"
         detalle="Todas las cargas iniciales de este historial arrancaron con la ruta anterior ya liquidada en Handy."
         accion={{ texto: 'Ver todas las cargas', onPress: () => setSoloSinLiquidar(false) }}
@@ -126,14 +135,15 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
     );
   } else if (grupos.length === 0) {
     contenido = (
-      <EstadoCentral
+      <EstadoVacio
+        icono="lista"
         titulo="Todavía no hay cargas"
         detalle={
           usuario.rolApp === 'SUPERVISOR'
-            ? 'Cuando se registre la primera carga aparecerá aquí.'
-            : 'Aquí aparecen las cargas de las últimas 2 semanas en cuanto se registren.'
+            ? 'Aquí aparecerán las cargas en cuanto se completen, agrupadas por el día en que sale el camión.'
+            : 'Aquí aparecerán las cargas de las últimas 2 semanas en cuanto se completen, agrupadas por el día en que sale el camión.'
         }
-        accion={{ texto: 'Actualizar', onPress: refrescar }}
+        accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
       />
     );
   } else {
@@ -153,15 +163,16 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
         }}
         ListFooterComponent={
           consulta.isFetchingNextPage ? (
-            <ActivityIndicator style={estilos.pie} color={COLORES.texto} />
+            <Esqueleto etiqueta="Cargando más cargas" style={estilos.pie}>
+              <TarjetaEsqueleto titulo="titulo" cifra />
+            </Esqueleto>
           ) : consulta.isFetchNextPageError ? (
-            <Pressable
-              onPress={() => void consulta.fetchNextPage()}
-              accessibilityRole="button"
-              style={({ pressed }) => [estilos.botonPie, pressed && estilos.botonPiePresionado]}
-            >
-              <Text style={estilos.textoBotonPie}>No se pudieron cargar más. Reintentar</Text>
-            </Pressable>
+            <BloqueError
+              titulo="No se pudieron cargar más cargas"
+              detalle={consulta.error instanceof ErrorRed ? 'Sin conexión: revisa tu señal.' : 'Intenta de nuevo en un momento.'}
+              onReintentar={() => void consulta.fetchNextPage()}
+              style={estilos.pie}
+            />
           ) : null
         }
       />
@@ -171,7 +182,7 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
   return (
     <SafeAreaView style={estilos.pantalla}>
       <BarraSuperior titulo="Historial de cargas">
-        {alcance && <Text style={estilos.alcance}>{alcance}</Text>}
+        {alcance && <NotaEncabezado>{alcance}</NotaEncabezado>}
       </BarraSuperior>
       <AvisoSinLiquidar
         vendedores={resumen.data?.vendedores ?? []}
@@ -225,31 +236,22 @@ function AvisoSinLiquidar({
         {!esVendedor && vendedores.length > 0 && (
           <View style={estilos.vendedoresAviso}>
             {vendedores.map((v) => (
-              <View
+              <Etiqueta
                 key={v.vendedor}
-                style={[estilos.vendedorAviso, v.cargas > 1 && estilos.vendedorAcumula]}
+                texto={`${v.vendedor}  ${v.cargas}${mas && '+'}`}
+                // Dos o más: el que acumula resalta sin tener que leer los números.
+                tono={v.cargas > 1 ? 'discrepancia' : 'neutro'}
+                relleno={v.cargas > 1 ? 'solida' : 'contorno'}
                 accessibilityLabel={`${v.vendedor}: ${v.cargas}${mas} ${v.cargas === 1 ? 'carga' : 'cargas'} sin liquidar`}
-              >
-                <Text style={estilos.nombreVendedorAviso} numberOfLines={1}>
-                  {v.vendedor}
-                </Text>
-                <Text style={estilos.numeroVendedorAviso}>
-                  {v.cargas}
-                  {mas && '+'}
-                </Text>
-              </View>
+              />
             ))}
           </View>
         )}
-        <Pressable
+        <Boton
+          texto={soloSinLiquidar ? 'Ver todas las cargas' : 'Ver solo las iniciadas sin liquidar'}
+          variante="secundario"
           onPress={onAlternar}
-          accessibilityRole="button"
-          style={({ pressed }) => [estilos.botonAviso, pressed && estilos.botonAvisoPresionado]}
-        >
-          <Text style={estilos.textoBotonAviso}>
-            {soloSinLiquidar ? 'Ver todas las cargas' : 'Ver solo las iniciadas sin liquidar'}
-          </Text>
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -260,12 +262,26 @@ function EncabezadoDia({ grupo, hoy }: { grupo: GrupoDia; hoy: string }) {
   const cantidad = grupo.data.length;
   return (
     <View style={estilos.encabezadoDia} accessibilityRole="header">
-      <Text style={estilos.textoDia} numberOfLines={1}>
+      <Text style={estilos.textoDia} numberOfLines={2}>
         {grupo.dia ? formatearDia(grupo.dia) : 'Sin fecha'}
         {relativo && <Text style={estilos.relativo}> · {relativo}</Text>}
       </Text>
       <Text style={estilos.cantidadDia}>{cantidad === 1 ? '1 carga' : `${cantidad} cargas`}</Text>
     </View>
+  );
+}
+
+/** La forma de la lista mientras llega: un día y sus tarjetas. */
+function EsqueletoHistorial() {
+  return (
+    <Esqueleto etiqueta="Cargando historial" style={estilos.esqueleto}>
+      <View style={estilos.encabezadoDiaEsqueleto}>
+        <LineaEsqueleto nivel="titulo" ancho="55%" />
+      </View>
+      {[0, 1, 2].map((i) => (
+        <TarjetaEsqueleto key={i} titulo="titulo" cifra />
+      ))}
+    </Esqueleto>
   );
 }
 
@@ -281,90 +297,91 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
       ? '1 discrepancia'
       : `${fila.discrepancias} discrepancias`
     : 'Sin discrepancias';
+  const banda = bandaDeEstado(fila.estado, tipo);
 
   return (
-    <Pressable
+    <Tarjeta
       onPress={() => router.push({ pathname: '/historial/[eventoId]', params: { eventoId: fila.id } })}
-      accessibilityRole="button"
+      // El estado en la banda; las discrepancias, en ámbar: informativo, no
+      // restrictivo (docs/06 §3.8). El detalle se abre igual.
+      conAcento={banda}
+      style={estilos.fila}
       accessibilityLabel={[
         `${fila.rutaNombre}, ${tipo}`,
+        banda.titulo,
+        fila.totalProductos !== null ? `${fila.totalProductos} productos` : null,
         textoDiscrepancias,
         fila.sinLiquidar ? `Iniciada sin liquidar con permiso de ${fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}` : null,
         'Ver detalle',
       ]
         .filter(Boolean)
         .join('. ')}
-      style={({ pressed }) => [
-        estilos.fila,
-        conDiscrepancias && estilos.filaConDiscrepancia,
-        pressed && estilos.filaPresionada,
-      ]}
     >
-      <View style={estilos.cuerpoFila}>
-        <View style={estilos.filaSuperior}>
-          <Text style={estilos.ruta} numberOfLines={1}>
+      <View style={estilos.contenidoFila}>
+        <View style={estilos.cuerpoFila}>
+          <Text style={estilos.ruta} numberOfLines={2}>
             {fila.rutaNombre}
           </Text>
-          <Text style={estilos.tipo}>{tipo}</Text>
-        </View>
-        <View style={estilos.filaInferior}>
-          <InsigniaEstado estado={fila.estado} />
-          <Text style={[estilos.discrepancias, conDiscrepancias && estilos.discrepanciasMarcadas]}>
-            {conDiscrepancias ? '⚠ ' : ''}
-            {textoDiscrepancias}
-          </Text>
-        </View>
-        {personas.length > 0 && (
-          <Text style={estilos.personas} numberOfLines={1}>
-            {personas.join(' · ')}
-          </Text>
-        )}
-        {fila.sinLiquidar && (
-          <View style={estilos.marcaSinLiquidar}>
-            <Text style={estilos.tituloMarca}>
-              Sin liquidar · permiso de {fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}
+          {personas.length > 0 && (
+            <Text style={estilos.personas} numberOfLines={2}>
+              {personas.join(' · ')}
             </Text>
-            {fila.sinLiquidar.motivo && (
-              <Text style={estilos.motivoMarca} numberOfLines={2}>
-                “{fila.sinLiquidar.motivo}”
-              </Text>
-            )}
+          )}
+          {/* Solo cuando hubo: lo que resalta en la lista es lo que pide mirar. */}
+          {conDiscrepancias && (
+            <View style={estilos.filaEtiquetas}>
+              <Etiqueta texto={textoDiscrepancias} tono="discrepancia" relleno="tintada" />
+            </View>
+          )}
+        </View>
+        {fila.totalProductos !== null && (
+          <View style={estilos.cifra}>
+            <Text style={estilos.numeroCifra}>{fila.totalProductos}</Text>
+            <Text style={estilos.unidadCifra}>productos</Text>
           </View>
         )}
-        {fila.liquidacionNoVerificada && (
-          <Text style={estilos.personas}>No se pudo confirmar en Handy la liquidación anterior</Text>
-        )}
+        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </View>
-      <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-        ›
-      </Text>
-    </Pressable>
+      {fila.sinLiquidar && (
+        <View style={estilos.marcaSinLiquidar}>
+          <Text style={estilos.tituloMarca}>Sin liquidar · permiso de {fila.sinLiquidar.otorgadoPor ?? 'un supervisor'}</Text>
+          {fila.sinLiquidar.motivo && (
+            <Text style={estilos.motivoMarca} numberOfLines={2}>
+              “{fila.sinLiquidar.motivo}”
+            </Text>
+          )}
+        </View>
+      )}
+      {fila.liquidacionNoVerificada && (
+        <Text style={estilos.personas}>No se pudo confirmar en Handy la liquidación anterior</Text>
+      )}
+    </Tarjeta>
   );
 }
 
 const estilos = StyleSheet.create({
+  // Lectura pausada: tarjetas blancas sobre el fondo tintado, con aire entre ellas.
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
   },
-  cargando: {
-    marginTop: ESPACIADO.xxxl,
+  esqueleto: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: ESPACIADO.lg,
+    paddingHorizontal: RITMO.margen,
   },
-  centrado: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
+  encabezadoDiaEsqueleto: {
+    paddingTop: ESPACIADO.xl,
   },
-  textoCargando: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
-  },
-  alcance: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSecundario,
-    paddingLeft: TOQUE_MINIMO,
+  contenedorAviso: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    padding: RITMO.margen,
   },
   lista: {
     flex: 1,
@@ -373,208 +390,127 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
   },
   contenidoLista: {
-    paddingHorizontal: ESPACIADO.md,
+    paddingHorizontal: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
+  // La fecha al frente: es lo primero que se busca ("qué cargué el martes").
+  // Más aire arriba que abajo: el día agrupa las tarjetas que siguen.
   encabezadoDia: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    gap: ESPACIADO.md,
-    marginHorizontal: -ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.md,
-    paddingTop: ESPACIADO.lg,
-    paddingBottom: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.borde,
+    gap: RITMO.relacionado,
+    marginHorizontal: -RITMO.margen,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.xxl,
+    paddingBottom: ESPACIADO.xs,
+    backgroundColor: COLORES.fondoPantalla,
   },
   textoDia: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
   },
   relativo: {
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   cantidadDia: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
+    ...CIFRAS,
   },
   fila: {
+    marginTop: ESPACIADO.lg,
+  },
+  contenidoFila: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: TOQUE_MINIMO,
-    marginTop: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.md,
-    gap: ESPACIADO.sm,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    borderLeftWidth: 6,
-    borderLeftColor: COLORES.borde,
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.fondo,
-  },
-  // Ámbar: informativo, no restrictivo (docs/06 §3.8). El detalle se abre igual.
-  filaConDiscrepancia: {
-    borderLeftColor: COLORES.discrepancia,
-  },
-  filaPresionada: {
-    backgroundColor: COLORES.superficie,
+    gap: RITMO.relacionado,
   },
   cuerpoFila: {
     flex: 1,
-    gap: ESPACIADO.xs,
-  },
-  filaSuperior: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
   },
   ruta: {
-    flexShrink: 1,
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
-  tipo: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSecundario,
-  },
-  filaInferior: {
+  filaEtiquetas: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
   },
-  discrepancias: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+  // La cifra domina la tarjeta, como el total de un pedido; alineada a la derecha
+  // para que los totales de todas las tarjetas queden en columna.
+  cifra: {
+    alignItems: 'flex-end',
+  },
+  numeroCifra: {
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
+    textAlign: 'right',
+    ...CIFRAS,
+  },
+  unidadCifra: {
+    ...TIPOGRAFIA.micro,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
-  },
-  discrepanciasMarcadas: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    textTransform: 'uppercase',
   },
   personas: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   // Ámbar como las discrepancias: pide atención, no bloquea (docs/06 §3.8).
   aviso: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.borde,
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.discrepanciaFondo,
   },
   contenidoAviso: {
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.md,
+    gap: RITMO.relacionado,
+    padding: RITMO.margen,
   },
   tituloAviso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
   },
   vendedoresAviso: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ESPACIADO.sm,
-  },
-  vendedorAviso: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO.sm,
-    maxWidth: '100%',
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.xs,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.fondo,
-  },
-  // Dos o más: el que acumula resalta sin tener que leer los números.
-  vendedorAcumula: {
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-  },
-  nombreVendedorAviso: {
-    flexShrink: 1,
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  numeroVendedorAviso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    fontVariant: ['tabular-nums'],
-  },
-  botonAviso: {
-    minHeight: TOQUE_MINIMO,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.md,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-    backgroundColor: COLORES.fondo,
-  },
-  botonAvisoPresionado: {
-    backgroundColor: COLORES.superficie,
-  },
-  textoBotonAviso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
+    gap: RITMO.interno,
   },
   marcaSinLiquidar: {
     alignSelf: 'stretch',
-    marginTop: ESPACIADO.xs,
-    paddingLeft: ESPACIADO.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORES.discrepancia,
+    gap: ESPACIADO.xs,
+    padding: RITMO.relacionado,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.chico,
   },
   tituloMarca: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
   },
   motivoMarca: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
+    color: COLORES.texto,
   },
   flecha: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.regular,
+    color: COLORES.marca,
   },
   pie: {
-    marginVertical: ESPACIADO.lg,
-  },
-  botonPie: {
-    minHeight: TOQUE_MINIMO,
-    marginTop: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonPiePresionado: {
-    backgroundColor: COLORES.superficie,
-  },
-  textoBotonPie: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+    marginTop: ESPACIADO.lg,
   },
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInLeft, SlideInRight } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { ETIQUETAS_ROL } from '../src/api/auth';
@@ -13,15 +13,19 @@ import {
   type UsuarioElegible,
 } from '../src/api/hooks-auth';
 import { recordarPinTemporal } from '../src/api/sesion';
+import { BloqueError, EstadoVacio, Esqueleto, LineaEsqueleto, SEPARACION_TARJETAS, Tarjeta } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ELEVACION, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Corto: la transición orienta al usuario, no debe hacerlo esperar. */
 const DURACION_TRANSICION_MS = 180;
 const FILAS_SKELETON = 6;
 const ANCHO_MAXIMO_PIN = 440;
+const TAMANO_AVATAR = TOQUE_MINIMO;
+/** Cabe el aviso más alto (recuadro de red o PIN con 1 intento) sin mover el teclado. */
+const ALTO_ZONA_AVISO = ESPACIADO.xxxl * 2 + ESPACIADO.sm;
 /** Basta para que la cuenta regresiva del bloqueo no se quede atrás un minuto entero. */
 const INTERVALO_RELOJ_BLOQUEO_MS = 15_000;
 
@@ -41,8 +45,9 @@ export default function PantallaLogin() {
     setUsuario(null);
   };
 
+  // Azul solo detrás de la barra de estado y la banda de marca; lo demás, fondo tintado.
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
       {usuario ? (
         <Animated.View
           key={`pin-${usuario.id}`}
@@ -68,66 +73,92 @@ export default function PantallaLogin() {
 // Paso 1: selección de usuario (RF-01)
 // ---------------------------------------------------------------------------
 
+/** Banda de marca de la entrada: lo primero que se ve al abrir la app. */
+function BandaMarca({ antetitulo, titulo }: { antetitulo: string; titulo: string }) {
+  return (
+    <View style={estilos.bandaMarca}>
+      <View style={estilos.columnaBanda}>
+        <Text style={estilos.antetitulo}>{antetitulo}</Text>
+        <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
+          {titulo}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) {
   const { columnas } = useLayout();
   const consulta = useUsuarios();
+  const margenes = useSafeAreaInsets();
+  const relleno = { paddingBottom: ESPACIADO.xxxl + margenes.bottom };
 
-  const encabezado = (
-    <View style={estilos.encabezadoLista}>
-      <Text style={estilos.titulo} accessibilityRole="header">
-        Selecciona tu nombre
-      </Text>
-    </View>
-  );
+  const encabezado = <BandaMarca antetitulo="Verificación de cargas" titulo="Selecciona tu nombre" />;
 
   if (consulta.isPending) {
     return (
-      <View style={estilos.contenidoLista}>
+      <View style={estilos.paso}>
         {encabezado}
-        <SkeletonUsuarios columnas={columnas} />
+        <View style={[estilos.contenidoLista, relleno]}>
+          <SkeletonUsuarios columnas={columnas} />
+        </View>
       </View>
     );
   }
 
   if (consulta.isError) {
     return (
-      <View style={estilos.contenidoLista}>
+      <View style={estilos.paso}>
         {encabezado}
-        <EstadoVacio
-          titulo="No se pudo cargar la lista de usuarios"
-          detalle="Revisa la conexión del dispositivo y vuelve a intentarlo."
-          textoBoton="Reintentar"
-          cargando={consulta.isFetching}
-          onPress={() => void consulta.refetch()}
-        />
+        <View style={[estilos.contenidoLista, relleno]}>
+          <BloqueError
+            titulo="No se pudo cargar la lista de usuarios"
+            detalle="La lista vive en el servidor. Revisa la conexión del dispositivo y vuelve a intentarlo."
+            tono="atencion"
+            onReintentar={() => void consulta.refetch()}
+            reintentando={consulta.isFetching}
+          />
+        </View>
       </View>
     );
   }
 
   return (
-    <FlatList
-      // numColumns no puede cambiar en caliente: se remonta al rotar.
-      key={`columnas-${columnas}`}
-      data={consulta.data}
-      keyExtractor={(u) => u.id}
-      numColumns={columnas}
-      columnWrapperStyle={columnas > 1 ? estilos.filaColumnas : undefined}
-      contentContainerStyle={[estilos.contenidoLista, estilos.separacionFilas]}
-      ListHeaderComponent={encabezado}
-      ListEmptyComponent={
-        <EstadoVacio
-          titulo="No hay usuarios activos"
-          detalle="Pide a un supervisor que dé de alta tu usuario."
-          textoBoton="Actualizar"
-          cargando={consulta.isFetching}
-          onPress={() => void consulta.refetch()}
-        />
-      }
-      refreshing={consulta.isRefetching}
-      onRefresh={() => void consulta.refetch()}
-      renderItem={({ item }) => <FilaUsuario usuario={item} onPress={() => onElegir(item)} />}
-    />
+    <View style={estilos.paso}>
+      {encabezado}
+      <FlatList
+        // numColumns no puede cambiar en caliente: se remonta al rotar.
+        key={`columnas-${columnas}`}
+        data={consulta.data}
+        keyExtractor={(u) => u.id}
+        numColumns={columnas}
+        columnWrapperStyle={columnas > 1 ? estilos.filaColumnas : undefined}
+        contentContainerStyle={[estilos.contenidoLista, estilos.separacionFilas, relleno]}
+        ListEmptyComponent={
+          <EstadoVacio
+            icono="personas"
+            titulo="No hay usuarios activos"
+            detalle="Aquí aparecerán los nombres en cuanto un supervisor dé de alta a su equipo. Pídele que registre tu usuario."
+            accion={{
+              texto: 'Actualizar',
+              onPress: () => void consulta.refetch(),
+              cargando: consulta.isFetching,
+              textoCargando: 'Actualizando…',
+            }}
+          />
+        }
+        refreshing={consulta.isRefetching}
+        onRefresh={() => void consulta.refetch()}
+        renderItem={({ item }) => <FilaUsuario usuario={item} onPress={() => onElegir(item)} />}
+      />
+    </View>
   );
+}
+
+/** Iniciales para el avatar: "María López Ruiz" → "ML". */
+function iniciales(nombre: string): string {
+  const partes = nombre.split(/\s+/).filter(Boolean);
+  return ((partes[0]?.[0] ?? '') + (partes[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: () => void }) {
@@ -135,75 +166,45 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
   const rol = usuario.rolApp ? ETIQUETAS_ROL[usuario.rolApp] : null;
 
   return (
-    <Pressable
+    <Tarjeta
       onPress={onPress}
-      accessibilityRole="button"
+      compacta
       accessibilityLabel={rol ? `${nombre}, ${rol}` : nombre}
-      style={({ pressed }) => [estilos.filaUsuario, pressed && estilos.filaUsuarioPresionada]}
+      style={[estilos.filaUsuario, estilos.filaUsuarioContenido]}
     >
-      {({ pressed }) => (
-        <>
-          <Text style={[estilos.nombreUsuario, pressed && estilos.textoInvertido]} numberOfLines={2}>
-            {nombre}
-          </Text>
-          {rol && <Text style={[estilos.rolUsuario, pressed && estilos.textoInvertido]}>{rol}</Text>}
-        </>
-      )}
-    </Pressable>
+      <View style={estilos.avatar}>
+        <Text style={estilos.textoAvatar}>{iniciales(nombre)}</Text>
+      </View>
+      <View style={estilos.datosUsuario}>
+        <Text style={estilos.nombreUsuario} numberOfLines={2}>
+          {nombre}
+        </Text>
+        {rol && <Text style={estilos.rolUsuario}>{rol}</Text>}
+      </View>
+      <Text style={estilos.flecha}>›</Text>
+    </Tarjeta>
   );
 }
 
-/** Estático a propósito: la única animación de la pantalla es la de navegación y error. */
+/** Mismo tamaño que una tarjeta de usuario, avatar incluido: al llegar la lista nada salta. */
 function SkeletonUsuarios({ columnas }: { columnas: number }) {
   const filas = Array.from({ length: Math.ceil(FILAS_SKELETON / columnas) }, (_, i) => i);
   return (
-    <View
-      style={estilos.separacionFilas}
-      accessible
-      accessibilityLabel="Cargando usuarios"
-      accessibilityState={{ busy: true }}
-    >
+    <Esqueleto etiqueta="Cargando usuarios" style={estilos.separacionFilas}>
       {filas.map((fila) => (
         <View key={fila} style={estilos.filaColumnas}>
           {Array.from({ length: columnas }, (_, col) => (
-            <View key={col} style={[estilos.filaUsuario, estilos.filaSkeleton]}>
-              <View style={[estilos.barraSkeleton, estilos.barraNombre]} />
-              <View style={[estilos.barraSkeleton, estilos.barraRol]} />
+            <View key={col} style={[estilos.filaUsuario, estilos.filaUsuarioContenido, estilos.filaSkeleton]}>
+              <View style={[estilos.avatar, estilos.avatarSkeleton]} />
+              <View style={estilos.datosUsuario}>
+                <LineaEsqueleto nivel="titulo" ancho="65%" />
+                <LineaEsqueleto nivel="etiqueta" ancho="30%" />
+              </View>
             </View>
           ))}
         </View>
       ))}
-    </View>
-  );
-}
-
-interface PropsEstadoVacio {
-  titulo: string;
-  detalle: string;
-  textoBoton: string;
-  cargando: boolean;
-  onPress: () => void;
-}
-
-function EstadoVacio({ titulo, detalle, textoBoton, cargando, onPress }: PropsEstadoVacio) {
-  return (
-    <View style={estilos.estadoVacio}>
-      <Text style={estilos.tituloEstado}>{titulo}</Text>
-      <Text style={estilos.detalleEstado}>{detalle}</Text>
-      <Pressable
-        onPress={onPress}
-        disabled={cargando}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: cargando, busy: cargando }}
-        style={({ pressed }) => [
-          estilos.botonPrincipal,
-          pressed && estilos.botonPrincipalPresionado,
-          cargando && estilos.deshabilitado,
-        ]}
-      >
-        <Text style={estilos.textoBotonPrincipal}>{cargando ? 'Cargando…' : textoBoton}</Text>
-      </Pressable>
-    </View>
+    </Esqueleto>
   );
 }
 
@@ -213,6 +214,7 @@ function EstadoVacio({ titulo, detalle, textoBoton, cargando, onPress }: PropsEs
 
 function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: () => void }) {
   const { esTablet } = useLayout();
+  const margenes = useSafeAreaInsets();
   const mutacionLogin = useLogin();
 
   // Ref además del estado: dos toques muy rápidos no deben leer un PIN viejo.
@@ -287,41 +289,44 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
   const nombre = usuario.nombreCompleto?.trim() || 'Usuario sin nombre';
 
   return (
-    <View style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet]}>
-      <View>
-        <Pressable
-          onPress={onVolver}
-          accessibilityRole="button"
-          accessibilityLabel="Volver y elegir otro usuario"
-          style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
-        >
-          {({ pressed }) => (
-            <Text style={[estilos.textoBotonVolver, pressed && estilos.textoInvertido]}>‹ Elegir otro usuario</Text>
-          )}
-        </Pressable>
-        <Text style={estilos.nombreSeleccionado} accessibilityRole="header" numberOfLines={2}>
-          {nombre}
-        </Text>
-        <Text style={estilos.instruccion}>Teclea tu PIN de {LONGITUD_PIN} dígitos</Text>
-      </View>
-
-      <View style={estilos.zonaIndicadores}>
-        <IndicadoresPin cantidad={cantidad} claveError={claveError} />
-        <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
-          {enviando ? (
-            <Text style={estilos.textoVerificando}>Verificando…</Text>
-          ) : (
-            aviso && !bloqueado && <AvisoPin aviso={aviso} />
-          )}
+    <View style={estilos.paso}>
+      <View style={[estilos.bandaMarca, estilos.bandaPin]}>
+        <View style={estilos.columnaBanda}>
+          <Pressable
+            onPress={onVolver}
+            accessibilityRole="button"
+            accessibilityLabel="Volver y elegir otro usuario"
+            style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
+          >
+            <Text style={estilos.textoBotonVolver}>‹ Elegir otro usuario</Text>
+          </Pressable>
+          <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
+            {nombre}
+          </Text>
+          <Text style={estilos.subtituloBanda}>Teclea tu PIN de {LONGITUD_PIN} dígitos</Text>
         </View>
       </View>
+      <View
+        style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.lg + margenes.bottom }]}
+      >
+        <View style={estilos.zonaIndicadores}>
+          <IndicadoresPin cantidad={cantidad} claveError={claveError} />
+          <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
+            {enviando ? (
+              <Text style={estilos.textoVerificando}>Verificando…</Text>
+            ) : (
+              aviso && !bloqueado && <AvisoPin aviso={aviso} />
+            )}
+          </View>
+        </View>
 
-      {aviso?.tipo === 'bloqueado' || aviso?.tipo === 'inactivo' ? (
-        // El panel ocupa el lugar del teclado: no hay nada que teclear hasta resolverlo.
-        <PanelBloqueo aviso={aviso} minutos={minutosBloqueo} />
-      ) : (
-        <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
-      )}
+        {aviso?.tipo === 'bloqueado' || aviso?.tipo === 'inactivo' ? (
+          // El panel ocupa el lugar del teclado: no hay nada que teclear hasta resolverlo.
+          <PanelBloqueo aviso={aviso} minutos={minutosBloqueo} />
+        ) : (
+          <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
+        )}
+      </View>
     </View>
   );
 }
@@ -358,7 +363,8 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
       const n = aviso.intentosRestantes;
       let detalle = 'Revisa los dígitos y vuelve a teclearlo.';
       if (n === 1) {
-        detalle = 'Te queda 1 intento antes del bloqueo temporal. Si no recuerdas tu PIN, pide a tu supervisor que lo restablezca.';
+        detalle =
+          'Te queda 1 intento antes del bloqueo temporal. Si no recuerdas tu PIN, pide a tu supervisor que lo restablezca.';
       } else if (n !== null) {
         detalle = `Te quedan ${n} intentos antes del bloqueo temporal.`;
       }
@@ -372,10 +378,8 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
     case 'red':
       return (
         <View accessibilityRole="alert" style={estilos.recuadroRed}>
-          <Text style={[estilos.tituloAviso, { color: COLORES.discrepancia }]}>Sin conexión con el servidor</Text>
-          <Text style={estilos.detalleAviso}>
-            Tu PIN no se llegó a revisar. Verifica la conexión y vuelve a teclearlo.
-          </Text>
+          <Text style={[estilos.tituloAviso, { color: COLORES.discrepanciaTexto }]}>Sin conexión con el servidor</Text>
+          <Text style={estilos.detalleAviso}>Tu PIN no se llegó a revisar. Verifica la conexión y vuelve a teclearlo.</Text>
         </View>
       );
     case 'otro':
@@ -410,6 +414,7 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
   }
 
   return (
+    // Texto de lectura: alineado a la izquierda, aunque el resto del paso vaya centrado.
     <View style={estilos.panelBloqueo} accessibilityRole="alert" accessibilityLiveRegion="assertive">
       <Text style={estilos.tituloPanelBloqueo}>{titulo}</Text>
       {cuando && <Text style={estilos.textoPanelBloqueo}>{cuando}</Text>}
@@ -421,124 +426,114 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.marca,
   },
   paso: {
     flex: 1,
+    backgroundColor: COLORES.fondoPantalla,
+  },
+  bandaMarca: {
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.xl,
+    paddingBottom: ESPACIADO.xxl,
+    backgroundColor: COLORES.marca,
+  },
+  bandaPin: {
+    paddingTop: ESPACIADO.sm,
+    paddingBottom: ESPACIADO.xl,
+  },
+  columnaBanda: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_PIN * 2,
+    alignSelf: 'center',
+    gap: ESPACIADO.xs,
+  },
+  antetitulo: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaClaro,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  tituloBanda: {
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.textoSobreColor,
+  },
+  subtituloBanda: {
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
+    color: COLORES.marcaClaro,
   },
 
   // Paso 1
   contenidoLista: {
     flexGrow: 1,
-    padding: ESPACIADO.lg,
-  },
-  encabezadoLista: {
-    paddingVertical: ESPACIADO.lg,
-  },
-  titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    padding: RITMO.margen,
   },
   separacionFilas: {
-    gap: ESPACIADO.md,
+    gap: SEPARACION_TARJETAS,
   },
   filaColumnas: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
+    gap: SEPARACION_TARJETAS,
   },
   filaUsuario: {
     flex: 1,
-    minHeight: TOQUE_MINIMO,
+    minHeight: TAMANO_AVATAR + ESPACIADO.lg * 2,
     justifyContent: 'center',
-    paddingVertical: ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.lg,
-    backgroundColor: COLORES.superficie,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    borderRadius: RADIOS.md,
   },
-  filaUsuarioPresionada: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+  filaUsuarioContenido: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RITMO.margen,
+  },
+  avatar: {
+    width: TAMANO_AVATAR,
+    height: TAMANO_AVATAR,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES.marcaClaro,
+    borderRadius: RADIOS.completo,
+  },
+  textoAvatar: {
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
+  },
+  datosUsuario: {
+    flex: 1,
   },
   nombreUsuario: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
+  // El rol se retira: acompaña al nombre, no compite con él.
   rolUsuario: {
-    marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
-  textoInvertido: {
-    color: COLORES.textoSobreColor,
+  flecha: {
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.regular,
+    color: COLORES.marca,
   },
   filaSkeleton: {
-    gap: ESPACIADO.sm,
-    minHeight: TOQUE_MINIMO + ESPACIADO.lg,
+    ...ELEVACION[1],
+    padding: RITMO.margen,
+    borderRadius: RADIOS.grande,
   },
-  barraSkeleton: {
-    borderRadius: RADIOS.sm,
-    backgroundColor: COLORES.borde,
-    opacity: 0.35,
-  },
-  barraNombre: {
-    height: TIPOGRAFIA.tamanos.xl,
-    width: '65%',
-  },
-  barraRol: {
-    height: TIPOGRAFIA.tamanos.sm,
-    width: '30%',
-  },
-  estadoVacio: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
-    paddingVertical: ESPACIADO.xxxl,
-  },
-  tituloEstado: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    textAlign: 'center',
-  },
-  detalleEstado: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
-    textAlign: 'center',
-  },
-  botonPrincipal: {
-    minHeight: TOQUE_MINIMO,
-    minWidth: 200,
-    marginTop: ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonPrincipalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-  },
-  textoBotonPrincipal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSobreColor,
-  },
-  deshabilitado: {
-    opacity: 0.5,
+  avatarSkeleton: {
+    backgroundColor: COLORES.superficie,
   },
 
   // Paso 2
   contenidoPin: {
     flex: 1,
     justifyContent: 'space-between',
-    padding: ESPACIADO.lg,
-    gap: ESPACIADO.lg,
+    padding: RITMO.margen,
+    gap: RITMO.margen,
   },
   contenidoPinTablet: {
     width: '100%',
@@ -551,79 +546,65 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
     marginLeft: -ESPACIADO.md,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   botonVolverPresionado: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.marcaOscuro,
   },
   textoBotonVolver: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  nombreSeleccionado: {
-    marginTop: ESPACIADO.sm,
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  instruccion: {
-    marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.textoSobreColor,
   },
   zonaIndicadores: {
     alignItems: 'center',
-    gap: ESPACIADO.lg,
+    gap: RITMO.margen,
   },
   // Altura reservada: que aparezca un aviso no debe mover el teclado bajo el dedo.
   // Cabe el aviso más alto (recuadro de red o PIN con 1 intento).
   zonaAviso: {
-    minHeight: 104,
+    minHeight: ALTO_ZONA_AVISO,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textoVerificando: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
     color: COLORES.textoSecundario,
   },
   tituloAviso: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
     textAlign: 'center',
   },
   detalleAviso: {
     marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
     textAlign: 'center',
   },
+  // El fondo ámbar basta para separarlo: sin contorno.
   recuadroRed: {
-    paddingVertical: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-    borderRadius: RADIOS.md,
+    paddingVertical: RITMO.interno,
+    paddingHorizontal: RITMO.relacionado,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
   },
   panelBloqueo: {
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
     padding: ESPACIADO.xl,
     backgroundColor: COLORES.error,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   tituloPanelBloqueo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.textoSobreColor,
-    textAlign: 'center',
   },
   textoPanelBloqueo: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSobreColor,
-    textAlign: 'center',
   },
   textoPanelAccion: {
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    fontWeight: PESOS.semiNegrita,
   },
 });

@@ -2,7 +2,8 @@ import { memo, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { Etiqueta } from '../componentes/base';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   admitePaquetes,
   estadoFila,
@@ -18,17 +19,19 @@ import {
 /** Un destello corto: confirma el toque sin hacer esperar al siguiente. */
 const DURACION_DESTELLO_MS = 280;
 const OPACIDAD_DESTELLO = 0.3;
-const ANCHO_BARRA_ESTADO = 6;
 const ANCHO_TOTAL = 72;
+/** Alto de la línea del nombre: la de la etiqueta del factor en grande, que es la más alta. */
+const ALTO_ENCABEZADO = TIPOGRAFIA.titulo.lineHeight;
 
 // ---------------------------------------------------------------------------
 // Etiqueta del factor de empaque
 // ---------------------------------------------------------------------------
 
 /**
- * "C/70" en su propia caja, del mismo ancho en todas las filas: al recorrer la
+ * "C/70" en una píldora de marca, del mismo ancho en todas las filas: al recorrer la
  * lista las etiquetas quedan alineadas en columna y CANELS c/60 contra c/70 se
- * distingue sin leer el nombre.
+ * distingue sin leer el nombre. Es lo único que distingue dos productos casi
+ * idénticos, por eso en la lista de conteo va en grande.
  */
 export function EtiquetaFactor({ producto, grande = false }: { producto: ProductoConteo; grande?: boolean }) {
   const factor = factorEfectivo(producto);
@@ -47,19 +50,15 @@ export function EtiquetaFactor({ producto, grande = false }: { producto: Product
   const sinConfirmar = factor === null && !producto.factorConfirmado;
 
   return (
-    <View
-      style={[estilos.etiqueta, grande && estilos.etiquetaGrande, sinConfirmar && estilos.etiquetaSinConfirmar]}
-      accessible
+    <Etiqueta
+      texto={texto}
+      tono={sinConfirmar ? 'discrepancia' : 'marca'}
+      relleno={sinConfirmar ? 'contorno' : 'tintada'}
+      tamano={grande ? 'grande' : 'destacada'}
+      anchoFijo
+      ajustar
       accessibilityLabel={accesible}
-    >
-      <Text
-        style={[estilos.textoEtiqueta, grande && estilos.textoEtiquetaGrande, sinConfirmar && estilos.textoSinConfirmar]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {texto}
-      </Text>
-    </View>
+    />
   );
 }
 
@@ -110,7 +109,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
       />
 
       <View style={estilos.encabezado}>
-        <EtiquetaFactor producto={producto} />
+        <EtiquetaFactor producto={producto} grande />
         <Text style={estilos.nombre} numberOfLines={2}>
           {producto.nombre}
         </Text>
@@ -139,7 +138,10 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         {!conPaquetes && <View style={estilos.huecoCampo} />}
 
         <View style={estilos.total} accessible accessibilityLabel={textoTotalAccesible(total, estado)}>
-          <Text style={[estilos.numeroTotal, estado !== 'con-cantidad' && estilos.numeroTotalApagado]} numberOfLines={1}>
+          <Text
+            style={[estilos.numeroTotal, estado === 'con-cantidad' ? estilos.numeroTotalCapturado : estilos.numeroTotalApagado]}
+            numberOfLines={1}
+          >
             {total === null ? '—' : total}
           </Text>
           <Text style={estilos.unidadTotal}>piezas</Text>
@@ -236,11 +238,11 @@ function MarcaEnvio({ envio }: { envio: EnvioFila }) {
   );
 }
 
-/** Ámbar solo en la marca: el texto va oscuro para leerse con poca luz. */
+/** Bloque tintado del estado, con su texto oscuro: se lee con poca luz y no suma alto a la fila. */
 function Aviso({ texto, error = false }: { texto: string; error?: boolean }) {
   return (
     <View style={[estilos.aviso, error && estilos.avisoError]}>
-      <Text style={estilos.textoAviso}>{texto}</Text>
+      <Text style={[estilos.textoAviso, error && estilos.textoAvisoError]}>{texto}</Text>
     </View>
   );
 }
@@ -287,84 +289,52 @@ function Campo({ etiqueta, valor, activo, onPress, nombreProducto, aviso = false
 }
 
 const estilos = StyleSheet.create({
-  etiqueta: {
-    minWidth: 64,
-    paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORES.texto,
-    borderRadius: RADIOS.sm,
-  },
-  etiquetaGrande: {
-    minWidth: 84,
-    paddingVertical: ESPACIADO.sm,
-  },
-  etiquetaSinConfirmar: {
-    backgroundColor: COLORES.fondo,
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-  },
-  textoEtiqueta: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.textoSobreColor,
-    fontVariant: ['tabular-nums'],
-  },
-  textoEtiquetaGrande: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-  },
-  textoSinConfirmar: {
-    color: COLORES.discrepancia,
-  },
-
+  // Densa a propósito: se recorren 73 productos. Relleno vertical corto, el aire
+  // va entre filas (lo pone la lista) y el factor en grande no debe costar
+  // productos por pantalla. El estado va en el fondo y en la barra izquierda,
+  // nunca en un contorno: así todas las filas miden lo mismo en cualquier estado.
   fila: {
     flex: 1,
     gap: ESPACIADO.sm,
-    padding: ESPACIADO.md,
-    borderRadius: RADIOS.md,
-    borderLeftWidth: ANCHO_BARRA_ESTADO,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.sm,
+    borderRadius: RADIOS.medio,
+    borderLeftWidth: BORDES.acento,
     overflow: 'hidden',
   },
-  // Sin capturar es lo único que debe llamar la atención: borde grueso y oscuro.
+  // Sin capturar es lo único que debe llamar la atención: blanco con barra oscura.
   filaSinCapturar: {
     backgroundColor: COLORES.fondo,
-    borderWidth: 2,
-    borderLeftWidth: ANCHO_BARRA_ESTADO,
-    borderColor: COLORES.texto,
+    borderLeftColor: COLORES.texto,
   },
   filaConCantidad: {
-    backgroundColor: COLORES.superficie,
-    borderWidth: 1,
-    borderLeftWidth: ANCHO_BARRA_ESTADO,
-    borderColor: COLORES.capturado,
+    backgroundColor: COLORES.capturadoFondo,
+    borderLeftColor: COLORES.capturado,
   },
   filaEnCero: {
-    backgroundColor: COLORES.superficie,
-    borderWidth: 1,
-    borderLeftWidth: ANCHO_BARRA_ESTADO,
-    borderColor: COLORES.borde,
+    backgroundColor: COLORES.pendienteFondo,
+    borderLeftColor: COLORES.pendiente,
   },
+  // Lo que se está editando lleva la marca, igual que el teclado.
   filaActiva: {
-    borderWidth: 3,
-    borderLeftWidth: ANCHO_BARRA_ESTADO,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marcaClaro,
+    borderLeftColor: COLORES.marca,
   },
   encabezado: {
+    minHeight: ALTO_ENCABEZADO,
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
   },
   nombre: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
   },
   marcaCero: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.pendienteTexto,
   },
   captura: {
     flexDirection: 'row',
@@ -377,32 +347,34 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
     backgroundColor: COLORES.fondo,
-    borderWidth: 1,
+    borderWidth: BORDES.fino,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   campoConAviso: {
-    borderWidth: 2,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.discrepancia,
   },
   campoActivo: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
   },
   huecoCampo: {
     flex: 1,
   },
+  // Rótulo y cifra a la derecha: en la lista, los campos forman columnas de
+  // números alineados (120 sobre 99), como en una hoja de conteo.
   etiquetaCampo: {
-    fontSize: TIPOGRAFIA.tamanos.xs,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.micro,
     color: COLORES.textoSecundario,
     textTransform: 'uppercase',
+    textAlign: 'right',
   },
   valorCampo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
-    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    ...CIFRAS,
   },
   valorVacio: {
     color: COLORES.textoSecundario,
@@ -416,16 +388,21 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   numeroTotal: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
     color: COLORES.texto,
-    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    ...CIFRAS,
+  },
+  numeroTotalCapturado: {
+    color: COLORES.capturadoTexto,
   },
   numeroTotalApagado: {
     color: COLORES.textoSecundario,
   },
   unidadTotal: {
-    fontSize: TIPOGRAFIA.tamanos.xs,
+    ...TIPOGRAFIA.micro,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   botonCero: {
@@ -434,9 +411,9 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORES.fondo,
-    borderWidth: 2,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   botonCeroMarcado: {
     backgroundColor: COLORES.pendiente,
@@ -444,38 +421,40 @@ const estilos = StyleSheet.create({
   },
   // Inversión completa: se nota aun con poca luz.
   botonCeroPresionado: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
   },
   botonCeroBloqueado: {
-    opacity: 0.3,
+    opacity: OPACIDAD.bloqueado,
   },
   textoCero: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
+  // Sin relleno vertical ni contorno: el bloque tintado se distingue solo y la fila no crece.
   aviso: {
-    paddingLeft: ESPACIADO.sm,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORES.discrepancia,
+    paddingHorizontal: ESPACIADO.sm,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.chico,
   },
   avisoError: {
-    borderLeftColor: COLORES.error,
+    backgroundColor: COLORES.errorFondo,
   },
   marcaEnvio: {
-    minWidth: 16,
+    minWidth: ESPACIADO.lg,
     textAlign: 'center',
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
     color: COLORES.textoSecundario,
   },
   marcaEnvioRechazada: {
     color: COLORES.error,
   },
   textoAviso: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.discrepanciaTexto,
+  },
+  textoAvisoError: {
+    color: COLORES.errorTexto,
   },
 });

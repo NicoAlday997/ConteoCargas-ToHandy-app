@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  ActivityIndicator,
   BackHandler,
   Modal,
   Pressable,
@@ -23,6 +22,16 @@ import {
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { obtenerUsuarioSesion } from '../../src/api/sesion';
+import {
+  BloqueError,
+  BloqueEsqueleto,
+  Boton,
+  Encabezado as EncabezadoBase,
+  EstadoVacio,
+  Esqueleto,
+  LineaEsqueleto,
+  NotaEncabezado,
+} from '../../src/componentes/base';
 import { olvidarCarga } from '../../src/conteo/almacen-conteo';
 import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
 import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
@@ -46,7 +55,7 @@ import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
 import { diaDesdeApi, diaNegocio, esDia, textoSalida } from '../../src/conteo/fecha-operativa';
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { ANCHO_MODAL, BORDES, CIFRAS, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /** 9999 piezas sueltas o paquetes ya es un error de dedo, no una carga. */
 const MAX_DIGITOS = 4;
@@ -55,6 +64,13 @@ const ANCHO_TECLADO_LATERAL = 380;
 const ANCHO_MINIMO_FILA = 330;
 /** Tras cambiar el alto de la lista (se abre el teclado) hay que esperar al layout. */
 const RETRASO_SCROLL_MS = 60;
+/**
+ * Entre productos: lo justo para que un renglón no se confunda con el siguiente.
+ * Densa a propósito: el contador recorre 73 productos y cada punto cuenta.
+ */
+const SEPARACION_FILAS = RITMO.interno;
+/** Filas de relleno del esqueleto: más de las que caben, para que no se vea el final. */
+const FILAS_ESQUELETO = 6;
 
 interface Edicion {
   code: string;
@@ -119,11 +135,11 @@ export default function PantallaConteo() {
   if (!eventoId || !sesionId) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
+        <EstadoVacio
+          icono="lista"
           titulo="No se encontró la sesión de conteo"
-          detalle="Vuelve al inicio y entra otra vez a tu carga."
-          textoBoton="Volver al inicio"
-          onPress={() => router.replace('/')}
+          detalle="Vuelve al inicio y entra otra vez a tu carga: lo contado sigue guardado en este teléfono."
+          accion={{ texto: 'Volver al inicio', onPress: () => router.replace('/') }}
         />
       </SafeAreaView>
     );
@@ -352,28 +368,27 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   // ---- Estado general ---------------------------------------------------
 
   if (consulta.isPending || conteo === null) {
-    return (
-      <SafeAreaView style={estilos.pantalla}>
-        <View style={estilos.centrado} accessibilityLabel="Cargando productos" accessibilityState={{ busy: true }}>
-          <ActivityIndicator size="large" color={COLORES.texto} />
-        </View>
-      </SafeAreaView>
-    );
+    return <EsqueletoConteo titulo={tituloCarga} />;
   }
 
   if (consulta.isError) {
+    const sinRed = consulta.error instanceof ErrorRed;
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
-          titulo="No se pudo cargar la lista de productos"
-          detalle={
-            consulta.error instanceof ErrorRed
-              ? 'Sin conexión. La lista de productos se descarga la primera vez que abres la carga; después ya puedes contar sin señal.'
-              : consulta.error.message || 'Revisa la conexión y vuelve a intentarlo.'
-          }
-          textoBoton={consulta.isFetching ? 'Cargando…' : 'Reintentar'}
-          onPress={() => void consulta.refetch()}
-        />
+        <View style={estilos.contenedorAviso}>
+          <BloqueError
+            titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar la lista de productos'}
+            detalle={
+              sinRed
+                ? 'La lista de productos se descarga la primera vez que abres la carga; después ya puedes contar sin señal.'
+                : consulta.error.message || 'Revisa la conexión y vuelve a intentarlo.'
+            }
+            tono={sinRed ? 'atencion' : 'error'}
+            onReintentar={() => void consulta.refetch()}
+            reintentando={consulta.isFetching}
+            secundaria={{ texto: 'Volver al inicio', onPress: () => router.back() }}
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -381,11 +396,11 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   if (productos.length === 0) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
+        <EstadoVacio
+          icono="caja"
           titulo="Esta carga no tiene productos"
-          detalle="La plantilla de tu ruta está vacía. Avisa a tu supervisor."
-          textoBoton="Volver al inicio"
-          onPress={() => router.back()}
+          detalle="La plantilla de tu ruta está vacía, así que no hay nada que contar. Avisa a tu supervisor para que la revise."
+          accion={{ texto: 'Volver al inicio', onPress: () => router.back() }}
         />
       </SafeAreaView>
     );
@@ -561,45 +576,16 @@ function Encabezado({
   const fraccion = total > 0 ? capturados / total : 0;
 
   return (
-    <View style={estilos.encabezado}>
-      <View style={estilos.filaEncabezado}>
-        <Pressable
-          onPress={onVolver}
-          accessibilityRole="button"
-          accessibilityLabel="Volver al inicio. Lo contado queda guardado."
-          hitSlop={ESPACIADO.sm}
-          style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
-        >
-          {({ pressed }) => <Text style={[estilos.textoVolver, pressed && estilos.textoInvertido]}>‹</Text>}
-        </Pressable>
-        <View style={estilos.titulos}>
-          <Text style={estilos.titulo} accessibilityRole="header" numberOfLines={1}>
-            {titulo}
-          </Text>
-          {/* Siempre a la vista: quien cuenta debe saber para qué día es la carga. */}
-          {fechaOperativa && (
-            <Text style={estilos.fechaOperativa} numberOfLines={2}>
-              {textoSalida(fechaOperativa, diaNegocio(new Date()))}
-            </Text>
-          )}
-          {subtitulo && (
-            <Text style={estilos.subtitulo} numberOfLines={1}>
-              {subtitulo}
-            </Text>
-          )}
-          {/* Discreto: es contexto, no algo que haya que resolver para contar. */}
-          {inicio === 'permiso' && (
-            <Text style={estilos.notaInicio} numberOfLines={2}>
-              Iniciada con autorización del supervisor
-            </Text>
-          )}
-          {inicio === 'no-verificada' && (
-            <Text style={estilos.notaInicio} numberOfLines={2}>
-              No se pudo confirmar en Handy que la ruta anterior esté liquidada
-            </Text>
-          )}
-        </View>
-        {/* Se ve deshabilitado pero responde: al tocarlo dice CUÁLES faltan, o por qué aún no se puede. */}
+    <EncabezadoBase
+      titulo={titulo}
+      marca
+      lineasTitulo={1}
+      // Siempre a la vista y con peso: quien cuenta debe saber para qué día es la carga.
+      subtitulo={fechaOperativa ? textoSalida(fechaOperativa, diaNegocio(new Date())) : null}
+      onVolver={onVolver}
+      etiquetaVolver="Volver al inicio. Lo contado queda guardado."
+      accion={
+        // Se ve deshabilitado pero responde: al tocarlo dice CUÁLES faltan, o por qué aún no se puede.
         <Pressable
           onPress={onFinalizar}
           accessibilityRole="button"
@@ -617,30 +603,41 @@ function Encabezado({
             pressed && estilos.botonFinalizarPresionado,
           ]}
         >
-          <Text style={[estilos.textoFinalizar, listo && estilos.textoInvertido]}>Finalizar</Text>
+          <Text style={estilos.textoFinalizar}>{listo ? '✓ Finalizar' : 'Finalizar'}</Text>
         </Pressable>
-      </View>
-
-      <View style={estilos.filaProgreso}>
-        <Text style={estilos.textoProgreso} accessibilityLiveRegion="polite">
-          <Text style={estilos.numeroProgreso}>{capturados}</Text> de {total} capturados
-        </Text>
-        <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
-      </View>
-      <View
-        style={estilos.barra}
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: total, now: capturados }}
-      >
-        <View
-          style={[
-            estilos.rellenoBarra,
-            { width: `${fraccion * 100}%` },
-            completo && estilos.rellenoBarraCompleto,
-          ]}
-        />
-      </View>
-    </View>
+      }
+      inferior={
+        <>
+          <View style={estilos.filaProgreso}>
+            <Text style={estilos.textoProgreso} accessibilityLiveRegion="polite">
+              <Text style={estilos.numeroProgreso}>{capturados}</Text> de <Text style={estilos.totalProgreso}>{total}</Text>{' '}
+              capturados
+            </Text>
+            <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
+          </View>
+          <View
+            style={estilos.barra}
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: total, now: capturados }}
+          >
+            <View
+              style={[
+                estilos.rellenoBarra,
+                { width: `${fraccion * 100}%` },
+                completo && estilos.rellenoBarraCompleto,
+              ]}
+            />
+          </View>
+        </>
+      }
+    >
+      {subtitulo && <NotaEncabezado lineas={1}>{subtitulo}</NotaEncabezado>}
+      {/* Discreto: es contexto, no algo que haya que resolver para contar. */}
+      {inicio === 'permiso' && <NotaEncabezado>Iniciada con autorización del supervisor</NotaEncabezado>}
+      {inicio === 'no-verificada' && (
+        <NotaEncabezado>No se pudo confirmar en Handy que la ruta anterior esté liquidada</NotaEncabezado>
+      )}
+    </EncabezadoBase>
   );
 }
 
@@ -653,7 +650,12 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 
   if (ultimoError?.tipo === 'sesion-expirada') {
     return (
-      <Pressable onPress={() => router.replace('/login')} accessibilityRole="button" hitSlop={ESPACIADO.sm}>
+      <Pressable
+        onPress={() => router.replace('/login')}
+        accessibilityRole="button"
+        hitSlop={ESPACIADO.sm}
+        style={[estilos.pildoraEstado, estilos.pildoraError]}
+      >
         <Text style={[estilos.guardado, estilos.guardadoError]}>Sesión vencida · entra de nuevo ›</Text>
       </Pressable>
     );
@@ -680,6 +682,12 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   }
 
   const reintentable = hayConexion && !sincronizando && (pendientes > 0 || ultimoError?.tipo === 'rechazo');
+  // Píldora tintada: se lee igual sobre el azul del encabezado y no crece la línea.
+  const pildora = [
+    estilos.pildoraEstado,
+    tono === 'atencion' && estilos.pildoraAtencion,
+    tono === 'error' && estilos.pildoraError,
+  ];
   const contenido = (
     <Text
       style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
@@ -691,14 +699,14 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
     </Text>
   );
 
-  if (!reintentable) return contenido;
+  if (!reintentable) return <View style={pildora}>{contenido}</View>;
   return (
     <Pressable
       onPress={onReintentar}
       accessibilityRole="button"
       accessibilityLabel={`${texto}. Reintentar ahora`}
       hitSlop={ESPACIADO.sm}
-      style={estilos.indicadorPresionable}
+      style={pildora}
     >
       {contenido}
     </Pressable>
@@ -713,8 +721,10 @@ function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conte
       <Text style={estilos.nombreFamilia} numberOfLines={1}>
         {seccion.titulo}
       </Text>
-      <Text style={[estilos.conteoFamilia, completa && estilos.conteoFamiliaCompleta]}>
-        {completa ? '✓ ' : ''}
+      <Text
+        style={[estilos.conteoFamilia, completa && estilos.conteoFamiliaCompleta]}
+        accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
+      >
         {capturados} de {total}
       </Text>
     </View>
@@ -776,7 +786,7 @@ function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPend
             ))}
           </ScrollView>
           <View style={estilos.botonesModal}>
-            <BotonModal texto="Seguir contando" onPress={onCerrar} />
+            <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} style={estilos.botonModal} />
           </View>
         </View>
       </View>
@@ -881,8 +891,8 @@ function PanelBloqueo({
             </ScrollView>
           )}
           <View style={estilos.botonesModal}>
-            <BotonModal texto="Seguir contando" onPress={onCerrar} />
-            {accion && <BotonModal texto={accion.texto} onPress={accion.onPress} principal />}
+            <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} style={estilos.botonModal} />
+            {accion && <Boton texto={accion.texto} onPress={accion.onPress} style={estilos.botonModal} />}
           </View>
         </View>
       </View>
@@ -978,26 +988,34 @@ function PanelConfirmar({
           <Text style={estilos.detalleModal}>Después de finalizar ya no podrás cambiarlo.</Text>
 
           {!puedeFinalizar && !error && (
-            <Text style={estilos.errorModal} accessibilityRole="alert">
-              {bloqueo === 'sin-conexion'
-                ? 'Se perdió la conexión. Para finalizar necesitas señal: la comparación de conteos ocurre en el servidor.'
-                : 'Espera a que todo el conteo llegue al servidor.'}
-            </Text>
+            <BloqueError
+              tono="atencion"
+              titulo={bloqueo === 'sin-conexion' ? 'Se perdió la conexión' : 'Falta enviar parte del conteo'}
+              detalle={
+                bloqueo === 'sin-conexion'
+                  ? 'Para finalizar necesitas señal: la comparación de conteos ocurre en el servidor.'
+                  : 'Espera a que todo el conteo llegue al servidor; se envía solo.'
+              }
+            />
           )}
 
-          {error && (
-            <Text style={estilos.errorModal} accessibilityRole="alert">
-              {error}
-            </Text>
-          )}
+          {error && <BloqueError titulo="No se pudo finalizar" detalle={error} />}
 
           <View style={estilos.botonesModal}>
-            <BotonModal texto="Seguir contando" onPress={cerrar} deshabilitado={ocupado} />
-            <BotonModal
-              texto={fase === 'finalizando' ? 'Finalizando…' : 'Finalizar conteo'}
+            <Boton
+              texto="Seguir contando"
+              variante="secundario"
+              onPress={cerrar}
+              deshabilitado={ocupado}
+              style={estilos.botonModal}
+            />
+            <Boton
+              texto="Finalizar conteo"
               onPress={finalizar}
-              deshabilitado={ocupado || !puedeFinalizar}
-              principal
+              cargando={fase === 'finalizando'}
+              textoCargando="Finalizando…"
+              deshabilitado={!puedeFinalizar}
+              style={estilos.botonModal}
             />
           </View>
         </View>
@@ -1006,162 +1024,75 @@ function PanelConfirmar({
   );
 }
 
-interface PropsBotonModal {
-  texto: string;
-  onPress: () => void;
-  deshabilitado?: boolean;
-  principal?: boolean;
-}
-
-function BotonModal({ texto, onPress, deshabilitado = false, principal = false }: PropsBotonModal) {
+/**
+ * La forma del conteo mientras llega la lista: el encabezado con su título y
+ * los primeros productos, del mismo alto que las filas reales.
+ */
+function EsqueletoConteo({ titulo }: { titulo: string }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: deshabilitado, busy: deshabilitado && principal }}
-      style={({ pressed }) => [
-        estilos.botonModal,
-        principal && estilos.botonModalPrincipal,
-        pressed && estilos.botonModalPresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      {({ pressed }) => (
-        <Text style={[estilos.textoBotonModal, (principal || pressed) && estilos.textoInvertido]}>{texto}</Text>
-      )}
-    </Pressable>
-  );
-}
-
-function EstadoCentral({
-  titulo,
-  detalle,
-  textoBoton,
-  onPress,
-}: {
-  titulo: string;
-  detalle: string;
-  textoBoton: string;
-  onPress: () => void;
-}) {
-  return (
-    <View style={estilos.centrado}>
-      <Text style={estilos.tituloModal}>{titulo}</Text>
-      <Text style={[estilos.detalleModal, estilos.textoCentrado]}>{detalle}</Text>
-      <View style={[estilos.botonesModal, estilos.botonCentral]}>
-        <BotonModal texto={textoBoton} onPress={onPress} principal />
-      </View>
-    </View>
+    <SafeAreaView style={estilos.pantalla}>
+      <EncabezadoBase titulo={titulo} marca lineasTitulo={1} onVolver={() => router.back()} etiquetaVolver="Volver al inicio">
+        <LineaEsqueleto nivel="subtitulo" ancho="60%" sobreMarca />
+      </EncabezadoBase>
+      <Esqueleto etiqueta="Cargando productos" style={estilos.contenidoLista}>
+        <View style={estilos.encabezadoFamilia}>
+          <LineaEsqueleto nivel="cuerpo" ancho="40%" />
+        </View>
+        {Array.from({ length: FILAS_ESQUELETO }, (_, i) => (
+          <View key={i} style={[estilos.filaColumnas, estilos.filaEsqueleto]}>
+            <View style={estilos.cuerpoFilaEsqueleto}>
+              <LineaEsqueleto nivel="titulo" ancho="70%" />
+              <BloqueEsqueleto alto={TOQUE_MINIMO} />
+            </View>
+          </View>
+        ))}
+      </Esqueleto>
+    </SafeAreaView>
   );
 }
 
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
   },
-  centrado: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.xl,
-  },
-  textoCentrado: {
-    textAlign: 'center',
-  },
-  botonCentral: {
-    alignSelf: 'stretch',
-    maxWidth: 360,
-    marginTop: ESPACIADO.md,
+  contenedorAviso: {
+    width: '100%',
+    maxWidth: ANCHO_MODAL,
+    alignSelf: 'center',
+    padding: RITMO.margen,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
-  deshabilitado: {
-    opacity: 0.5,
-  },
 
-  // Encabezado
-  encabezado: {
-    gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    paddingTop: ESPACIADO.sm,
-    paddingBottom: ESPACIADO.md,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORES.texto,
-    backgroundColor: COLORES.fondo,
-  },
-  filaEncabezado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO.sm,
-  },
-  botonVolver: {
-    width: TOQUE_MINIMO,
-    minHeight: TOQUE_MINIMO,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -ESPACIADO.sm,
-    borderRadius: RADIOS.md,
-  },
-  botonVolverPresionado: {
-    backgroundColor: COLORES.texto,
-  },
-  textoVolver: {
-    fontSize: TIPOGRAFIA.tamanos.xxxl,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  titulos: {
-    flex: 1,
-  },
-  titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  fechaOperativa: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  subtitulo: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSecundario,
-  },
-  notaInicio: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontStyle: 'italic',
-    color: COLORES.textoSecundario,
-  },
+  // Encabezado (sobre el azul de marca: todo texto en blanco o en píldora tintada)
   botonFinalizar: {
     minHeight: TOQUE_MINIMO,
     paddingHorizontal: ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.md,
-    borderWidth: 2,
+    borderRadius: RADIOS.medio,
+    borderWidth: BORDES.medio,
   },
+  // Verde con contorno blanco: sobre el azul, el contorno lo separa del fondo.
   botonFinalizarListo: {
     backgroundColor: COLORES.capturado,
-    borderColor: COLORES.capturado,
+    borderColor: COLORES.textoSobreColor,
   },
   botonFinalizarBloqueado: {
-    borderColor: COLORES.borde,
-    opacity: 0.5,
+    borderColor: COLORES.marcaClaro,
+    opacity: OPACIDAD.deshabilitado,
   },
   botonFinalizarPresionado: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marcaOscuro,
+    borderColor: COLORES.textoSobreColor,
     opacity: 1,
   },
   textoFinalizar: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.textoSobreColor,
   },
   filaProgreso: {
     flexDirection: 'row',
@@ -1170,48 +1101,68 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.md,
   },
   textoProgreso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.marcaClaro,
+    ...CIFRAS,
   },
+  // Lo que se busca al levantar la vista: cuántos van. Mismo alto de línea que
+  // el subtítulo, así el encabezado no crece.
   numeroProgreso: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    fontVariant: ['tabular-nums'],
+    ...TIPOGRAFIA.subtitulo,
+    fontSize: TIPOGRAFIA.titulo.fontSize,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.textoSobreColor,
+    ...CIFRAS,
+  },
+  totalProgreso: {
+    fontWeight: PESOS.negrita,
+    color: COLORES.textoSobreColor,
+    ...CIFRAS,
+  },
+  pildoraEstado: {
+    flexShrink: 1,
+    paddingHorizontal: ESPACIADO.sm,
+    paddingVertical: ESPACIADO.xs,
+    backgroundColor: COLORES.marcaClaro,
+    borderRadius: RADIOS.completo,
+  },
+  pildoraAtencion: {
+    backgroundColor: COLORES.discrepanciaFondo,
+  },
+  pildoraError: {
+    backgroundColor: COLORES.errorFondo,
   },
   guardado: {
-    flexShrink: 1,
     textAlign: 'right',
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.semiNegrita,
+    color: COLORES.marcaOscuro,
+    ...CIFRAS,
   },
   guardadoAtencion: {
-    color: COLORES.discrepancia,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.discrepanciaTexto,
+    fontWeight: PESOS.negrita,
   },
   guardadoError: {
-    color: COLORES.error,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-  },
-  indicadorPresionable: {
-    flexShrink: 1,
+    color: COLORES.errorTexto,
+    fontWeight: PESOS.negrita,
   },
   barra: {
-    height: 10,
-    backgroundColor: COLORES.superficie,
+    height: ESPACIADO.sm,
+    backgroundColor: COLORES.marcaOscuro,
     borderRadius: RADIOS.completo,
     overflow: 'hidden',
   },
   rellenoBarra: {
     height: '100%',
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.textoSobreColor,
   },
+  // Verde claro: sobre el azul se distingue del blanco sin perder contraste.
   rellenoBarraCompleto: {
-    backgroundColor: COLORES.capturado,
+    backgroundColor: COLORES.capturadoFondo,
   },
 
-  // Lista
+  // Lista (densa: ver SEPARACION_FILAS)
   cuerpo: {
     flex: 1,
   },
@@ -1225,6 +1176,8 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     paddingBottom: ESPACIADO.xxxl,
   },
+  // Más aire arriba que abajo: la familia agrupa lo que sigue. Mide lo mismo
+  // que antes (16 de relleno en total): no cuesta productos por pantalla.
   encabezadoFamilia: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1232,152 +1185,138 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.md,
     marginHorizontal: -ESPACIADO.md,
     paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.borde,
+    paddingTop: ESPACIADO.lg,
+    backgroundColor: COLORES.fondoPantalla,
   },
   nombreFamilia: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+  // Texto, no píldora: el avance de la familia informa, no pide acción.
   conteoFamilia: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
     color: COLORES.textoSecundario,
-    fontVariant: ['tabular-nums'],
+    ...CIFRAS,
   },
   conteoFamiliaCompleta: {
-    color: COLORES.capturado,
+    color: COLORES.capturadoTexto,
   },
+  // Más aire entre productos que dentro de cada uno: un renglón no se confunde con el siguiente.
   filaColumnas: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
-    paddingTop: ESPACIADO.sm,
+    gap: SEPARACION_FILAS,
+    paddingTop: SEPARACION_FILAS,
   },
   huecoColumna: {
     flex: 1,
   },
+  filaEsqueleto: {
+    flexDirection: 'column',
+  },
+  cuerpoFilaEsqueleto: {
+    gap: ESPACIADO.sm,
+    padding: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    backgroundColor: COLORES.fondo,
+    borderRadius: RADIOS.medio,
+  },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
-    borderLeftWidth: 2,
-    borderLeftColor: COLORES.texto,
+    backgroundColor: COLORES.fondoPantalla,
+    borderLeftWidth: BORDES.grueso,
+    borderLeftColor: COLORES.marca,
   },
   lateralVacio: {
     flex: 1,
     justifyContent: 'center',
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
     padding: ESPACIADO.xl,
   },
   textoLateralVacio: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
-    textAlign: 'center',
   },
   detalleLateralVacio: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.textoSecundario,
-    textAlign: 'center',
   },
 
   // Paneles
   fondoModal: {
     flex: 1,
     justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: RITMO.margen,
+    backgroundColor: COLORES.velo,
   },
   modal: {
     width: '100%',
-    maxWidth: 560,
+    maxWidth: ANCHO_MODAL,
     maxHeight: '90%',
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: RITMO.relacionado,
+    padding: ESPACIADO.xl,
     backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.lg,
+    borderRadius: RADIOS.grande,
   },
   tituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
   detalleModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
-  },
-  errorModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.error,
   },
   listaModal: {
     flexGrow: 0,
   },
   contenidoListaModal: {
-    gap: ESPACIADO.md,
+    gap: ESPACIADO.lg,
   },
   grupoModal: {
     gap: ESPACIADO.xs,
   },
   familiaModal: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.micro,
+    fontWeight: PESOS.negrita,
     color: COLORES.textoSecundario,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+  // Renglón sobre fondo gris claro: se distingue del blanco del panel sin contorno.
   pendiente: {
     minHeight: TOQUE_MINIMO,
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.sm,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.medio,
   },
   pendientePresionado: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.marcaClaro,
+    transform: [{ scale: 0.98 }],
   },
   nombrePendiente: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
   flechaPendiente: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.regular,
+    color: COLORES.marca,
   },
   botonesModal: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
+    gap: RITMO.relacionado,
   },
   botonModal: {
     flex: 1,
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonModalPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonModalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBotonModal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
   },
 });

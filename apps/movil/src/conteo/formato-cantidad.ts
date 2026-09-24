@@ -26,7 +26,12 @@ export function formatearEnPaquetes(piezas: number, piezasPorPaquete: number | n
   return `${plural(paquetes, 'paquete', 'paquetes')} y ${plural(sueltas, 'pieza', 'piezas')}`;
 }
 
+/** "18 piezas", "1 pieza": toda cantidad en piezas se escribe así en la app, sin abreviar. */
+export function formatearPiezas(piezas: number): string {
+  return plural(piezas, 'pieza', 'piezas');
+}
+
 /** "(18 piezas)": el total como dato secundario, junto a la cantidad en paquetes. */
 export function formatearTotalPiezas(piezas: number): string {
-  return `(${plural(piezas, 'pieza', 'piezas')})`;
+  return `(${formatearPiezas(piezas)})`;
 }

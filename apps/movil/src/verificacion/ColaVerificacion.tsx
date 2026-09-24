@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import { ETIQUETAS_TIPO_CARGA, type CargaPendienteApi, type TipoCarga } from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useAbrirSesion, useDesbloquearCarga, usePendientesVerificacion } from '../api/hooks-cargas';
+import {
+  BloqueError,
+  Boton,
+  EstadoVacio,
+  Esqueleto,
+  LineaEsqueleto,
+  Seccion,
+  TarjetaEsqueleto,
+  TituloSeccion,
+} from '../componentes/base';
 import type { CargaAbierta } from '../conteo/almacen-conteo';
 import { estaConectado } from '../conteo/cola-sincronizacion';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
-
-const ANCHO_BARRA_ESTADO = 6;
+import { horaNegocio } from '../conteo/fecha-operativa';
+import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 const MENSAJE_SIN_RED =
-  'Sin conexión. Para empezar a verificar necesitas señal: el servidor abre tu conteo y te manda la lista de productos. Ya abierto, puedes contar sin señal.';
+  'Para empezar a verificar necesitas señal: el servidor abre tu conteo y te manda la lista de productos. Ya abierto, puedes contar sin señal.';
 
 /** Fila ya validada: sin id no hay carga que abrir. */
 interface CargaEnCola {
@@ -47,12 +56,6 @@ function normalizar(fila: CargaPendienteApi): CargaEnCola | null {
   };
 }
 
-/** Hora local HH:MM sin depender de Intl (Hermes no siempre lo trae completo). */
-function formatearHora(fecha: Date): string {
-  const dosDigitos = (n: number) => String(n).padStart(2, '0');
-  return `${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;
-}
-
 interface Props {
   /** La sesión ya está abierta en el servidor: guardarla y llevar al conteo. */
   onAbrir: (carga: CargaAbierta) => void;
@@ -71,7 +74,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
   const abrir = useAbrirSesion();
   const [bloqueada, setBloqueada] = useState<CargaEnCola | null>(null);
   const [abriendo, setAbriendo] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ mensaje: string; sinRed: boolean } | null>(null);
 
   const sesionVencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
@@ -95,7 +98,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       return;
     }
     if (!estaConectado(await NetInfo.fetch())) {
-      setError(MENSAJE_SIN_RED);
+      setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
       return;
     }
     setAbriendo(carga.id);
@@ -106,7 +109,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       onAbrir({ eventoId: carga.id, sesionId: sesion.id, tipo: carga.tipo });
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 401) return onSesionVencida();
-      if (e instanceof ErrorRed) return setError(MENSAJE_SIN_RED);
+      if (e instanceof ErrorRed) return setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
       if (e instanceof ErrorApi && e.estado === 409) {
         // El servidor revisa el corte al abrir: puede haberse bloqueado recién.
         const actualizada = (await consulta.refetch()).data?.map(normalizar).find((c) => c?.id === carga.id);
@@ -117,46 +120,68 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       }
       // El aviso vive en la lista: el panel se cierra para que se lea.
       setBloqueada(null);
-      setError(e instanceof Error && e.message ? e.message : 'No se pudo abrir la verificación.');
+      setError({ mensaje: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.', sinRed: false });
     } finally {
       setAbriendo(null);
     }
   };
 
   if (consulta.isPending) {
-    return <ActivityIndicator style={estilos.cargando} color={COLORES.texto} accessibilityLabel="Cargando cargas por verificar" />;
+    return (
+      <Esqueleto etiqueta="Cargando cargas por verificar" style={estilos.contenedor}>
+        <LineaEsqueleto nivel="subtitulo" ancho="50%" />
+        <TarjetaEsqueleto compacta titulo="titulo" />
+        <TarjetaEsqueleto compacta titulo="titulo" />
+      </Esqueleto>
+    );
   }
 
   if (consulta.isError && !consulta.data) {
+    const sinRed = consulta.error instanceof ErrorRed;
     return (
-      <View style={estilos.contenedor}>
-        <Text style={estilos.aviso}>
-          {consulta.error instanceof ErrorRed
-            ? 'Sin conexión: no se pudo consultar qué cargas esperan verificación.'
-            : consulta.error.message || 'No se pudo consultar qué cargas esperan verificación.'}
-        </Text>
-        <BotonTexto texto={consulta.isFetching ? 'Consultando…' : 'Reintentar'} onPress={() => void consulta.refetch()} />
-      </View>
+      <Seccion texto="Cargas por verificar">
+        <BloqueError
+          titulo={sinRed ? 'Sin conexión' : 'No se pudo consultar la cola'}
+          detalle={
+            sinRed
+              ? 'La lista de cargas por verificar vive en el servidor: revisa tu señal.'
+              : consulta.error.message || 'Intenta de nuevo en un momento.'
+          }
+          tono={sinRed ? 'atencion' : 'error'}
+          onReintentar={() => void consulta.refetch()}
+          reintentando={consulta.isFetching}
+        />
+      </Seccion>
     );
   }
 
   return (
     <View style={estilos.contenedor}>
-      <View style={estilos.filaTitulo}>
-        <Text style={estilos.titulo} accessibilityRole="header">
-          Cargas por verificar
-        </Text>
-        <BotonTexto texto={consulta.isFetching ? 'Actualizando…' : 'Actualizar'} onPress={() => void consulta.refetch()} />
-      </View>
+      <TituloSeccion
+        texto="Cargas por verificar"
+        accion={{
+          texto: consulta.isFetching ? 'Actualizando…' : 'Actualizar',
+          onPress: () => void consulta.refetch(),
+          accessibilityLabel: 'Actualizar la lista de cargas por verificar',
+        }}
+      />
 
       {cargas.length === 0 && (
-        <Text style={estilos.aviso}>Ninguna carga espera verificación. Aparecen aquí cuando un vendedor termina su conteo.</Text>
+        <EstadoVacio
+          enLinea
+          icono="listo"
+          tono="capturado"
+          titulo="No hay cargas esperando"
+          detalle="Cuando un vendedor termine su conteo, su carga aparecerá aquí para que la verifiques."
+        />
       )}
 
       {error && (
-        <Text style={estilos.error} accessibilityRole="alert">
-          {error}
-        </Text>
+        <BloqueError
+          titulo={error.sinRed ? 'Sin conexión' : 'No se pudo abrir la verificación'}
+          detalle={error.mensaje}
+          tono={error.sinRed ? 'atencion' : 'error'}
+        />
       )}
 
       <Grupo titulo="Listas para verificar" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
@@ -186,14 +211,11 @@ function Grupo({
 }) {
   if (cargas.length === 0) return null;
   return (
-    <View style={estilos.grupo}>
-      <Text style={estilos.tituloGrupo}>
-        {titulo} · {cargas.length}
-      </Text>
+    <Seccion texto={titulo} detalle={String(cargas.length)} nivel="grupo">
       {cargas.map((c) => (
         <FilaCarga key={c.id} carga={c} abriendo={abriendo === c.id} deshabilitada={abriendo !== null} onPress={onPress} />
       ))}
-    </View>
+    </Seccion>
   );
 }
 
@@ -218,8 +240,8 @@ function FilaCarga({
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
   const detalle = [
     carga.vendedorNombre ? `Contó ${carga.vendedorNombre}` : null,
-    carga.totalProductos !== null ? `${carga.totalProductos} productos` : null,
-    carga.fechaConteo ? formatearHora(carga.fechaConteo) : null,
+    carga.totalProductos !== null ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}` : null,
+    carga.fechaConteo ? `terminó a las ${horaNegocio(carga.fechaConteo)}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -335,7 +357,7 @@ function PanelBloqueada({
       onError: (e) =>
         setResultado({
           tipo: 'error',
-          mensaje: e instanceof ErrorRed ? 'Sin conexión: no se pudo consultar a Handy.' : e.message || 'No se pudo consultar a Handy.',
+          mensaje: e instanceof ErrorRed ? 'Sin conexión con el servidor. Revisa tu señal y reintenta.' : e.message || 'Intenta de nuevo en un momento.',
         }),
     });
   };
@@ -346,8 +368,8 @@ function PanelBloqueada({
   return (
     <Modal visible={carga !== null} transparent animationType="none" onRequestClose={cerrar}>
       <View style={estilos.fondoModal}>
-        <View style={[estilos.modal, libre && estilos.modalLibre]}>
-          <Text style={estilos.tituloModal} accessibilityRole="header">
+        <View style={estilos.modal}>
+          <Text style={[estilos.tituloModal, libre && estilos.tituloLibre]} accessibilityRole="header">
             {libre ? 'Ya se puede verificar' : 'No se puede verificar todavía'}
           </Text>
           {carga && (
@@ -368,27 +390,39 @@ function PanelBloqueada({
           )}
           <View style={estilos.zonaResultado} accessibilityLiveRegion="polite">
             {desbloquear.isPending && <Text style={estilos.textoModal}>Consultando a Handy…</Text>}
-            {resultado?.tipo === 'sigue' && <Text style={[estilos.textoModal, estilos.estadoBloqueada]}>{resultado.mensaje}</Text>}
-            {resultado?.tipo === 'error' && <Text style={estilos.error}>{resultado.mensaje}</Text>}
+            {resultado?.tipo === 'sigue' && (
+              <BloqueError titulo="Sigue pendiente" detalle={resultado.mensaje} tono="atencion" />
+            )}
+            {resultado?.tipo === 'error' && (
+              <BloqueError titulo="No se pudo consultar a Handy" detalle={resultado.mensaje} />
+            )}
           </View>
           <View style={estilos.botonesModal}>
-            <BotonModal texto="Cerrar" onPress={cerrar} deshabilitado={desbloquear.isPending || abriendo} />
+            <Boton
+              texto="Cerrar"
+              variante="secundario"
+              onPress={cerrar}
+              deshabilitado={desbloquear.isPending || abriendo}
+              style={estilos.botonModal}
+            />
             {libre && carga ? (
-              <BotonModal
-                texto={abriendo ? 'Abriendo…' : 'Verificar ahora'}
-                principal
-                deshabilitado={abriendo}
+              <Boton
+                texto="Verificar ahora"
+                cargando={abriendo}
+                textoCargando="Abriendo…"
                 onPress={() => {
                   setResultado(null);
                   onVerificar(carga);
                 }}
+                style={estilos.botonModal}
               />
             ) : (
-              <BotonModal
-                texto={desbloquear.isPending ? 'Consultando…' : 'Reintentar'}
-                principal
-                deshabilitado={desbloquear.isPending}
+              <Boton
+                texto="Reintentar"
+                cargando={desbloquear.isPending}
+                textoCargando="Consultando…"
                 onPress={reintentar}
+                style={estilos.botonModal}
               />
             )}
           </View>
@@ -398,226 +432,112 @@ function PanelBloqueada({
   );
 }
 
-function BotonTexto({ texto, onPress }: { texto: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      hitSlop={ESPACIADO.sm}
-      style={({ pressed }) => [estilos.botonTexto, pressed && estilos.filaPresionada]}
-    >
-      {({ pressed }) => <Text style={[estilos.textoBotonTexto, pressed && estilos.textoInvertido]}>{texto}</Text>}
-    </Pressable>
-  );
-}
-
-function BotonModal({
-  texto,
-  onPress,
-  principal = false,
-  deshabilitado = false,
-}: {
-  texto: string;
-  onPress: () => void;
-  principal?: boolean;
-  deshabilitado?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: deshabilitado }}
-      style={({ pressed }) => [
-        estilos.botonModal,
-        principal && estilos.botonModalPrincipal,
-        pressed && estilos.botonModalPresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      {({ pressed }) => (
-        <Text style={[estilos.textoBotonModal, (principal || pressed) && estilos.textoInvertido]}>{texto}</Text>
-      )}
-    </Pressable>
-  );
-}
-
 const estilos = StyleSheet.create({
+  // Del título a los grupos, más aire que dentro de cada grupo.
   contenedor: {
     width: '100%',
-    gap: ESPACIADO.md,
-  },
-  cargando: {
-    marginTop: ESPACIADO.xl,
-  },
-  filaTitulo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ESPACIADO.md,
-  },
-  titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  aviso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
-  },
-  error: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.error,
-  },
-  grupo: {
-    gap: ESPACIADO.sm,
-  },
-  tituloGrupo: {
-    marginTop: ESPACIADO.sm,
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
+    gap: ESPACIADO.xl,
   },
   fila: {
     minHeight: TOQUE_MINIMO + ESPACIADO.xl,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.md,
-    paddingRight: ESPACIADO.md,
+    gap: RITMO.margen,
+    paddingRight: RITMO.margen,
     backgroundColor: COLORES.fondo,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.grande,
     overflow: 'hidden',
   },
   filaInactiva: {
-    borderColor: COLORES.borde,
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.pendienteFondo,
   },
+  // Inversión completa: el toque se nota aun con poca luz.
   filaPresionada: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
   },
   barraEstado: {
     alignSelf: 'stretch',
-    width: ANCHO_BARRA_ESTADO,
+    width: BORDES.acento,
   },
   cuerpoFila: {
     flex: 1,
-    paddingVertical: ESPACIADO.md,
-    gap: 2,
+    paddingVertical: RITMO.margen,
   },
   ruta: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
   tipo: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
   detalle: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   estadoTexto: {
     marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   estadoBloqueada: {
-    color: COLORES.discrepancia,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    color: COLORES.discrepanciaTexto,
+    fontWeight: PESOS.negrita,
   },
   accion: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marca,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
   deshabilitado: {
-    opacity: 0.5,
-  },
-  botonTexto: {
-    minHeight: TOQUE_MINIMO,
-    justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.md,
-    borderRadius: RADIOS.md,
-  },
-  textoBotonTexto: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textDecorationLine: 'underline',
+    opacity: OPACIDAD.deshabilitado,
   },
   fondoModal: {
     flex: 1,
     justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: RITMO.margen,
+    backgroundColor: COLORES.velo,
   },
   modal: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: ANCHO_MODAL,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: RITMO.relacionado,
+    padding: ESPACIADO.xl,
     backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.lg,
-    borderTopWidth: ANCHO_BARRA_ESTADO,
-    borderTopColor: COLORES.discrepancia,
-  },
-  modalLibre: {
-    borderTopColor: COLORES.capturado,
+    borderRadius: RADIOS.grande,
   },
   tituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
+  tituloLibre: {
+    color: COLORES.capturadoTexto,
+  },
   subtituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.textoSecundario,
   },
   textoModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
+  // Altura reservada: el resultado no mueve los botones bajo el dedo.
   zonaResultado: {
-    minHeight: 44,
+    minHeight: ESPACIADO.xxxl,
     justifyContent: 'center',
   },
   botonesModal: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
+    gap: RITMO.relacionado,
   },
   botonModal: {
     flex: 1,
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonModalPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonModalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBotonModal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
   },
 });

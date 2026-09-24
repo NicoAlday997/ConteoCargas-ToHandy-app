@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useCapturarDiscrepancia, useConfirmarDiscrepancia, useDiscrepancias } from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
+import {
+  BloqueError,
+  Boton,
+  Encabezado,
+  EstadoVacio,
+  Esqueleto,
+  FilaDato,
+  LineaEsqueleto,
+  Tarjeta,
+  TarjetaEsqueleto,
+} from '../../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
 import {
@@ -16,7 +27,7 @@ import {
   type CapturaProducto,
 } from '../../src/conteo/estado-conteo';
 import { EtiquetaFactor } from '../../src/conteo/FilaProducto';
-import { formatearEnPaquetes, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
+import { formatearEnPaquetes, formatearPiezas, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
 import {
   capturaInicial,
@@ -30,15 +41,17 @@ import {
   type Discrepancia,
 } from '../../src/discrepancias/estado-discrepancia';
 import { useLayout } from '../../src/theme/breakpoints';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { ANCHO_MODAL, BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../../src/theme/tokens';
+import type { ColorEstado } from '../../src/theme/tokens';
 
 /** Igual que en el conteo: 9999 ya es un error de dedo. */
 const MAX_DIGITOS = 4;
 const ANCHO_TECLADO_LATERAL = 380;
 const ANCHO_MAXIMO_LISTA = 720;
-const ANCHO_BARRA_ESTADO = 6;
 /** Tras abrir el teclado hay que esperar al layout para llevar la tarjeta a la vista. */
 const RETRASO_SCROLL_MS = 60;
+/** El modal del PIN es más angosto que los demás: el teclado se ve como el del login. */
+const ANCHO_MODAL_PIN = ANCHO_MODAL - ESPACIADO.xl - ESPACIADO.lg;
 
 interface Edicion {
   code: string;
@@ -92,11 +105,11 @@ export default function PantallaDiscrepancias() {
   if (!eventoId) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
+        <EstadoVacio
+          icono="lista"
           titulo="No se encontró la carga"
-          detalle="Vuelve al inicio y entra otra vez."
-          textoBoton="Volver al inicio"
-          onPress={() => router.replace('/')}
+          detalle="Vuelve al inicio y entra otra vez desde el acceso a las diferencias por resolver."
+          accion={{ texto: 'Volver al inicio', onPress: () => router.replace('/') }}
         />
       </SafeAreaView>
     );
@@ -254,28 +267,37 @@ function Resolucion({ eventoId }: { eventoId: string }) {
   if (consulta.isPending) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <View style={estilos.centrado} accessibilityLabel="Cargando diferencias" accessibilityState={{ busy: true }}>
-          <ActivityIndicator size="large" color={COLORES.texto} />
-        </View>
+        <Encabezado titulo="Diferencias por resolver" marca lineasTitulo={1} onVolver={volver} etiquetaVolver="Volver al inicio" />
+        <Esqueleto etiqueta="Cargando diferencias" style={estilos.contenidoLista}>
+          {[0, 1].map((i) => (
+            <View key={i} style={estilos.tarjetaEsqueleto}>
+              <LineaEsqueleto nivel="etiqueta" ancho="35%" />
+              <TarjetaEsqueleto titulo="subtitulo" lineas={['80%', '80%', '60%']} />
+            </View>
+          ))}
+        </Esqueleto>
       </SafeAreaView>
     );
   }
 
   if (consulta.isError && !consulta.data) {
+    const sinRed = consulta.error instanceof ErrorRed;
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
-          titulo="No se pudieron cargar las diferencias"
-          detalle={
-            consulta.error instanceof ErrorRed
-              ? 'Sin conexión. Resolver diferencias necesita señal: cada paso se registra en el servidor.'
-              : consulta.error.message || 'Intenta de nuevo.'
-          }
-          textoBoton={consulta.isFetching ? 'Cargando…' : 'Reintentar'}
-          onPress={() => void consulta.refetch()}
-          textoSecundario="Volver"
-          onSecundario={volver}
-        />
+        <View style={estilos.contenedorAviso}>
+          <BloqueError
+            titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las diferencias'}
+            detalle={
+              sinRed
+                ? 'Resolver diferencias necesita señal: cada paso se registra en el servidor.'
+                : consulta.error.message || 'Intenta de nuevo en un momento.'
+            }
+            tono={sinRed ? 'atencion' : 'error'}
+            onReintentar={() => void consulta.refetch()}
+            reintentando={consulta.isFetching}
+            secundaria={{ texto: 'Volver', onPress: volver }}
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -285,11 +307,12 @@ function Resolucion({ eventoId }: { eventoId: string }) {
   if (total === 0) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
+        <EstadoVacio
+          icono="listo"
+          tono="capturado"
           titulo="Esta carga no tiene diferencias"
-          detalle="Los dos conteos coincidieron."
-          textoBoton="Volver al inicio"
-          onPress={() => router.replace('/')}
+          detalle="Los dos conteos coincidieron producto por producto: no hay nada que resolver."
+          accion={{ texto: 'Volver al inicio', onPress: () => router.replace('/') }}
         />
       </SafeAreaView>
     );
@@ -298,12 +321,12 @@ function Resolucion({ eventoId }: { eventoId: string }) {
   if (enAutorizacion || resueltas === total) {
     return (
       <SafeAreaView style={estilos.pantalla}>
-        <EstadoCentral
+        <EstadoVacio
+          icono="listo"
+          tono="capturado"
           titulo="Diferencias resueltas"
           detalle="La carga pasó a esperar la autorización del supervisor. Aquí ya no queda nada por hacer."
-          textoBoton="Volver al inicio"
-          onPress={() => router.replace('/')}
-          exito
+          accion={{ texto: 'Volver al inicio', onPress: () => router.replace('/') }}
         />
       </SafeAreaView>
     );
@@ -331,30 +354,27 @@ function Resolucion({ eventoId }: { eventoId: string }) {
 
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <View style={estilos.encabezado}>
-        <View style={estilos.filaEncabezado}>
-          <Pressable
-            onPress={volver}
-            accessibilityRole="button"
-            accessibilityLabel="Volver al inicio"
-            hitSlop={ESPACIADO.sm}
-            style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
-          >
-            {({ pressed }) => <Text style={[estilos.textoVolver, pressed && estilos.textoInvertido]}>‹</Text>}
-          </Pressable>
-          <View style={estilos.titulos}>
-            <Text style={estilos.titulo} accessibilityRole="header" numberOfLines={1}>
-              Diferencias por resolver
+      <Encabezado
+        titulo="Diferencias por resolver"
+        marca
+        lineasTitulo={1}
+        onVolver={volver}
+        etiquetaVolver="Volver al inicio"
+        inferior={
+          <>
+            <Text
+              style={estilos.progreso}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${faltan === 1 ? 'Falta 1' : `Faltan ${faltan}`} de ${total}`}
+            >
+              <Text style={estilos.numeroProgreso}>{faltan}</Text> {faltan === 1 ? 'falta' : 'faltan'} de {total}
             </Text>
-            <Text style={estilos.subtitulo} accessibilityLiveRegion="polite">
-              {faltan === 1 ? 'Falta 1' : `Faltan ${faltan}`} de {total}
-            </Text>
-          </View>
-        </View>
-        <View style={estilos.barra} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: resueltas }}>
-          <View style={[estilos.rellenoBarra, { width: `${(resueltas / total) * 100}%` }]} />
-        </View>
-      </View>
+            <View style={estilos.barra} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: resueltas }}>
+              <View style={[estilos.rellenoBarra, { width: `${(resueltas / total) * 100}%` }]} />
+            </View>
+          </>
+        }
+      />
 
       <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
         <ScrollView
@@ -363,9 +383,11 @@ function Resolucion({ eventoId }: { eventoId: string }) {
           contentContainerStyle={estilos.contenidoLista}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={estilos.instruccion}>
-            Una persona captura la cantidad final y otra distinta la confirma con su propio PIN.
-          </Text>
+          <Tarjeta elevacion={0} tintada="marca" compacta>
+            <Text style={estilos.instruccion}>
+              Una persona captura la cantidad final y otra distinta la confirma con su propio PIN.
+            </Text>
+          </Tarjeta>
           {discrepancias.map((d) => (
             <View key={d.code} onLayout={(e) => posiciones.current.set(d.code, e.nativeEvent.layout.y)}>
               <TarjetaDiscrepancia
@@ -433,11 +455,12 @@ interface PropsTarjeta {
   onConfirmar: () => void;
 }
 
-const COLOR_ESTADO = {
-  'sin-capturar': COLORES.discrepancia,
-  'por-confirmar': COLORES.discrepancia,
-  confirmada: COLORES.capturado,
-} as const;
+/** Banda de la tarjeta: ámbar mientras falte algo, verde al quedar confirmada. */
+const BANDA_ESTADO: Record<ReturnType<typeof estadoDe>, { titulo: string; tono: ColorEstado }> = {
+  'sin-capturar': { titulo: 'Sin cantidad final', tono: 'discrepancia' },
+  'por-confirmar': { titulo: 'Espera confirmación', tono: 'discrepancia' },
+  confirmada: { titulo: 'Confirmada', tono: 'capturado' },
+};
 
 function TarjetaDiscrepancia({
   discrepancia: d,
@@ -456,98 +479,99 @@ function TarjetaDiscrepancia({
   const soyQuienCapturo = d.capturadaPor !== null && d.capturadaPor === usuarioId;
 
   return (
-    <View style={[estilos.tarjeta, estado === 'confirmada' && estilos.tarjetaConfirmada]}>
-      <View style={[estilos.barraEstado, { backgroundColor: COLOR_ESTADO[estado] }]} />
-      <View style={estilos.cuerpoTarjeta}>
-        <View style={estilos.lineaProducto}>
-          <EtiquetaFactor producto={d.producto} grande />
-          <Text style={estilos.nombreProducto} numberOfLines={2}>
-            {d.producto.nombre}
-          </Text>
-        </View>
-
-        <View style={estilos.conteos}>
-          <RenglonConteo etiqueta={etiquetaRol(d.primerConteo, 'Primer conteo')} lado={d.primerConteo} d={d} />
-          <RenglonConteo etiqueta={etiquetaRol(d.segundoConteo, 'Segundo conteo')} lado={d.segundoConteo} d={d} />
-          <View
-            style={[estilos.renglon, estilos.renglonDiferencia]}
-            accessible
-            accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}`}
-          >
-            <Text style={[estilos.rolRenglon, estilos.textoDiferencia]}>Diferencia</Text>
-            <View style={estilos.columnaCantidad}>
-              <Text style={[estilos.cantidadRenglon, estilos.textoDiferencia]}>{enPaquetes(diferencia(d), d)}</Text>
-              {totalSecundario(diferencia(d), d) && (
-                <Text style={estilos.totalPiezas}>{totalSecundario(diferencia(d), d)}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {edicion ? (
-          <EditorCantidad d={d} edicion={edicion} ocupado={ocupado} onAbrirCampo={onAbrirCampo} onGuardar={onGuardar} onCancelar={onCancelar} />
-        ) : estado === 'sin-capturar' ? (
-          <Boton texto="Capturar cantidad final" principal onPress={onCapturar} deshabilitado={bloqueada} />
-        ) : (
-          <View style={estilos.final}>
-            {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} />}
-            {esAtipica(d) && <Text style={estilos.notaAtipica}>No coincide con ninguno de los dos conteos.</Text>}
-            {estado === 'confirmada' ? (
-              <Text style={estilos.estadoConfirmada}>
-                ✓ Capturó {d.capturadaPorNombre ?? 'otra persona'} · confirmó {d.confirmadaPorNombre ?? 'otra persona'}
-              </Text>
-            ) : (
-              <>
-                <Text style={estilos.estadoEspera} accessibilityLiveRegion="polite">
-                  Esperando confirmación · capturó {soyQuienCapturo ? 'tú' : (d.capturadaPorNombre ?? 'otra persona')}
-                </Text>
-                {soyQuienCapturo && (
-                  <Text style={estilos.aviso}>Otra persona debe confirmarla con su propio PIN.</Text>
-                )}
-                <View style={estilos.botones}>
-                  <Boton texto={soyQuienCapturo ? 'Corregir' : 'No coincide, corregir'} onPress={onCapturar} deshabilitado={bloqueada} />
-                  {/* A quien capturó ni se le ofrece: el servidor lo rechazaría igual. */}
-                  {puedeConfirmar(d, usuarioId) && (
-                    <Boton texto="Confirmar con mi PIN" principal onPress={onConfirmar} deshabilitado={bloqueada} />
-                  )}
-                </View>
-              </>
-            )}
-          </View>
-        )}
-
-        {error && (
-          <Text style={estilos.error} accessibilityRole="alert">
-            {error}
-          </Text>
-        )}
+    <Tarjeta conAcento={BANDA_ESTADO[estado]}>
+      <View style={estilos.lineaProducto}>
+        <EtiquetaFactor producto={d.producto} grande />
+        <Text style={estilos.nombreProducto} numberOfLines={2}>
+          {d.producto.nombre}
+        </Text>
       </View>
-    </View>
+
+      <Tarjeta elevacion={0} compacta>
+        <RenglonConteo etiqueta={etiquetaRol(d.primerConteo, 'Primer conteo')} lado={d.primerConteo} d={d} />
+        <RenglonConteo etiqueta={etiquetaRol(d.segundoConteo, 'Segundo conteo')} lado={d.segundoConteo} d={d} />
+        <FilaDato
+          etiqueta="Diferencia"
+          valor={enPaquetes(diferencia(d), d)}
+          detalle={totalSecundario(diferencia(d), d)}
+          tono="discrepancia"
+          separado
+          accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}`}
+        />
+      </Tarjeta>
+
+      {edicion ? (
+        <EditorCantidad d={d} edicion={edicion} ocupado={ocupado} onAbrirCampo={onAbrirCampo} onGuardar={onGuardar} onCancelar={onCancelar} />
+      ) : estado === 'sin-capturar' ? (
+        <Boton texto="Capturar cantidad final" onPress={onCapturar} deshabilitado={bloqueada} />
+      ) : (
+        <View style={estilos.final}>
+          {d.cantidadFinal !== null && (
+            <LineaFinal piezas={d.cantidadFinal} d={d} tono={estado === 'confirmada' ? 'capturado' : 'marca'} />
+          )}
+          {esAtipica(d) && <Text style={estilos.notaAtipica}>No coincide con ninguno de los dos conteos.</Text>}
+          {estado === 'confirmada' ? (
+            <Text style={estilos.estadoConfirmada}>
+              Capturó {d.capturadaPorNombre ?? 'otra persona'} · confirmó {d.confirmadaPorNombre ?? 'otra persona'}
+            </Text>
+          ) : (
+            <>
+              <Text style={estilos.estadoEspera} accessibilityLiveRegion="polite">
+                Esperando confirmación · capturó {soyQuienCapturo ? 'tú' : (d.capturadaPorNombre ?? 'otra persona')}
+              </Text>
+              {soyQuienCapturo && (
+                <Text style={estilos.aviso}>Otra persona debe confirmarla con su propio PIN.</Text>
+              )}
+              <View style={estilos.botones}>
+                <Boton
+                  texto={soyQuienCapturo ? 'Corregir' : 'No coincide, corregir'}
+                  variante="secundario"
+                  onPress={onCapturar}
+                  deshabilitado={bloqueada}
+                  style={estilos.botonFila}
+                />
+                {/* A quien capturó ni se le ofrece: el servidor lo rechazaría igual. */}
+                {puedeConfirmar(d, usuarioId) && (
+                  <Boton texto="Confirmar con mi PIN" onPress={onConfirmar} deshabilitado={bloqueada} style={estilos.botonFila} />
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      )}
+
+      {error && <BloqueError titulo="No se guardó la cantidad" detalle={error} />}
+    </Tarjeta>
   );
 }
 
 /** "Vendedor   5 paquetes y 2 piezas": en la unidad en que se contó, sin dividir de cabeza. */
 function RenglonConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLado; d: Discrepancia }) {
   return (
-    <View style={estilos.renglon} accessible accessibilityLabel={`${etiqueta}: ${vozCantidad(lado.piezas, d)}`}>
-      <Text style={estilos.rolRenglon} numberOfLines={1}>
-        {etiqueta}
-      </Text>
-      <View style={estilos.columnaCantidad}>
-        <Text style={estilos.cantidadRenglon}>{enPaquetes(lado.piezas, d)}</Text>
-      </View>
-    </View>
+    <FilaDato
+      etiqueta={etiqueta}
+      valor={enPaquetes(lado.piezas, d)}
+      accessibilityLabel={`${etiqueta}: ${vozCantidad(lado.piezas, d)}`}
+    />
   );
 }
 
-/** "Cantidad final  3 paquetes y 2 piezas  (20 piezas)". */
-function LineaFinal({ piezas, d }: { piezas: number; d: Discrepancia }) {
-  const total = totalSecundario(piezas, d);
+/**
+ * "Cantidad final / 3 paquetes y 2 piezas / (20 piezas)" en un bloque tintado:
+ * la cifra domina, es lo que se carga al camión. Azul mientras espera, verde confirmada.
+ */
+function LineaFinal({ piezas, d, tono }: { piezas: number; d: Discrepancia; tono: 'marca' | 'capturado' }) {
+  const colores = TONOS[tono];
+  const detalle = totalSecundario(piezas, d);
   return (
-    <View style={estilos.lineaFinal} accessible accessibilityLabel={`Cantidad final: ${vozCantidad(piezas, d)}`}>
-      <Text style={estilos.etiquetaFinal}>Cantidad final</Text>
-      <Text style={estilos.valorFinal}>{enPaquetes(piezas, d)}</Text>
-      {total && <Text style={estilos.piezasFinal}>{total}</Text>}
+    <View
+      style={[estilos.bloqueFinal, { backgroundColor: colores.fondo }]}
+      accessible
+      accessibilityLabel={`Cantidad final: ${vozCantidad(piezas, d)}`}
+    >
+      <Text style={[estilos.etiquetaFinal, { color: colores.texto }]}>Cantidad final</Text>
+      <Text style={[estilos.valorFinal, { color: colores.texto }]}>{enPaquetes(piezas, d)}</Text>
+      {detalle && <Text style={estilos.detalleFinal}>{detalle}</Text>}
     </View>
   );
 }
@@ -584,18 +608,31 @@ function EditorCantidad({
               onPress={() => onAbrirCampo(campo)}
               accessibilityRole="button"
               accessibilityLabel={`${campo === 'paquetes' ? 'Paquetes' : 'Sueltas'}: ${valor ?? 'sin capturar'}`}
-              style={[estilos.campoEditor, activo && estilos.campoEditorActivo]}
+              style={({ pressed }) => [estilos.campoEditor, (activo || pressed) && estilos.campoEditorActivo]}
             >
-              <Text style={estilos.etiquetaCampo}>{campo === 'paquetes' ? 'Paquetes' : 'Sueltas'}</Text>
-              <Text style={estilos.valorCampo}>{valor ?? '—'}</Text>
+              {({ pressed }) => (
+                <>
+                  <Text style={[estilos.etiquetaCampo, (activo || pressed) && estilos.textoInvertido]}>
+                    {campo === 'paquetes' ? 'Paquetes' : 'Sueltas'}
+                  </Text>
+                  <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
+                </>
+              )}
             </Pressable>
           );
         })}
-        <Text style={estilos.totalEditor}>{total === null ? '' : `= ${total} pzas`}</Text>
+        <Text style={estilos.totalEditor}>{total === null ? '' : `= ${formatearPiezas(total)}`}</Text>
       </View>
       <View style={estilos.botones}>
-        <Boton texto="Cancelar" onPress={onCancelar} deshabilitado={ocupado} />
-        <Boton texto={ocupado ? 'Guardando…' : 'Guardar'} principal onPress={onGuardar} deshabilitado={ocupado || total === null} />
+        <Boton texto="Cancelar" variante="secundario" onPress={onCancelar} deshabilitado={ocupado} style={estilos.botonFila} />
+        <Boton
+          texto="Guardar"
+          onPress={onGuardar}
+          cargando={ocupado}
+          textoCargando="Guardando…"
+          deshabilitado={total === null}
+          style={estilos.botonFila}
+        />
       </View>
     </View>
   );
@@ -699,20 +736,18 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
       <View style={estilos.fondoModal}>
         <ScrollView contentContainerStyle={estilos.contenidoFondoModal} bounces={false}>
           <View style={[estilos.modal, estilos.modalPin]}>
-            <Text style={estilos.tituloModal} accessibilityRole="header">
-              Confirma con tu PIN
-            </Text>
+            <Encabezado titulo="Confirma con tu PIN" variante="plano" />
             {d && (
-              <View style={estilos.resumenConfirmar}>
+              <Tarjeta elevacion={0} compacta>
                 <View style={estilos.lineaProducto}>
                   <EtiquetaFactor producto={d.producto} />
                   <Text style={estilos.nombreProductoModal} numberOfLines={2}>
                     {d.producto.nombre}
                   </Text>
                 </View>
-                {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} />}
+                {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} tono="marca" />}
                 <Text style={estilos.detalleModal}>Capturó {d.capturadaPorNombre ?? 'otra persona'}. Al confirmar respaldas esta cantidad.</Text>
-              </View>
+              </Tarjeta>
             )}
 
             <View style={estilos.zonaIndicadores}>
@@ -742,7 +777,13 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
             )}
 
             <View style={estilos.botones}>
-              <Boton texto={definitivo ? 'Cerrar' : 'Cancelar'} onPress={cerrar} deshabilitado={enviando} />
+              <Boton
+                texto={definitivo ? 'Cerrar' : 'Cancelar'}
+                variante="secundario"
+                onPress={cerrar}
+                deshabilitado={enviando}
+                style={estilos.botonFila}
+              />
             </View>
           </View>
         </ScrollView>
@@ -751,158 +792,45 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
   );
 }
 
-// ---------------------------------------------------------------------------
-// Piezas comunes
-// ---------------------------------------------------------------------------
-
-function Boton({
-  texto,
-  onPress,
-  principal = false,
-  deshabilitado = false,
-}: {
-  texto: string;
-  onPress: () => void;
-  principal?: boolean;
-  deshabilitado?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: deshabilitado }}
-      style={({ pressed }) => [
-        estilos.boton,
-        principal && estilos.botonPrincipal,
-        pressed && estilos.botonPresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      {({ pressed }) => <Text style={[estilos.textoBoton, (principal || pressed) && estilos.textoInvertido]}>{texto}</Text>}
-    </Pressable>
-  );
-}
-
-function EstadoCentral({
-  titulo,
-  detalle,
-  textoBoton,
-  onPress,
-  textoSecundario,
-  onSecundario,
-  exito = false,
-}: {
-  titulo: string;
-  detalle: string;
-  textoBoton: string;
-  onPress: () => void;
-  textoSecundario?: string;
-  onSecundario?: () => void;
-  exito?: boolean;
-}) {
-  return (
-    <View style={estilos.centrado}>
-      <Text style={[estilos.tituloModal, estilos.textoCentrado, exito && estilos.tituloExito]} accessibilityRole="header">
-        {exito ? '✓ ' : ''}
-        {titulo}
-      </Text>
-      <Text style={[estilos.detalleModal, estilos.textoCentrado]}>{detalle}</Text>
-      <View style={[estilos.botones, estilos.botonCentral]}>
-        {textoSecundario && onSecundario && <Boton texto={textoSecundario} onPress={onSecundario} />}
-        <Boton texto={textoBoton} onPress={onPress} principal />
-      </View>
-    </View>
-  );
-}
-
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
   },
-  centrado: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.xl,
-  },
-  textoCentrado: {
-    textAlign: 'center',
-  },
-  botonCentral: {
-    alignSelf: 'stretch',
-    maxWidth: 420,
+  contenedorAviso: {
     width: '100%',
-    marginTop: ESPACIADO.md,
-    alignItems: 'stretch',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    padding: RITMO.margen,
   },
-  tituloExito: {
-    color: COLORES.capturado,
-  },
-  textoInvertido: {
-    color: COLORES.textoSobreColor,
-  },
-  deshabilitado: {
-    opacity: 0.5,
+  tarjetaEsqueleto: {
+    gap: RITMO.interno,
   },
 
-  // Encabezado
-  encabezado: {
-    gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    paddingTop: ESPACIADO.sm,
-    paddingBottom: ESPACIADO.md,
-    borderBottomWidth: 2,
-    borderBottomColor: COLORES.texto,
+  // Sobre el azul del encabezado.
+  progreso: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.marcaClaro,
+    ...CIFRAS,
   },
-  filaEncabezado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO.sm,
-  },
-  botonVolver: {
-    width: TOQUE_MINIMO,
-    minHeight: TOQUE_MINIMO,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -ESPACIADO.sm,
-    borderRadius: RADIOS.md,
-  },
-  botonVolverPresionado: {
-    backgroundColor: COLORES.texto,
-  },
-  textoVolver: {
-    fontSize: TIPOGRAFIA.tamanos.xxxl,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  titulos: {
-    flex: 1,
-  },
-  titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  subtitulo: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.discrepancia,
+  numeroProgreso: {
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.textoSobreColor,
+    ...CIFRAS,
   },
   barra: {
-    height: 10,
-    backgroundColor: COLORES.superficie,
+    height: ESPACIADO.sm,
+    backgroundColor: COLORES.marcaOscuro,
     borderRadius: RADIOS.completo,
     overflow: 'hidden',
   },
   rellenoBarra: {
     height: '100%',
-    backgroundColor: COLORES.capturado,
+    backgroundColor: COLORES.capturadoFondo,
   },
 
-  // Cuerpo
+  // Cuerpo: se lee con calma, una diferencia a la vez.
   cuerpo: {
     flex: 1,
   },
@@ -916,18 +844,20 @@ const estilos = StyleSheet.create({
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.md,
+    gap: ESPACIADO.lg,
+    padding: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
   instruccion: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
+    color: COLORES.marcaOscuro,
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
-    borderLeftWidth: 2,
-    borderLeftColor: COLORES.texto,
+    backgroundColor: COLORES.fondoPantalla,
+    borderLeftWidth: BORDES.grueso,
+    borderLeftColor: COLORES.marca,
   },
   lateralVacio: {
     flex: 1,
@@ -935,295 +865,196 @@ const estilos = StyleSheet.create({
     padding: ESPACIADO.xl,
   },
   textoLateralVacio: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
-    textAlign: 'center',
   },
 
-  // Tarjeta
-  tarjeta: {
-    flexDirection: 'row',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-    overflow: 'hidden',
-    backgroundColor: COLORES.fondo,
-  },
-  tarjetaConfirmada: {
-    borderColor: COLORES.borde,
-  },
-  barraEstado: {
-    width: ANCHO_BARRA_ESTADO,
-  },
-  cuerpoTarjeta: {
-    flex: 1,
-    gap: ESPACIADO.sm,
-    padding: ESPACIADO.md,
-  },
   lineaProducto: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
   },
   nombreProducto: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
-  },
-  // Tabla de dos columnas: rol · cantidad en paquetes.
-  conteos: {
-    paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.xs,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.md,
-  },
-  renglon: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.xs,
-  },
-  renglonDiferencia: {
-    marginTop: ESPACIADO.xs,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.borde,
-  },
-  rolRenglon: {
-    flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  columnaCantidad: {
-    flex: 2,
-    alignItems: 'flex-end',
-  },
-  cantidadRenglon: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
-  },
-  totalPiezas: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
-    textAlign: 'right',
-    fontVariant: ['tabular-nums'],
-  },
-  textoDiferencia: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.discrepancia,
   },
   final: {
-    gap: ESPACIADO.sm,
-    paddingTop: ESPACIADO.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.borde,
+    gap: RITMO.relacionado,
   },
-  lineaFinal: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-    gap: ESPACIADO.sm,
+  bloqueFinal: {
+    gap: ESPACIADO.xs,
+    padding: RITMO.margen,
+    borderRadius: RADIOS.medio,
   },
   etiquetaFinal: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
     textTransform: 'uppercase',
   },
   valorFinal: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    fontVariant: ['tabular-nums'],
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.extraNegrita,
+    ...CIFRAS,
   },
-  piezasFinal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+  detalleFinal: {
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.textoSecundario,
-    fontVariant: ['tabular-nums'],
+    ...CIFRAS,
   },
   // Discreta a propósito: es un dato, no un error.
   notaAtipica: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
   estadoEspera: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.discrepancia,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
   },
   estadoConfirmada: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.capturado,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.capturadoTexto,
   },
   aviso: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   error: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.error,
     textAlign: 'center',
   },
 
   // Editor
   editor: {
-    gap: ESPACIADO.sm,
-    paddingTop: ESPACIADO.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.borde,
+    gap: RITMO.interno,
+    padding: RITMO.relacionado,
+    backgroundColor: COLORES.marcaClaro,
+    borderRadius: RADIOS.medio,
   },
   camposEditor: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.sm,
+    gap: RITMO.interno,
   },
   campoEditor: {
-    minWidth: 96,
+    minWidth: ESPACIADO.xxxl * 2,
     minHeight: TOQUE_MINIMO,
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
-    borderWidth: 2,
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
+  // Lo que se está editando lleva la marca, relleno completo como en el conteo.
+  // Mismo grosor de contorno en ambos estados: el campo no salta al activarse.
   campoEditorActivo: {
-    borderColor: COLORES.texto,
-    borderWidth: 3,
+    borderColor: COLORES.marca,
+    backgroundColor: COLORES.marca,
+  },
+  textoInvertido: {
+    color: COLORES.textoSobreColor,
   },
   etiquetaCampo: {
-    fontSize: TIPOGRAFIA.tamanos.xs,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.micro,
     color: COLORES.textoSecundario,
     textTransform: 'uppercase',
+    textAlign: 'right',
   },
   valorCampo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
     textAlign: 'right',
-    fontVariant: ['tabular-nums'],
+    ...CIFRAS,
   },
   totalEditor: {
     flexShrink: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSecundario,
-    fontVariant: ['tabular-nums'],
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
+    ...CIFRAS,
   },
 
   // Botones
+  botonFila: {
+    flex: 1,
+  },
   botones: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
-  },
-  boton: {
-    flex: 1,
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBoton: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
+    gap: RITMO.relacionado,
   },
 
   // Modal de confirmación
   fondoModal: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: COLORES.velo,
   },
   contenidoFondoModal: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: ESPACIADO.lg,
+    padding: RITMO.margen,
   },
   modal: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: ANCHO_MODAL,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: RITMO.relacionado,
+    padding: RITMO.margen,
     backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.lg,
+    borderRadius: RADIOS.grande,
   },
   modalPin: {
-    maxWidth: 440,
-  },
-  tituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    maxWidth: ANCHO_MODAL_PIN,
   },
   detalleModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
-  },
-  resumenConfirmar: {
-    gap: ESPACIADO.sm,
-    padding: ESPACIADO.md,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.md,
   },
   nombreProductoModal: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
   },
   zonaIndicadores: {
     alignItems: 'center',
-    gap: ESPACIADO.md,
+    gap: RITMO.relacionado,
   },
   // Altura reservada: un aviso no debe mover el teclado bajo el dedo.
   zonaAviso: {
-    minHeight: 64,
+    minHeight: ESPACIADO.xxxl + ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textoVerificando: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
     color: COLORES.textoSecundario,
   },
   avisoRed: {
-    paddingVertical: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    borderWidth: 2,
-    borderColor: COLORES.discrepancia,
-    borderRadius: RADIOS.md,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.texto,
+    paddingVertical: RITMO.interno,
+    paddingHorizontal: RITMO.relacionado,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
+    overflow: 'hidden',
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.discrepanciaTexto,
     textAlign: 'center',
   },
   panelDefinitivo: {
-    padding: ESPACIADO.lg,
+    padding: RITMO.margen,
     backgroundColor: COLORES.error,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   textoDefinitivo: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.textoSobreColor,
-    textAlign: 'center',
   },
 });

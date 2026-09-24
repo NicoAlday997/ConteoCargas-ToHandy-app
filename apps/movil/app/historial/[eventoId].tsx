@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -7,19 +7,23 @@ import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion } from '../../src/api/sesion';
+import {
+  BloqueError,
+  EstadoVacio,
+  Esqueleto,
+  Etiqueta,
+  FilaDato,
+  LineaEsqueleto,
+  Tarjeta,
+  TarjetaEsqueleto,
+} from '../../src/componentes/base';
 import { factorEfectivo } from '../../src/conteo/estado-conteo';
 import { diaNegocio, textoSalida } from '../../src/conteo/fecha-operativa';
 import { EtiquetaFactor } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
-import {
-  ANCHO_MAXIMO_LISTA,
-  BarraSuperior,
-  EstadoCentral,
-  InsigniaEstado,
-  volver,
-} from '../../src/historial/ComponentesHistorial';
+import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from '../../src/historial/modelo-historial';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA } from '../../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Vista consolidada de una carga. Es la que el supervisor abre en el celular
@@ -57,7 +61,12 @@ export default function PantallaDetalleHistorial() {
   if (!eventoId) {
     return (
       <Pantalla titulo="Carga">
-        <EstadoCentral titulo="No se encontró la carga" accion={{ texto: 'Volver', onPress: volver }} />
+        <EstadoVacio
+          icono="lista"
+          titulo="No se encontró la carga"
+          detalle="El enlace no trae qué carga abrir. Vuelve al historial y elígela de la lista."
+          accion={{ texto: 'Volver', onPress: volver }}
+        />
       </Pantalla>
     );
   }
@@ -65,10 +74,7 @@ export default function PantallaDetalleHistorial() {
   if (consulta.isPending) {
     return (
       <Pantalla titulo="Carga">
-        <View style={estilos.centrado}>
-          <ActivityIndicator size="large" color={COLORES.texto} />
-          <Text style={estilos.textoCargando}>Cargando carga…</Text>
-        </View>
+        <EsqueletoDetalle />
       </Pantalla>
     );
   }
@@ -84,11 +90,14 @@ export default function PantallaDetalleHistorial() {
   if (!carga) {
     return (
       <Pantalla titulo="Carga">
-        <EstadoCentral
-          titulo="No se pudo leer esta carga"
-          detalle="El servidor respondió algo que la app no entiende. Intenta de nuevo."
-          accion={{ texto: 'Reintentar', onPress: () => void consulta.refetch() }}
-        />
+        <View style={estilos.contenedorAviso}>
+          <BloqueError
+            titulo="No se pudo leer esta carga"
+            detalle="El servidor respondió algo que la app no entiende. Intenta de nuevo."
+            onReintentar={() => void consulta.refetch()}
+            reintentando={consulta.isFetching}
+          />
+        </View>
       </Pantalla>
     );
   }
@@ -99,13 +108,19 @@ export default function PantallaDetalleHistorial() {
   };
 
   return (
-    <Pantalla titulo={carga.evento.rutaNombre} carga={carga}>
+    <Pantalla {...titulosCarga(carga)}>
       {secciones.length === 0 ? (
-        <EstadoCentral
-          titulo="Sin productos contados"
-          detalle="Esta carga todavía no tiene productos capturados."
-          accion={{ texto: 'Actualizar', onPress: refrescar }}
-        />
+        <>
+          <View style={estilos.contenidoLista}>
+            <Resumen carga={carga} />
+          </View>
+          <EstadoVacio
+            icono="caja"
+            titulo="Sin productos contados"
+            detalle="Aquí aparecerán los productos por familia en cuanto se capturen en el conteo."
+            accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
+          />
+        </>
       ) : (
         <SectionList<ProductoDetalle, SeccionFamilia>
           style={estilos.lista}
@@ -115,6 +130,7 @@ export default function PantallaDetalleHistorial() {
           stickySectionHeadersEnabled
           initialNumToRender={30}
           refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+          ListHeaderComponent={<Resumen carga={carga} />}
           renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
           renderItem={({ item }) => <FilaProducto producto={item} />}
         />
@@ -123,55 +139,76 @@ export default function PantallaDetalleHistorial() {
   );
 }
 
-function Pantalla({ titulo, carga, children }: { titulo: string; carga?: CargaDetalle; children: ReactNode }) {
+/**
+ * El día al frente, como en un comprobante: es lo que se busca al abrir una
+ * carga. La ruta y el tipo acompañan debajo.
+ */
+function titulosCarga({ evento }: CargaDetalle): { titulo: string; subtitulo: string } {
+  const tipo = evento.tipo ? ETIQUETAS_TIPO_CARGA[evento.tipo] : 'Carga';
+  if (!evento.dia) return { titulo: evento.rutaNombre, subtitulo: tipo };
+  return { titulo: textoSalida(evento.dia, diaNegocio(new Date())), subtitulo: `${evento.rutaNombre} · ${tipo}` };
+}
+
+function Pantalla({
+  titulo,
+  subtitulo,
+  children,
+}: {
+  titulo: string;
+  subtitulo?: string;
+  children: ReactNode;
+}) {
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <BarraSuperior titulo={titulo}>{carga && <Resumen carga={carga} />}</BarraSuperior>
+      <BarraSuperior titulo={titulo} subtitulo={subtitulo} />
       {children}
     </SafeAreaView>
   );
 }
 
-/** Ruta en el título; aquí para qué día es, quién contó y verificó, y cuántas discrepancias. */
+/**
+ * Al frente de la lista, como el total de un pedido: el estado en la banda y
+ * las cifras en grande. Día, ruta y tipo ya van en el encabezado.
+ */
 function Resumen({ carga }: { carga: CargaDetalle }) {
   const { evento, totalProductos, totalDiscrepancias } = carga;
-  const tipo = evento.tipo ? ETIQUETAS_TIPO_CARGA[evento.tipo] : 'Carga';
   return (
-    <View style={estilos.resumen}>
-      <Text style={estilos.salida}>
-        {tipo}
-        {evento.dia ? ` · ${textoSalida(evento.dia, diaNegocio(new Date()))}` : ''}
-      </Text>
-      <Text style={estilos.personas}>
-        Contó <Text style={estilos.nombre}>{evento.vendedorNombre ?? '—'}</Text>
-        {'  ·  '}
-        Verificó <Text style={estilos.nombre}>{evento.contadorNombre ?? 'pendiente'}</Text>
-      </Text>
+    <Tarjeta conAcento={bandaDeEstado(evento.estado)} style={estilos.resumen}>
+      <View style={estilos.cifras}>
+        <View style={estilos.cifra} accessible accessibilityLabel={`${totalProductos} productos`}>
+          <Text style={estilos.numero}>{totalProductos}</Text>
+          <Text style={estilos.unidad}>{totalProductos === 1 ? 'producto' : 'productos'}</Text>
+        </View>
+        {totalDiscrepancias > 0 ? (
+          <View
+            style={[estilos.cifra, estilos.cifraTintada]}
+            accessible
+            accessibilityLabel={`${totalDiscrepancias} con discrepancia`}
+          >
+            <Text style={[estilos.numero, estilos.numeroDiscrepancia]}>{totalDiscrepancias}</Text>
+            <Text style={[estilos.unidad, estilos.unidadDiscrepancia]}>con discrepancia</Text>
+          </View>
+        ) : (
+          <Etiqueta texto="Sin discrepancias" tono="capturado" relleno="tintada" tamano="destacada" />
+        )}
+      </View>
+      <View>
+        <FilaDato etiqueta="Contó" valor={evento.vendedorNombre ?? '—'} separado />
+        <FilaDato etiqueta="Verificó" valor={evento.contadorNombre ?? 'pendiente'} />
+      </View>
       {evento.sinLiquidar && (
         <View style={estilos.marcaSinLiquidar}>
           <Text style={estilos.tituloMarca}>Iniciada con la ruta anterior sin liquidar en Handy</Text>
-          <Text style={estilos.personas}>
+          <Text style={estilos.textoMarca}>
             Permiso de <Text style={estilos.nombre}>{evento.sinLiquidar.otorgadoPor ?? 'un supervisor'}</Text>
             {evento.sinLiquidar.motivo ? `: “${evento.sinLiquidar.motivo}”` : ''}
           </Text>
         </View>
       )}
       {evento.liquidacionNoVerificada && (
-        <Text style={estilos.personas}>Al iniciarla no se pudo confirmar en Handy la liquidación anterior.</Text>
+        <Text style={estilos.nota}>Al iniciarla no se pudo confirmar en Handy la liquidación anterior.</Text>
       )}
-      <View style={estilos.filaResumen}>
-        <InsigniaEstado estado={evento.estado} />
-        <Text style={estilos.totales}>
-          {totalProductos === 1 ? '1 producto' : `${totalProductos} productos`}
-          {totalDiscrepancias > 0 && (
-            <Text style={estilos.totalDiscrepancias}>
-              {'  ·  ⚠ '}
-              {totalDiscrepancias === 1 ? '1 con discrepancia' : `${totalDiscrepancias} con discrepancia`}
-            </Text>
-          )}
-        </Text>
-      </View>
-    </View>
+    </Tarjeta>
   );
 }
 
@@ -181,11 +218,27 @@ function EncabezadoFamilia({ familia }: { familia: FamiliaDetalle }) {
       <Text style={estilos.nombreFamilia} numberOfLines={1}>
         {familia.familia}
       </Text>
-      <Text style={estilos.conteoFamilia}>
-        {familia.conDiscrepancia > 0 && <Text style={estilos.totalDiscrepancias}>⚠ {familia.conDiscrepancia} · </Text>}
-        {familia.productos.length}
-      </Text>
+      {familia.conDiscrepancia > 0 && (
+        <Text style={estilos.discrepanciasFamilia}>
+          {familia.conDiscrepancia === 1 ? '1 con discrepancia' : `${familia.conDiscrepancia} con discrepancia`}
+        </Text>
+      )}
     </View>
+  );
+}
+
+/** La forma del detalle mientras llega: el resumen y los primeros productos. */
+function EsqueletoDetalle() {
+  return (
+    <Esqueleto etiqueta="Cargando la carga" style={estilos.esqueleto}>
+      <TarjetaEsqueleto titulo="numero" lineas={['50%', '50%']} />
+      <View style={estilos.encabezadoFamiliaEsqueleto}>
+        <LineaEsqueleto nivel="cuerpo" ancho="35%" />
+      </View>
+      {[0, 1, 2, 3].map((i) => (
+        <TarjetaEsqueleto key={i} compacta lineas={['40%']} />
+      ))}
+    </Esqueleto>
   );
 }
 
@@ -199,44 +252,43 @@ function FilaProducto({ producto }: { producto: ProductoDetalle }) {
   const sinResolver = discrepancia !== null && cantidadFinal === null;
 
   return (
-    <View style={[estilos.fila, discrepancia && estilos.filaDiscrepancia]}>
-      <EtiquetaFactor producto={producto} grande />
-      <View style={estilos.cuerpoFila}>
+    // Ámbar a la izquierda: se distingue de un vistazo al recorrer la lista.
+    <Tarjeta compacta acento={discrepancia ? 'discrepancia' : undefined} style={estilos.fila}>
+      <View style={estilos.lineaProducto}>
+        <EtiquetaFactor producto={producto} grande />
         <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
-        {sinResolver ? (
-          <Text style={[estilos.cantidadFinal, estilos.sinResolver]}>Sin resolver</Text>
-        ) : (
-          <Text style={estilos.cantidadFinal}>
-            {cantidad(cantidadFinal, factor)}
-            {factor !== null && cantidadFinal !== null && cantidadFinal >= factor && (
-              <Text style={estilos.totalPiezas}> {formatearTotalPiezas(cantidadFinal)}</Text>
-            )}
-          </Text>
-        )}
-        {discrepancia && (
-          <View style={estilos.bloqueDiscrepancia}>
-            <Text style={estilos.tituloDiscrepancia}>⚠ Tuvo discrepancia</Text>
-            <Text style={estilos.lineaDiscrepancia}>
-              Vendedor contó <Text style={estilos.nombre}>{cantidad(discrepancia.vendedor, factor)}</Text>
-            </Text>
-            <Text style={estilos.lineaDiscrepancia}>
-              Contador contó <Text style={estilos.nombre}>{cantidad(discrepancia.contador, factor)}</Text>
-            </Text>
-            <Text style={estilos.lineaDiscrepancia}>
-              Final capturada por <Text style={estilos.nombre}>{discrepancia.capturadaPor ?? 'nadie aún'}</Text>
-              {' · '}confirmada por <Text style={estilos.nombre}>{discrepancia.confirmadaPor ?? 'nadie aún'}</Text>
-            </Text>
-          </View>
-        )}
       </View>
-    </View>
+      {/* A la derecha y con dígitos del mismo ancho: las cantidades de todas las tarjetas quedan en columna. */}
+      {sinResolver ? (
+        <Text style={[estilos.cantidadFinal, estilos.sinResolver]}>Sin resolver</Text>
+      ) : (
+        <View style={estilos.lineaCantidad}>
+          {factor !== null && cantidadFinal !== null && cantidadFinal >= factor && (
+            <Text style={estilos.totalPiezas}>{formatearTotalPiezas(cantidadFinal)}</Text>
+          )}
+          <Text style={estilos.cantidadFinal}>{cantidad(cantidadFinal, factor)}</Text>
+        </View>
+      )}
+      {discrepancia && (
+        <Tarjeta elevacion={0} tintada="discrepancia" compacta>
+          <Text style={estilos.tituloDiscrepancia}>Tuvo discrepancia</Text>
+          <View>
+              <FilaDato etiqueta="Vendedor contó" valor={cantidad(discrepancia.vendedor, factor)} />
+              <FilaDato etiqueta="Contador contó" valor={cantidad(discrepancia.contador, factor)} />
+              <FilaDato etiqueta="Final capturada por" valor={discrepancia.capturadaPor ?? 'nadie aún'} separado />
+              <FilaDato etiqueta="Confirmada por" valor={discrepancia.confirmadaPor ?? 'nadie aún'} />
+          </View>
+        </Tarjeta>
+      )}
+    </Tarjeta>
   );
 }
 
 function ErrorDetalle({ error, onReintentar }: { error: unknown; onReintentar: () => void }) {
   if (error instanceof ErrorApi && error.estado === 403) {
     return (
-      <EstadoCentral
+      <EstadoVacio
+        icono="candado"
         titulo="No tienes acceso a esta carga"
         detalle="Solo puedes abrir las cargas que aparecen en tu historial."
         accion={{ texto: 'Volver', onPress: volver }}
@@ -244,79 +296,114 @@ function ErrorDetalle({ error, onReintentar }: { error: unknown; onReintentar: (
     );
   }
   if (error instanceof ErrorApi && error.estado === 404) {
-    return <EstadoCentral titulo="Esta carga no existe" accion={{ texto: 'Volver', onPress: volver }} />;
+    return (
+      <EstadoVacio
+        icono="lista"
+        titulo="Esta carga no existe"
+        detalle="Pudo haberse eliminado. Vuelve al historial para ver las cargas vigentes."
+        accion={{ texto: 'Volver', onPress: volver }}
+      />
+    );
   }
+  const sinRed = error instanceof ErrorRed;
   return (
-    <EstadoCentral
-      titulo="No se pudo cargar la carga"
-      detalle={
-        error instanceof ErrorRed
-          ? 'Sin conexión. El detalle se consulta en el servidor: revisa tu señal.'
-          : error instanceof Error && error.message
-            ? error.message
-            : 'Intenta de nuevo en un momento.'
-      }
-      accion={{ texto: 'Reintentar', onPress: onReintentar }}
-    />
+    <View style={estilos.contenedorAviso}>
+      <BloqueError
+        titulo={sinRed ? 'Sin conexión' : 'No se pudo abrir la carga'}
+        detalle={
+          sinRed
+            ? 'El detalle se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+            : error instanceof Error && error.message
+              ? error.message
+              : 'Intenta de nuevo en un momento.'
+        }
+        tono={sinRed ? 'atencion' : 'error'}
+        onReintentar={onReintentar}
+        secundaria={{ texto: 'Volver', onPress: volver }}
+      />
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
+  // Lectura pausada: tarjetas blancas sobre el fondo tintado, cada producto un bloque aparte.
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
   },
-  centrado: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.md,
+  esqueleto: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: RITMO.relacionado,
+    padding: RITMO.margen,
   },
-  textoCargando: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
+  encabezadoFamiliaEsqueleto: {
+    paddingTop: ESPACIADO.lg,
+  },
+  contenedorAviso: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    padding: RITMO.margen,
   },
   resumen: {
-    gap: ESPACIADO.xs,
+    marginTop: RITMO.margen,
   },
-  salida: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  personas: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
-  },
-  nombre: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  marcaSinLiquidar: {
-    marginTop: ESPACIADO.xs,
-    paddingLeft: ESPACIADO.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORES.discrepancia,
-  },
-  tituloMarca: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  filaResumen: {
+  cifras: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: ESPACIADO.sm,
-    marginTop: ESPACIADO.xs,
+    gap: RITMO.margen,
   },
-  totales: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+  cifra: {
+    alignItems: 'flex-start',
+  },
+  cifraTintada: {
+    paddingHorizontal: RITMO.margen,
+    paddingVertical: ESPACIADO.sm,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
+  },
+  numero: {
+    ...TIPOGRAFIA.numero,
+    color: COLORES.marcaOscuro,
+    ...CIFRAS,
+  },
+  numeroDiscrepancia: {
+    color: COLORES.discrepanciaTexto,
+  },
+  unidad: {
+    ...TIPOGRAFIA.micro,
+    fontWeight: PESOS.regular,
+    color: COLORES.textoSecundario,
+    textTransform: 'uppercase',
+  },
+  unidadDiscrepancia: {
+    color: COLORES.discrepanciaTexto,
+  },
+  nombre: {
+    fontWeight: PESOS.negrita,
+  },
+  nota: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
-  totalDiscrepancias: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+  marcaSinLiquidar: {
+    gap: ESPACIADO.xs,
+    padding: RITMO.relacionado,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.chico,
+  },
+  tituloMarca: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
+  },
+  textoMarca: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.texto,
   },
   lista: {
@@ -326,88 +413,76 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
   },
   contenidoLista: {
-    paddingHorizontal: ESPACIADO.md,
+    paddingHorizontal: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
-  // Igual que en el conteo: la familia fija arriba mientras se recorre.
+  // Igual que en el conteo: la familia fija arriba mientras se recorre. Más
+  // aire arriba que abajo: agrupa los productos que siguen.
   encabezadoFamilia: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ESPACIADO.md,
-    marginHorizontal: -ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.borde,
+    alignItems: 'baseline',
+    gap: RITMO.interno,
+    marginHorizontal: -RITMO.margen,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.xl,
+    paddingBottom: ESPACIADO.xs,
+    backgroundColor: COLORES.fondoPantalla,
   },
   nombreFamilia: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  conteoFamilia: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSecundario,
-    fontVariant: ['tabular-nums'],
+  discrepanciasFamilia: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
+    ...CIFRAS,
   },
   fila: {
+    marginTop: RITMO.relacionado,
+  },
+  lineaProducto: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: ESPACIADO.md,
-    paddingVertical: ESPACIADO.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.superficie,
-  },
-  // Ámbar a la izquierda: se distingue de un vistazo al recorrer la lista.
-  filaDiscrepancia: {
-    marginHorizontal: -ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.md - 6,
-    borderLeftWidth: 6,
-    borderLeftColor: COLORES.discrepancia,
-  },
-  cuerpoFila: {
-    flex: 1,
-    gap: 2,
+    alignItems: 'center',
+    gap: RITMO.relacionado,
   },
   nombreProducto: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    flex: 1,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
+  lineaCantidad: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: RITMO.interno,
+  },
+  // La cantidad final domina la tarjeta: es lo que se carga al camión.
   cantidadFinal: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    fontVariant: ['tabular-nums'],
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.marcaOscuro,
+    textAlign: 'right',
+    ...CIFRAS,
   },
   totalPiezas: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.textoSecundario,
+    ...CIFRAS,
   },
   sinResolver: {
     color: COLORES.error,
   },
-  bloqueDiscrepancia: {
-    marginTop: ESPACIADO.xs,
-    padding: ESPACIADO.sm,
-    gap: 2,
-    borderRadius: RADIOS.sm,
-    backgroundColor: COLORES.superficie,
-  },
   tituloDiscrepancia: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
     textTransform: 'uppercase',
-  },
-  lineaDiscrepancia: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    color: COLORES.textoSecundario,
   },
 });

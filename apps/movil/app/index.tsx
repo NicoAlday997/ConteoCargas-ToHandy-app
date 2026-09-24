@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 
@@ -19,6 +19,17 @@ import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
 import { obtenerToken } from '../src/api/token';
+import {
+  BloqueError,
+  BloqueEsqueleto,
+  Boton,
+  Encabezado,
+  Esqueleto,
+  FilaMenu,
+  GrupoMenu,
+  LineaEsqueleto,
+  Seccion,
+} from '../src/componentes/base';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
@@ -30,7 +41,10 @@ import {
 } from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+
+/** Una columna legible también en tablet. */
+const ANCHO_CONTENIDO = 560;
 
 type EstadoSesion =
   | { tipo: 'verificando' }
@@ -38,6 +52,7 @@ type EstadoSesion =
   | { tipo: 'activa'; usuario: UsuarioSesion | null };
 
 export default function PantallaInicio() {
+  const margenes = useSafeAreaInsets();
   const [estado, setEstado] = useState<EstadoSesion>({ tipo: 'verificando' });
 
   useEffect(() => {
@@ -58,11 +73,7 @@ export default function PantallaInicio() {
   }, []);
 
   if (estado.tipo === 'verificando') {
-    return (
-      <View style={estilos.centrado}>
-        <ActivityIndicator size="large" color={COLORES.texto} />
-      </View>
-    );
+    return <EsqueletoInicio />;
   }
 
   if (estado.tipo === 'sin-sesion') {
@@ -76,48 +87,66 @@ export default function PantallaInicio() {
   // Inicio por rol (docs/06 §3.2-3.3); el supervisor aún no tiene el suyo, solo
   // sus permisos para cargar sin liquidar. El historial es para los tres: qué
   // ve cada quien lo decide el servidor.
+  // Densidad generosa: son pocas acciones y cada una importa. Banda de marca
+  // arriba (quién está en sesión) y, debajo, las acciones sobre el fondo
+  // tintado, separadas por aire. El margen inferior lo pone la lista para que
+  // el azul solo cubra el borde superior.
   return (
-    <SafeAreaView style={estilos.pantalla}>
-      <ScrollView contentContainerStyle={estilos.contenido}>
-        <Text style={estilos.saludo}>Sesión iniciada</Text>
-        <Text style={estilos.nombre}>{usuario?.nombreCompleto ?? 'Usuario'}</Text>
-        {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
+    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
+      <View style={estilos.bandaMarca}>
+        <View style={estilos.columna}>
+          <Text style={estilos.nombre} accessibilityRole="header">
+            {usuario?.nombreCompleto ?? 'Usuario'}
+          </Text>
+          {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
+        </View>
+      </View>
+      <ScrollView
+        style={estilos.cuerpo}
+        contentContainerStyle={[estilos.contenido, { paddingBottom: ESPACIADO.xxxl + margenes.bottom }]}
+      >
         {cuenta && usuario && (
-          <View style={estilos.acciones}>
+          <>
             <AccesoConflictos />
             <AccionesCarga usuario={usuario} />
-          </View>
+          </>
         )}
-        {usuario?.rolApp === 'SUPERVISOR' && <BotonPermisos />}
-        {usuario && <BotonHistorial />}
-        <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
+        <GrupoMenu>
+          {usuario?.rolApp === 'SUPERVISOR' && (
+            <FilaMenu
+              texto="Permisos para cargar sin liquidar"
+              detalle="Autoriza a una ruta a cargar aunque la anterior siga abierta en Handy"
+              onPress={() => router.push('/permisos')}
+            />
+          )}
+          {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
+          <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
+        </GrupoMenu>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function BotonHistorial() {
+/** La forma del inicio mientras se lee la sesión: la banda con el nombre y el bloque de acciones. */
+function EsqueletoInicio() {
   return (
-    <Pressable
-      onPress={() => router.push('/historial')}
-      accessibilityRole="button"
-      style={({ pressed }) => [estilos.boton, pressed && estilos.botonPresionado]}
-    >
-      <Text style={estilos.textoBoton}>Historial de cargas</Text>
-    </Pressable>
-  );
-}
-
-function BotonPermisos() {
-  return (
-    <Pressable
-      onPress={() => router.push('/permisos')}
-      accessibilityRole="button"
-      accessibilityHint="Autorizar que una ruta cargue aunque su ruta anterior siga sin liquidar en Handy"
-      style={({ pressed }) => [estilos.boton, pressed && estilos.botonPresionado]}
-    >
-      <Text style={estilos.textoBoton}>Permisos para cargar sin liquidar</Text>
-    </Pressable>
+    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
+      <Esqueleto etiqueta="Abriendo la app">
+        <View style={estilos.bandaMarca}>
+          <View style={estilos.columna}>
+            <LineaEsqueleto nivel="display" ancho="70%" sobreMarca />
+            <LineaEsqueleto nivel="cuerpo" ancho="30%" sobreMarca />
+          </View>
+        </View>
+      </Esqueleto>
+      <View style={[estilos.cuerpo, estilos.contenido]}>
+        <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
+          <LineaEsqueleto nivel="subtitulo" ancho="40%" />
+          <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
+          <BloqueEsqueleto alto={TOQUE_MINIMO} />
+        </Esqueleto>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -167,20 +196,11 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
 
   return (
     <>
-      <Pressable
-        onPress={() => void alTocar()}
-        disabled={consultando}
-        accessibilityRole="button"
-        style={({ pressed }) => [estilos.boton, pressed && estilos.botonPresionado]}
-      >
-        <Text style={estilos.textoBoton}>Cerrar sesión</Text>
-      </Pressable>
+      <FilaMenu texto="Cerrar sesión" salida onPress={() => void alTocar()} cargando={consultando} />
       <Modal visible={progreso !== null} transparent animationType="none" onRequestClose={() => setProgreso(null)}>
         <View style={estilos.fondoModal}>
           <View style={estilos.modal}>
-            <Text style={estilos.tituloModal} accessibilityRole="header">
-              Tienes una carga en proceso
-            </Text>
+            <Encabezado titulo="Tienes una carga en proceso" variante="plano" />
             {progreso && (
               <>
                 <Text style={estilos.detalleModal}>
@@ -201,14 +221,14 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
               </>
             )}
             <View style={estilos.botonesModal}>
-              <BotonModal texto="Cancelar" onPress={() => setProgreso(null)} />
-              <BotonModal
+              <Boton texto="Cancelar" variante="secundario" onPress={() => setProgreso(null)} style={estilos.botonModal} />
+              <Boton
                 texto="Cerrar sesión"
-                principal
                 onPress={() => {
                   setProgreso(null);
                   salir();
                 }}
+                style={estilos.botonModal}
               />
             </View>
           </View>
@@ -218,26 +238,10 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
   );
 }
 
-function BotonModal({ texto, onPress, principal = false }: { texto: string; onPress: () => void; principal?: boolean }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [
-        estilos.botonModal,
-        principal && estilos.botonModalPrincipal,
-        pressed && estilos.botonModalPresionado,
-      ]}
-    >
-      {({ pressed }) => (
-        <Text style={[estilos.textoBotonModal, (principal || pressed) && estilos.textoSobreColor]}>{texto}</Text>
-      )}
-    </Pressable>
-  );
-}
-
 const MENSAJE_SIN_RED_INICIAR =
   'Sin conexión. Para iniciar una carga necesitas señal: el servidor la crea y te manda la lista de productos. Ya iniciada, puedes contar sin señal.';
+const DETALLE_SIN_RED_INICIAR =
+  'Para iniciar una carga necesitas señal: el servidor la crea y te manda la lista de productos. Ya iniciada, puedes contar sin señal.';
 
 function irAConteo(carga: CargaAbierta) {
   router.push({
@@ -282,6 +286,8 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [conflicto, setConflicto] = useState<ConflictoFecha | null>(null);
   const [sinLiquidar, setSinLiquidar] = useState<BloqueoLiquidacion | null>(null);
   const [abriendoExistente, setAbriendoExistente] = useState(false);
+  // Lo que se intentaba cuando faltó la señal: "Reintentar" vuelve a eso.
+  const [tipoSinRed, setTipoSinRed] = useState<TipoCarga | null>(null);
 
   // Al volver de la pantalla de conteo (finalizada o no) se relee.
   useFocusEffect(
@@ -322,9 +328,11 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   /** Primero la fecha: el evento se crea ya con ella. */
   const pedirFecha = async (tipo: TipoCarga) => {
     setError(null);
+    setTipoSinRed(null);
     // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
       setError(MENSAJE_SIN_RED_INICIAR);
+      setTipoSinRed(tipo);
       return;
     }
     setConflicto(null);
@@ -424,14 +432,20 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   };
 
   if (cargaAbierta === undefined) {
-    return <ActivityIndicator color={COLORES.texto} />;
+    return (
+      <Esqueleto etiqueta="Revisando si tienes una carga en proceso" style={estilos.esqueletoAcciones}>
+        <LineaEsqueleto nivel="subtitulo" ancho="40%" />
+        <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
+      </Esqueleto>
+    );
   }
 
   if (cargaAbierta) {
     return (
-      <View style={estilos.grupoAcciones}>
-        <BotonGrande
-          titulo="Continuar carga"
+      <Seccion texto="Tienes una carga en proceso">
+        <Boton
+          grande
+          texto="Continuar carga"
           detalle={[
             cargaAbierta.tipo ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo] : 'Conteo sin finalizar',
             cargaAbierta.fechaOperativa
@@ -442,7 +456,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
             .join(' · ')}
           onPress={() => irAConteo(cargaAbierta)}
         />
-      </View>
+      </Seccion>
     );
   }
 
@@ -456,26 +470,21 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   if (usuario.rolApp !== 'VENDEDOR') return null;
 
   return (
-    <View style={estilos.grupoAcciones}>
-      <BotonGrande
-        titulo="Iniciar carga"
-        detalle="Carga inicial"
-        onPress={() => void pedirFecha('INICIAL')}
+    <Seccion texto="Cargas de tu ruta">
+      <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
+      <Boton
+        texto="Iniciar recarga"
+        variante="secundario"
+        onPress={() => void pedirFecha('RECARGA')}
         deshabilitado={ocupado}
       />
-      <Pressable
-        onPress={() => void pedirFecha('RECARGA')}
-        disabled={ocupado}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: ocupado, busy: ocupado }}
-        style={({ pressed }) => [estilos.boton, estilos.botonSecundario, pressed && estilos.botonPresionado, ocupado && estilos.deshabilitado]}
-      >
-        <Text style={estilos.textoBoton}>Iniciar recarga</Text>
-      </Pressable>
       {error && tipoAIniciar === null && (
-        <Text style={estilos.error} accessibilityRole="alert">
-          {error}
-        </Text>
+        <BloqueError
+          titulo={error === MENSAJE_SIN_RED_INICIAR ? 'Sin conexión' : 'No se pudo iniciar la carga'}
+          detalle={error === MENSAJE_SIN_RED_INICIAR ? DETALLE_SIN_RED_INICIAR : error}
+          tono={error === MENSAJE_SIN_RED_INICIAR ? 'atencion' : 'error'}
+          onReintentar={tipoSinRed ? () => void pedirFecha(tipoSinRed) : undefined}
+        />
       )}
       <SelectorFechaOperativa
         tipo={tipoAIniciar}
@@ -496,193 +505,83 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         }}
         onCerrar={cerrarSelector}
       />
-    </View>
-  );
-}
-
-interface PropsBotonGrande {
-  titulo: string;
-  detalle: string;
-  onPress: () => void;
-  deshabilitado?: boolean;
-}
-
-function BotonGrande({ titulo, detalle, onPress, deshabilitado = false }: PropsBotonGrande) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityLabel={`${titulo}. ${detalle}`}
-      accessibilityState={{ disabled: deshabilitado, busy: deshabilitado }}
-      style={({ pressed }) => [
-        estilos.botonGrande,
-        pressed && estilos.botonGrandePresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      <Text style={estilos.tituloBotonGrande}>{titulo}</Text>
-      <Text style={estilos.detalleBotonGrande}>{detalle}</Text>
-    </Pressable>
+    </Seccion>
   );
 }
 
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.marca,
   },
-  centrado: {
-    flex: 1,
-    backgroundColor: COLORES.fondo,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    gap: ESPACIADO.sm,
+  bandaMarca: {
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.xl,
+    paddingBottom: ESPACIADO.xxl,
+    backgroundColor: COLORES.marca,
   },
-  contenido: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    gap: ESPACIADO.sm,
-  },
-  saludo: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
+  columna: {
+    width: '100%',
+    maxWidth: ANCHO_CONTENIDO,
+    alignSelf: 'center',
+    gap: ESPACIADO.xs,
   },
   nombre: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-    textAlign: 'center',
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.extraNegrita,
+    color: COLORES.textoSobreColor,
   },
   rol: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSecundario,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
+    color: COLORES.marcaClaro,
   },
-  boton: {
-    minHeight: TOQUE_MINIMO,
-    minWidth: 220,
-    marginTop: ESPACIADO.xl,
-    paddingHorizontal: ESPACIADO.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+  cuerpo: {
+    flex: 1,
+    backgroundColor: COLORES.fondoPantalla,
   },
-  botonPresionado: {
-    backgroundColor: COLORES.superficie,
-  },
-  textoBoton: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-  },
-  acciones: {
+  // Generosa: el aire entre secciones las hace leerse como decisiones distintas.
+  contenido: {
+    flexGrow: 1,
     width: '100%',
-    maxWidth: 560,
-    marginTop: ESPACIADO.xl,
-    gap: ESPACIADO.lg,
-  },
-  grupoAcciones: {
-    width: '100%',
-    maxWidth: 420,
+    maxWidth: ANCHO_CONTENIDO,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
+    gap: RITMO.seccion,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.xl,
   },
-  botonGrande: {
-    minHeight: TOQUE_MINIMO * 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: ESPACIADO.xs,
-    paddingHorizontal: ESPACIADO.xl,
-    backgroundColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonGrandePresionado: {
-    backgroundColor: COLORES.textoSecundario,
-  },
-  tituloBotonGrande: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.textoSobreColor,
-  },
-  detalleBotonGrande: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.medio,
-    color: COLORES.textoSobreColor,
-  },
-  botonSecundario: {
-    marginTop: 0,
-  },
-  deshabilitado: {
-    opacity: 0.5,
-  },
-  error: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.error,
-    textAlign: 'center',
+  esqueletoAcciones: {
+    gap: RITMO.relacionado,
   },
   fondoModal: {
     flex: 1,
     justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: RITMO.margen,
+    backgroundColor: COLORES.velo,
   },
   modal: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: ANCHO_MODAL,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: RITMO.relacionado,
+    padding: ESPACIADO.xl,
     backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.lg,
-  },
-  tituloModal: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
+    borderRadius: RADIOS.grande,
   },
   detalleModal: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    fontWeight: PESOS.negrita,
+    ...CIFRAS,
   },
   botonesModal: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
+    gap: RITMO.relacionado,
     marginTop: ESPACIADO.sm,
   },
   botonModal: {
     flex: 1,
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonModalPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonModalPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBotonModal: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
-  },
-  textoSobreColor: {
-    color: COLORES.textoSobreColor,
   },
 });

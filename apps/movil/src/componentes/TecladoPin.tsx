@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Por encima del mínimo de 56: el PIN se teclea de pie y con prisa. */
 const ALTO_TECLA = TOQUE_MINIMO + ESPACIADO.lg;
@@ -95,30 +95,30 @@ const estilos = StyleSheet.create({
     minHeight: ALTO_TECLA,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.superficie,
-    borderWidth: 1,
+    // Blanca: resalta sobre el fondo tintado de la pantalla, como una tarjeta.
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.fino,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
   teclaPresionada: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
   },
   teclaDeshabilitada: {
-    opacity: 0.4,
+    opacity: OPACIDAD.deshabilitado,
   },
   huecoVacio: {
     flex: 1,
   },
   textoDigito: {
-    fontSize: TIPOGRAFIA.tamanos.xxxl,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.display,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
   textoSecundario: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
   },
   textoPresionado: {

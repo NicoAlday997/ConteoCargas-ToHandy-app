@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { COLORES, ESPACIADO, RADIOS } from '../theme/tokens';
+import { BORDES, COLORES, ESPACIADO, RADIOS } from '../theme/tokens';
 
 export const LONGITUD_PIN = 4;
 
@@ -62,10 +62,10 @@ const estilos = StyleSheet.create({
     width: TAMANO_INDICADOR,
     height: TAMANO_INDICADOR,
     borderRadius: RADIOS.completo,
-    borderWidth: 2,
-    borderColor: COLORES.texto,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.marca,
   },
   indicadorLleno: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
   },
 });

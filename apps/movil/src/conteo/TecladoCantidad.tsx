@@ -1,16 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   factorEfectivo,
   sueltasExcedenPaquete,
-  totalPiezas,
   type CampoCaptura,
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
 import { EtiquetaFactor } from './FilaProducto';
 
+/** Cabe una cantidad de 4 dígitos al tamaño de título. */
+const ANCHO_VISOR = ESPACIADO.xxxl + ESPACIADO.xxl + ESPACIADO.sm;
 /** En tablet sobra alto: teclas más grandes, igual que el teclado del PIN. */
 const ALTO_TECLA_LATERAL = TOQUE_MINIMO + ESPACIADO.lg;
 
@@ -32,7 +33,7 @@ interface Props {
   texto: string;
   /** El valor mostrado aún no se toca: la primera tecla lo reemplaza. */
   reemplazar: boolean;
-  /** Captura con lo tecleado aplicado, para el total en vivo. */
+  /** Captura con lo tecleado aplicado, para avisar si las sueltas ya son un paquete. */
   captura: CapturaProducto;
   etiquetaSiguiente: string;
   lateral: boolean;
@@ -45,7 +46,9 @@ interface Props {
 /**
  * Teclado propio (nunca el del sistema, que cambia de tamaño y tapa la lista
  * según el dispositivo). Arriba repite qué producto y qué campo se captura:
- * con 73 productos casi iguales, perder el hilo es el error más caro.
+ * con 73 productos casi iguales, perder el hilo es el error más caro. El total
+ * en piezas no se repite aquí: la fila en edición queda a la vista y ya lo
+ * muestra al teclear.
  */
 export function TecladoCantidad({
   producto,
@@ -61,7 +64,6 @@ export function TecladoCantidad({
   onListo,
 }: Props) {
   const factor = factorEfectivo(producto);
-  const total = totalPiezas(captura, factor);
   const avisoSueltas = campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
   const altoTecla = lateral ? ALTO_TECLA_LATERAL : TOQUE_MINIMO;
 
@@ -86,9 +88,6 @@ export function TecladoCantidad({
                 {texto === '' ? '—' : texto}
               </Text>
             </View>
-            <Text style={estilos.total} numberOfLines={1}>
-              {total === null ? '' : `= ${total} pz`}
-            </Text>
           </View>
         </View>
         <Pressable
@@ -121,7 +120,7 @@ export function TecladoCantidad({
         <View style={estilos.fila}>
           <Tecla etiqueta="Borrar" alto={altoTecla} onPress={onBorrar} secundaria etiquetaAccesible="Borrar último dígito" />
           <Tecla etiqueta="0" alto={altoTecla} onPress={() => onDigito('0')} />
-          <Tecla etiqueta={etiquetaSiguiente} alto={altoTecla} onPress={onSiguiente} secundaria />
+          <Tecla etiqueta={etiquetaSiguiente} alto={altoTecla} onPress={onSiguiente} secundaria avance />
         </View>
       </View>
     </View>
@@ -133,20 +132,31 @@ interface PropsTecla {
   alto: number;
   onPress: () => void;
   secundaria?: boolean;
+  /** La tecla que avanza: tinte de marca, se encuentra sin buscarla. */
+  avance?: boolean;
   etiquetaAccesible?: string;
 }
 
-function Tecla({ etiqueta, alto, onPress, secundaria = false, etiquetaAccesible }: PropsTecla) {
+function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, etiquetaAccesible }: PropsTecla) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
-      style={({ pressed }) => [estilos.tecla, { minHeight: alto }, pressed && estilos.teclaPresionada]}
+      style={({ pressed }) => [
+        estilos.tecla,
+        { minHeight: alto },
+        avance && estilos.teclaAvance,
+        pressed && estilos.teclaPresionada,
+      ]}
     >
       {({ pressed }) => (
         <Text
-          style={[secundaria ? estilos.textoSecundario : estilos.textoDigito, pressed && estilos.textoInvertido]}
+          style={[
+            secundaria ? estilos.textoSecundario : estilos.textoDigito,
+            avance && estilos.textoAvance,
+            pressed && estilos.textoInvertido,
+          ]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -161,9 +171,10 @@ const estilos = StyleSheet.create({
   panel: {
     gap: ESPACIADO.sm,
     padding: ESPACIADO.md,
-    backgroundColor: COLORES.fondo,
-    borderTopWidth: 2,
-    borderTopColor: COLORES.texto,
+    // Teclas blancas sobre el fondo tintado, igual que las tarjetas sobre la pantalla.
+    backgroundColor: COLORES.fondoPantalla,
+    borderTopWidth: BORDES.grueso,
+    borderTopColor: COLORES.marca,
   },
   panelLateral: {
     flex: 1,
@@ -187,8 +198,8 @@ const estilos = StyleSheet.create({
   },
   nombre: {
     flex: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
   lineaValor: {
@@ -197,37 +208,29 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.sm,
   },
   campo: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
     textTransform: 'uppercase',
   },
   visor: {
-    minWidth: 88,
+    minWidth: ANCHO_VISOR,
     paddingHorizontal: ESPACIADO.sm,
-    borderBottomWidth: 3,
-    borderBottomColor: COLORES.texto,
+    borderBottomWidth: BORDES.grueso,
+    borderBottomColor: COLORES.marca,
   },
   visorConAviso: {
     borderBottomColor: COLORES.discrepancia,
   },
   valor: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
     textAlign: 'right',
-    fontVariant: ['tabular-nums'],
+    ...CIFRAS,
   },
   // Se ve "seleccionado": la primera tecla lo reemplaza, no se le agrega.
   valorPorReemplazar: {
     color: COLORES.textoSecundario,
-  },
-  total: {
-    flexShrink: 1,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.textoSecundario,
-    fontVariant: ['tabular-nums'],
   },
   botonListo: {
     minHeight: TOQUE_MINIMO,
@@ -235,28 +238,29 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    backgroundColor: COLORES.marca,
+    borderRadius: RADIOS.medio,
   },
   botonListoPresionado: {
-    backgroundColor: COLORES.textoSecundario,
+    backgroundColor: COLORES.marcaOscuro,
   },
   textoListo: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.textoSobreColor,
   },
+  // Cabe un aviso de dos líneas: al aparecer, las teclas no se mueven.
   zonaAviso: {
-    minHeight: 40,
+    minHeight: TIPOGRAFIA.etiqueta.lineHeight * 2 + ESPACIADO.xs,
     justifyContent: 'center',
   },
+  // El fondo ámbar lo separa: sin contorno ni relleno vertical, cabe en la zona reservada.
   aviso: {
-    paddingLeft: ESPACIADO.sm,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORES.discrepancia,
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
+    paddingHorizontal: ESPACIADO.sm,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.chico,
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.discrepanciaTexto,
+    overflow: 'hidden',
   },
   teclado: {
     gap: ESPACIADO.sm,
@@ -273,25 +277,33 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.xs,
-    backgroundColor: COLORES.superficie,
-    borderWidth: 1,
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.fino,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
+  },
+  teclaAvance: {
+    backgroundColor: COLORES.marcaClaro,
+    borderColor: COLORES.marca,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
   teclaPresionada: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
   },
   textoDigito: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.titulo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
   },
   textoSecundario: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.semiNegrita,
     color: COLORES.texto,
+  },
+  textoAvance: {
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

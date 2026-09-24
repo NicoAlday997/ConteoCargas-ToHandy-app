@@ -6,10 +6,11 @@ import { Redirect, router } from 'expo-router';
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { useCambiarPin } from '../src/api/hooks-auth';
 import { cerrarSesion, obtenerPinTemporal, olvidarPinTemporal } from '../src/api/sesion';
+import { Encabezado } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 const ANCHO_MAXIMO_PIN = 440;
 
@@ -167,14 +168,17 @@ export default function PantallaCambiarPin() {
               <Text style={[estilos.textoBotonCancelar, pressed && estilos.textoInvertido]}>‹ Cancelar</Text>
             )}
           </Pressable>
-          <Text style={estilos.titulo} accessibilityRole="header">
-            {etapa === 'nuevo' ? 'Crea tu PIN nuevo' : 'Confirma tu PIN nuevo'}
-          </Text>
-          <Text style={estilos.instruccion}>
-            {etapa === 'nuevo'
-              ? `Tu PIN actual es temporal. Teclea ${LONGITUD_PIN} dígitos que solo tú conozcas.`
-              : 'Teclea el mismo PIN otra vez.'}
-          </Text>
+          <View style={estilos.titulo}>
+            <Encabezado
+              titulo={etapa === 'nuevo' ? 'Crea tu PIN nuevo' : 'Confirma tu PIN nuevo'}
+              subtitulo={
+                etapa === 'nuevo'
+                  ? `Tu PIN actual es temporal. Teclea ${LONGITUD_PIN} dígitos que solo tú conozcas.`
+                  : 'Teclea el mismo PIN otra vez.'
+              }
+              variante="plano"
+            />
+          </View>
         </View>
 
         <View style={estilos.zonaIndicadores}>
@@ -202,7 +206,7 @@ export default function PantallaCambiarPin() {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.fondoPantalla,
   },
   contenido: {
     flex: 1,
@@ -221,14 +225,13 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
     marginLeft: -ESPACIADO.md,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
   },
   botonCancelarPresionado: {
     backgroundColor: COLORES.texto,
   },
   textoBotonCancelar: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
+    ...TIPOGRAFIA.subtitulo,
     color: COLORES.texto,
   },
   textoInvertido: {
@@ -236,37 +239,29 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     marginTop: ESPACIADO.sm,
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
-    color: COLORES.texto,
-  },
-  instruccion: {
-    marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.base,
-    color: COLORES.textoSecundario,
   },
   zonaIndicadores: {
     alignItems: 'center',
     gap: ESPACIADO.lg,
   },
   zonaAviso: {
-    minHeight: 72,
+    minHeight: TOQUE_MINIMO + ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textoGuardando: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
     color: COLORES.textoSecundario,
   },
   tituloAviso: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
     textAlign: 'center',
   },
   detalleAviso: {
     marginTop: ESPACIADO.xs,
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
     textAlign: 'center',
   },

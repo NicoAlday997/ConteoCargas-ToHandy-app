@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
-import { COLORES, ESPACIADO, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BloqueError, Boton } from '../componentes/base';
+import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import { diaNegocio, formatearDia, horaNegocio, opcionesFechaOperativa } from './fecha-operativa';
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
@@ -90,6 +91,8 @@ function Contenido({
   };
 
   const mensaje = aviso ?? error;
+  // El cambio de día no es una falla: se vuelve a elegir.
+  const tonoMensaje = aviso ? 'atencion' : 'error';
 
   return (
     <View style={estilos.fondo}>
@@ -108,18 +111,14 @@ function Contenido({
                 ? `Revisado de nuevo a las ${horaNegocio(sinLiquidar.revisadoEn)}: sigue sin liquidar.`
                 : 'Si ya la liquidaron, revisa de nuevo.'}
             </Text>
-            {mensaje && (
-              <Text style={estilos.error} accessibilityRole="alert">
-                {mensaje}
-              </Text>
-            )}
-            <BotonAccion
-              texto={ocupado ? 'Revisando…' : 'Revisar de nuevo'}
-              principal
-              deshabilitado={ocupado}
+            {mensaje && <BloqueError titulo="No se pudo revisar" detalle={mensaje} tono={tonoMensaje} />}
+            <Boton
+              texto="Revisar de nuevo"
+              cargando={ocupado}
+              textoCargando="Revisando…"
               onPress={() => onReintentarLiquidacion(sinLiquidar)}
             />
-            <BotonAccion texto="Cerrar" deshabilitado={ocupado} onPress={onCerrar} />
+            <Boton texto="Cerrar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
             <Text style={estilos.nota}>Si es urgente, un supervisor puede autorizar esta carga desde su cuenta.</Text>
           </>
         ) : conflicto ? (
@@ -131,18 +130,14 @@ function Contenido({
               Tu ruta ya tiene una carga inicial para ese día. Puedes continuarla, o elegir otro día si esta carga es
               para una fecha distinta.
             </Text>
-            {mensaje && (
-              <Text style={estilos.error} accessibilityRole="alert">
-                {mensaje}
-              </Text>
-            )}
-            <BotonAccion
-              texto={ocupado ? 'Abriendo…' : 'Continuar esa carga'}
-              principal
-              deshabilitado={ocupado}
+            {mensaje && <BloqueError titulo="No se pudo abrir esa carga" detalle={mensaje} tono={tonoMensaje} />}
+            <Boton
+              texto="Continuar esa carga"
+              cargando={ocupado}
+              textoCargando="Abriendo…"
               onPress={() => onContinuarExistente(conflicto)}
             />
-            <BotonAccion texto="Elegir otra fecha" deshabilitado={ocupado} onPress={onElegirOtra} />
+            <Boton texto="Elegir otra fecha" variante="secundario" deshabilitado={ocupado} onPress={onElegirOtra} />
           </>
         ) : (
           <>
@@ -166,11 +161,13 @@ function Contenido({
             />
             {ocupado && <ActivityIndicator color={COLORES.texto} />}
             {mensaje && (
-              <Text style={estilos.error} accessibilityRole="alert">
-                {mensaje}
-              </Text>
+              <BloqueError
+                titulo={aviso ? 'Cambió el día' : 'No se pudo iniciar la carga'}
+                detalle={mensaje}
+                tono={tonoMensaje}
+              />
             )}
-            <BotonAccion texto="Cancelar" deshabilitado={ocupado} onPress={onCerrar} />
+            <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           </>
         )}
       </View>
@@ -223,60 +220,28 @@ function OpcionDia({ titulo, dia, propuesta, deshabilitado, onPress }: PropsOpci
   );
 }
 
-function BotonAccion({
-  texto,
-  onPress,
-  principal = false,
-  deshabilitado = false,
-}: {
-  texto: string;
-  onPress: () => void;
-  principal?: boolean;
-  deshabilitado?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={deshabilitado}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: deshabilitado }}
-      style={({ pressed }) => [
-        estilos.boton,
-        principal && estilos.botonPrincipal,
-        pressed && estilos.botonPresionado,
-        deshabilitado && estilos.deshabilitado,
-      ]}
-    >
-      {({ pressed }) => (
-        <Text style={[estilos.textoBoton, (principal || pressed) && estilos.textoInvertido]}>{texto}</Text>
-      )}
-    </Pressable>
-  );
-}
-
 const estilos = StyleSheet.create({
   fondo: {
     flex: 1,
     justifyContent: 'center',
-    padding: ESPACIADO.lg,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: RITMO.margen,
+    backgroundColor: COLORES.velo,
   },
   tarjeta: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: ANCHO_MODAL,
     alignSelf: 'center',
-    gap: ESPACIADO.md,
-    padding: ESPACIADO.lg,
+    gap: RITMO.relacionado,
+    padding: ESPACIADO.xl,
     backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.lg,
+    borderRadius: RADIOS.grande,
   },
   titulo: {
-    fontSize: TIPOGRAFIA.tamanos.xl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
   detalle: {
-    fontSize: TIPOGRAFIA.tamanos.base,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   opcion: {
@@ -285,9 +250,9 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.lg,
     paddingVertical: ESPACIADO.md,
-    borderWidth: 2,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
+    borderRadius: RADIOS.medio,
     backgroundColor: COLORES.fondo,
   },
   opcionPropuesta: {
@@ -304,13 +269,12 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.sm,
   },
   tituloOpcion: {
-    fontSize: TIPOGRAFIA.tamanos.xxl,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
   diaOpcion: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.medio,
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.medio,
     color: COLORES.texto,
   },
   etiqueta: {
@@ -320,48 +284,21 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.fondo,
   },
   textoEtiqueta: {
-    fontSize: TIPOGRAFIA.tamanos.sm,
-    fontWeight: TIPOGRAFIA.pesos.negrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
     color: COLORES.texto,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
-  boton: {
-    minHeight: TOQUE_MINIMO,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORES.texto,
-    borderRadius: RADIOS.md,
-  },
-  botonPrincipal: {
-    backgroundColor: COLORES.texto,
-  },
-  botonPresionado: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
-  },
-  textoBoton: {
-    fontSize: TIPOGRAFIA.tamanos.lg,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.texto,
-    textAlign: 'center',
-  },
   deshabilitado: {
-    opacity: 0.5,
+    opacity: OPACIDAD.deshabilitado,
   },
+  // Aparte de los botones por espacio, no por una línea.
   nota: {
-    paddingTop: ESPACIADO.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.borde,
-    fontSize: TIPOGRAFIA.tamanos.sm,
+    marginTop: ESPACIADO.xs,
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
-  },
-  error: {
-    fontSize: TIPOGRAFIA.tamanos.base,
-    fontWeight: TIPOGRAFIA.pesos.semiNegrita,
-    color: COLORES.error,
   },
 });
