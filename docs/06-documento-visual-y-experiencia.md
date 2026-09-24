@@ -13,7 +13,9 @@
 2. **Minimizar la fricción en el camino feliz.** Cuando todo coincide, el usuario no debe leer ni confirmar información redundante (ej. solo se muestran discrepancias, nunca la lista completa ya validada).
 3. **La auditoría no debe tener fricción de captura.** La revisión de supervisor se resuelve con dos botones (correcto/incorrecto), no recapturando cantidades.
 4. **Todo dato relevante para trazabilidad se captura automáticamente** (usuario, timestamp, ubicación operativa) sin pedirlo explícitamente al usuario salvo cuando aporta valor real (ej. evidencia externa).
-5. **El color comunica estado, no decora.** Verde (listo/coincide), ámbar (atención/discrepancia resuelta o pendiente), rojo (bloqueado/urgente), gris (inactivo/en espera).
+5. **El color comunica estado, no decora.** Verde (listo/coincide), ámbar (atención/discrepancia resuelta o pendiente), rojo (bloqueado/urgente), violeta (inactivo/en espera/revisado en cero). Cada estado se muestra como bloque tintado (fondo claro, borde y texto oscuro del mismo tono), nunca solo como texto de color.
+6. **El color es la base, no el adorno.** Alto contraste no significa gris y blanco: significa que los elementos se distingan entre sí. El fondo de pantalla es azul de marca tintado y las tarjetas blancas flotan encima; la marca va en barras superiores, encabezados de sección y acción principal. El gris queda solo para texto secundario y divisores. Todo texto cumple 4.5:1 sobre su fondo (`apps/movil/src/theme/contraste.spec.ts`).
+7. **Sueltas que completan un paquete se bloquean.** En bodega los paquetes se arman al contar: capturar 9 sueltas de un producto C/8 siempre es error de dedo. El campo no lo acepta y ofrece "Convertir a 1 paquete y 1 suelta". Solo aplica a productos por pieza con empaque confirmado; los que aún no tienen empaque definido se capturan por pieza hasta que el supervisor lo configure.
 
 ## 2. Matriz de permisos por rol
 
@@ -44,7 +46,7 @@
 - Cola agrupada en tres estados visuales:
   - **Verde — Listas para verificar:** vendedor completó su conteo, sin bloqueo.
   - **Ámbar — Bloqueadas por corte pendiente:** vendedor completó, pero la ruta anterior de ese vendedor sigue sin corte de venta en Handy.
-  - **Gris — Esperando al vendedor:** el vendedor sigue contando, no accionable.
+  - **Violeta — Esperando al vendedor:** el vendedor sigue contando, no accionable.
 
 ### 3.4 Captura de productos (grid)
 - Grid de productos con búsqueda superior, ordenado por frecuencia de uso de esa ruta específica.
