@@ -1,4 +1,4 @@
-import type { FactorCatalogoApi, FactorPendienteApi, ModalidadVentaApi } from '../api/factores';
+import type { ConfirmacionFactor, FactorCatalogoApi, FactorPendienteApi, ModalidadVentaApi } from '../api/factores';
 
 /**
  * Lo que la pantalla de empaques necesita, ya validado. La regla que protege
@@ -232,6 +232,41 @@ export function resumenConfirmacion(
   }
   const factor = piezasPorPaquete ?? 0;
   return `Al contar ${contados}, se enviarán ${PAQUETES_EJEMPLO * factor} piezas a Handy.`;
+}
+
+/** Un producto de la familia con lo que se va a guardar para él. */
+export interface ProductoConConfirmacion extends ProductoPendiente {
+  confirmacion: ConfirmacionFactor;
+}
+
+export interface PlanFamilia {
+  /** Los que se guardan, cada uno con su propio empaque. */
+  aConfirmar: ProductoConConfirmacion[];
+  /** Por pieza sin número en el nombre: quedan pendientes para confirmarse uno por uno. */
+  sinNumero: ProductoPendiente[];
+}
+
+/**
+ * Qué se guarda al confirmar toda una familia. Completo: todos igual. Por
+ * pieza: cada uno con el número de SU nombre (C/6, C/12, C/24 conviven en una
+ * familia); el que no trae número no se adivina y se queda pendiente.
+ */
+export function planFamilia(productos: readonly ProductoPendiente[], modalidad: ModalidadVentaApi): PlanFamilia {
+  if (modalidad === 'COMPLETO') {
+    return { aConfirmar: productos.map((p) => ({ ...p, confirmacion: { modalidadVenta: 'COMPLETO' } })), sinNumero: [] };
+  }
+  const aConfirmar: ProductoConConfirmacion[] = [];
+  const sinNumero: ProductoPendiente[] = [];
+  for (const p of productos) {
+    if (p.sugerido === null) sinNumero.push(p);
+    else aConfirmar.push({ ...p, confirmacion: { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: p.sugerido } });
+  }
+  return { aConfirmar, sinNumero };
+}
+
+/** El resumen por pieza de un producto concreto: en una familia cada uno multiplica distinto. */
+export function resumenPorPiezaDe(nombre: string, piezasPorPaquete: number): string {
+  return `Al contar ${PAQUETES_EJEMPLO} paquetes de ${nombre}, se enviarán ${PAQUETES_EJEMPLO * piezasPorPaquete} piezas a Handy.`;
 }
 
 /** "1 producto", "12 productos". */

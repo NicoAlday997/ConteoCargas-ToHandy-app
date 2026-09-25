@@ -13,6 +13,8 @@ import {
   productoAConfirmar,
   textoEmpaque,
   piezasDesdeTexto,
+  planFamilia,
+  resumenPorPiezaDe,
   resumenConfirmacion,
   textoProductos,
 } from './modelo-factores.ts';
@@ -185,5 +187,44 @@ describe('corrección de un empaque confirmado', () => {
     assert.equal(esMismoEmpaque(porPieza, 'POR_PIEZA', 24), false);
     assert.equal(esMismoEmpaque(porPieza, 'COMPLETO', null), false);
     assert.equal(esMismoEmpaque(null, 'COMPLETO', null), false);
+  });
+});
+
+describe('planFamilia', () => {
+  const [familia] = agruparPendientes([
+    fila('1', 'AGUA C/24', 'AGUAS', 24),
+    fila('2', 'AGUA C/6', 'AGUAS', 6),
+    fila('3', 'AGUA GALON', 'AGUAS'),
+  ]);
+  const productos = familia?.data ?? [];
+
+  it('completo: todos, sin importar el número del nombre', () => {
+    const plan = planFamilia(productos, 'COMPLETO');
+    assert.deepEqual(
+      plan.aConfirmar.map((p) => p.confirmacion),
+      [{ modalidadVenta: 'COMPLETO' }, { modalidadVenta: 'COMPLETO' }, { modalidadVenta: 'COMPLETO' }],
+    );
+    assert.deepEqual(plan.sinNumero, []);
+  });
+
+  it('por pieza: cada uno con el número de su nombre; sin número queda pendiente', () => {
+    const plan = planFamilia(productos, 'POR_PIEZA');
+    assert.deepEqual(
+      plan.aConfirmar.map((p) => [p.code, p.confirmacion]),
+      [
+        ['1', { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: 24 }],
+        ['2', { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: 6 }],
+      ],
+    );
+    assert.deepEqual(
+      plan.sinNumero.map((p) => p.code),
+      ['3'],
+    );
+  });
+});
+
+describe('resumenPorPiezaDe', () => {
+  it('multiplica por el número de ese producto', () => {
+    assert.equal(resumenPorPiezaDe('AGUA C/24', 24), 'Al contar 5 paquetes de AGUA C/24, se enviarán 120 piezas a Handy.');
   });
 });

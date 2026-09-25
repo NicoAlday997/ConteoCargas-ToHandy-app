@@ -89,25 +89,25 @@ export interface ProgresoFamilia {
 }
 
 /**
- * Toda una familia como "se vende completo". No hay endpoint por lote: uno por
- * uno, y al primer fallo se detiene. Lo ya guardado queda guardado; el error
- * dice cuántos alcanzaron.
+ * Toda una familia de una vez, cada producto con su propio empaque. No hay
+ * endpoint por lote: uno por uno, y al primer fallo se detiene. Lo ya guardado
+ * queda guardado; el error dice cuántos alcanzaron.
  */
-export function useConfirmarFamiliaCompleta(onProgreso: (progreso: ProgresoFamilia) => void) {
+export function useConfirmarFamilia(onProgreso: (progreso: ProgresoFamilia) => void) {
   const clienteConsultas = useQueryClient();
   return useMutation({
-    mutationFn: async (codes: readonly string[]) => {
+    mutationFn: async (productos: readonly { code: string; confirmacion: ConfirmacionFactor }[]) => {
       const hechos: string[] = [];
       try {
-        for (const code of codes) {
-          onProgreso({ hechos: hechos.length, total: codes.length });
-          await confirmarFactor(code, { modalidadVenta: 'COMPLETO' });
+        for (const { code, confirmacion } of productos) {
+          onProgreso({ hechos: hechos.length, total: productos.length });
+          await confirmarFactor(code, confirmacion);
           hechos.push(code);
         }
-        onProgreso({ hechos: hechos.length, total: codes.length });
+        onProgreso({ hechos: hechos.length, total: productos.length });
         return hechos.length;
       } catch (e) {
-        throw new ErrorFamilia(hechos.length, codes.length, e);
+        throw new ErrorFamilia(hechos.length, productos.length, e);
       } finally {
         quitarDeLista(clienteConsultas, hechos);
       }

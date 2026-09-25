@@ -9,7 +9,7 @@ import {
   ErrorFamilia,
   useCargasEnCurso,
   useConfirmarFactor,
-  useConfirmarFamiliaCompleta,
+  useConfirmarFamilia,
   useFactoresCatalogo,
   useFactoresPendientes,
   type ProgresoFamilia,
@@ -24,6 +24,8 @@ import {
   EstadoVacio,
   Esqueleto,
   Etiqueta,
+  FilaMenu,
+  GrupoMenu,
   LineaEsqueleto,
   NotaEncabezado,
   Tarjeta,
@@ -40,8 +42,10 @@ import {
   piezasDesdeTexto,
   PIEZAS_MAXIMO,
   PIEZAS_MINIMO,
+  planFamilia,
   productoAConfirmar,
   resumenConfirmacion,
+  resumenPorPiezaDe,
   textoCargas,
   textoEmpaque,
   textoProductos,
@@ -50,6 +54,7 @@ import {
   type FamiliaPendiente,
   type ProductoAConfirmar,
   type ProductoCatalogo,
+  type ProductoConConfirmacion,
   type ProductoPendiente,
 } from '../../src/factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
@@ -83,6 +88,8 @@ import {
 const TITULO = 'Empaque de productos';
 /** El modal con teclado es tan angosto como el del PIN: el teclado se ve igual. */
 const ANCHO_MODAL_TECLADO = ANCHO_MODAL - ESPACIADO.xl - ESPACIADO.lg;
+/** El botón de acciones de familia no hace crecer su encabezado: mide lo que el título. */
+const ALTO_BOTON_ACCIONES = ESPACIADO.xxl;
 
 function sesionVencida() {
   void cerrarSesion().then(() => router.replace('/login'));
@@ -172,7 +179,7 @@ function ListaFactores() {
   const pendientes = contarPendientes(consultaPendientes.data ?? []);
   const [busqueda, setBusqueda] = useState('');
   const [seleccionado, setSeleccionado] = useState<ProductoAConfirmar | null>(null);
-  const [familiaAConfirmar, setFamiliaAConfirmar] = useState<FamiliaPendiente | null>(null);
+  const [familiaAbierta, setFamiliaAbierta] = useState<FamiliaPendiente | null>(null);
 
   const estados = [consultaPendientes.error, consultaCatalogo.error].map((e) => (e instanceof ErrorApi ? e.estado : null));
   const sinSesion = estados.includes(401);
@@ -199,7 +206,7 @@ function ListaFactores() {
         <ContenidoPendientes
           consulta={consultaPendientes}
           onElegir={(p) => setSeleccionado({ ...p, actual: null })}
-          onConfirmarFamilia={setFamiliaAConfirmar}
+          onAccionesFamilia={setFamiliaAbierta}
           onVerTodos={() => setPestana('todos')}
         />
       ) : (
@@ -211,7 +218,7 @@ function ListaFactores() {
         />
       )}
       <ModalConfirmarProducto producto={seleccionado} onCerrar={() => setSeleccionado(null)} />
-      <ModalConfirmarFamilia familia={familiaAConfirmar} onCerrar={() => setFamiliaAConfirmar(null)} />
+      <ModalFamilia familia={familiaAbierta} onCerrar={() => setFamiliaAbierta(null)} />
     </SafeAreaView>
   );
 }
@@ -298,12 +305,12 @@ function Pestanas({
 function ContenidoPendientes({
   consulta,
   onElegir,
-  onConfirmarFamilia,
+  onAccionesFamilia,
   onVerTodos,
 }: {
   consulta: ConsultaLista<ProductoPendiente>;
   onElegir: (p: ProductoPendiente) => void;
-  onConfirmarFamilia: (f: FamiliaPendiente) => void;
+  onAccionesFamilia: (f: FamiliaPendiente) => void;
   onVerTodos: () => void;
 }) {
   const familias = consulta.data ?? [];
@@ -329,10 +336,10 @@ function ContenidoPendientes({
       contentContainerStyle={estilos.contenidoLista}
       sections={familias}
       keyExtractor={(p) => p.code}
-      // El encabezado lleva un botón: fijo taparía media pantalla.
+      // Fijo, el encabezado taparía parte de los productos.
       stickySectionHeadersEnabled={false}
       renderSectionHeader={({ section }) => (
-        <EncabezadoFamilia familia={section} onConfirmarCompleta={() => onConfirmarFamilia(section)} />
+        <EncabezadoFamilia familia={section} porConfirmar onAcciones={() => onAccionesFamilia(section)} />
       )}
       renderItem={({ item }) => <FilaPendiente producto={item} onPress={() => onElegir(item)} />}
       refreshing={refrescando}
@@ -431,25 +438,50 @@ function EsqueletoLista() {
 // Lista
 // ---------------------------------------------------------------------------
 
-function EncabezadoFamilia({ familia, onConfirmarCompleta }: { familia: Familia<unknown>; onConfirmarCompleta?: () => void }) {
+/**
+ * Lo principal es la familia y cuánto le falta. Confirmarla entera va después
+ * en jerarquía, pero es lo que evita confirmar decenas de productos uno por
+ * uno: por eso es un botón con texto y color de marca, no un ícono de "más
+ * opciones" que nadie nota.
+ */
+function EncabezadoFamilia({
+  familia,
+  porConfirmar = false,
+  onAcciones,
+}: {
+  familia: Familia<unknown>;
+  /** En la pestaña de pendientes la cantidad es lo que falta, no lo que hay. */
+  porConfirmar?: boolean;
+  onAcciones?: () => void;
+}) {
   // Sin familia no hay nada en común entre ellos; con uno solo, basta su fila.
   // En el catálogo completo no hay acción de familia: corregir es uno por uno.
-  const conAccion = onConfirmarCompleta !== undefined && familia.familia !== null && familia.data.length > 1;
+  const conAcciones = onAcciones !== undefined && familia.familia !== null && familia.data.length > 1;
+  const cantidad = porConfirmar ? `${familia.data.length} por confirmar` : textoProductos(familia.data.length);
   return (
     <View style={estilos.encabezadoFamilia}>
-      <View style={estilos.lineaFamilia} accessibilityRole="header">
+      <View style={estilos.lineaFamilia} accessible accessibilityRole="header" accessibilityLabel={`${familia.titulo}: ${cantidad}`}>
         <Text style={estilos.textoFamilia} numberOfLines={2}>
           {familia.titulo}
         </Text>
-        <Text style={estilos.cantidadFamilia}>{textoProductos(familia.data.length)}</Text>
+        <Text style={estilos.cantidadFamilia}>{cantidad}</Text>
       </View>
-      {conAccion && (
-        <Boton
-          texto="Confirmar toda la familia como se vende completo"
-          variante="secundario"
-          onPress={onConfirmarCompleta}
-          accessibilityHint={`Pide confirmar antes de guardar ${textoProductos(familia.data.length)}`}
-        />
+      {conAcciones && (
+        <Pressable
+          onPress={onAcciones}
+          accessibilityRole="button"
+          accessibilityLabel={`Confirmar toda la familia ${familia.titulo}`}
+          accessibilityHint="Abre las opciones para confirmar todos sus productos de una vez"
+          // A lo ancho ya pasa de TOQUE_MINIMO; a lo alto se completa sin hacer crecer la fila.
+          hitSlop={{ top: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2, bottom: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2 }}
+          style={({ pressed }) => [estilos.botonAcciones, pressed && estilos.botonAccionesPresionado]}
+        >
+          {({ pressed }) => (
+            <Text style={[estilos.textoBotonAcciones, pressed && estilos.textoInvertido]} numberOfLines={1}>
+              Confirmar todos
+            </Text>
+          )}
+        </Pressable>
       )}
     </View>
   );
@@ -842,30 +874,109 @@ function ResumenModalidad({ modalidad, piezas, deVarios = false }: { modalidad: 
 }
 
 // ---------------------------------------------------------------------------
-// Toda una familia como "se vende completo"
+// Toda una familia de una vez: menú (completos o por pieza) → confirmación
 // ---------------------------------------------------------------------------
 
-function ModalConfirmarFamilia({ familia, onCerrar }: { familia: FamiliaPendiente | null; onCerrar: () => void }) {
+function ModalFamilia({ familia, onCerrar }: { familia: FamiliaPendiente | null; onCerrar: () => void }) {
   return (
     <Modal visible={familia !== null} transparent animationType="none" onRequestClose={onCerrar}>
       <View style={estilos.fondoModal}>
         <ScrollView contentContainerStyle={estilos.contenidoFondoModal} bounces={false}>
-          {familia && <ConfirmacionFamilia key={familia.titulo} familia={familia} onCerrar={onCerrar} />}
+          {familia && <FlujoFamilia key={familia.titulo} familia={familia} onCerrar={onCerrar} />}
         </ScrollView>
       </View>
     </Modal>
   );
 }
 
-function ConfirmacionFamilia({ familia, onCerrar }: { familia: FamiliaPendiente; onCerrar: () => void }) {
-  const [progreso, setProgreso] = useState<ProgresoFamilia | null>(null);
-  const confirmar = useConfirmarFamiliaCompleta(setProgreso);
+function FlujoFamilia({ familia, onCerrar }: { familia: FamiliaPendiente; onCerrar: () => void }) {
   // La lista de la familia al abrir: si alguien confirma uno mientras tanto, esto no cambia bajo el dedo.
   const [productos] = useState(familia.data);
+  const [modalidad, setModalidad] = useState<ModalidadVentaApi | null>(null);
+
+  if (modalidad === null) {
+    return <MenuFamilia titulo={familia.titulo} productos={productos} onElegir={setModalidad} onCerrar={onCerrar} />;
+  }
+  return (
+    <ConfirmacionFamilia
+      titulo={familia.titulo}
+      productos={productos}
+      modalidad={modalidad}
+      onAtras={() => setModalidad(null)}
+      onCerrar={onCerrar}
+    />
+  );
+}
+
+function MenuFamilia({
+  titulo,
+  productos,
+  onElegir,
+  onCerrar,
+}: {
+  titulo: string;
+  productos: readonly ProductoPendiente[];
+  onElegir: (m: ModalidadVentaApi) => void;
+  onCerrar: () => void;
+}) {
+  const total = productos.length;
+  const { aConfirmar, sinNumero } = planFamilia(productos, 'POR_PIEZA');
+  return (
+    <View style={estilos.modal}>
+      <Text style={estilos.pasoIndicador}>Toda la familia</Text>
+      <Encabezado titulo={titulo} variante="plano" lineasTitulo={3} />
+      <Text style={estilos.detalleModal}>
+        {textoProductos(total)} por confirmar. Elige cómo se venden; antes de guardar se pide confirmar.
+      </Text>
+      <GrupoMenu>
+        <FilaMenu
+          texto="Todos se venden completos"
+          detalle={`La bolsa o caja entera es una venta. Confirma ${textoProductos(total)}.`}
+          onPress={() => onElegir('COMPLETO')}
+        />
+        {aConfirmar.length > 0 && (
+          <FilaMenu
+            texto="Todos se venden por pieza"
+            detalle={
+              sinNumero.length === 0
+                ? `Cada uno con las piezas que dice su nombre. Confirma ${textoProductos(total)}.`
+                : `Cada uno con las piezas que dice su nombre. Confirma ${aConfirmar.length}; ${sinNumero.length} sin número en el nombre quedan pendientes.`
+            }
+            onPress={() => onElegir('POR_PIEZA')}
+          />
+        )}
+      </GrupoMenu>
+      {aConfirmar.length === 0 && (
+        <Text style={estilos.textoAviso}>
+          Ninguno dice en el nombre cuántas piezas trae: si se venden por pieza, confírmalos uno por uno.
+        </Text>
+      )}
+      <View style={estilos.botones}>
+        <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} style={estilos.botonFila} />
+      </View>
+    </View>
+  );
+}
+
+function ConfirmacionFamilia({
+  titulo,
+  productos,
+  modalidad,
+  onAtras,
+  onCerrar,
+}: {
+  titulo: string;
+  productos: readonly ProductoPendiente[];
+  modalidad: ModalidadVentaApi;
+  onAtras: () => void;
+  onCerrar: () => void;
+}) {
+  const [progreso, setProgreso] = useState<ProgresoFamilia | null>(null);
+  const confirmar = useConfirmarFamilia(setProgreso);
+  const { aConfirmar, sinNumero } = useMemo(() => planFamilia(productos, modalidad), [productos, modalidad]);
   // Los que ya se guardaron en intentos anteriores: reintentar sigue desde ahí.
   const [guardados, setGuardados] = useState(0);
-  const total = productos.length;
-  const conNumero = productos.filter((p) => p.sugerido !== null).length;
+  const total = aConfirmar.length;
   const enviando = confirmar.isPending;
 
   const cerrar = () => {
@@ -873,17 +984,14 @@ function ConfirmacionFamilia({ familia, onCerrar }: { familia: FamiliaPendiente;
   };
 
   const guardar = () => {
-    confirmar.mutate(
-      productos.slice(guardados).map((p) => p.code),
-      {
-        onSuccess: onCerrar,
-        onError: (e) => {
-          if (!(e instanceof ErrorFamilia)) return;
-          setGuardados((g) => g + e.guardados);
-          if (e.causa instanceof ErrorApi && e.causa.estado === 401) sesionVencida();
-        },
+    confirmar.mutate(aConfirmar.slice(guardados), {
+      onSuccess: onCerrar,
+      onError: (e) => {
+        if (!(e instanceof ErrorFamilia)) return;
+        setGuardados((g) => g + e.guardados);
+        if (e.causa instanceof ErrorApi && e.causa.estado === 401) sesionVencida();
       },
-    );
+    });
   };
 
   const error = confirmar.error instanceof ErrorFamilia ? confirmar.error : null;
@@ -892,10 +1000,47 @@ function ConfirmacionFamilia({ familia, onCerrar }: { familia: FamiliaPendiente;
 
   return (
     <View style={estilos.modal}>
-      <Encabezado titulo={`¿Toda la familia ${familia.titulo} se vende completa?`} variante="plano" lineasTitulo={3} />
+      {modalidad === 'COMPLETO' ? (
+        <DetalleFamiliaCompleta titulo={titulo} productos={aConfirmar} />
+      ) : (
+        <DetalleFamiliaPorPieza titulo={titulo} productos={aConfirmar} sinNumero={sinNumero} />
+      )}
+      {confirmar.isError && !(causa instanceof ErrorApi && causa.estado === 401) && (
+        <AvisoError
+          error={causa}
+          titulo={guardados > 0 ? `Se guardaron ${guardados} de ${total}` : undefined}
+          nota={guardados > 0 ? 'Reintentar sigue con los que faltan.' : undefined}
+        />
+      )}
+      <View style={estilos.botones}>
+        {/* Con algo ya guardado, volver al menú ofrecería una lista que ya no es cierta. */}
+        <Boton
+          texto={guardados > 0 ? 'Cerrar' : 'Atrás'}
+          variante="secundario"
+          onPress={guardados > 0 ? cerrar : onAtras}
+          deshabilitado={enviando}
+          style={estilos.botonFila}
+        />
+        <Boton
+          texto={confirmar.isError ? 'Reintentar' : `Confirmar ${textoProductos(total)}`}
+          onPress={guardar}
+          cargando={enviando}
+          textoCargando={progreso ? `Guardando ${hechos} de ${total}…` : 'Guardando…'}
+          style={estilos.botonFila}
+        />
+      </View>
+    </View>
+  );
+}
+
+function DetalleFamiliaCompleta({ titulo, productos }: { titulo: string; productos: readonly ProductoConConfirmacion[] }) {
+  const conNumero = productos.filter((p) => p.sugerido !== null).length;
+  return (
+    <>
+      <Encabezado titulo={`¿Toda la familia ${titulo} se vende completa?`} variante="plano" lineasTitulo={3} />
       <Text style={estilos.detalleModal}>
-        Se confirmarán <Text style={estilos.negrita}>{textoProductos(total)}</Text> como “se vende completo”: la bolsa o caja
-        entera es una venta y nunca se abre.
+        Se confirmarán <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text> como “se vende completo”: la bolsa
+        o caja entera es una venta y nunca se abre.
       </Text>
       <ResumenModalidad modalidad="COMPLETO" piezas={null} deVarios />
       {conNumero > 0 && (
@@ -912,25 +1057,70 @@ function ConfirmacionFamilia({ familia, onCerrar }: { familia: FamiliaPendiente;
           </Text>
         ))}
       </Tarjeta>
-      <Text style={estilos.detalleModal}>Si alguno se abre y se vende por pieza, cancela y confírmalo primero por separado.</Text>
-      {confirmar.isError && !(causa instanceof ErrorApi && causa.estado === 401) && (
-        <AvisoError
-          error={causa}
-          titulo={guardados > 0 ? `Se guardaron ${guardados} de ${total}` : undefined}
-          nota={guardados > 0 ? 'Reintentar sigue con los que faltan.' : undefined}
-        />
+      <Text style={estilos.detalleModal}>Si alguno se abre y se vende por pieza, vuelve atrás y confírmalo primero por separado.</Text>
+    </>
+  );
+}
+
+function DetalleFamiliaPorPieza({
+  titulo,
+  productos,
+  sinNumero,
+}: {
+  titulo: string;
+  productos: readonly ProductoConConfirmacion[];
+  sinNumero: readonly ProductoPendiente[];
+}) {
+  const ejemplo = productos[0];
+  return (
+    <>
+      <Encabezado titulo={`¿Toda la familia ${titulo} se vende por pieza?`} variante="plano" lineasTitulo={3} />
+      <Text style={estilos.detalleModal}>
+        Se confirmarán <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text> como “se vende por pieza”, cada
+        uno con las piezas que dice su propio nombre.
+      </Text>
+      {ejemplo && ejemplo.sugerido !== null && (
+        <Tarjeta tintada="marca" compacta accessible>
+          <Text style={estilos.fraseResumen}>{resumenPorPiezaDe(ejemplo.nombre, ejemplo.sugerido)}</Text>
+        </Tarjeta>
       )}
-      <View style={estilos.botones}>
-        <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={enviando} style={estilos.botonFila} />
-        <Boton
-          texto={confirmar.isError ? 'Reintentar' : `Confirmar ${textoProductos(total)}`}
-          onPress={guardar}
-          cargando={enviando}
-          textoCargando={progreso ? `Guardando ${hechos} de ${total}…` : 'Guardando…'}
-          style={estilos.botonFila}
-        />
-      </View>
-    </View>
+      <Tarjeta elevacion={0} compacta>
+        <Text style={estilos.rotulo}>Productos que se confirman</Text>
+        {productos.map((p) => (
+          <View
+            key={p.code}
+            style={estilos.lineaProductoFamilia}
+            accessible
+            accessibilityLabel={`${p.nombre}: ${p.sugerido} piezas por paquete`}
+          >
+            <Text style={[estilos.productoFamilia, estilos.nombreProductoFamilia]} numberOfLines={2}>
+              {p.nombre}
+            </Text>
+            <Text style={estilos.piezasProductoFamilia}>{p.sugerido} por paquete</Text>
+          </View>
+        ))}
+      </Tarjeta>
+      <Text style={estilos.detalleModal}>
+        Los números salen del nombre. Si alguno no coincide con lo que trae el paquete, vuelve atrás y confírmalo primero por
+        separado.
+      </Text>
+      {sinNumero.length > 0 && (
+        <Tarjeta tintada="discrepancia" compacta accessible>
+          <Text style={estilos.tituloAviso}>
+            {sinNumero.length === 1 ? '1 se queda sin confirmar' : `${sinNumero.length} se quedan sin confirmar`}
+          </Text>
+          <Text style={estilos.detalleModal}>
+            Su nombre no dice cuántas piezas trae. Seguirá{sinNumero.length === 1 ? '' : 'n'} en la lista para confirmarlo
+            {sinNumero.length === 1 ? '' : 's'} uno por uno:
+          </Text>
+          {sinNumero.map((p) => (
+            <Text key={p.code} style={estilos.productoFamilia} numberOfLines={2}>
+              {p.nombre}
+            </Text>
+          ))}
+        </Tarjeta>
+      )}
+    </>
   );
 }
 
@@ -1024,18 +1214,44 @@ const estilos = StyleSheet.create({
   // Mucho aire arriba (separa de la familia anterior) y poco abajo: la familia
   // se lee pegada a sus productos.
   encabezadoFamilia: {
-    gap: RITMO.relacionado,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RITMO.interno,
     paddingTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xs,
   },
+  // Si el nombre y la cantidad no caben junto al botón (teléfono angosto), la
+  // cantidad baja bajo el nombre en vez de estrujarlo.
   lineaFamilia: {
+    flex: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    gap: RITMO.relacionado,
+    columnGap: RITMO.relacionado,
+  },
+  // Pastilla tintada con contorno de marca: se ve tocable sin competir con el
+  // nombre de la familia. Del alto del título; el toque se completa con hitSlop.
+  botonAcciones: {
+    height: ALTO_BOTON_ACCIONES,
+    paddingHorizontal: ESPACIADO.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIOS.completo,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.marca,
+    backgroundColor: COLORES.marcaClaro,
+  },
+  botonAccionesPresionado: {
+    backgroundColor: COLORES.marca,
+  },
+  textoBotonAcciones: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
   },
   textoFamilia: {
-    flex: 1,
+    flexShrink: 1,
     ...TIPOGRAFIA.titulo,
     fontWeight: PESOS.extraNegrita,
     color: COLORES.marcaOscuro,
@@ -1212,6 +1428,20 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.titulo,
     fontWeight: PESOS.extraNegrita,
     color: COLORES.marcaOscuro,
+  },
+  lineaProductoFamilia: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: RITMO.relacionado,
+  },
+  nombreProductoFamilia: {
+    flex: 1,
+  },
+  piezasProductoFamilia: {
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
+    ...CIFRAS,
   },
   productoFamilia: {
     ...TIPOGRAFIA.cuerpo,
