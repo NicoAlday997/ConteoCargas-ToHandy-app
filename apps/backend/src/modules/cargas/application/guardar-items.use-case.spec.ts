@@ -187,6 +187,9 @@ class FakeProductoConteoRepository implements ProductoConteoRepository {
     return resultado;
   }
 
+  listarContadosEnEvento(): Promise<ProductoDeConteo[]> {
+    throw new Error('no usado en esta prueba');
+  }
   listarActivos(): Promise<ProductoDeConteo[]> {
     throw new Error('no usado en esta prueba');
   }

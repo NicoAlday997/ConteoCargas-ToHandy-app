@@ -14,6 +14,7 @@ export interface CuerpoErrorApi {
    * Login: `PIN_INCORRECTO`, `USUARIO_BLOQUEADO`, `USUARIO_INACTIVO`, `CREDENCIALES_INVALIDAS`.
    * Iniciar carga: `YA_TIENE_CARGA_ABIERTA`, `FECHA_OPERATIVA_INVALIDA`.
    * Abrir sesión del contador: `CORTE_PENDIENTE`.
+   * Plantillas: `NOMBRE_DUPLICADO`, `PLANTILLA_EN_USO`, `PLANTILLA_INACTIVA`, `RUTA_SIN_ASIGNACION_VIGENTE`.
    */
   codigo?: string | null;
   intentosRestantes?: number | null;

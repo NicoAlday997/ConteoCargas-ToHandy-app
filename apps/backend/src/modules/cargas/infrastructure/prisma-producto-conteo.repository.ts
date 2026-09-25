@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
@@ -37,6 +38,17 @@ export class PrismaProductoConteoRepository extends ProductoConteoRepository {
     );
   }
 
+  private static readonly SELECT_CONTEO = {
+    code: true,
+    nombre: true,
+    unidadCode: true,
+    unidadDescripcion: true,
+    familia: true,
+    modalidadVenta: true,
+    piezasPorPaquete: true,
+    factorConfirmado: true,
+  } satisfies Prisma.ProductoSelect;
+
   async listarActivos(plantillaId: string | null): Promise<ProductoDeConteo[]> {
     return this.prisma.producto.findMany({
       where: {
@@ -45,16 +57,17 @@ export class PrismaProductoConteoRepository extends ProductoConteoRepository {
           ? {}
           : { plantillaProductos: { some: { plantillaId } } }),
       },
-      select: {
-        code: true,
-        nombre: true,
-        unidadCode: true,
-        unidadDescripcion: true,
-        familia: true,
-        modalidadVenta: true,
-        piezasPorPaquete: true,
-        factorConfirmado: true,
+      select: PrismaProductoConteoRepository.SELECT_CONTEO,
+    });
+  }
+
+  async listarContadosEnEvento(eventoId: string): Promise<ProductoDeConteo[]> {
+    return this.prisma.producto.findMany({
+      where: {
+        activo: true,
+        conteoItems: { some: { sesion: { eventoCargaId: eventoId } } },
       },
+      select: PrismaProductoConteoRepository.SELECT_CONTEO,
     });
   }
 }

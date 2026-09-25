@@ -146,7 +146,10 @@ class FakeCargaRepository implements CargaRepository {
 class FakeProductoConteoRepository implements ProductoConteoRepository {
   porPlantilla = new Map<string, ProductoDeConteo[]>();
   catalogo: ProductoDeConteo[] = [];
+  /** Productos con conteo en el evento, esten o no en la plantilla. */
+  contados: ProductoDeConteo[] = [];
   readonly consultas: Array<string | null> = [];
+  readonly consultasContados: string[] = [];
 
   async listarActivos(plantillaId: string | null): Promise<ProductoDeConteo[]> {
     this.consultas.push(plantillaId);
@@ -155,6 +158,11 @@ class FakeProductoConteoRepository implements ProductoConteoRepository {
         ? this.catalogo
         : (this.porPlantilla.get(plantillaId) ?? []);
     return lista.map((p) => ({ ...p }));
+  }
+
+  async listarContadosEnEvento(eventoId: string): Promise<ProductoDeConteo[]> {
+    this.consultasContados.push(eventoId);
+    return this.contados.map((p) => ({ ...p }));
   }
 
   buscarFactores(): Promise<Map<string, FactorDeConteo>> {
@@ -214,6 +222,25 @@ describe('ListarProductosDePlantillaUseCase', () => {
     expect(resumen(resultado)).toEqual([['REFRESCOS', ['PEPSI 1.5 LT C/12']]]);
   });
 
+  it('conserva los productos ya contados en el evento aunque se hayan quitado de la plantilla', async () => {
+    productos.porPlantilla.set('pl-1', [
+      producto('P1', 'PEPSI 1.5 LT C/12', 'REFRESCOS'),
+    ]);
+    // P2 se quito de la plantilla despues de que el vendedor lo conto; P1
+    // sigue en ambas listas y no debe duplicarse.
+    productos.contados = [
+      producto('P1', 'PEPSI 1.5 LT C/12', 'REFRESCOS'),
+      producto('P2', 'BIG COLA 2L', 'REFRESCOS'),
+    ];
+
+    const resultado = exigirExito(await useCase.ejecutar({ eventoId: 'ev-1' }));
+
+    expect(productos.consultasContados).toEqual(['ev-1']);
+    expect(resumen(resultado)).toEqual([
+      ['REFRESCOS', ['BIG COLA 2L', 'PEPSI 1.5 LT C/12']],
+    ]);
+  });
+
   it('sin plantilla devuelve el catalogo activo completo', async () => {
     cargas.evento = eventoDePrueba({ plantillaId: null });
     productos.catalogo = [
@@ -224,6 +251,8 @@ describe('ListarProductosDePlantillaUseCase', () => {
     const resultado = exigirExito(await useCase.ejecutar({ eventoId: 'ev-1' }));
 
     expect(productos.consultas).toEqual([null]);
+    // El catalogo completo ya incluye todo lo contado.
+    expect(productos.consultasContados).toHaveLength(0);
     expect(resultado.plantillaId).toBeNull();
     expect(resumen(resultado)).toEqual([
       ['AGUAS', ['AGUA 1 LT']],

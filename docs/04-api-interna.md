@@ -42,6 +42,21 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 | POST | `/admin/usuarios/:id/restablecer-pin` | Supervisor (admin) | Genera PIN temporal nuevo; marca `debeCambiarPin = true`. |
 | GET | `/admin/usuarios-handy` | Supervisor (admin) | Lista de usuarios vendedores sincronizados desde Handy, para vincular en el alta. |
 
+### 1.2.1 Plantillas de carga
+
+Una plantilla decide qué productos ve el vendedor de una ruta en su grid de conteo. La plantilla vive en la asignación vigente de la ruta (`AsignacionRutaVendedor.plantillaId`) y cada evento de carga guarda la suya como snapshot al crearse. Ids de plantilla y ruta: texto no vacío (las plantillas históricas tienen ids legibles creados por SQL, no CUID). Toda mutación responde la plantilla completa (mismo cuerpo que `GET /admin/plantillas/:id`).
+
+| Método | Ruta | Rol | Descripción |
+|---|---|---|---|
+| GET | `/admin/plantillas?incluirInactivas=` | Supervisor (admin) | Plantillas activas (todas con `incluirInactivas=true`): `[{ id, nombre, descripcion, activa, totalProductos, rutas: [{ id, nombre, codigo }] }]`. `rutas` = rutas con alguna asignación vigente que la usa. |
+| GET | `/admin/plantillas/rutas` | Supervisor (admin) | Rutas activas con lo que usan hoy: `[{ id, nombre, codigo, vendedores: [nombre], plantillas: [{ id, nombre }], sinPlantilla }]`. `sinPlantilla` = algún vendedor vigente sin plantilla (ve el catálogo completo). |
+| GET | `/admin/plantillas/:id` | Supervisor (admin) | Detalle: lo del listado más `familias: [{ familia, productos: [{ code, nombre, familia, modalidadVenta, piezasPorPaquete, factorConfirmado, activo }] }]`, en el mismo orden que el grid de conteo. Incluye productos desactivados en Handy (`activo: false`), que el grid no muestra. |
+| POST | `/admin/plantillas` | Supervisor (admin) | Crea una plantilla vacía y activa. Body: `{ nombre, descripcion? }`. 409 `NOMBRE_DUPLICADO` si ya existe una con el mismo nombre (sin distinguir mayúsculas ni acentos, incluidas las inactivas). |
+| PATCH | `/admin/plantillas/:id` | Supervisor (admin) | Renombrar, cambiar descripción (`null` o vacío la borra), activar o desactivar. Body: `{ nombre?, descripcion?, activa? }`, al menos uno. 409 `PLANTILLA_EN_USO` al desactivar una plantilla asignada a alguna ruta vigente; 409 `NOMBRE_DUPLICADO`. |
+| POST | `/admin/plantillas/:id/productos` | Supervisor (admin) | Agrega varios productos. Body: `{ codes: [code] }`. Los que ya estaban se ignoran. Si algún código no existe en el catálogo no se agrega ninguno: 400 `PRODUCTOS_NO_ENCONTRADOS` con `productos: [code]`. Responde además `agregados` y `yaEstaban`. |
+| POST | `/admin/plantillas/:id/productos/quitar` | Supervisor (admin) | Quita varios productos. Body: `{ codes: [code] }`; los que no estaban se ignoran. Responde además `quitados`. No afecta cargas ya creadas: el historial se lee de los conteos y `GET /eventos-carga/:id/productos` sigue incluyendo los productos que el evento ya contó. |
+| PUT | `/admin/plantillas/:id/rutas/:rutaId` | Supervisor (admin) | La ruta pasa a usar esta plantilla: cambia `plantillaId` en todas sus asignaciones vigentes. Solo afecta cargas nuevas. 409 `PLANTILLA_INACTIVA`, 404 `RUTA_NO_ENCONTRADA` (inexistente o inactiva), 409 `RUTA_SIN_ASIGNACION_VIGENTE` (sin vendedor asignado). |
+
 ### 1.3 Catálogo (solo lectura para la app, sincronizado desde Handy)
 
 | Método | Ruta | Rol | Descripción |

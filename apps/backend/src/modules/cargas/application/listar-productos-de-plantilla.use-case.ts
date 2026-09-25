@@ -12,6 +12,11 @@ import type {
  * asignacion actual de la ruta. Si el evento no tiene plantilla, devuelve todo
  * el catalogo activo.
  *
+ * La plantilla se edita en caliente (admin/plantillas) y el evento solo guarda
+ * su id: quitar un producto de la plantilla lo sacaria del grid de una carga
+ * que ya lo conto, y el contador ya no podria capturarlo. Por eso tambien se
+ * incluyen los productos que ya tienen conteo en el evento.
+ *
  * Orden operativo: agrupados por familia (el contador recorre el camion por
  * familia) y, dentro de cada familia, por nombre. Muchos productos son la
  * misma marca en distintas presentaciones (BIG COLA 1.5L, 2L, 3L): el orden
@@ -59,6 +64,15 @@ export class ListarProductosDePlantillaUseCase {
     }
 
     const productos = await this.productos.listarActivos(evento.plantillaId);
+    if (evento.plantillaId !== null) {
+      const incluidos = new Set(productos.map((p) => p.code));
+      const contados = await this.productos.listarContadosEnEvento(evento.id);
+      for (const producto of contados) {
+        if (incluidos.has(producto.code)) continue;
+        incluidos.add(producto.code);
+        productos.push(producto);
+      }
+    }
 
     const porFamilia = new Map<string | null, ProductoDeConteo[]>();
     for (const producto of productos) {

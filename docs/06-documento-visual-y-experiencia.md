@@ -30,6 +30,7 @@
 | Autorizar carga, rechazar productos o modificar una cantidad | ❌ | ❌ | ✅ |
 | Enviar a Handy una carga autorizada (desde la app) | ❌ | ❌ | ✅ |
 | Ver centro de alertas | ❌ | ❌ | ✅ |
+| Administrar plantillas de carga (productos y rutas) | ❌ | ❌ | ✅ |
 
 ## 3. Catálogo de pantallas
 
@@ -87,6 +88,15 @@
 - Detalle: la misma vista consolidada del historial y tres acciones: **Autorizar** (pregunta antes: después se envía a Handy), **Rechazar productos** (solo los marcados, cada uno con motivo de mínimo 3 caracteres; nunca la carga completa) y **Modificar cantidad** (un producto por ronda, con el teclado de conteo).
 - Modificar avisa antes de guardar que la cantidad no queda aplicada: el vendedor o el contador la confirman con su PIN. Rechazar y modificar devuelven la carga a diferencias por resolver; la app regresa a la cola y lo explica.
 - Ya autorizada, "Enviar a Handy" en el mismo detalle. Respuestas: enviada (con el id de ruta; si Handy rechazó productos por inventario se listan y el resto sí se envió), inventario insuficiente total (no se creó ruta), envío sin confirmar (reintentar es seguro: antes se consulta si la ruta ya existe) y token inválido (requiere al administrador).
+
+### 3.9.2 Plantillas de carga (Supervisor)
+- Acceso desde el inicio del supervisor ("Plantillas de carga").
+- Lista: cada plantilla con su nombre, cuántos productos tiene y qué rutas la usan. Las desactivadas van aparte, al final, para poder reactivarlas. "Crear plantilla" pide nombre y descripción y abre la plantilla nueva (vacía).
+- Detalle: nombre y descripción en el encabezado ("Editar" los cambia), rutas que la usan y los productos por familia en el mismo orden que el grid de conteo, cada uno con cómo se vende y su factor. Los desactivados en Handy se marcan: siguen en la plantilla pero no aparecen al contar.
+- Agregar: selector a pantalla completa con todo el catálogo por familia, búsqueda por nombre y selección múltiple (también "Marcar todos" por familia). Lo que ya está en la plantilla se ve marcado como "Ya está en la plantilla" y no se puede elegir otra vez.
+- Quitar: modo de selección múltiple en rojo; antes de quitar se confirma con la lista de productos y se aclara que las cargas iniciadas y el historial no cambian.
+- Rutas: "Cambiar" muestra todas las rutas activas con lo que usan hoy; "Asignar" mueve la ruta desde su plantilla anterior tras confirmar. No hay "quitar" suelto (dejaría al vendedor viendo todo el catálogo): se le asigna otra plantilla.
+- Desactivar va al final del detalle y solo se permite si ninguna ruta la usa; si alguna la usa, se dice cuáles y qué hacer primero.
 
 ### 3.10 Centro de alertas (Supervisor)
 - Lista de alertas filtrable por estado (pendiente/todas/resueltas) y urgencia.

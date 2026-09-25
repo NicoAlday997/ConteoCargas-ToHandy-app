@@ -50,4 +50,12 @@ export abstract class ProductoConteoRepository {
   abstract listarActivos(
     plantillaId: string | null,
   ): Promise<ProductoDeConteo[]>;
+
+  /**
+   * Productos ACTIVOS con algun conteo en cualquier sesion del evento, esten
+   * o no en su plantilla hoy. Sin orden garantizado.
+   */
+  abstract listarContadosEnEvento(
+    eventoId: string,
+  ): Promise<ProductoDeConteo[]>;
 }

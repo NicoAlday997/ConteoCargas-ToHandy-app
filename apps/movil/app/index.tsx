@@ -85,7 +85,7 @@ export default function PantallaInicio() {
 
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
-  // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones y los empaques. El
+  // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones, los empaques y las plantillas. El
   // historial es para los tres: qué ve cada quien lo decide el servidor.
   // Densidad generosa: son pocas acciones y cada una importa. Banda de marca
   // arriba (quién está en sesión) y, debajo, las acciones sobre el fondo
@@ -116,6 +116,13 @@ export default function PantallaInicio() {
         {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
         {usuario?.rolApp === 'SUPERVISOR' && <AccesoFactores />}
         <GrupoMenu>
+          {usuario?.rolApp === 'SUPERVISOR' && (
+            <FilaMenu
+              texto="Plantillas de carga"
+              detalle="Qué productos ve cada ruta al contar"
+              onPress={() => router.push('/plantillas')}
+            />
+          )}
           {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
           <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
         </GrupoMenu>
