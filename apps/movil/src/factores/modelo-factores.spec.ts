@@ -3,10 +3,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import type { FactorPendienteApi } from '../api/factores.ts';
+import type { FactorCatalogoApi, FactorPendienteApi } from '../api/factores.ts';
 import {
+  agruparCatalogo,
   agruparPendientes,
   contarPendientes,
+  esMismoEmpaque,
+  filtrarCatalogo,
+  productoAConfirmar,
+  textoEmpaque,
   piezasDesdeTexto,
   resumenConfirmacion,
   textoProductos,
@@ -87,5 +92,98 @@ describe('textoProductos', () => {
   it('singular y plural', () => {
     assert.equal(textoProductos(1), '1 producto');
     assert.equal(textoProductos(12), '12 productos');
+  });
+});
+
+function filaCatalogo(over: Partial<FactorCatalogoApi> & { code: string; nombre: string }): FactorCatalogoApi {
+  return {
+    familia: null,
+    modalidadVenta: 'POR_PIEZA',
+    piezasPorPaquete: null,
+    factorConfirmado: false,
+    confirmadoPor: null,
+    fechaConfirmacionFactor: null,
+    ...over,
+  };
+}
+
+describe('agruparCatalogo', () => {
+  it('trata lo confirmado como vigente y lo no confirmado solo como sugerencia', () => {
+    const [familia] = agruparCatalogo([
+      filaCatalogo({
+        code: '1',
+        nombre: 'CANELS. c/70',
+        familia: 'DULCES',
+        modalidadVenta: 'COMPLETO',
+        factorConfirmado: true,
+        confirmadoPor: 'Ana',
+        fechaConfirmacionFactor: '2026-09-24T18:00:00.000Z',
+      }),
+      filaCatalogo({ code: '2', nombre: 'CANELS. c/60', familia: 'DULCES', piezasPorPaquete: 60 }),
+    ]);
+    const [c60, c70] = familia.data;
+    assert.deepEqual(c70.confirmado, { modalidad: 'COMPLETO', piezas: null });
+    assert.equal(c70.sugerido, null);
+    assert.equal(c70.confirmadoPor, 'Ana');
+    assert.equal(c70.fechaConfirmacion?.toISOString(), '2026-09-24T18:00:00.000Z');
+    assert.equal(c60.confirmado, null);
+    assert.equal(c60.sugerido, 60);
+    assert.equal(c60.confirmadoPor, null);
+  });
+});
+
+describe('textoEmpaque', () => {
+  it('dice el empaque en palabras claras', () => {
+    assert.equal(textoEmpaque({ modalidad: 'COMPLETO', piezas: null }), 'Se vende completo');
+    assert.equal(textoEmpaque({ modalidad: 'POR_PIEZA', piezas: 12 }), 'Por pieza, 12 por paquete');
+    assert.equal(textoEmpaque(null), 'Sin confirmar');
+  });
+});
+
+describe('filtrarCatalogo', () => {
+  const familias = agruparCatalogo([
+    filaCatalogo({ code: 'R1', nombre: 'PEPSI 1.5 LT C/12', familia: 'REFRESCOS' }),
+    filaCatalogo({ code: 'R2', nombre: 'MANZANITA 600 ML', familia: 'REFRESCOS' }),
+    filaCatalogo({ code: 'D1', nombre: 'Chiles JALAPEÑO', familia: 'ABARROTES' }),
+  ]);
+  const nombres = (texto: string) => filtrarCatalogo(familias, texto).flatMap((f) => f.data.map((p) => p.nombre));
+
+  it('sin búsqueda devuelve todo', () => {
+    assert.equal(nombres('  ').length, 3);
+  });
+
+  it('ignora mayúsculas y acentos y exige todas las palabras en cualquier orden', () => {
+    assert.deepEqual(nombres('jalapeno'), ['Chiles JALAPEÑO']);
+    assert.deepEqual(nombres('c/12 pepsi'), ['PEPSI 1.5 LT C/12']);
+    assert.deepEqual(nombres('pepsi 600'), []);
+  });
+
+  it('busca también por familia y código, y quita las familias vacías', () => {
+    assert.deepEqual(
+      filtrarCatalogo(familias, 'refrescos').map((f) => f.titulo),
+      ['REFRESCOS'],
+    );
+    assert.deepEqual(nombres('d1'), ['Chiles JALAPEÑO']);
+  });
+});
+
+describe('corrección de un empaque confirmado', () => {
+  it('precarga el factor vigente y lo marca como actual', () => {
+    const [familia] = agruparCatalogo([
+      filaCatalogo({ code: '1', nombre: 'PEPSI C/12', piezasPorPaquete: 12, factorConfirmado: true }),
+    ]);
+    const producto = productoAConfirmar(familia.data[0]);
+    assert.equal(producto.sugerido, 12);
+    assert.deepEqual(producto.actual, { modalidad: 'POR_PIEZA', piezas: 12 });
+  });
+
+  it('distingue un cambio real de volver a confirmar lo mismo', () => {
+    const completo = { modalidad: 'COMPLETO', piezas: null } as const;
+    const porPieza = { modalidad: 'POR_PIEZA', piezas: 12 } as const;
+    assert.equal(esMismoEmpaque(completo, 'COMPLETO', null), true);
+    assert.equal(esMismoEmpaque(porPieza, 'POR_PIEZA', 12), true);
+    assert.equal(esMismoEmpaque(porPieza, 'POR_PIEZA', 24), false);
+    assert.equal(esMismoEmpaque(porPieza, 'COMPLETO', null), false);
+    assert.equal(esMismoEmpaque(null, 'COMPLETO', null), false);
   });
 });

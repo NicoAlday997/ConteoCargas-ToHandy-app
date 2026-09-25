@@ -4,6 +4,7 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   FactorEmpaqueRepository,
   type DatosConfirmarFactor,
+  type FactorDeCatalogo,
   type FactorGuardado,
   type FactorPendiente,
   type FactorProducto,
@@ -22,6 +23,12 @@ const SELECT_FACTOR_PRODUCTO = {
 
 /** Productos que cuentan como pendientes de confirmar el factor. */
 const WHERE_PENDIENTE = { activo: true, factorConfirmado: false } as const;
+
+/**
+ * Carga que aun puede llegar a Handy. ENVIO_INCIERTO y ERROR_ENVIO cuentan:
+ * ambos vuelven a LISTA_PARA_ENVIAR y se reintentan con lo ya calculado.
+ */
+const ESTADO_NO_ENVIADA = { not: 'ENVIADA' } as const;
 
 /**
  * Adaptador Prisma del factor de empaque. La propuesta automatica durante la
@@ -85,17 +92,69 @@ export class PrismaFactorEmpaqueRepository extends FactorEmpaqueRepository {
     });
   }
 
-  confirmar(datos: DatosConfirmarFactor): Promise<FactorProducto> {
-    return this.prisma.producto.update({
-      where: { code: datos.productoCode },
-      data: {
-        modalidadVenta: datos.modalidadVenta,
-        piezasPorPaquete: datos.piezasPorPaquete,
+  async listarTodos(): Promise<FactorDeCatalogo[]> {
+    const filas = await this.prisma.producto.findMany({
+      where: { activo: true },
+      select: {
+        code: true,
+        nombre: true,
+        familia: true,
+        modalidadVenta: true,
+        piezasPorPaquete: true,
         factorConfirmado: true,
-        factorConfirmadoPorId: datos.confirmadoPorId,
-        fechaConfirmacionFactor: datos.fecha,
+        fechaConfirmacionFactor: true,
+        factorConfirmadoPor: { select: { nombreCompleto: true } },
       },
-      select: SELECT_FACTOR_PRODUCTO,
+      orderBy: { nombre: 'asc' },
     });
+    return filas.map((f) => ({
+      code: f.code,
+      nombre: f.nombre,
+      familia: f.familia,
+      modalidadVenta: f.modalidadVenta,
+      piezasPorPaquete: f.piezasPorPaquete,
+      factorConfirmado: f.factorConfirmado,
+      confirmadoPor: f.factorConfirmadoPor?.nombreCompleto ?? null,
+      fechaConfirmacionFactor: f.fechaConfirmacionFactor,
+    }));
+  }
+
+  contarCargasEnCursoConProducto(code: string): Promise<number> {
+    return this.prisma.eventoCarga.count({
+      where: {
+        estado: ESTADO_NO_ENVIADA,
+        sesiones: { some: { items: { some: { productoCode: code } } } },
+      },
+    });
+  }
+
+  async confirmar(datos: DatosConfirmarFactor): Promise<FactorProducto> {
+    const [producto] = await this.prisma.$transaction([
+      this.prisma.producto.update({
+        where: { code: datos.productoCode },
+        data: {
+          modalidadVenta: datos.modalidadVenta,
+          piezasPorPaquete: datos.piezasPorPaquete,
+          factorConfirmado: true,
+          factorConfirmadoPorId: datos.confirmadoPorId,
+          fechaConfirmacionFactor: datos.fecha,
+        },
+        select: SELECT_FACTOR_PRODUCTO,
+      }),
+      this.prisma.cambioFactorEmpaque.create({
+        data: {
+          productoCode: datos.productoCode,
+          modalidadAnterior: datos.anterior.modalidadVenta,
+          piezasAnterior: datos.anterior.piezasPorPaquete,
+          estabaConfirmado: datos.anterior.factorConfirmado,
+          modalidadNueva: datos.modalidadVenta,
+          piezasNueva: datos.piezasPorPaquete,
+          cambiadoPorId: datos.confirmadoPorId,
+          fecha: datos.fecha,
+          cargasEnCurso: datos.cargasEnCurso,
+        },
+      }),
+    ]);
+    return producto;
   }
 }

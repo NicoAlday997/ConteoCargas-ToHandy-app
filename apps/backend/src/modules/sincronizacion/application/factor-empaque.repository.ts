@@ -37,6 +37,26 @@ export interface FactorProducto {
   fechaConfirmacionFactor: Date | null;
 }
 
+/**
+ * Producto activo con su empaque actual, confirmado o no. Es la lista para
+ * CORREGIR: una confirmacion equivocada no debe quedar sin forma de tocarse.
+ */
+export interface FactorDeCatalogo {
+  code: string;
+  nombre: string;
+  familia: string | null;
+  modalidadVenta: ModalidadVenta;
+  /**
+   * Confirmado: el factor que rige (`null` si se vende COMPLETO). Sin
+   * confirmar: solo la propuesta de la sincronizacion.
+   */
+  piezasPorPaquete: number | null;
+  factorConfirmado: boolean;
+  /** Nombre de quien hizo la ultima confirmacion; `null` si nunca se confirmo. */
+  confirmadoPor: string | null;
+  fechaConfirmacionFactor: Date | null;
+}
+
 export interface DatosConfirmarFactor {
   productoCode: string;
   modalidadVenta: ModalidadVenta;
@@ -44,6 +64,13 @@ export interface DatosConfirmarFactor {
   piezasPorPaquete: number | null;
   confirmadoPorId: string;
   fecha: Date;
+  /** Lo que habia antes: queda en la bitacora junto con el valor nuevo. */
+  anterior: Pick<
+    FactorProducto,
+    'modalidadVenta' | 'piezasPorPaquete' | 'factorConfirmado'
+  >;
+  /** Cargas no enviadas con conteos del producto al momento del cambio. */
+  cargasEnCurso: number;
 }
 
 export abstract class FactorEmpaqueRepository {
@@ -64,6 +91,20 @@ export abstract class FactorEmpaqueRepository {
   /** Factor actual del producto, o `null` si el producto no existe. */
   abstract buscarPorCode(code: string): Promise<FactorProducto | null>;
 
-  /** Guarda el factor como confirmado, con quien y cuando lo confirmo. */
+  /** Todos los productos activos con su empaque actual, ordenados por nombre. */
+  abstract listarTodos(): Promise<FactorDeCatalogo[]>;
+
+  /**
+   * Cuantas cargas aun NO enviadas a Handy tienen conteos del producto. Sus
+   * cantidades se calcularon con el factor vigente al contar: si el factor
+   * cambia, quedan con el valor anterior.
+   */
+  abstract contarCargasEnCursoConProducto(code: string): Promise<number>;
+
+  /**
+   * Guarda el factor como confirmado, con quien y cuando lo confirmo, y
+   * registra el cambio en la bitacora (valor anterior y nuevo) en la misma
+   * transaccion: nunca queda un cambio sin su registro.
+   */
   abstract confirmar(datos: DatosConfirmarFactor): Promise<FactorProducto>;
 }

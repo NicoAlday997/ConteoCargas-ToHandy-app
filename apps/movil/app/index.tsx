@@ -29,6 +29,11 @@ import {
   Seccion,
 } from '../src/componentes/base';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
+import {
+  descartarCargaNoDisponible,
+  tomarAvisoCargaNoDisponible,
+  verificarCargaAbierta,
+} from '../src/conteo/carga-no-disponible';
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
 import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operativa';
@@ -278,14 +283,37 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [abriendoExistente, setAbriendoExistente] = useState(false);
   // Lo que se intentaba cuando faltó la señal: "Reintentar" vuelve a eso.
   const [tipoSinRed, setTipoSinRed] = useState<TipoCarga | null>(null);
+  // La carga guardada en el teléfono ya no existía en el servidor y se quitó.
+  const [cargaNoDisponible, setCargaNoDisponible] = useState(false);
 
-  // Al volver de la pantalla de conteo (finalizada o no) se relee.
+  // Al volver de la pantalla de conteo (finalizada o no) se relee. Antes de
+  // ofrecer "Continuar carga" se pregunta al servidor si sigue existiendo: si
+  // se canceló, continuarla fallaría sin salida. Sin señal se ofrece igual.
   useFocusEffect(
     useCallback(() => {
       let vigente = true;
-      void obtenerCargaAbierta(usuario.id).then((carga) => {
+      if (tomarAvisoCargaNoDisponible()) setCargaNoDisponible(true);
+      void (async () => {
+        const carga = await obtenerCargaAbierta(usuario.id);
+        if (!carga) {
+          if (vigente) setCargaAbierta(null);
+          return;
+        }
+        const vigencia = await verificarCargaAbierta(carga);
+        if (vigencia === 'sesion-vencida') {
+          if (vigente) sesionVencida();
+          return;
+        }
+        if (vigencia === 'no-disponible') {
+          await descartarCargaNoDisponible(usuario.id, carga);
+          if (vigente) {
+            setCargaNoDisponible(true);
+            setCargaAbierta(null);
+          }
+          return;
+        }
         if (vigente) setCargaAbierta(carga);
-      });
+      })();
       // Las listas del servidor también: al volver de contar o de resolver, ya cambiaron.
       void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
       void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.conflictosPendientes });
@@ -317,6 +345,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   /** Primero la fecha: el evento se crea ya con ella. */
   const pedirFecha = async (tipo: TipoCarga) => {
     setError(null);
+    setCargaNoDisponible(false);
     setTipoSinRed(null);
     // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
@@ -414,6 +443,8 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     );
   }
 
+  const aviso = cargaNoDisponible ? <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} /> : null;
+
   if (cargaAbierta) {
     return (
       <Seccion texto="Tienes una carga en proceso">
@@ -438,13 +469,19 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   // ya iniciada, desde la cola de verificación (docs/06 §3.3), y cuenta en la
   // misma pantalla de conteo, a ciegas.
   if (usuario.rolApp === 'CONTADOR') {
-    return <ColaVerificacion onAbrir={abrirVerificacion} onSesionVencida={sesionVencida} />;
+    return (
+      <>
+        {aviso}
+        <ColaVerificacion onAbrir={abrirVerificacion} onSesionVencida={sesionVencida} />
+      </>
+    );
   }
 
   if (usuario.rolApp !== 'VENDEDOR') return null;
 
   return (
     <Seccion texto="Cargas de tu ruta">
+      {aviso}
       <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
       <Boton
         texto="Iniciar recarga"
@@ -476,6 +513,18 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         onCerrar={cerrarSelector}
       />
     </Seccion>
+  );
+}
+
+/** Explica por qué desapareció "Continuar carga": sin esto parecería que se perdió el conteo. */
+function AvisoCargaNoDisponible({ onCerrar }: { onCerrar: () => void }) {
+  return (
+    <BloqueError
+      tono="atencion"
+      titulo="Esa carga ya no está disponible"
+      detalle="Se canceló o se eliminó en el servidor, así que se quitó de este teléfono junto con lo que llevabas contado. Si todavía hay que contar, empieza de nuevo."
+      secundaria={{ texto: 'Entendido', onPress: onCerrar }}
+    />
   );
 }
 

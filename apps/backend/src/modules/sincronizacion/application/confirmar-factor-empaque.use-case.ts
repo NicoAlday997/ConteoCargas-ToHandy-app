@@ -18,7 +18,15 @@ export interface ComandoConfirmarFactorEmpaque {
 }
 
 export type ResultadoConfirmarFactorEmpaque =
-  | { exito: true; producto: FactorProducto }
+  | {
+      exito: true;
+      producto: FactorProducto;
+      /**
+       * Cargas no enviadas con conteos del producto: quedaron calculadas con
+       * el valor anterior. No bloquea; el supervisor debe saberlo.
+       */
+      cargasEnCurso: number;
+    }
   | { exito: false; motivo: 'FACTOR_INVALIDO' | 'PRODUCTO_NO_ENCONTRADO' };
 
 /**
@@ -31,8 +39,14 @@ export type ResultadoConfirmarFactorEmpaque =
  * es factor, y dejarlo guardado invitaria a que alguien lo use para convertir.
  *
  * Confirmar sobrescribe cualquier valor previo, propuesto o ya confirmado, y
- * deja traza de quien y cuando. A partir de aqui la sincronizacion ya no toca
- * el factor aunque el nombre del producto cambie en Handy.
+ * deja traza de quien y cuando. Cada cambio queda ademas en la bitacora con el
+ * valor anterior: corregir una confirmacion no borra que existio. A partir de
+ * aqui la sincronizacion ya no toca el factor aunque el nombre del producto
+ * cambie en Handy.
+ *
+ * Los conteos ya guardados no se recalculan: su total se calculo con el factor
+ * vigente al contar. Por eso se informa cuantas cargas aun no enviadas tienen
+ * conteos del producto (lo ya enviado a Handy no cambia).
  */
 export class ConfirmarFactorEmpaqueUseCase {
   constructor(private readonly factores: FactorEmpaqueRepository) {}
@@ -54,14 +68,23 @@ export class ConfirmarFactorEmpaqueUseCase {
       return { exito: false, motivo: 'PRODUCTO_NO_ENCONTRADO' };
     }
 
+    const cargasEnCurso =
+      await this.factores.contarCargasEnCursoConProducto(comando.productoCode);
+
     const producto = await this.factores.confirmar({
       productoCode: comando.productoCode,
       modalidadVenta: comando.modalidadVenta,
       piezasPorPaquete,
       confirmadoPorId: comando.usuarioAppId,
       fecha: comando.ahora,
+      anterior: {
+        modalidadVenta: actual.modalidadVenta,
+        piezasPorPaquete: actual.piezasPorPaquete,
+        factorConfirmado: actual.factorConfirmado,
+      },
+      cargasEnCurso,
     });
 
-    return { exito: true, producto };
+    return { exito: true, producto, cargasEnCurso };
   }
 }

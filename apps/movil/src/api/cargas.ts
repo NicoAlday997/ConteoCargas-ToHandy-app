@@ -114,8 +114,8 @@ export function iniciarCarga(tipo: TipoCarga, fechaOperativa: string): Promise<R
   });
 }
 
-export function obtenerEvento(eventoId: string): Promise<RespuestaEvento | null> {
-  return peticion<RespuestaEvento | null>(`/eventos-carga/${encodeURIComponent(eventoId)}`);
+export function obtenerEvento(eventoId: string, signal?: AbortSignal): Promise<RespuestaEvento | null> {
+  return peticion<RespuestaEvento | null>(`/eventos-carga/${encodeURIComponent(eventoId)}`, { signal });
 }
 
 export function obtenerProductos(eventoId: string): Promise<RespuestaProductos | null> {

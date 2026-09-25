@@ -1,6 +1,7 @@
 import { ConfirmarFactorEmpaqueUseCase } from './confirmar-factor-empaque.use-case';
 import type {
   DatosConfirmarFactor,
+  FactorDeCatalogo,
   FactorEmpaqueRepository,
   FactorGuardado,
   FactorPendiente,
@@ -31,6 +32,8 @@ function factorProducto(over: Partial<FactorProducto> = {}): FactorProducto {
 class FakeFactorEmpaqueRepository implements FactorEmpaqueRepository {
   readonly productos = new Map<string, FactorProducto>();
   readonly confirmaciones: DatosConfirmarFactor[] = [];
+  /** Cargas no enviadas con conteos, por producto. */
+  readonly cargasEnCurso = new Map<string, number>();
 
   sembrar(producto: FactorProducto): void {
     this.productos.set(producto.code, producto);
@@ -58,6 +61,13 @@ class FakeFactorEmpaqueRepository implements FactorEmpaqueRepository {
     return confirmado;
   }
 
+  async contarCargasEnCursoConProducto(code: string): Promise<number> {
+    return this.cargasEnCurso.get(code) ?? 0;
+  }
+
+  listarTodos(): Promise<FactorDeCatalogo[]> {
+    throw new Error('no usado en estas pruebas');
+  }
   buscarFactores(): Promise<Map<string, FactorGuardado>> {
     throw new Error('no usado en estas pruebas');
   }
@@ -97,6 +107,7 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
         factorConfirmadoPorId: SUPERVISOR_ID,
         fechaConfirmacionFactor: AHORA,
       }),
+      cargasEnCurso: 0,
     });
     expect(repo.confirmaciones).toEqual([
       {
@@ -105,6 +116,12 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
         piezasPorPaquete: 12,
         confirmadoPorId: SUPERVISOR_ID,
         fecha: AHORA,
+        anterior: {
+          modalidadVenta: 'POR_PIEZA',
+          piezasPorPaquete: 12,
+          factorConfirmado: false,
+        },
+        cargasEnCurso: 0,
       },
     ]);
   });
@@ -168,7 +185,61 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
         factorConfirmadoPorId: SUPERVISOR_ID,
         fechaConfirmacionFactor: AHORA,
       }),
+      cargasEnCurso: 0,
     });
+  });
+
+  it('registra la confirmacion previa como valor anterior al corregirla', async () => {
+    repo.sembrar(
+      factorProducto({
+        nombre: 'CANELS. c/70',
+        piezasPorPaquete: 70,
+        factorConfirmado: true,
+        factorConfirmadoPorId: 'ckw0supervisor00000000002',
+        fechaConfirmacionFactor: new Date('2026-09-01T10:00:00.000Z'),
+      }),
+    );
+
+    await useCase.ejecutar({
+      productoCode: 'P-1',
+      modalidadVenta: 'COMPLETO',
+      piezasPorPaquete: null,
+      usuarioAppId: SUPERVISOR_ID,
+      ahora: AHORA,
+    });
+
+    expect(repo.confirmaciones).toEqual([
+      expect.objectContaining({
+        modalidadVenta: 'COMPLETO',
+        piezasPorPaquete: null,
+        confirmadoPorId: SUPERVISOR_ID,
+        fecha: AHORA,
+        anterior: {
+          modalidadVenta: 'POR_PIEZA',
+          piezasPorPaquete: 70,
+          factorConfirmado: true,
+        },
+      }),
+    ]);
+  });
+
+  it('informa las cargas en curso con conteos del producto sin bloquear el cambio', async () => {
+    repo.sembrar(factorProducto({ factorConfirmado: true }));
+    repo.cargasEnCurso.set('P-1', 3);
+
+    const resultado = await useCase.ejecutar({
+      productoCode: 'P-1',
+      modalidadVenta: 'POR_PIEZA',
+      piezasPorPaquete: 6,
+      usuarioAppId: SUPERVISOR_ID,
+      ahora: AHORA,
+    });
+
+    expect(resultado).toEqual(
+      expect.objectContaining({ exito: true, cargasEnCurso: 3 }),
+    );
+    expect(repo.productos.get('P-1')?.piezasPorPaquete).toBe(6);
+    expect(repo.confirmaciones[0].cargasEnCurso).toBe(3);
   });
 
   it('acepta los extremos del rango (1 y 500)', async () => {
@@ -220,13 +291,13 @@ describe('ConfirmarFactorEmpaqueUseCase', () => {
 
     expect(resultado.exito).toBe(true);
     expect(repo.confirmaciones).toEqual([
-      {
+      expect.objectContaining({
         productoCode: 'P-1',
         modalidadVenta: 'COMPLETO',
         piezasPorPaquete: null,
         confirmadoPorId: SUPERVISOR_ID,
         fecha: AHORA,
-      },
+      }),
     ]);
     expect(repo.productos.get('P-1')).toEqual(
       expect.objectContaining({

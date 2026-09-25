@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -7,8 +7,10 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import type { ConfirmacionFactor, ModalidadVentaApi } from '../../src/api/factores';
 import {
   ErrorFamilia,
+  useCargasEnCurso,
   useConfirmarFactor,
   useConfirmarFamiliaCompleta,
+  useFactoresCatalogo,
   useFactoresPendientes,
   type ProgresoFamilia,
 } from '../../src/api/hooks-factores';
@@ -16,6 +18,7 @@ import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../sr
 import {
   BloqueError,
   Boton,
+  CampoTexto,
   Datos,
   Encabezado,
   EstadoVacio,
@@ -28,18 +31,28 @@ import {
   type Dato,
 } from '../../src/componentes/base';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
+import { diaNegocio, formatearDia } from '../../src/conteo/fecha-operativa';
 import {
   contarPendientes,
+  esMismoEmpaque,
+  filtrarCatalogo,
   MAX_DIGITOS_PIEZAS,
   piezasDesdeTexto,
   PIEZAS_MAXIMO,
   PIEZAS_MINIMO,
+  productoAConfirmar,
   resumenConfirmacion,
+  textoCargas,
+  textoEmpaque,
   textoProductos,
+  type Familia,
+  type FamiliaCatalogo,
   type FamiliaPendiente,
+  type ProductoAConfirmar,
+  type ProductoCatalogo,
   type ProductoPendiente,
 } from '../../src/factores/modelo-factores';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior } from '../../src/historial/ComponentesHistorial';
+import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import {
   ANCHO_MODAL,
   BORDES,
@@ -60,6 +73,11 @@ import {
  * sugería 70 y habría mandado 350 piezas por 5 bolsas. Por eso primero se
  * pregunta CÓMO se vende y solo después, si aplica, cuántas piezas trae; y
  * antes de guardar se dice en palabras qué va a pasar.
+ *
+ * Dos pestañas: lo que falta confirmar y el catálogo completo. Una
+ * confirmación equivocada corrompe en silencio todos los conteos del
+ * producto, así que cualquier producto se puede corregir; al hacerlo se
+ * advierte qué afecta y cuántas cargas sin enviar ya lo contaron.
  */
 
 const TITULO = 'Empaque de productos';
@@ -138,78 +156,240 @@ function SinAcceso() {
         icono="candado"
         titulo="Solo el supervisor confirma empaques"
         detalle="Cómo se vende cada producto decide lo que se envía a Handy. Si un producto se cuenta raro, avisa a tu supervisor."
-        accion={{ texto: 'Volver', onPress: () => router.back() }}
+        accion={{ texto: 'Volver', onPress: volver }}
       />
     </SafeAreaView>
   );
 }
 
+type Pestana = 'pendientes' | 'todos';
+
 function ListaFactores() {
-  const consulta = useFactoresPendientes(true);
-  const familias = consulta.data ?? [];
-  const pendientes = contarPendientes(familias);
-  const [seleccionado, setSeleccionado] = useState<ProductoPendiente | null>(null);
+  const [pestana, setPestana] = useState<Pestana>('pendientes');
+  const consultaPendientes = useFactoresPendientes(true);
+  // El catálogo se pide al abrir su pestaña; después queda en caché.
+  const consultaCatalogo = useFactoresCatalogo(pestana === 'todos');
+  const pendientes = contarPendientes(consultaPendientes.data ?? []);
+  const [busqueda, setBusqueda] = useState('');
+  const [seleccionado, setSeleccionado] = useState<ProductoAConfirmar | null>(null);
   const [familiaAConfirmar, setFamiliaAConfirmar] = useState<FamiliaPendiente | null>(null);
-  const [refrescando, setRefrescando] = useState(false);
 
-  const estadoError = consulta.error instanceof ErrorApi ? consulta.error.estado : null;
+  const estados = [consultaPendientes.error, consultaCatalogo.error].map((e) => (e instanceof ErrorApi ? e.estado : null));
+  const sinSesion = estados.includes(401);
   useEffect(() => {
-    if (estadoError === 401) sesionVencida();
-  }, [estadoError]);
+    if (sinSesion) sesionVencida();
+  }, [sinSesion]);
 
-  if (estadoError === 403) return <SinAcceso />;
+  if (estados.includes(403)) return <SinAcceso />;
 
+  return (
+    <SafeAreaView style={estilos.pantalla}>
+      <BarraSuperior
+        titulo={TITULO}
+        subtitulo={consultaPendientes.data && pendientes > 0 ? `${textoProductos(pendientes)} por confirmar` : null}
+      >
+        <NotaEncabezado>
+          {pestana === 'pendientes'
+            ? 'Mientras no se confirmen, esos productos solo se cuentan por pieza.'
+            : 'Toca cualquier producto para corregir cómo se vende.'}
+        </NotaEncabezado>
+      </BarraSuperior>
+      <Pestanas pestana={pestana} pendientes={consultaPendientes.data ? pendientes : null} onCambiar={setPestana} />
+      {pestana === 'pendientes' ? (
+        <ContenidoPendientes
+          consulta={consultaPendientes}
+          onElegir={(p) => setSeleccionado({ ...p, actual: null })}
+          onConfirmarFamilia={setFamiliaAConfirmar}
+          onVerTodos={() => setPestana('todos')}
+        />
+      ) : (
+        <ContenidoCatalogo
+          consulta={consultaCatalogo}
+          busqueda={busqueda}
+          onBuscar={setBusqueda}
+          onElegir={(p) => setSeleccionado(productoAConfirmar(p))}
+        />
+      )}
+      <ModalConfirmarProducto producto={seleccionado} onCerrar={() => setSeleccionado(null)} />
+      <ModalConfirmarFamilia familia={familiaAConfirmar} onCerrar={() => setFamiliaAConfirmar(null)} />
+    </SafeAreaView>
+  );
+}
+
+/** Lo mínimo de una consulta de lista que necesitan las dos pestañas. */
+interface ConsultaLista<T> {
+  data: Familia<T>[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  error: unknown;
+  refetch: () => Promise<unknown>;
+}
+
+function useRefrescar(consulta: { refetch: () => Promise<unknown> }) {
+  const [refrescando, setRefrescando] = useState(false);
   const refrescar = () => {
     setRefrescando(true);
     void consulta.refetch().finally(() => setRefrescando(false));
   };
+  return { refrescando, refrescar };
+}
 
-  let contenido;
-  if (consulta.isPending) {
-    contenido = <EsqueletoLista />;
-  } else if (consulta.isError && familias.length === 0) {
-    const sinRed = consulta.error instanceof ErrorRed;
-    contenido = (
-      <View style={estilos.contenedorAviso}>
-        <BloqueError
-          titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar los productos'}
-          detalle={
-            sinRed
-              ? 'La lista de empaques se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
-              : consulta.error instanceof Error && consulta.error.message
-                ? consulta.error.message
-                : 'Intenta de nuevo en un momento.'
-          }
-          tono={sinRed ? 'atencion' : 'error'}
-          onReintentar={() => void consulta.refetch()}
-          reintentando={consulta.isFetching}
-        />
-      </View>
-    );
-  } else if (familias.length === 0) {
-    contenido = (
+/** El error de cargar una lista, a pantalla completa (solo si no hay nada que mostrar). */
+function ErrorLista({ consulta }: { consulta: ConsultaLista<unknown> }) {
+  const sinRed = consulta.error instanceof ErrorRed;
+  return (
+    <View style={estilos.contenedorAviso}>
+      <BloqueError
+        titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar los productos'}
+        detalle={
+          sinRed
+            ? 'La lista de empaques se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+            : consulta.error instanceof Error && consulta.error.message
+              ? consulta.error.message
+              : 'Intenta de nuevo en un momento.'
+        }
+        tono={sinRed ? 'atencion' : 'error'}
+        onReintentar={() => void consulta.refetch()}
+        reintentando={consulta.isFetching}
+      />
+    </View>
+  );
+}
+
+function Pestanas({
+  pestana,
+  pendientes,
+  onCambiar,
+}: {
+  pestana: Pestana;
+  /** `null` mientras no se sabe cuántos son. */
+  pendientes: number | null;
+  onCambiar: (p: Pestana) => void;
+}) {
+  const opciones: { valor: Pestana; texto: string; contador: number | null }[] = [
+    { valor: 'pendientes', texto: 'Por confirmar', contador: pendientes },
+    { valor: 'todos', texto: 'Todos los productos', contador: null },
+  ];
+  return (
+    <View style={estilos.pestanas} accessibilityRole="tablist">
+      {opciones.map((o) => {
+        const activa = pestana === o.valor;
+        return (
+          <Pressable
+            key={o.valor}
+            onPress={() => onCambiar(o.valor)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activa }}
+            accessibilityLabel={o.contador !== null ? `${o.texto}: ${textoProductos(o.contador)}` : o.texto}
+            style={({ pressed }) => [estilos.pestana, activa && estilos.pestanaActiva, pressed && !activa && estilos.pestanaPresionada]}
+          >
+            <Text style={[estilos.textoPestana, activa && estilos.textoPestanaActiva]} numberOfLines={1}>
+              {o.texto}
+              {o.contador !== null && o.contador > 0 ? ` (${o.contador})` : ''}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ContenidoPendientes({
+  consulta,
+  onElegir,
+  onConfirmarFamilia,
+  onVerTodos,
+}: {
+  consulta: ConsultaLista<ProductoPendiente>;
+  onElegir: (p: ProductoPendiente) => void;
+  onConfirmarFamilia: (f: FamiliaPendiente) => void;
+  onVerTodos: () => void;
+}) {
+  const familias = consulta.data ?? [];
+  const { refrescando, refrescar } = useRefrescar(consulta);
+
+  if (consulta.isPending) return <EsqueletoLista />;
+  if (consulta.isError && familias.length === 0) return <ErrorLista consulta={consulta} />;
+  if (familias.length === 0) {
+    return (
       <EstadoVacio
         icono="listo"
         tono="capturado"
         titulo="Todos los productos tienen su empaque confirmado"
-        detalle="Cuando la sincronización con Handy traiga productos nuevos, aparecerán aquí para que confirmes cómo se venden."
+        detalle="Cuando la sincronización con Handy traiga productos nuevos, aparecerán aquí. Para corregir uno ya confirmado, búscalo en todos los productos."
+        accion={{ texto: 'Ver todos los productos', onPress: onVerTodos }}
+        secundaria={{ texto: 'Actualizar', onPress: refrescar }}
+      />
+    );
+  }
+  return (
+    <SectionList<ProductoPendiente, FamiliaPendiente>
+      style={estilos.lista}
+      contentContainerStyle={estilos.contenidoLista}
+      sections={familias}
+      keyExtractor={(p) => p.code}
+      // El encabezado lleva un botón: fijo taparía media pantalla.
+      stickySectionHeadersEnabled={false}
+      renderSectionHeader={({ section }) => (
+        <EncabezadoFamilia familia={section} onConfirmarCompleta={() => onConfirmarFamilia(section)} />
+      )}
+      renderItem={({ item }) => <FilaPendiente producto={item} onPress={() => onElegir(item)} />}
+      refreshing={refrescando}
+      onRefresh={refrescar}
+    />
+  );
+}
+
+function ContenidoCatalogo({
+  consulta,
+  busqueda,
+  onBuscar,
+  onElegir,
+}: {
+  consulta: ConsultaLista<ProductoCatalogo>;
+  busqueda: string;
+  onBuscar: (texto: string) => void;
+  onElegir: (p: ProductoCatalogo) => void;
+}) {
+  const { refrescando, refrescar } = useRefrescar(consulta);
+  const familias = useMemo(() => filtrarCatalogo(consulta.data ?? [], busqueda), [consulta.data, busqueda]);
+  const encontrados = contarPendientes(familias);
+
+  let lista;
+  if (consulta.isPending) {
+    lista = <EsqueletoLista />;
+  } else if (consulta.isError && !consulta.data?.length) {
+    lista = <ErrorLista consulta={consulta} />;
+  } else if (familias.length === 0) {
+    lista = busqueda.trim() ? (
+      <EstadoVacio
+        icono="caja"
+        titulo={`Ningún producto coincide con “${busqueda.trim()}”`}
+        detalle="Prueba con una parte del nombre, como “pepsi” o “c/12”."
+        accion={{ texto: 'Borrar búsqueda', onPress: () => onBuscar('') }}
+      />
+    ) : (
+      <EstadoVacio
+        icono="caja"
+        titulo="No hay productos activos"
+        detalle="Sincroniza el catálogo con Handy para traerlos."
         accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
-        secundaria={{ texto: 'Volver', onPress: () => router.back() }}
       />
     );
   } else {
-    contenido = (
-      <SectionList<ProductoPendiente, FamiliaPendiente>
+    lista = (
+      <SectionList<ProductoCatalogo, FamiliaCatalogo>
         style={estilos.lista}
         contentContainerStyle={estilos.contenidoLista}
         sections={familias}
         keyExtractor={(p) => p.code}
-        // El encabezado lleva un botón: fijo taparía media pantalla.
         stickySectionHeadersEnabled={false}
-        renderSectionHeader={({ section }) => (
-          <EncabezadoFamilia familia={section} onConfirmarCompleta={() => setFamiliaAConfirmar(section)} />
-        )}
-        renderItem={({ item }) => <FilaPendiente producto={item} onPress={() => setSeleccionado(item)} />}
+        // Tocar un producto con el teclado abierto lo abre a la primera.
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section} />}
+        renderItem={({ item }) => <FilaCatalogo producto={item} onPress={() => onElegir(item)} />}
         refreshing={refrescando}
         onRefresh={refrescar}
       />
@@ -217,17 +397,20 @@ function ListaFactores() {
   }
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
-      <BarraSuperior
-        titulo={TITULO}
-        subtitulo={consulta.data && pendientes > 0 ? `${textoProductos(pendientes)} por confirmar` : null}
-      >
-        <NotaEncabezado>Mientras no se confirmen, esos productos solo se cuentan por pieza.</NotaEncabezado>
-      </BarraSuperior>
-      {contenido}
-      <ModalConfirmarProducto producto={seleccionado} onCerrar={() => setSeleccionado(null)} />
-      <ModalConfirmarFamilia familia={familiaAConfirmar} onCerrar={() => setFamiliaAConfirmar(null)} />
-    </SafeAreaView>
+    <>
+      {/* Fuera de la lista: si viviera en su encabezado, cada letra lo redibujaría y perdería el foco. */}
+      <View style={estilos.buscador}>
+        <CampoTexto
+          etiqueta="Buscar producto"
+          valor={busqueda}
+          onCambiar={onBuscar}
+          ejemplo="Nombre, familia o código"
+          ayuda={busqueda.trim() && consulta.data ? `${textoProductos(encontrados)} encontrados` : null}
+          maxLength={60}
+        />
+      </View>
+      {lista}
+    </>
   );
 }
 
@@ -248,9 +431,10 @@ function EsqueletoLista() {
 // Lista
 // ---------------------------------------------------------------------------
 
-function EncabezadoFamilia({ familia, onConfirmarCompleta }: { familia: FamiliaPendiente; onConfirmarCompleta: () => void }) {
+function EncabezadoFamilia({ familia, onConfirmarCompleta }: { familia: Familia<unknown>; onConfirmarCompleta?: () => void }) {
   // Sin familia no hay nada en común entre ellos; con uno solo, basta su fila.
-  const conAccion = familia.familia !== null && familia.data.length > 1;
+  // En el catálogo completo no hay acción de familia: corregir es uno por uno.
+  const conAccion = onConfirmarCompleta !== undefined && familia.familia !== null && familia.data.length > 1;
   return (
     <View style={estilos.encabezadoFamilia}>
       <View style={estilos.lineaFamilia} accessibilityRole="header">
@@ -317,13 +501,53 @@ function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onP
   );
 }
 
+/** Un producto del catálogo completo: su empaque en palabras y quién lo confirmó. */
+function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPress: () => void }) {
+  const empaque = textoEmpaque(producto.confirmado);
+  const traza =
+    producto.confirmado && producto.confirmadoPor
+      ? `Confirmó ${producto.confirmadoPor}${producto.fechaConfirmacion ? ` · ${formatearDia(diaNegocio(producto.fechaConfirmacion))}` : ''}`
+      : null;
+  return (
+    <Tarjeta
+      compacta
+      onPress={onPress}
+      style={estilos.fila}
+      accessibilityLabel={[producto.nombre, producto.familia ? `Familia ${producto.familia}` : 'Sin familia', empaque, traza]
+        .filter(Boolean)
+        .join('. ')}
+      accessibilityHint={producto.confirmado ? 'Corregir cómo se vende' : 'Confirmar cómo se vende'}
+    >
+      <View style={estilos.lineaNombre}>
+        <Text style={estilos.nombre} numberOfLines={2}>
+          {producto.nombre}
+        </Text>
+        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
+      </View>
+      <View style={estilos.lineaDatos}>
+        <Text style={estilos.rotulo} numberOfLines={1}>
+          {producto.familia ?? 'Sin familia'}
+        </Text>
+        <Etiqueta texto={empaque} tono={producto.confirmado ? 'marca' : 'pendiente'} />
+      </View>
+      {traza && (
+        <Text style={estilos.traza} numberOfLines={1}>
+          {traza}
+        </Text>
+      )}
+    </Tarjeta>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Confirmación de un producto: cómo se vende → piezas (si aplica) → resumen
 // ---------------------------------------------------------------------------
 
 type Paso = 'modalidad' | 'piezas' | 'resumen';
 
-function ModalConfirmarProducto({ producto, onCerrar }: { producto: ProductoPendiente | null; onCerrar: () => void }) {
+function ModalConfirmarProducto({ producto, onCerrar }: { producto: ProductoAConfirmar | null; onCerrar: () => void }) {
   return (
     <Modal visible={producto !== null} transparent animationType="none" onRequestClose={onCerrar}>
       <View style={estilos.fondoModal}>
@@ -336,8 +560,11 @@ function ModalConfirmarProducto({ producto, onCerrar }: { producto: ProductoPend
   );
 }
 
-function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente; onCerrar: () => void }) {
+function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirmar; onCerrar: () => void }) {
   const confirmar = useConfirmarFactor();
+  // Se pregunta al abrir: al llegar al resumen ya se sabe si hay cargas afectadas.
+  const cargasEnCurso = useCargasEnCurso(producto.code);
+  const corrige = producto.actual !== null;
   const [paso, setPaso] = useState<Paso>('modalidad');
   const [modalidad, setModalidad] = useState<ModalidadVentaApi | null>(null);
   // La sugerencia precargada: la primera tecla la reemplaza.
@@ -401,6 +628,12 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente
           {producto.nombre}
         </Text>
         {producto.familia && <Text style={estilos.rotulo}>{producto.familia}</Text>}
+        {producto.actual && (
+          <Text style={estilos.empaqueActual}>
+            <Text style={estilos.negrita}>Hoy: </Text>
+            {textoEmpaque(producto.actual)}
+          </Text>
+        )}
       </Tarjeta>
 
       {paso === 'modalidad' && (
@@ -448,7 +681,9 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente
               {producto.sugerido === null
                 ? 'El nombre no dice cuántas piezas trae: revisa un paquete.'
                 : reemplazar
-                  ? `${producto.sugerido} sale del nombre. Si no es correcto, teclea el número real.`
+                  ? corrige
+                    ? `${producto.sugerido} es lo confirmado hoy. Si no es correcto, teclea el número real.`
+                    : `${producto.sugerido} sale del nombre. Si no es correcto, teclea el número real.`
                   : texto !== '' && piezas === null
                     ? `Debe ser de ${PIEZAS_MINIMO} a ${PIEZAS_MAXIMO} piezas.`
                     : ''}
@@ -474,10 +709,18 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente
         <>
           <Encabezado titulo="Revisa antes de guardar" variante="plano" />
           <ResumenModalidad modalidad={modalidad} piezas={modalidad === 'POR_PIEZA' ? piezas : null} />
-          {modalidad === 'COMPLETO' && producto.sugerido !== null && (
+          {modalidad === 'COMPLETO' && producto.sugerido !== null && !corrige && (
             <Text style={estilos.detalleModal}>
               El {producto.sugerido} del nombre no se usa: solo distingue este producto de otros parecidos.
             </Text>
+          )}
+          {esMismoEmpaque(producto.actual, modalidad, modalidad === 'POR_PIEZA' ? piezas : null) ? (
+            <Text style={estilos.detalleModal}>Es el mismo empaque que ya tiene: guardar solo lo vuelve a confirmar.</Text>
+          ) : (
+            <>
+              {producto.actual && <AvisoCambioConfirmado actual={producto.actual} />}
+              <AvisoCargasEnCurso consulta={cargasEnCurso} />
+            </>
           )}
           {confirmar.isError && !(confirmar.error instanceof ErrorApi && confirmar.error.estado === 401) && (
             <AvisoError error={confirmar.error} />
@@ -494,7 +737,7 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente
               style={estilos.botonFila}
             />
             <Boton
-              texto={confirmar.isError ? 'Reintentar' : 'Guardar'}
+              texto={confirmar.isError ? 'Reintentar' : corrige ? 'Guardar cambio' : 'Guardar'}
               onPress={guardar}
               cargando={enviando}
               textoCargando="Guardando…"
@@ -504,6 +747,48 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoPendiente
         </>
       )}
     </View>
+  );
+}
+
+/** Antes de guardar un cambio sobre algo ya confirmado: qué afecta y qué no. */
+function AvisoCambioConfirmado({ actual }: { actual: NonNullable<ProductoAConfirmar['actual']> }) {
+  return (
+    <Tarjeta tintada="discrepancia" compacta accessible>
+      <Text style={estilos.tituloAviso}>Cambia un empaque ya confirmado</Text>
+      <Text style={estilos.detalleModal}>
+        Hoy: {textoEmpaque(actual)}. El cambio decide cómo se calculan los conteos de este producto de aquí en adelante. Lo ya
+        enviado a Handy no se modifica.
+      </Text>
+    </Tarjeta>
+  );
+}
+
+/**
+ * Cargas sin enviar que ya contaron el producto: su total se calculó con el
+ * empaque anterior y no se recalcula. No bloquea: el supervisor decide.
+ */
+function AvisoCargasEnCurso({ consulta }: { consulta: ReturnType<typeof useCargasEnCurso> }) {
+  if (consulta.isPending) {
+    return <Text style={estilos.textoAviso}>Revisando si hay cargas sin enviar con este producto…</Text>;
+  }
+  if (consulta.isError || consulta.data === null) {
+    return (
+      <Text style={estilos.textoAviso}>
+        No se pudo revisar si hay cargas sin enviar con este producto. Si hay alguna, revísala antes de enviarla.
+      </Text>
+    );
+  }
+  const cantidad = consulta.data;
+  if (cantidad === 0) return null;
+  return (
+    <Tarjeta tintada="discrepancia" compacta accessible>
+      <Text style={estilos.tituloAviso}>
+        {cantidad === 1 ? 'Hay 1 carga sin enviar' : `Hay ${textoCargas(cantidad)} sin enviar`} con este producto
+      </Text>
+      <Text style={estilos.detalleModal}>
+        Sus conteos se calcularon con el empaque anterior y no se recalculan solos. Revísalas antes de enviarlas a Handy.
+      </Text>
+    </Tarjeta>
   );
 }
 
@@ -683,6 +968,49 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     padding: RITMO.margen,
   },
+  pestanas: {
+    flexDirection: 'row',
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: ESPACIADO.xs,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: RITMO.relacionado,
+  },
+  pestana: {
+    flex: 1,
+    minHeight: TOQUE_MINIMO,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.sm,
+    backgroundColor: COLORES.fondo,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.medio,
+  },
+  pestanaActiva: {
+    borderColor: COLORES.marca,
+    backgroundColor: COLORES.marca,
+  },
+  pestanaPresionada: {
+    backgroundColor: COLORES.marcaClaro,
+  },
+  textoPestana: {
+    ...TIPOGRAFIA.cuerpo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.marcaOscuro,
+    ...CIFRAS,
+  },
+  textoPestanaActiva: {
+    color: COLORES.textoSobreColor,
+  },
+  buscador: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    paddingHorizontal: RITMO.margen,
+    paddingTop: RITMO.relacionado,
+  },
   lista: {
     flex: 1,
     width: '100%',
@@ -738,6 +1066,11 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
   },
   rotulo: ROTULO,
+  traza: {
+    ...TIPOGRAFIA.etiqueta,
+    fontWeight: PESOS.regular,
+    color: COLORES.textoSecundario,
+  },
   // Solo dice "se abre": no compite con el nombre.
   flecha: {
     ...TIPOGRAFIA.titulo,
@@ -768,6 +1101,15 @@ const estilos = StyleSheet.create({
     maxWidth: ANCHO_MODAL_TECLADO,
   },
   pasoIndicador: ROTULO,
+  empaqueActual: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.texto,
+  },
+  tituloAviso: {
+    ...TIPOGRAFIA.subtitulo,
+    fontWeight: PESOS.negrita,
+    color: COLORES.discrepanciaTexto,
+  },
   nombreModal: {
     ...TIPOGRAFIA.subtitulo,
     fontWeight: PESOS.negrita,

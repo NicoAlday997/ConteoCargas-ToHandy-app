@@ -20,7 +20,13 @@ import {
   type RespuestaProductos,
   type TipoCarga,
 } from './cargas';
-import { ErrorRed } from './cliente';
+import { ErrorApi, ErrorRed } from './cliente';
+
+/** Un 4xx (p. ej. el evento ya no existe) no cambia al reintentar: se muestra de una vez. */
+function reintentarSiTransitorio(fallos: number, error: Error): boolean {
+  if (error instanceof ErrorApi && error.estado < 500) return false;
+  return fallos < 3;
+}
 
 /** La plantilla es un snapshot del evento: no cambia mientras se cuenta. */
 const STALE_TIME_PRODUCTOS_MS = 1000 * 60 * 60 * 12;
@@ -107,6 +113,7 @@ export function useProductosCarga(eventoId: string) {
     // Sin esto, si algún día se conecta `onlineManager` a NetInfo, la consulta
     // se pausaría sin red y nunca llegaría al respaldo local.
     networkMode: 'always',
+    retry: reintentarSiTransitorio,
     select: normalizarProductos,
   });
 }

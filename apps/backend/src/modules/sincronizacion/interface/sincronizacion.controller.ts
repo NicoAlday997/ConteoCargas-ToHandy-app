@@ -90,10 +90,44 @@ export class SincronizacionController {
   }
 
   /**
+   * Todos los productos activos con su empaque actual, confirmado o no, y
+   * quien hizo la ultima confirmacion. Es la lista para corregir una
+   * confirmacion equivocada.
+   */
+  @Get('factores')
+  async listarFactores() {
+    return this.factorEmpaqueRepository.listarTodos();
+  }
+
+  /**
+   * Cuantas cargas aun no enviadas a Handy tienen conteos del producto. La
+   * app lo consulta ANTES de guardar un cambio: esos conteos se calcularon
+   * con el factor actual y no se recalculan.
+   */
+  @Get('productos/:code/factor/cargas-en-curso')
+  async contarCargasEnCurso(
+    @Param('code', new ZodValidationPipe(CodeProductoSchema)) code: string,
+  ) {
+    const producto = await this.factorEmpaqueRepository.buscarPorCode(code);
+    if (producto === null) {
+      throw new NotFoundException({
+        statusCode: 404,
+        mensaje: 'Producto no encontrado',
+      });
+    }
+    return {
+      cargasEnCurso:
+        await this.factorEmpaqueRepository.contarCargasEnCursoConProducto(code),
+    };
+  }
+
+  /**
    * Confirma o corrige como se vende un producto (`COMPLETO` o `POR_PIEZA`)
    * y, si es por pieza, cuantas piezas trae el paquete. Queda traza de
-   * quien y cuando; `usuarioAppId` sale del JWT, nunca del body. Una vez
-   * confirmado, la sincronizacion ya no modifica el factor.
+   * quien y cuando (y el cambio, con el valor anterior, en la bitacora);
+   * `usuarioAppId` sale del JWT, nunca del body. Una vez confirmado, la
+   * sincronizacion ya no modifica el factor. Tambien sirve para corregir un
+   * factor ya confirmado.
    */
   @Patch('productos/:code/factor')
   @HttpCode(200)
@@ -128,7 +162,9 @@ export class SincronizacionController {
     }
 
     // Convencion docs/04 §1.7: toda mutacion devuelve el recurso completo.
-    return resultado.producto;
+    // `cargasEnCurso`: cargas no enviadas cuyos conteos quedaron con el valor
+    // anterior (no se bloquea, pero el supervisor debe saberlo).
+    return { ...resultado.producto, cargasEnCurso: resultado.cargasEnCurso };
   }
 
   /**

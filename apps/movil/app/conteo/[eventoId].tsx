@@ -27,6 +27,7 @@ import {
   NotaEncabezado,
 } from '../../src/componentes/base';
 import { olvidarCarga } from '../../src/conteo/almacen-conteo';
+import { avisarCargaNoDisponible, descartarCargaNoDisponible } from '../../src/conteo/carga-no-disponible';
 import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
 import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
 import {
@@ -127,6 +128,14 @@ function envioDe(item: ItemLocal | undefined): EnvioFila {
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
 
+/** Si el conteo se abrió sin nada detrás (p. ej. al recargar la app), `back` no llevaría a ningún lado. */
+function volverAlInicio() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
+const esNoEncontrado = (error: unknown) => error instanceof ErrorApi && error.estado === 404;
+
 export default function PantallaConteo() {
   const params = useLocalSearchParams<{
     eventoId: string;
@@ -184,6 +193,19 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   const estadoCola = useSyncExternalStore(cola.suscribir, cola.obtenerEstado);
   const sincronizacion = useEstadoSincronizacion(cola);
   const bloqueo = bloqueoFinalizar(sincronizacion);
+
+  // El evento se canceló o se borró en el servidor: lo guardado aquí ya no
+  // tiene a dónde ir. Se quita del teléfono y el inicio explica por qué.
+  const noExiste = esNoEncontrado(consulta.error) || esNoEncontrado(evento.error);
+  useEffect(() => {
+    if (!noExiste) return;
+    void (async () => {
+      const sesion = await obtenerUsuarioSesion().catch(() => null);
+      await descartarCargaNoDisponible(sesion?.id ?? null, { eventoId, sesionId });
+      avisarCargaNoDisponible();
+      volverAlInicio();
+    })();
+  }, [noExiste, eventoId, sesionId]);
 
   // `null` mientras se lee la copia local: nada se captura antes de tenerla.
   const conteo = useMemo(
@@ -372,6 +394,20 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   // ---- Estado general ---------------------------------------------------
 
+  // Se ve solo un instante, mientras se limpia y se regresa; el botón es por si el regreso no ocurre.
+  if (noExiste) {
+    return (
+      <SafeAreaView style={estilos.pantalla}>
+        <EstadoVacio
+          icono="lista"
+          titulo="Esta carga ya no está disponible"
+          detalle="Se canceló o se eliminó en el servidor. Vuelve al inicio para empezar de nuevo."
+          accion={{ texto: 'Volver al inicio', onPress: volverAlInicio }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   if (consulta.isPending || conteo === null) {
     return <EsqueletoConteo titulo={tituloCarga} />;
   }
@@ -391,7 +427,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             tono={sinRed ? 'atencion' : 'error'}
             onReintentar={() => void consulta.refetch()}
             reintentando={consulta.isFetching}
-            secundaria={{ texto: 'Volver al inicio', onPress: () => router.back() }}
+            secundaria={{ texto: 'Volver al inicio', onPress: volverAlInicio }}
           />
         </View>
       </SafeAreaView>
@@ -405,7 +441,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
           icono="caja"
           titulo="Esta carga no tiene productos"
           detalle="La plantilla de tu ruta está vacía, así que no hay nada que contar. Avisa a tu supervisor para que la revise."
-          accion={{ texto: 'Volver al inicio', onPress: () => router.back() }}
+          accion={{ texto: 'Volver al inicio', onPress: volverAlInicio }}
         />
       </SafeAreaView>
     );
@@ -460,7 +496,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         onFinalizar={intentarFinalizar}
         onVolver={() => {
           cerrarTeclado();
-          router.back();
+          volverAlInicio();
         }}
       />
 
@@ -968,8 +1004,7 @@ function PanelConfirmar({
             router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
             return;
           }
-          if (router.canGoBack()) router.back();
-          else router.replace('/');
+          volverAlInicio();
         },
         onError: (e) => {
           setFase('confirmando');
@@ -1041,7 +1076,7 @@ function PanelConfirmar({
 function EsqueletoConteo({ titulo }: { titulo: string }) {
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <EncabezadoBase titulo={titulo} marca lineasTitulo={1} onVolver={() => router.back()} etiquetaVolver="Volver al inicio">
+      <EncabezadoBase titulo={titulo} marca lineasTitulo={1} onVolver={volverAlInicio} etiquetaVolver="Volver al inicio">
         <LineaEsqueleto nivel="subtitulo" ancho="60%" sobreMarca />
       </EncabezadoBase>
       <Esqueleto etiqueta="Cargando productos" style={estilos.contenidoLista}>

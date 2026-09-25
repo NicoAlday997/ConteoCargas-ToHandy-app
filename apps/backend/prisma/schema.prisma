@@ -167,6 +167,7 @@ model UsuarioApp {
   dispositivosPush            DispositivoPush[]
   cargasAutorizadas           EventoCarga[]                  @relation("EventoCargaAutorizadaPor")
   factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
+  cambiosFactor               CambioFactorEmpaque[]
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -252,9 +253,37 @@ model Producto {
   discrepancias      DiscrepanciaResuelta[]
   revisiones         RevisionSupervisor[]
   plantillaProductos PlantillaProducto[]
+  cambiosFactor      CambioFactorEmpaque[]
 
   @@index([factorConfirmadoPorId])
   @@map("productos")
+}
+
+// Bitacora de cada confirmacion o correccion del empaque de un producto. Las
+// columnas de Producto solo guardan la ULTIMA (quien y cuando); aqui queda
+// todo: un factor equivocado corrompe conteos en silencio, asi que importa
+// saber que valor rigio en cada momento y quien lo cambio. Solo se inserta.
+model CambioFactorEmpaque {
+  id                String         @id @default(cuid())
+  productoCode      String
+  // Lo que habia antes del cambio (propuesta sin confirmar o confirmacion previa).
+  modalidadAnterior ModalidadVenta
+  piezasAnterior    Int?
+  estabaConfirmado  Boolean
+  modalidadNueva    ModalidadVenta
+  piezasNueva       Int?
+  cambiadoPorId     String
+  fecha             DateTime
+  // Cargas aun no enviadas a Handy con conteos de este producto al momento del
+  // cambio: esos conteos quedaron calculados con el valor anterior.
+  cargasEnCurso     Int
+
+  producto    Producto   @relation(fields: [productoCode], references: [code])
+  cambiadoPor UsuarioApp @relation(fields: [cambiadoPorId], references: [id])
+
+  @@index([productoCode, fecha])
+  @@index([cambiadoPorId])
+  @@map("cambios_factor_empaque")
 }
 
 // ---------------------------------------------------------------------------

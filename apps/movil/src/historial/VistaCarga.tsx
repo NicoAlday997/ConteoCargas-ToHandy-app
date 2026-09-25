@@ -239,6 +239,7 @@ export function CargaIlegible({ onReintentar, reintentando }: { onReintentar: ()
         detalle="El servidor respondió algo que la app no entiende. Intenta de nuevo."
         onReintentar={onReintentar}
         reintentando={reintentando}
+        secundaria={{ texto: 'Volver', onPress: volver }}
       />
     </View>
   );

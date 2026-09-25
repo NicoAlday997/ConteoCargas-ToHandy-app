@@ -6,6 +6,7 @@ import type {
 import type {
   DatosConfirmarFactor,
   FactorEmpaqueRepository,
+  FactorDeCatalogo,
   FactorGuardado,
   FactorPendiente,
   FactorProducto,
@@ -114,6 +115,12 @@ class FakeFactorEmpaqueRepository implements FactorEmpaqueRepository {
     throw new Error('no usado en estas pruebas');
   }
   confirmar(_datos: DatosConfirmarFactor): Promise<FactorProducto> {
+    throw new Error('no usado en estas pruebas');
+  }
+  listarTodos(): Promise<FactorDeCatalogo[]> {
+    throw new Error('no usado en estas pruebas');
+  }
+  contarCargasEnCursoConProducto(): Promise<number> {
     throw new Error('no usado en estas pruebas');
   }
 }
