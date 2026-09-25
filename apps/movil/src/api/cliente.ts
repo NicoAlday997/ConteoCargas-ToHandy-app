@@ -23,6 +23,8 @@ export interface CuerpoErrorApi {
   bloqueadoHasta?: string | null;
   /** Solo en 409 `YA_TIENE_CARGA_ABIERTA`: la carga inicial que ya existe. */
   eventoId?: string | null;
+  /** Solo en 409 de `POST .../enviar` por inventario: "Productos rechazados: A, B". */
+  detalle?: string | null;
 }
 
 /** El servidor respondió, pero con un código de error. */

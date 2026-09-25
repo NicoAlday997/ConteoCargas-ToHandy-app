@@ -27,6 +27,8 @@
 | Ver cola de verificación | ❌ | ✅ | ✅ |
 | Ver historial de cargas | ✅ solo las suyas, 2 semanas | ✅ todas, 2 semanas | ✅ todas, sin límite |
 | Iniciar revisión de supervisor sobre carga cerrada | ❌ | ❌ | ✅ |
+| Autorizar carga, rechazar productos o modificar una cantidad | ❌ | ❌ | ✅ |
+| Enviar a Handy una carga autorizada (desde la app) | ❌ | ❌ | ✅ |
 | Ver centro de alertas | ❌ | ❌ | ✅ |
 
 ## 3. Catálogo de pantallas
@@ -78,6 +80,14 @@
 - Dos botones grandes: ✅ Correcto (avanza automáticamente) / ❌ No coincide (despliega campo opcional de cantidad real encontrada antes de avanzar).
 - Al finalizar, resumen de cuántos productos coincidieron y el detalle de los que no.
 
+### 3.9.1 Autorización de cargas (Supervisor)
+- Acceso primero en el inicio del supervisor, con el número de cargas esperando y el color de la que más lleva esperando.
+- Cola de cargas en `EN_ESPERA_AUTORIZACION`, ordenada por espera (la más detenida primero). La espera se mide desde el último cierre de conteo o la última diferencia confirmada, nunca desde la fecha de conteo. Ámbar desde 20 min, rojo ("Detenida") desde 45 min.
+- Debajo, las cargas autorizadas que aún no llegan a Handy (lista para enviar, envío sin confirmar, error de envío).
+- Detalle: la misma vista consolidada del historial y tres acciones: **Autorizar** (pregunta antes: después se envía a Handy), **Rechazar productos** (solo los marcados, cada uno con motivo de mínimo 3 caracteres; nunca la carga completa) y **Modificar cantidad** (un producto por ronda, con el teclado de conteo).
+- Modificar avisa antes de guardar que la cantidad no queda aplicada: el vendedor o el contador la confirman con su PIN. Rechazar y modificar devuelven la carga a diferencias por resolver; la app regresa a la cola y lo explica.
+- Ya autorizada, "Enviar a Handy" en el mismo detalle. Respuestas: enviada (con el id de ruta; si Handy rechazó productos por inventario se listan y el resto sí se envió), inventario insuficiente total (no se creó ruta), envío sin confirmar (reintentar es seguro: antes se consulta si la ruta ya existe) y token inválido (requiere al administrador).
+
 ### 3.10 Centro de alertas (Supervisor)
 - Lista de alertas filtrable por estado (pendiente/todas/resueltas) y urgencia.
 - Alertas de urgencia alta se destacan en rojo con ícono de campana; incluyen botón de "marcar como resuelta".
@@ -109,7 +119,12 @@ Login (PIN)
    │                                       │                     PIN cruzado)
    │                                       └───────────┬────────────────┘
    │                                                    ▼
-   │                                            POST a Handy (ruta/recarga)
+   │                                       Autorización del supervisor
+   │                                    │             │               │
+   │                               Autoriza   Rechaza productos   Modifica cantidad
+   │                                    │      (vuelven a resolverse con PIN cruzado)
+   │                                    ▼
+   │                            POST a Handy (ruta/recarga)
    │
    └── Supervisor → Historial (todas las cargas) → Revisión stepper (opcional, a discreción)
                                                           │

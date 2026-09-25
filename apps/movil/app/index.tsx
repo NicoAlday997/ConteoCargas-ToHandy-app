@@ -35,6 +35,7 @@ import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operat
 import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { AccesoFactores } from '../src/factores/AccesoFactores';
+import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
@@ -79,7 +80,7 @@ export default function PantallaInicio() {
 
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
-  // Inicio por rol (docs/06 §3.2-3.3); el supervisor solo tiene los empaques. El
+  // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones y los empaques. El
   // historial es para los tres: qué ve cada quien lo decide el servidor.
   // Densidad generosa: son pocas acciones y cada una importa. Banda de marca
   // arriba (quién está en sesión) y, debajo, las acciones sobre el fondo
@@ -105,6 +106,8 @@ export default function PantallaInicio() {
             <AccionesCarga usuario={usuario} />
           </>
         )}
+        {/* Primero lo que frena al camión: ninguna carga llega a Handy sin autorización. */}
+        {usuario?.rolApp === 'SUPERVISOR' && <AccesoAutorizaciones />}
         {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
         {usuario?.rolApp === 'SUPERVISOR' && <AccesoFactores />}
         <GrupoMenu>

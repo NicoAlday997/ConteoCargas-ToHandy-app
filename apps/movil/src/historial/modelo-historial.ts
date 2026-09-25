@@ -60,7 +60,8 @@ export interface GrupoDia {
   data: FilaHistorial[];
 }
 
-function normalizarFila(fila: CargaHistorialApi): FilaHistorial | null {
+/** `null` si la fila no trae una carga identificable. */
+export function normalizarFila(fila: CargaHistorialApi): FilaHistorial | null {
   const id = texto(fila.id);
   if (!id) return null;
   return {
