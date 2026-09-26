@@ -6,6 +6,7 @@ import {
   ConsultasCargaRepository,
   type CargaConConflictos,
   type CargaPendienteVerificacion,
+  type DiaRecargable,
   type DiscrepanciaDetalle,
   type LadoDiscrepancia,
 } from '../application/consultas-carga.repository';
@@ -76,6 +77,26 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
       totalDiscrepancias: row.discrepancias.length,
       resueltas: row.discrepancias.filter((d) => d.confirmadaPor !== null)
         .length,
+    }));
+  }
+
+  async listarInicialesEnviadasDesde(
+    rutaId: string,
+    desde: Date,
+  ): Promise<DiaRecargable[]> {
+    const rows = await this.prisma.eventoCarga.findMany({
+      where: {
+        rutaId,
+        tipo: 'INICIAL',
+        estado: 'ENVIADA',
+        fechaOperativa: { gte: desde },
+      },
+      select: { id: true, fechaOperativa: true },
+      orderBy: { fechaOperativa: 'asc' },
+    });
+    return rows.map((row) => ({
+      fechaOperativa: row.fechaOperativa,
+      eventoInicialId: row.id,
     }));
   }
 

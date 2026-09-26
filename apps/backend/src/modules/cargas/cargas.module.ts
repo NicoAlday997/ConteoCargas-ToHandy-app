@@ -19,6 +19,7 @@ import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
+import { ListarDiasRecargablesUseCase } from './application/listar-dias-recargables.use-case';
 import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from './application/listar-pendientes-verificacion.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
@@ -129,6 +130,14 @@ import { CargasController } from './interface/cargas.controller';
       useFactory: (consultas: ConsultasCargaRepository) =>
         new ListarPendientesVerificacionUseCase(consultas),
       inject: [ConsultasCargaRepository],
+    },
+    {
+      provide: ListarDiasRecargablesUseCase,
+      useFactory: (
+        asignaciones: AsignacionRepository,
+        consultas: ConsultasCargaRepository,
+      ) => new ListarDiasRecargablesUseCase(asignaciones, consultas),
+      inject: [AsignacionRepository, ConsultasCargaRepository],
     },
     {
       provide: EnviarCargaUseCase,

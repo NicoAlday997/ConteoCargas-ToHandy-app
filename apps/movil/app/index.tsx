@@ -11,6 +11,7 @@ import {
   CODIGO_FECHA_INVALIDA,
   CODIGO_YA_TIENE_CARGA,
   ETIQUETAS_TIPO_CARGA,
+  listarDiasRecargables,
   obtenerEvento,
   type TipoCarga,
 } from '../src/api/cargas';
@@ -291,8 +292,13 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [tipoAIniciar, setTipoAIniciar] = useState<TipoCarga | null>(null);
   const [conflicto, setConflicto] = useState<ConflictoFecha | null>(null);
   const [abriendoExistente, setAbriendoExistente] = useState(false);
-  // Lo que se intentaba cuando faltó la señal: "Reintentar" vuelve a eso.
-  const [tipoSinRed, setTipoSinRed] = useState<TipoCarga | null>(null);
+  // Lo que se intentaba cuando faltó la señal (o falló la consulta de salidas): "Reintentar" vuelve a eso.
+  const [tipoAReintentar, setTipoAReintentar] = useState<TipoCarga | null>(null);
+  // Salidas enviadas de la ruta: los únicos días en que se puede recargar.
+  const [diasRecarga, setDiasRecarga] = useState<string[] | null>(null);
+  const [consultandoDias, setConsultandoDias] = useState(false);
+  // La consulta respondió que no hay ninguna salida enviada: no hay a qué recargar.
+  const [sinSalidas, setSinSalidas] = useState(false);
   // La carga guardada en el teléfono ya no existía en el servidor y se quitó.
   const [cargaNoDisponible, setCargaNoDisponible] = useState(false);
   // Estado de la carga abierta según el servidor (`null` = no se pudo saber, p. ej. sin señal).
@@ -351,34 +357,63 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     [usuario.id],
   );
 
-  const ocupado = iniciar.isPending || abrir.isPending || abriendoExistente;
+  const ocupado = iniciar.isPending || abrir.isPending || abriendoExistente || consultandoDias;
 
   const cerrarSelector = () => {
     setTipoAIniciar(null);
+    setDiasRecarga(null);
     setConflicto(null);
     setError(null);
   };
 
-  /** Primero la fecha: el evento se crea ya con ella. */
+  /**
+   * Primero la fecha: el evento se crea ya con ella. La carga inicial elige
+   * hoy o mañana; la recarga no elige libremente: se suma a una salida que ya
+   * está en Handy, así que solo se ofrecen esas (y con una sola, se confirma).
+   */
   const pedirFecha = async (tipo: TipoCarga) => {
     setError(null);
     setCargaNoDisponible(false);
     setCargaCancelada(false);
-    setTipoSinRed(null);
+    setSinSalidas(false);
+    setTipoAReintentar(null);
     // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
       setError(MENSAJE_SIN_RED_INICIAR);
-      setTipoSinRed(tipo);
+      setTipoAReintentar(tipo);
       return;
     }
     setConflicto(null);
-    setTipoAIniciar(tipo);
+    if (tipo === 'INICIAL') {
+      setDiasRecarga(null);
+      setTipoAIniciar(tipo);
+      return;
+    }
+    setConsultandoDias(true);
+    try {
+      const dias = await listarDiasRecargables();
+      if (dias.length === 0) {
+        setSinSalidas(true);
+        return;
+      }
+      setDiasRecarga(dias);
+      setTipoAIniciar(tipo);
+    } catch (e) {
+      // "No pude preguntar" no es "no hay salidas": se ofrece reintentar.
+      const mensaje = mensajeDeError(e, 'No se pudieron consultar las salidas de tu ruta.');
+      if (mensaje === null) return;
+      setError(mensaje);
+      setTipoAReintentar(tipo);
+    } finally {
+      setConsultandoDias(false);
+    }
   };
 
   const entrarAConteo = async (carga: CargaAbierta) => {
     await guardarCargaAbierta(usuario.id, carga);
     setCargaAbierta(carga);
     setTipoAIniciar(null);
+    setDiasRecarga(null);
     setConflicto(null);
     irAConteo(carga);
   };
@@ -517,23 +552,27 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     <Seccion texto="Cargas de tu ruta">
       {aviso}
       {cargaCancelada && <AvisoCargaCancelada onCerrar={() => setCargaCancelada(false)} />}
+      {sinSalidas && <AvisoSinSalidas onCerrar={() => setSinSalidas(false)} />}
       <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
       <Boton
         texto="Iniciar recarga"
         variante="secundario"
         onPress={() => void pedirFecha('RECARGA')}
-        deshabilitado={ocupado}
+        deshabilitado={ocupado && !consultandoDias}
+        cargando={consultandoDias}
+        textoCargando="Buscando salidas…"
       />
       {error && tipoAIniciar === null && (
         <BloqueError
           titulo={error === MENSAJE_SIN_RED_INICIAR ? 'Sin conexión' : 'No se pudo iniciar la carga'}
           detalle={error === MENSAJE_SIN_RED_INICIAR ? DETALLE_SIN_RED_INICIAR : error}
           tono={error === MENSAJE_SIN_RED_INICIAR ? 'atencion' : 'error'}
-          onReintentar={tipoSinRed ? () => void pedirFecha(tipoSinRed) : undefined}
+          onReintentar={tipoAReintentar ? () => void pedirFecha(tipoAReintentar) : undefined}
         />
       )}
       <SelectorFechaOperativa
         tipo={tipoAIniciar}
+        dias={tipoAIniciar === 'RECARGA' ? diasRecarga : null}
         conflicto={conflicto}
         ocupado={ocupado}
         error={error}
@@ -636,6 +675,18 @@ function AvisoCargaCancelada({ onCerrar }: { onCerrar: () => void }) {
       tono="atencion"
       titulo="Cancelaste la carga"
       detalle="Quedó en el historial como cancelada. Si todavía hay que contar, inicia la carga correcta."
+      secundaria={{ texto: 'Entendido', onPress: onCerrar }}
+    />
+  );
+}
+
+/** La recarga se suma a una salida que ya está en Handy: sin ninguna, no hay a qué recargar. */
+function AvisoSinSalidas({ onCerrar }: { onCerrar: () => void }) {
+  return (
+    <BloqueError
+      tono="atencion"
+      titulo="No puedes hacer una recarga"
+      detalle="No hay ninguna salida enviada de tu ruta. Primero tiene que salir la carga inicial."
       secundaria={{ texto: 'Entendido', onPress: onCerrar }}
     />
   );

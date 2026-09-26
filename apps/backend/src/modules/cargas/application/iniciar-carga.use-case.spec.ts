@@ -1,4 +1,4 @@
-import type { TipoSesion, UbicacionConteo } from '@prisma/client';
+import type { EstadoCarga, TipoSesion, UbicacionConteo } from '@prisma/client';
 
 import type {
   AsignacionRepository,
@@ -66,6 +66,8 @@ class FakeCargaRepository implements CargaRepository {
       this.eventos.find(
         (e) =>
           e.tipo === 'INICIAL' &&
+          // Igual que el adaptador real: las canceladas no cuentan.
+          e.estado !== 'CANCELADA' &&
           e.rutaId === rutaId &&
           e.fechaOperativa.getTime() === fechaOperativa.getTime(),
       ) ?? null
@@ -184,6 +186,34 @@ class FakeCargaRepository implements CargaRepository {
   }
 }
 
+/** Carga INICIAL ya existente en la base, en el estado indicado. */
+function inicialExistente(
+  estado: EstadoCarga,
+  parcial: Partial<EventoCarga> = {},
+): EventoCarga {
+  return {
+    id: `ev-inicial-${estado}`,
+    rutaId: 'ruta-7',
+    plantillaId: 'plantilla-3',
+    tipo: 'INICIAL',
+    tipoOperacion: 'AUTOVENTA',
+    usuarioHandyId: 42,
+    estado,
+    fechaConteo: AHORA,
+    fechaOperativa: HOY,
+    autorizadaPorId: null,
+    fechaAutorizacion: null,
+    fechaBloqueoCortePendiente: null,
+    fechaDesbloqueo: null,
+    idHandy: estado === 'ENVIADA' ? 'ruta-handy-9001' : null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
+    creadoEn: AHORA,
+    ...parcial,
+  };
+}
+
 /** Doble de la asignacion: se le fija a mano lo que devuelve. */
 class FakeAsignacionRepository implements AsignacionRepository {
   vigente: AsignacionVigente | null = null;
@@ -286,7 +316,7 @@ describe('IniciarCargaUseCase', () => {
 
     const resultado = exigirExito(
       await useCase.ejecutar(
-        { usuarioAppId: 'v2', tipo: 'RECARGA', usuarioHandyId: 7, fechaOperativa: HOY },
+        { usuarioAppId: 'v2', tipo: 'INICIAL', usuarioHandyId: 7, fechaOperativa: HOY },
         AHORA,
       ),
     );
@@ -297,6 +327,7 @@ describe('IniciarCargaUseCase', () => {
 
   it('respeta el tipo RECARGA recibido', async () => {
     asignaciones.vigente = { rutaId: 'ruta-9', plantillaId: null };
+    cargas.eventos.push(inicialExistente('ENVIADA', { rutaId: 'ruta-9' }));
 
     const resultado = exigirExito(
       await useCase.ejecutar(
@@ -418,8 +449,9 @@ describe('IniciarCargaUseCase', () => {
       expect(cargas.eventosCreados).toHaveLength(2);
     });
 
-    it('permite varias RECARGAS el mismo dia, haya o no INICIAL', async () => {
-      exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
+    it('permite varias RECARGAS el mismo dia sobre la INICIAL enviada', async () => {
+      const inicial = exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
+      inicial.evento.estado = 'ENVIADA';
       const recarga = { ...entradaInicial, tipo: 'RECARGA' as const };
 
       exigirExito(await useCase.ejecutar(recarga, AHORA));
@@ -462,6 +494,95 @@ describe('IniciarCargaUseCase', () => {
         eventoId: 'ev-ganador',
       });
       expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+  });
+  describe('la RECARGA exige una salida ENVIADA de la ruta ese dia', () => {
+    const recarga = {
+      usuarioAppId: 'v1',
+      tipo: 'RECARGA' as const,
+      usuarioHandyId: 42,
+      fechaOperativa: HOY,
+    };
+
+    beforeEach(() => {
+      asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
+    });
+
+    it('con la INICIAL de la ruta y fecha ENVIADA, crea la recarga', async () => {
+      cargas.eventos.push(inicialExistente('ENVIADA'));
+
+      const resultado = exigirExito(await useCase.ejecutar(recarga, AHORA));
+
+      expect(resultado.evento.tipo).toBe('RECARGA');
+      expect(resultado.evento.fechaOperativa).toEqual(HOY);
+      expect(cargas.sesionesCreadas).toHaveLength(1);
+    });
+
+    it('sin INICIAL ese dia devuelve SIN_SALIDA_ENVIADA y no crea nada', async () => {
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_SALIDA_ENVIADA' });
+      expect(cargas.eventosCreados).toHaveLength(0);
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    const estadosSinSalida: EstadoCarga[] = [
+      'BORRADOR',
+      'EN_ESPERA_CONTADOR',
+      'BLOQUEADA_CORTE_PENDIENTE',
+      'EN_COMPARACION',
+      'CONFLICTOS_PENDIENTES',
+      'EN_ESPERA_AUTORIZACION',
+      'LISTA_PARA_ENVIAR',
+      'ERROR_ENVIO',
+      'ENVIO_INCIERTO',
+      'CANCELADA',
+    ];
+
+    it.each(estadosSinSalida)(
+      'con la INICIAL en %s devuelve SIN_SALIDA_ENVIADA y no crea nada',
+      async (estado) => {
+        cargas.eventos.push(inicialExistente(estado));
+
+        const resultado = await useCase.ejecutar(recarga, AHORA);
+
+        expect(resultado).toEqual({ exito: false, motivo: 'SIN_SALIDA_ENVIADA' });
+        expect(cargas.eventosCreados).toHaveLength(0);
+        expect(cargas.sesionesCreadas).toHaveLength(0);
+      },
+    );
+
+    it('la INICIAL ENVIADA de otra fecha no habilita la recarga', async () => {
+      cargas.eventos.push(inicialExistente('ENVIADA', { fechaOperativa: MANANA }));
+
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_SALIDA_ENVIADA' });
+    });
+
+    it('la INICIAL ENVIADA de otra ruta no habilita la recarga', async () => {
+      cargas.eventos.push(inicialExistente('ENVIADA', { rutaId: 'ruta-9' }));
+
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_SALIDA_ENVIADA' });
+    });
+
+    it('una INICIAL nueva no depende de esta regla: se crea sin ninguna salida previa', async () => {
+      const resultado = exigirExito(
+        await useCase.ejecutar({ ...recarga, tipo: 'INICIAL' }, AHORA),
+      );
+
+      expect(resultado.evento.tipo).toBe('INICIAL');
+      expect(resultado.evento.estado).toBe('BORRADOR');
+    });
+
+    it('una INICIAL nueva tras cancelar la del dia se crea aunque no haya salida', async () => {
+      cargas.eventos.push(inicialExistente('CANCELADA'));
+
+      exigirExito(await useCase.ejecutar({ ...recarga, tipo: 'INICIAL' }, AHORA));
+
+      expect(cargas.eventosCreados.map((e) => e.tipo)).toEqual(['INICIAL']);
     });
   });
 });

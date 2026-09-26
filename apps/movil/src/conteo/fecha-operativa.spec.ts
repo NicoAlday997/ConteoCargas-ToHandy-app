@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  deLaSalida,
   diaDesdeApi,
   diaNegocio,
   diaRelativo,
@@ -86,5 +87,13 @@ describe('textoSalida', () => {
     assert.equal(textoSalida('2026-09-23', '2026-09-23'), 'Sale hoy, miércoles 23 de septiembre');
     assert.equal(textoSalida('2026-09-24', '2026-09-23'), 'Sale mañana, jueves 24 de septiembre');
     assert.equal(textoSalida('2026-09-22', '2026-09-23'), 'Sale el martes 22 de septiembre');
+  });
+});
+
+describe('deLaSalida', () => {
+  it('usa las mismas palabras que textoSalida', () => {
+    assert.equal(deLaSalida('2026-09-23', '2026-09-23'), 'de hoy');
+    assert.equal(deLaSalida('2026-09-24', '2026-09-23'), 'de mañana');
+    assert.equal(deLaSalida('2026-09-26', '2026-09-23'), 'del sábado 26 de septiembre');
   });
 });

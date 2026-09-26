@@ -123,3 +123,12 @@ export function textoSalida(dia: string, hoy: string): string {
   if (dia === sumarDias(hoy, 1)) return `Sale mañana, ${enFrase}`;
   return `Sale el ${enFrase}`;
 }
+
+/** "de hoy", "de mañana" o "del jueves 24 de septiembre": completa "la salida …". */
+export function deLaSalida(dia: string, hoy: string): string {
+  // Mismas palabras que `textoSalida`: "Sale hoy, …" → "de hoy".
+  const texto = textoSalida(dia, hoy);
+  if (texto.startsWith('Sale hoy')) return 'de hoy';
+  if (texto.startsWith('Sale mañana')) return 'de mañana';
+  return `del ${texto.slice('Sale el '.length)}`;
+}

@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { BloqueError, Boton } from '../componentes/base';
 import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
-import { diaNegocio, formatearDia, opcionesFechaOperativa } from './fecha-operativa';
+import { deLaSalida, diaNegocio, diaRelativo, formatearDia, opcionesFechaOperativa, textoSalida } from './fecha-operativa';
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
 export interface ConflictoFecha {
@@ -16,6 +16,12 @@ interface Props {
   /** `null` = cerrado. */
   tipo: TipoCarga | null;
   conflicto: ConflictoFecha | null;
+  /**
+   * Los únicos días que se pueden elegir (`aaaa-mm-dd`, en orden). Solo la
+   * recarga los trae: son sus salidas ya enviadas (`GET dias-recargables`).
+   * Con uno solo no se pregunta el día, se confirma. Sin esto: hoy o mañana.
+   */
+  dias?: readonly string[] | null;
   /** Creando la carga o abriendo la existente: botones bloqueados. */
   ocupado: boolean;
   error: string | null;
@@ -32,6 +38,9 @@ const AVISO_CAMBIO_DE_DIA = 'Cambió el día mientras elegías. Revisa las fecha
  * si el camión se descompuso, se cuenta en la mañana para hoy. No se adivina:
  * las dos opciones tienen el mismo tamaño y lugar, y la propuesta (siempre
  * mañana) solo se marca. Nunca se ofrece un día pasado.
+ *
+ * La recarga no elige libremente: se suma a una salida que ya está en Handy,
+ * así que solo ofrece esos días (`dias`), sin propuesta.
  */
 export function SelectorFechaOperativa(props: Props) {
   const { ocupado, onCerrar } = props;
@@ -51,6 +60,7 @@ export function SelectorFechaOperativa(props: Props) {
 function Contenido({
   tipo,
   conflicto,
+  dias,
   ocupado,
   error,
   onElegir,
@@ -62,6 +72,9 @@ function Contenido({
   const [aviso, setAviso] = useState<string | null>(null);
 
   const opciones = opcionesFechaOperativa(ahora);
+  const hoy = opciones.hoy;
+  // Si pasa la medianoche con el modal abierto, la salida de ayer ya no se recarga.
+  const diasFijos = dias ? dias.filter((d) => d >= hoy) : null;
 
   const elegir = (dia: string) => {
     // Si pasó la medianoche con el selector abierto, "hoy" ya es ayer.
@@ -98,6 +111,66 @@ function Contenido({
               onPress={() => onContinuarExistente(conflicto)}
             />
             <Boton texto="Elegir otra fecha" variante="secundario" deshabilitado={ocupado} onPress={onElegirOtra} />
+          </>
+        ) : diasFijos && diasFijos.length === 0 ? (
+          <>
+            <Text style={estilos.titulo} accessibilityRole="header">
+              Ya no hay salida para recargar
+            </Text>
+            <Text style={estilos.detalle}>
+              La salida que había terminó al cambiar el día. Para recargar, primero tiene que salir la carga inicial de hoy.
+            </Text>
+            <Boton texto="Cerrar" variante="secundario" onPress={onCerrar} />
+          </>
+        ) : diasFijos && diasFijos.length === 1 ? (
+          <>
+            <Text style={estilos.titulo} accessibilityRole="header">
+              ¿Iniciar {tipo === 'RECARGA' ? 'recarga' : 'carga'} para la salida {deLaSalida(diasFijos[0], hoy)}?
+            </Text>
+            <Text style={estilos.detalle}>{textoSalida(diasFijos[0], hoy)}. Lo que cuentes se suma a esa salida.</Text>
+            {mensaje && (
+              <BloqueError
+                titulo={aviso ? 'Cambió el día' : 'No se pudo iniciar la carga'}
+                detalle={mensaje}
+                tono={tonoMensaje}
+              />
+            )}
+            <Boton
+              texto={tipo === 'RECARGA' ? 'Iniciar recarga' : 'Iniciar carga'}
+              cargando={ocupado}
+              textoCargando="Iniciando…"
+              onPress={() => elegir(diasFijos[0])}
+            />
+            <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
+          </>
+        ) : diasFijos ? (
+          <>
+            <Text style={estilos.titulo} accessibilityRole="header">
+              ¿A qué salida es esta {tipo === 'RECARGA' ? 'recarga' : 'carga'}?
+            </Text>
+            <Text style={estilos.detalle}>Tu ruta tiene varias salidas enviadas. Elige a cuál se suma.</Text>
+            {diasFijos.map((dia) => {
+              const relativo = diaRelativo(dia, hoy);
+              return (
+                <OpcionDia
+                  key={dia}
+                  titulo={relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale'}
+                  dia={dia}
+                  propuesta={false}
+                  deshabilitado={ocupado}
+                  onPress={() => elegir(dia)}
+                />
+              );
+            })}
+            {ocupado && <ActivityIndicator color={COLORES.texto} />}
+            {mensaje && (
+              <BloqueError
+                titulo={aviso ? 'Cambió el día' : 'No se pudo iniciar la carga'}
+                detalle={mensaje}
+                tono={tonoMensaje}
+              />
+            )}
+            <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           </>
         ) : (
           <>

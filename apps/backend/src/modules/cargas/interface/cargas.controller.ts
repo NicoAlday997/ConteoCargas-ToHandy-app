@@ -38,6 +38,7 @@ import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from '../application/guardar-items.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
+import { ListarDiasRecargablesUseCase } from '../application/listar-dias-recargables.use-case';
 import { ListarItemsDeSesionUseCase } from '../application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from '../application/listar-pendientes-verificacion.use-case';
 import { ListarProductosDePlantillaUseCase } from '../application/listar-productos-de-plantilla.use-case';
@@ -103,6 +104,7 @@ export class CargasController {
     private readonly desbloquearCargaUseCase: DesbloquearCargaUseCase,
     private readonly cancelarCargaUseCase: CancelarCargaUseCase,
     private readonly cancelarRutaHandyUseCase: CancelarRutaHandyUseCase,
+    private readonly listarDiasRecargablesUseCase: ListarDiasRecargablesUseCase,
   ) {}
 
   /**
@@ -160,10 +162,32 @@ export class CargasController {
               'Tu ruta ya tiene una carga inicial para esa fecha. Continua esa carga en lugar de crear otra.',
             eventoId: resultado.eventoId,
           });
+        case 'SIN_SALIDA_ENVIADA':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'SIN_SALIDA_ENVIADA',
+            mensaje:
+              'No hay una salida enviada de tu ruta para ese día. La recarga solo se puede hacer sobre una carga inicial que ya salió a Handy.',
+          });
       }
     }
 
     return { evento: resultado.evento, sesion: resultado.sesion };
+  }
+
+  /**
+   * Dias en que el vendedor puede iniciar una recarga: los de las cargas
+   * INICIALES ENVIADAS de su ruta, de hoy en adelante. La app ofrece solo
+   * estos, nunca un calendario libre. Declarado antes de `GET :id`.
+   */
+  @Get('dias-recargables')
+  @Roles(RolApp.VENDEDOR)
+  async diasRecargables(@UsuarioActual() usuario: UsuarioAutenticado) {
+    const dias = await this.listarDiasRecargablesUseCase.ejecutar(
+      { usuarioAppId: usuario.usuarioAppId },
+      new Date(),
+    );
+    return { dias };
   }
 
   /**

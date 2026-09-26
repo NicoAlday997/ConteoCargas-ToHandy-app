@@ -77,6 +77,13 @@ export interface DiscrepanciaDetalle extends Discrepancia {
   segundoConteo: LadoDiscrepancia;
 }
 
+/** Salida ya enviada a Handy sobre la que se puede recargar. */
+export interface DiaRecargable {
+  /** Inicio del dia operativo en la zona del negocio. */
+  fechaOperativa: Date;
+  eventoInicialId: string;
+}
+
 export abstract class ConsultasCargaRepository {
   /**
    * Eventos en `EN_ESPERA_CONTADOR` o `BLOQUEADA_CORTE_PENDIENTE`, del mas
@@ -95,4 +102,13 @@ export abstract class ConsultasCargaRepository {
   abstract listarDiscrepanciasDetalle(
     eventoId: string,
   ): Promise<DiscrepanciaDetalle[]>;
+
+  /**
+   * Cargas INICIALES en `ENVIADA` de la ruta con `fechaOperativa >= desde`,
+   * ordenadas por fecha ascendente.
+   */
+  abstract listarInicialesEnviadasDesde(
+    rutaId: string,
+    desde: Date,
+  ): Promise<DiaRecargable[]>;
 }

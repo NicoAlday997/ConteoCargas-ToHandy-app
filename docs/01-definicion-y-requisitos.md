@@ -84,7 +84,7 @@ Construir una aplicación propia que:
 - RF-16: Al resolverse todas las discrepancias, el sistema debe enviar la carga a Handy mediante el endpoint de creación de ruta.
 
 ### RF — Recarga
-- RF-17: El vendedor debe poder solicitar una recarga durante el día, con el catálogo filtrado por default a los productos ya incluidos en la carga inicial de ese día (con búsqueda disponible para excepciones).
+- RF-17: El vendedor debe poder solicitar una recarga durante el día, solo sobre una salida ya enviada a Handy (regla 7 de la sección 6), con el catálogo filtrado por default a los productos ya incluidos en la carga inicial de ese día (con búsqueda disponible para excepciones).
 - RF-18: El segundo conteo de una recarga debe registrar si ocurrió en almacén o en calle (camioneta de refuerzo), sin que esto cambie el permiso del usuario.
 - RF-19: El envío de una recarga debe usar el endpoint de recarga de Handy, distinto al de creación de ruta.
 
@@ -123,6 +123,8 @@ Construir una aplicación propia que:
 3. Ningún producto puede quedar marcado como resuelto en una discrepancia sin la confirmación cruzada de una segunda persona.
 4. Las cargas sin discrepancia deben ser igual de auditables que las que sí la tuvieron (no debe existir una restricción de acceso basada en si "cuadró" o no).
 5. La verificación de supervisor es completamente discrecional; el sistema no debe forzar ni sugerir automáticamente cuáles cargas revisar (queda para una fase futura como mejora, no como regla del MVP).
+6. Solo puede haber una carga inicial por ruta y día operativo (cancelarla libera el día); las recargas pueden ser varias.
+7. Una recarga solo se puede iniciar sobre una salida que ya está en Handy: debe existir la carga inicial de la misma ruta y el mismo día operativo en estado `ENVIADA`. La ruta en Handy nace cuando la inicial se envía, y la recarga le suma producto a esa ruta abierta; una inicial en borrador, esperando al contador o a autorización, con error de envío o cancelada todavía no puso nada en Handy. Se valida al **iniciar** la recarga, no al enviarla, para no contar una recarga completa que Handy rechazaría al final con el camión esperando. Por lo mismo, la app no ofrece un calendario libre para la recarga: solo los días (de hoy en adelante) con una salida enviada de la ruta del vendedor.
 
 ## 7. Glosario
 

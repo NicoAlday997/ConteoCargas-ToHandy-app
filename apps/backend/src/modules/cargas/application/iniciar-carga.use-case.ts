@@ -24,6 +24,15 @@ import {
  * discrecion, se podrian generar versiones hasta que una pase la verificacion.
  * Las RECARGAS si pueden ser varias por dia.
  *
+ * Una RECARGA exige una carga INICIAL de la misma ruta y fecha operativa en
+ * estado ENVIADA: `/route/recharge` de Handy le suma producto a una ruta
+ * ABIERTA, y esa ruta solo nace cuando la inicial se envia. Una inicial en
+ * BORRADOR, esperando contador o autorizacion, o en ERROR_ENVIO todavia no puso
+ * nada en Handy, y una CANCELADA tampoco cuenta (`buscarCargaInicialDeFecha`
+ * las excluye). Se revisa aqui, al iniciar, y no al enviar: si no, el vendedor
+ * y el contador contarian toda la recarga para que Handy la rechace al final,
+ * con el camion esperando.
+ *
  * La liquidacion de la ruta anterior en Handy NO se revisa aqui: el conteo del
  * vendedor es trabajo fisico que no compromete nada, y a veces hay que cargar
  * un camion antes de que liquide (p. ej. para moverlo en la bodega). El
@@ -58,10 +67,18 @@ export interface EntradaIniciarCarga {
  * - `YA_TIENE_CARGA_ABIERTA`: ya existe una carga INICIAL de la ruta para esa
  *   fecha operativa (en cualquier estado). Trae su `eventoId` para que la app
  *   ofrezca continuarla en vez de crear otra.
+ * - `SIN_SALIDA_ENVIADA`: es una RECARGA y la ruta no tiene carga INICIAL
+ *   ENVIADA para esa fecha operativa: en Handy no hay ruta a la que sumarle.
  */
 export type ResultadoIniciarCarga =
   | { exito: true; evento: EventoCarga; sesion: SesionConteo }
-  | { exito: false; motivo: 'SIN_RUTA_ASIGNADA' | 'FECHA_OPERATIVA_INVALIDA' }
+  | {
+      exito: false;
+      motivo:
+        | 'SIN_RUTA_ASIGNADA'
+        | 'FECHA_OPERATIVA_INVALIDA'
+        | 'SIN_SALIDA_ENVIADA';
+    }
   | { exito: false; motivo: 'YA_TIENE_CARGA_ABIERTA'; eventoId: string };
 
 export class IniciarCargaUseCase {
@@ -88,19 +105,23 @@ export class IniciarCargaUseCase {
       return { exito: false, motivo: 'SIN_RUTA_ASIGNADA' };
     }
 
+    const inicialDelDia = await this.cargas.buscarCargaInicialDeFecha(
+      asignacion.rutaId,
+      fechaOperativa,
+    );
+
     // 3. Una sola INICIAL por ruta y fecha operativa.
-    if (entrada.tipo === 'INICIAL') {
-      const existente = await this.cargas.buscarCargaInicialDeFecha(
-        asignacion.rutaId,
-        fechaOperativa,
-      );
-      if (existente !== null) {
-        return {
-          exito: false,
-          motivo: 'YA_TIENE_CARGA_ABIERTA',
-          eventoId: existente.id,
-        };
-      }
+    if (entrada.tipo === 'INICIAL' && inicialDelDia !== null) {
+      return {
+        exito: false,
+        motivo: 'YA_TIENE_CARGA_ABIERTA',
+        eventoId: inicialDelDia.id,
+      };
+    }
+
+    // 3b. La RECARGA se suma a una salida que ya esta en Handy.
+    if (entrada.tipo === 'RECARGA' && inicialDelDia?.estado !== 'ENVIADA') {
+      return { exito: false, motivo: 'SIN_SALIDA_ENVIADA' };
     }
 
     // 4. Evento en BORRADOR. rutaId y plantillaId quedan como snapshot; hoy

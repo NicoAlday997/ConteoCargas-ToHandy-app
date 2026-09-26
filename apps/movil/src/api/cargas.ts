@@ -1,3 +1,4 @@
+import { diaDesdeApi } from '../conteo/fecha-operativa';
 import { peticion } from './cliente';
 
 export type TipoCarga = 'INICIAL' | 'RECARGA';
@@ -50,6 +51,26 @@ export interface RespuestaEvento {
 export const CODIGO_YA_TIENE_CARGA = 'YA_TIENE_CARGA_ABIERTA';
 /** 400 de `POST /eventos-carga`: la fecha es un día pasado (reloj del teléfono atrasado). */
 export const CODIGO_FECHA_INVALIDA = 'FECHA_OPERATIVA_INVALIDA';
+/** 409 de `POST /eventos-carga`: recarga sin carga inicial ENVIADA de la ruta ese día. */
+export const CODIGO_SIN_SALIDA_ENVIADA = 'SIN_SALIDA_ENVIADA';
+
+/** Una salida ya enviada a Handy sobre la que se puede recargar. */
+export interface DiaRecargableApi {
+  /** Inicio del día en hora de México (ISO 8601), como `EventoCargaApi.fechaOperativa`. */
+  fechaOperativa: string | null;
+  eventoInicialId: string | null;
+}
+
+/**
+ * `GET /eventos-carga/dias-recargables`: los únicos días en que se puede
+ * iniciar una recarga, como `aaaa-mm-dd` y en orden. Descarta lo que no se
+ * pueda leer.
+ */
+export async function listarDiasRecargables(): Promise<string[]> {
+  const respuesta = await peticion<{ dias: DiaRecargableApi[] | null } | null>('/eventos-carga/dias-recargables');
+  const dias = (respuesta?.dias ?? []).map((d) => diaDesdeApi(d.fechaOperativa)).filter((d): d is string => d !== null);
+  return [...new Set(dias)].sort();
+}
 export interface ProductoApi {
   code: string | null;
   nombre: string | null;
