@@ -111,4 +111,14 @@ export abstract class ConsultasCargaRepository {
     rutaId: string,
     desde: Date,
   ): Promise<DiaRecargable[]>;
+
+  /**
+   * La carga INICIAL en `ENVIADA` de la ruta cuyo `idHandy` es el indicado (la
+   * ruta que Handy reporta abierta), sin importar su fecha operativa. `null` si
+   * esa ruta de Handy no salio de esta app (o de otra ruta nuestra).
+   */
+  abstract buscarInicialEnviadaPorIdHandy(
+    rutaId: string,
+    idHandy: string,
+  ): Promise<DiaRecargable | null>;
 }

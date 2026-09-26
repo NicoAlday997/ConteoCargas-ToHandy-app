@@ -142,6 +142,22 @@ export class HandySinRespuestaError extends Error {
   }
 }
 
+/**
+ * `true` si el error es uno de los fallos del puerto que significan "no se pudo
+ * preguntarle a Handy" (token, 5xx, sin respuesta, estado inesperado). Quien
+ * consulta a Handy solo para CONFIRMAR algo (p. ej. que la ruta siga abierta
+ * antes de una recarga) lo usa para no bloquear al usuario por la caida de un
+ * tercero; cualquier otro error es un bug y debe propagarse.
+ */
+export function esHandyNoDisponible(error: unknown): boolean {
+  return (
+    error instanceof HandyTokenInvalidoError ||
+    error instanceof HandyErrorServidorError ||
+    error instanceof HandySinRespuestaError ||
+    error instanceof HandyRespuestaNoOkError
+  );
+}
+
 /** `role` embebido en un usuario de Handy. */
 export interface RolUsuarioHandy {
   id: number;

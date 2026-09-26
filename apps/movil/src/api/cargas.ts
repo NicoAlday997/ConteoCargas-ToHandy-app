@@ -53,6 +53,8 @@ export const CODIGO_YA_TIENE_CARGA = 'YA_TIENE_CARGA_ABIERTA';
 export const CODIGO_FECHA_INVALIDA = 'FECHA_OPERATIVA_INVALIDA';
 /** 409 de `POST /eventos-carga`: recarga sin carga inicial ENVIADA de la ruta ese día. */
 export const CODIGO_SIN_SALIDA_ENVIADA = 'SIN_SALIDA_ENVIADA';
+/** 409 de `POST /eventos-carga`: recarga cuando Handy no tiene abierta la ruta de esa inicial. */
+export const CODIGO_SIN_RUTA_ABIERTA_EN_HANDY = 'SIN_RUTA_ABIERTA_EN_HANDY';
 
 /** Una salida ya enviada a Handy sobre la que se puede recargar. */
 export interface DiaRecargableApi {
@@ -61,15 +63,39 @@ export interface DiaRecargableApi {
   eventoInicialId: string | null;
 }
 
+/** Por qué `dias-recargables` no trae días. */
+export type MotivoSinDiasRecargables = 'SIN_RUTA_ASIGNADA' | 'SIN_RUTA_ABIERTA' | 'RUTA_NO_RECONOCIDA';
+
+export interface DiasRecargables {
+  /** `aaaa-mm-dd`, en orden. */
+  dias: string[];
+  motivo: MotivoSinDiasRecargables | null;
+  /**
+   * `false`: Handy no respondió y los días salen solo de lo enviado desde esta
+   * app; la ruta podría ya estar cerrada.
+   */
+  verificadoConHandy: boolean;
+}
+
 /**
- * `GET /eventos-carga/dias-recargables`: los únicos días en que se puede
- * iniciar una recarga, como `aaaa-mm-dd` y en orden. Descarta lo que no se
- * pueda leer.
+ * `GET /eventos-carga/dias-recargables`: el día en que se puede iniciar una
+ * recarga (el de la ruta que el vendedor tiene abierta en Handy). Descarta lo
+ * que no se pueda leer; sin `verificadoConHandy` se asume verificado.
  */
-export async function listarDiasRecargables(): Promise<string[]> {
-  const respuesta = await peticion<{ dias: DiaRecargableApi[] | null } | null>('/eventos-carga/dias-recargables');
+export async function listarDiasRecargables(): Promise<DiasRecargables> {
+  const respuesta = await peticion<{
+    dias: DiaRecargableApi[] | null;
+    motivo?: string | null;
+    verificadoConHandy?: boolean | null;
+  } | null>('/eventos-carga/dias-recargables');
   const dias = (respuesta?.dias ?? []).map((d) => diaDesdeApi(d.fechaOperativa)).filter((d): d is string => d !== null);
-  return [...new Set(dias)].sort();
+  const motivo = respuesta?.motivo;
+  return {
+    dias: [...new Set(dias)].sort(),
+    motivo:
+      motivo === 'SIN_RUTA_ASIGNADA' || motivo === 'SIN_RUTA_ABIERTA' || motivo === 'RUTA_NO_RECONOCIDA' ? motivo : null,
+    verificadoConHandy: respuesta?.verificadoConHandy !== false,
+  };
 }
 export interface ProductoApi {
   code: string | null;

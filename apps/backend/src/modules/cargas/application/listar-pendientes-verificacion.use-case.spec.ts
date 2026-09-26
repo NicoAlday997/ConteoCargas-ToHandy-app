@@ -21,7 +21,11 @@ class FakeConsultas implements ConsultasCargaRepository {
   }
   async listarDiscrepanciasDetalle(): Promise<never> {
     throw new Error('no usado en estas pruebas');
-  }  async listarInicialesEnviadasDesde(): Promise<never> {
+  }
+  async listarInicialesEnviadasDesde(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+  async buscarInicialEnviadaPorIdHandy(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
 }

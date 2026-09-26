@@ -1,6 +1,11 @@
 import type { TipoCarga } from '@prisma/client';
 
 import {
+  esHandyNoDisponible,
+  HandyGateway,
+  type RutaHandy,
+} from '../../sincronizacion/application/handy.gateway';
+import {
   esFechaOperativaValida,
   normalizarFechaOperativa,
 } from '../domain/fecha-operativa';
@@ -32,6 +37,14 @@ import {
  * las excluye). Se revisa aqui, al iniciar, y no al enviar: si no, el vendedor
  * y el contador contarian toda la recarga para que Handy la rechace al final,
  * con el camion esperando.
+ *
+ * Y ENVIADA no basta: dice que la inicial salio hacia Handy alguna vez, NO que
+ * la ruta siga abierta. Cuando el vendedor liquida, Handy la cierra y nadie nos
+ * avisa. Por eso la RECARGA tambien le pregunta a Handy
+ * (`consultarRutaAbierta`): debe haber una ruta abierta y debe ser justo la de
+ * esa inicial (`idHandy`). Si Handy no se puede consultar no se bloquea al
+ * vendedor por la caida de un tercero: pasa con la regla local, y el envio
+ * dira la ultima palabra.
  *
  * La liquidacion de la ruta anterior en Handy NO se revisa aqui: el conteo del
  * vendedor es trabajo fisico que no compromete nada, y a veces hay que cargar
@@ -69,6 +82,9 @@ export interface EntradaIniciarCarga {
  *   ofrezca continuarla en vez de crear otra.
  * - `SIN_SALIDA_ENVIADA`: es una RECARGA y la ruta no tiene carga INICIAL
  *   ENVIADA para esa fecha operativa: en Handy no hay ruta a la que sumarle.
+ * - `SIN_RUTA_ABIERTA_EN_HANDY`: es una RECARGA, la inicial esta ENVIADA, pero
+ *   Handy dice que el vendedor no tiene ruta abierta, o que la abierta es otra
+ *   (la inicial ya se liquido o se cancelo alla).
  */
 export type ResultadoIniciarCarga =
   | { exito: true; evento: EventoCarga; sesion: SesionConteo }
@@ -77,7 +93,8 @@ export type ResultadoIniciarCarga =
       motivo:
         | 'SIN_RUTA_ASIGNADA'
         | 'FECHA_OPERATIVA_INVALIDA'
-        | 'SIN_SALIDA_ENVIADA';
+        | 'SIN_SALIDA_ENVIADA'
+        | 'SIN_RUTA_ABIERTA_EN_HANDY';
     }
   | { exito: false; motivo: 'YA_TIENE_CARGA_ABIERTA'; eventoId: string };
 
@@ -85,6 +102,7 @@ export class IniciarCargaUseCase {
   constructor(
     private readonly cargas: CargaRepository,
     private readonly asignaciones: AsignacionRepository,
+    private readonly handy: HandyGateway,
   ) {}
 
   async ejecutar(
@@ -120,8 +138,19 @@ export class IniciarCargaUseCase {
     }
 
     // 3b. La RECARGA se suma a una salida que ya esta en Handy.
-    if (entrada.tipo === 'RECARGA' && inicialDelDia?.estado !== 'ENVIADA') {
-      return { exito: false, motivo: 'SIN_SALIDA_ENVIADA' };
+    if (entrada.tipo === 'RECARGA') {
+      if (inicialDelDia?.estado !== 'ENVIADA') {
+        return { exito: false, motivo: 'SIN_SALIDA_ENVIADA' };
+      }
+      // 3c. ...y que esa salida siga ABIERTA en Handy.
+      if (
+        !(await this.sigueAbiertaEnHandy(
+          entrada.usuarioHandyId,
+          inicialDelDia.idHandy,
+        ))
+      ) {
+        return { exito: false, motivo: 'SIN_RUTA_ABIERTA_EN_HANDY' };
+      }
     }
 
     // 4. Evento en BORRADOR. rutaId y plantillaId quedan como snapshot; hoy
@@ -165,5 +194,24 @@ export class IniciarCargaUseCase {
     );
 
     return { exito: true, evento, sesion };
+  }
+
+  /**
+   * `true` si la ruta que Handy tiene abierta para el vendedor es la de la
+   * inicial (`idHandy`), o si Handy no se pudo consultar (no se bloquea por un
+   * tercero caido).
+   */
+  private async sigueAbiertaEnHandy(
+    usuarioHandyId: number,
+    idHandyInicial: string | null,
+  ): Promise<boolean> {
+    let rutaAbierta: RutaHandy | null;
+    try {
+      rutaAbierta = await this.handy.consultarRutaAbierta(usuarioHandyId);
+    } catch (error) {
+      if (esHandyNoDisponible(error)) return true;
+      throw error;
+    }
+    return rutaAbierta !== null && rutaAbierta.id === idHandyInicial;
   }
 }

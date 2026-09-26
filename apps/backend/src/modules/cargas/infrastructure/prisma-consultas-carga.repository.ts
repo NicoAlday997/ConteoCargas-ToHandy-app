@@ -100,6 +100,19 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
     }));
   }
 
+  async buscarInicialEnviadaPorIdHandy(
+    rutaId: string,
+    idHandy: string,
+  ): Promise<DiaRecargable | null> {
+    const row = await this.prisma.eventoCarga.findFirst({
+      where: { rutaId, tipo: 'INICIAL', estado: 'ENVIADA', idHandy },
+      select: { id: true, fechaOperativa: true },
+    });
+    return row === null
+      ? null
+      : { fechaOperativa: row.fechaOperativa, eventoInicialId: row.id };
+  }
+
   async listarDiscrepanciasDetalle(
     eventoId: string,
   ): Promise<DiscrepanciaDetalle[]> {

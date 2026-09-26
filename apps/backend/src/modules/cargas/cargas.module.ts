@@ -74,8 +74,9 @@ import { CargasController } from './interface/cargas.controller';
       useFactory: (
         cargas: CargaRepository,
         asignaciones: AsignacionRepository,
-      ) => new IniciarCargaUseCase(cargas, asignaciones),
-      inject: [CargaRepository, AsignacionRepository],
+        handy: HandyGateway,
+      ) => new IniciarCargaUseCase(cargas, asignaciones, handy),
+      inject: [CargaRepository, AsignacionRepository, HandyGateway],
     },
     {
       provide: AbrirSesionUseCase,
@@ -136,8 +137,9 @@ import { CargasController } from './interface/cargas.controller';
       useFactory: (
         asignaciones: AsignacionRepository,
         consultas: ConsultasCargaRepository,
-      ) => new ListarDiasRecargablesUseCase(asignaciones, consultas),
-      inject: [AsignacionRepository, ConsultasCargaRepository],
+        handy: HandyGateway,
+      ) => new ListarDiasRecargablesUseCase(asignaciones, consultas, handy),
+      inject: [AsignacionRepository, ConsultasCargaRepository, HandyGateway],
     },
     {
       provide: EnviarCargaUseCase,

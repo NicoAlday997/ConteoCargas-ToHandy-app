@@ -18,10 +18,15 @@ interface Props {
   conflicto: ConflictoFecha | null;
   /**
    * Los únicos días que se pueden elegir (`aaaa-mm-dd`, en orden). Solo la
-   * recarga los trae: son sus salidas ya enviadas (`GET dias-recargables`).
+   * recarga los trae: el de su ruta abierta en Handy (`GET dias-recargables`).
    * Con uno solo no se pregunta el día, se confirma. Sin esto: hoy o mañana.
    */
   dias?: readonly string[] | null;
+  /**
+   * Handy no respondió al buscar la ruta abierta: se puede contar, pero se
+   * advierte antes de confirmar (atención, no bloqueo).
+   */
+  sinVerificarConHandy?: boolean;
   /** Creando la carga o abriendo la existente: botones bloqueados. */
   ocupado: boolean;
   error: string | null;
@@ -32,6 +37,8 @@ interface Props {
 }
 
 const AVISO_CAMBIO_DE_DIA = 'Cambió el día mientras elegías. Revisa las fechas y elige de nuevo.';
+const AVISO_SIN_VERIFICAR_CON_HANDY =
+  'No pude confirmar con Handy que tu ruta siga abierta. Puedes contar, pero si la ruta ya se cerró la recarga no se va a poder enviar.';
 
 /**
  * Para qué día sale el camión. Lo normal es contar por la tarde para mañana;
@@ -61,6 +68,7 @@ function Contenido({
   tipo,
   conflicto,
   dias,
+  sinVerificarConHandy = false,
   ocupado,
   error,
   onElegir,
@@ -88,6 +96,9 @@ function Contenido({
   };
 
   const mensaje = aviso ?? error;
+  const advertenciaHandy = sinVerificarConHandy ? (
+    <BloqueError tono="atencion" titulo="Sin confirmar con Handy" detalle={AVISO_SIN_VERIFICAR_CON_HANDY} />
+  ) : null;
   // El cambio de día no es una falla: se vuelve a elegir.
   const tonoMensaje = aviso ? 'atencion' : 'error';
 
@@ -128,6 +139,7 @@ function Contenido({
               ¿Iniciar {tipo === 'RECARGA' ? 'recarga' : 'carga'} para la salida {deLaSalida(diasFijos[0], hoy)}?
             </Text>
             <Text style={estilos.detalle}>{textoSalida(diasFijos[0], hoy)}. Lo que cuentes se suma a esa salida.</Text>
+            {advertenciaHandy}
             {mensaje && (
               <BloqueError
                 titulo={aviso ? 'Cambió el día' : 'No se pudo iniciar la carga'}
@@ -149,6 +161,7 @@ function Contenido({
               ¿A qué salida es esta {tipo === 'RECARGA' ? 'recarga' : 'carga'}?
             </Text>
             <Text style={estilos.detalle}>Tu ruta tiene varias salidas enviadas. Elige a cuál se suma.</Text>
+            {advertenciaHandy}
             {diasFijos.map((dia) => {
               const relativo = diaRelativo(dia, hoy);
               return (

@@ -12,6 +12,7 @@ import {
   CODIGO_YA_TIENE_CARGA,
   ETIQUETAS_TIPO_CARGA,
   listarDiasRecargables,
+  type MotivoSinDiasRecargables,
   obtenerEvento,
   type TipoCarga,
 } from '../src/api/cargas';
@@ -294,11 +295,13 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [abriendoExistente, setAbriendoExistente] = useState(false);
   // Lo que se intentaba cuando faltó la señal (o falló la consulta de salidas): "Reintentar" vuelve a eso.
   const [tipoAReintentar, setTipoAReintentar] = useState<TipoCarga | null>(null);
-  // Salidas enviadas de la ruta: los únicos días en que se puede recargar.
+  // El día de la ruta abierta en Handy: el único en que se puede recargar.
   const [diasRecarga, setDiasRecarga] = useState<string[] | null>(null);
+  // `false`: Handy no respondió; el día sale solo de lo enviado y se advierte.
+  const [recargaVerificada, setRecargaVerificada] = useState(true);
   const [consultandoDias, setConsultandoDias] = useState(false);
-  // La consulta respondió que no hay ninguna salida enviada: no hay a qué recargar.
-  const [sinSalidas, setSinSalidas] = useState(false);
+  // La consulta respondió que no hay a qué recargar, y por qué (`null` = no se muestra).
+  const [sinSalidas, setSinSalidas] = useState<MotivoSinDiasRecargables | 'SIN_SALIDAS' | null>(null);
   // La carga guardada en el teléfono ya no existía en el servidor y se quitó.
   const [cargaNoDisponible, setCargaNoDisponible] = useState(false);
   // Estado de la carga abierta según el servidor (`null` = no se pudo saber, p. ej. sin señal).
@@ -375,7 +378,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     setError(null);
     setCargaNoDisponible(false);
     setCargaCancelada(false);
-    setSinSalidas(false);
+    setSinSalidas(null);
     setTipoAReintentar(null);
     // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
@@ -391,12 +394,13 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     }
     setConsultandoDias(true);
     try {
-      const dias = await listarDiasRecargables();
+      const { dias, motivo, verificadoConHandy } = await listarDiasRecargables();
       if (dias.length === 0) {
-        setSinSalidas(true);
+        setSinSalidas(motivo ?? 'SIN_SALIDAS');
         return;
       }
       setDiasRecarga(dias);
+      setRecargaVerificada(verificadoConHandy);
       setTipoAIniciar(tipo);
     } catch (e) {
       // "No pude preguntar" no es "no hay salidas": se ofrece reintentar.
@@ -552,7 +556,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     <Seccion texto="Cargas de tu ruta">
       {aviso}
       {cargaCancelada && <AvisoCargaCancelada onCerrar={() => setCargaCancelada(false)} />}
-      {sinSalidas && <AvisoSinSalidas onCerrar={() => setSinSalidas(false)} />}
+      {sinSalidas && <AvisoSinSalidas motivo={sinSalidas} onCerrar={() => setSinSalidas(null)} />}
       <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
       <Boton
         texto="Iniciar recarga"
@@ -573,6 +577,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       <SelectorFechaOperativa
         tipo={tipoAIniciar}
         dias={tipoAIniciar === 'RECARGA' ? diasRecarga : null}
+        sinVerificarConHandy={tipoAIniciar === 'RECARGA' && !recargaVerificada}
         conflicto={conflicto}
         ocupado={ocupado}
         error={error}
@@ -680,13 +685,27 @@ function AvisoCargaCancelada({ onCerrar }: { onCerrar: () => void }) {
   );
 }
 
-/** La recarga se suma a una salida que ya está en Handy: sin ninguna, no hay a qué recargar. */
-function AvisoSinSalidas({ onCerrar }: { onCerrar: () => void }) {
+const DETALLE_SIN_SALIDAS: Record<MotivoSinDiasRecargables | 'SIN_SALIDAS', string> = {
+  SIN_RUTA_ABIERTA:
+    'No tienes una ruta abierta en Handy. La recarga le suma producto a una ruta que ya salió. Si ya liquidaste, tienes que iniciar una carga inicial nueva.',
+  RUTA_NO_RECONOCIDA: 'Tu ruta abierta en Handy no se inició desde esta app, así que no puedo recargarla desde aquí.',
+  SIN_RUTA_ASIGNADA: 'No tienes una ruta asignada vigente. Pide a un supervisor que te asigne una.',
+  SIN_SALIDAS: 'No hay ninguna salida enviada de tu ruta. Primero tiene que salir la carga inicial.',
+};
+
+/** La recarga se suma a la ruta abierta en Handy: sin ella, no hay a qué recargar. */
+function AvisoSinSalidas({
+  motivo,
+  onCerrar,
+}: {
+  motivo: MotivoSinDiasRecargables | 'SIN_SALIDAS';
+  onCerrar: () => void;
+}) {
   return (
     <BloqueError
       tono="atencion"
       titulo="No puedes hacer una recarga"
-      detalle="No hay ninguna salida enviada de tu ruta. Primero tiene que salir la carga inicial."
+      detalle={DETALLE_SIN_SALIDAS[motivo]}
       secundaria={{ texto: 'Entendido', onPress: onCerrar }}
     />
   );

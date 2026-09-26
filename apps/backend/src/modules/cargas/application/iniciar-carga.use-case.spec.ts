@@ -1,5 +1,15 @@
 import type { EstadoCarga, TipoSesion, UbicacionConteo } from '@prisma/client';
 
+import {
+  HandyErrorServidorError,
+  HandyGateway,
+  HandyRespuestaNoOkError,
+  HandySinRespuestaError,
+  HandyTokenInvalidoError,
+  type PaginaHandy,
+  type RespuestaCrearRuta,
+  type RutaHandy,
+} from '../../sincronizacion/application/handy.gateway';
 import type {
   AsignacionRepository,
   AsignacionVigente,
@@ -23,9 +33,13 @@ import {
 
 /**
  * Pruebas del caso de uso "iniciar carga" (RF-12). Sin base de datos: dobles en
- * memoria de los puertos `CargaRepository` y `AsignacionRepository`. El caso de
- * uso no conoce Handy: el vendedor nunca se bloquea por liquidacion.
+ * memoria de los puertos `CargaRepository`, `AsignacionRepository` y
+ * `HandyGateway`. Handy solo se consulta en la RECARGA (que su ruta siga
+ * abierta); la INICIAL nunca se bloquea por liquidacion.
  */
+
+/** `idHandy` de la inicial ENVIADA sembrada; el doble de Handy la da por abierta. */
+const ID_HANDY_INICIAL = 'ruta-handy-9001';
 
 const AHORA = new Date('2026-09-08T07:30:00-06:00');
 const HOY = new Date('2026-09-08T00:00:00-06:00');
@@ -205,7 +219,7 @@ function inicialExistente(
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
-    idHandy: estado === 'ENVIADA' ? 'ruta-handy-9001' : null,
+    idHandy: estado === 'ENVIADA' ? ID_HANDY_INICIAL : null,
     canceladaPorId: null,
     fechaCancelacion: null,
     motivoCancelacion: null,
@@ -227,6 +241,41 @@ class FakeAsignacionRepository implements AsignacionRepository {
   }
 }
 
+/**
+ * Doble de Handy. Por defecto la ruta abierta es la de la inicial sembrada, asi
+ * que las recargas "normales" pasan; cada prueba de la regla lo cambia.
+ */
+class FakeHandyGateway extends HandyGateway {
+  /** `null` = sin ruta abierta (404 verificado). */
+  rutaAbierta: RutaHandy | null = { id: ID_HANDY_INICIAL };
+  /** Si se fija, `consultarRutaAbierta` lo lanza. */
+  falla: Error | null = null;
+  readonly consultas: number[] = [];
+
+  async consultarRutaAbierta(
+    usuarioHandyId: number,
+  ): Promise<RutaHandy | null> {
+    this.consultas.push(usuarioHandyId);
+    if (this.falla) throw this.falla;
+    return this.rutaAbierta;
+  }
+  listarProductos(): Promise<PaginaHandy<never>> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarVendedores(): Promise<PaginaHandy<never>> {
+    throw new Error('no usado en esta prueba');
+  }
+  crearRuta(): Promise<RespuestaCrearRuta> {
+    throw new Error('no usado en esta prueba');
+  }
+  recargarRuta(): Promise<RespuestaCrearRuta> {
+    throw new Error('no usado en esta prueba');
+  }
+  cancelarRuta(): Promise<boolean> {
+    throw new Error('no usado en esta prueba');
+  }
+}
+
 function exigirExito(
   resultado: ResultadoIniciarCarga,
 ): Extract<ResultadoIniciarCarga, { exito: true }> {
@@ -239,12 +288,14 @@ function exigirExito(
 describe('IniciarCargaUseCase', () => {
   let cargas: FakeCargaRepository;
   let asignaciones: FakeAsignacionRepository;
+  let handy: FakeHandyGateway;
   let useCase: IniciarCargaUseCase;
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
     asignaciones = new FakeAsignacionRepository();
-    useCase = new IniciarCargaUseCase(cargas, asignaciones);
+    handy = new FakeHandyGateway();
+    useCase = new IniciarCargaUseCase(cargas, asignaciones, handy);
   });
 
   it('sin asignacion vigente: devuelve SIN_RUTA_ASIGNADA y no crea nada', async () => {
@@ -452,6 +503,7 @@ describe('IniciarCargaUseCase', () => {
     it('permite varias RECARGAS el mismo dia sobre la INICIAL enviada', async () => {
       const inicial = exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
       inicial.evento.estado = 'ENVIADA';
+      inicial.evento.idHandy = ID_HANDY_INICIAL;
       const recarga = { ...entradaInicial, tipo: 'RECARGA' as const };
 
       exigirExito(await useCase.ejecutar(recarga, AHORA));
@@ -583,6 +635,79 @@ describe('IniciarCargaUseCase', () => {
       exigirExito(await useCase.ejecutar({ ...recarga, tipo: 'INICIAL' }, AHORA));
 
       expect(cargas.eventosCreados.map((e) => e.tipo)).toEqual(['INICIAL']);
+    });
+  });
+
+  describe('la RECARGA exige que Handy tenga ABIERTA la ruta de esa inicial', () => {
+    const recarga = {
+      usuarioAppId: 'v1',
+      tipo: 'RECARGA' as const,
+      usuarioHandyId: 42,
+      fechaOperativa: HOY,
+    };
+
+    beforeEach(() => {
+      asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
+      cargas.eventos.push(inicialExistente('ENVIADA'));
+    });
+
+    it('le pregunta a Handy por la ruta abierta del vendedor y, si es la de la inicial, crea la recarga', async () => {
+      exigirExito(await useCase.ejecutar(recarga, AHORA));
+
+      expect(handy.consultas).toEqual([42]);
+    });
+
+    it('sin ruta abierta en Handy (liquido o cancelo) devuelve SIN_RUTA_ABIERTA_EN_HANDY y no crea nada', async () => {
+      handy.rutaAbierta = null;
+
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_RUTA_ABIERTA_EN_HANDY' });
+      expect(cargas.eventosCreados).toHaveLength(0);
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it('con otra ruta abierta en Handy (ruta fantasma en nuestra tabla) tambien falla', async () => {
+      handy.rutaAbierta = { id: 'otra-ruta-handy' };
+
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_RUTA_ABIERTA_EN_HANDY' });
+      expect(cargas.eventosCreados).toHaveLength(0);
+    });
+
+    it.each([
+      ['token invalido', new HandyTokenInvalidoError('/x')],
+      ['5xx', new HandyErrorServidorError('/x', 503)],
+      ['sin respuesta', new HandySinRespuestaError('/x', null)],
+      ['estado inesperado', new HandyRespuestaNoOkError('/x', 418)],
+    ])('Handy no disponible (%s): deja pasar con la regla local', async (_n, falla) => {
+      handy.falla = falla;
+
+      const resultado = exigirExito(await useCase.ejecutar(recarga, AHORA));
+
+      expect(resultado.evento.tipo).toBe('RECARGA');
+    });
+
+    it('un error que no es de Handy se propaga', async () => {
+      handy.falla = new TypeError('bug');
+
+      await expect(useCase.ejecutar(recarga, AHORA)).rejects.toThrow(TypeError);
+    });
+
+    it('sin salida ENVIADA ni siquiera se le pregunta a Handy', async () => {
+      cargas.eventos.length = 0;
+
+      const resultado = await useCase.ejecutar(recarga, AHORA);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'SIN_SALIDA_ENVIADA' });
+      expect(handy.consultas).toHaveLength(0);
+    });
+
+    it('una INICIAL nunca consulta Handy', async () => {
+      await useCase.ejecutar({ ...recarga, tipo: 'INICIAL', fechaOperativa: MANANA }, AHORA);
+
+      expect(handy.consultas).toHaveLength(0);
     });
   });
 });

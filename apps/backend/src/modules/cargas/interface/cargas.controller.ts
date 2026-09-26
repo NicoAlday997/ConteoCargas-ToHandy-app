@@ -169,6 +169,13 @@ export class CargasController {
             mensaje:
               'No hay una salida enviada de tu ruta para ese día. La recarga solo se puede hacer sobre una carga inicial que ya salió a Handy.',
           });
+        case 'SIN_RUTA_ABIERTA_EN_HANDY':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'SIN_RUTA_ABIERTA_EN_HANDY',
+            mensaje:
+              'Tu vendedor no tiene una ruta abierta en Handy. Una recarga le suma producto a una ruta que ya salio; si la ruta se liquido o se cancelo, hay que iniciar una carga inicial nueva.',
+          });
       }
     }
 
@@ -176,18 +183,30 @@ export class CargasController {
   }
 
   /**
-   * Dias en que el vendedor puede iniciar una recarga: los de las cargas
-   * INICIALES ENVIADAS de su ruta, de hoy en adelante. La app ofrece solo
-   * estos, nunca un calendario libre. Declarado antes de `GET :id`.
+   * Dia en que el vendedor puede iniciar una recarga: el de la carga INICIAL
+   * cuya ruta Handy tiene abierta ahora mismo (se le pregunta a Handy; ENVIADA
+   * no implica abierta). Si Handy no responde, cae a las INICIALES ENVIADAS de
+   * hoy en adelante con `verificadoConHandy: false`. La app ofrece solo estos,
+   * nunca un calendario libre. Declarado antes de `GET :id`.
    */
   @Get('dias-recargables')
   @Roles(RolApp.VENDEDOR)
   async diasRecargables(@UsuarioActual() usuario: UsuarioAutenticado) {
-    const dias = await this.listarDiasRecargablesUseCase.ejecutar(
-      { usuarioAppId: usuario.usuarioAppId },
+    // Sin vinculo con Handy no hay ruta que consultar (mismo 409 que al iniciar).
+    if (usuario.usuarioHandyId === null) {
+      throw new ConflictException({
+        statusCode: 409,
+        mensaje:
+          'Tu usuario no esta vinculado a un usuario de Handy. Un administrador debe vincularlo antes de que puedas iniciar cargas.',
+      });
+    }
+    return this.listarDiasRecargablesUseCase.ejecutar(
+      {
+        usuarioAppId: usuario.usuarioAppId,
+        usuarioHandyId: usuario.usuarioHandyId,
+      },
       new Date(),
     );
-    return { dias };
   }
 
   /**
