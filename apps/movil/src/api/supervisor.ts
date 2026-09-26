@@ -68,3 +68,18 @@ export interface RespuestaEnviarApi {
 export function enviarCarga(eventoId: string): Promise<RespuestaEnviarApi | null> {
   return peticion<RespuestaEnviarApi | null>(`${rutaEvento(eventoId)}/enviar`, { method: 'POST', cuerpo: {} });
 }
+
+/** 409 de `cancelar-en-handy`: Handy ya no deja cancelar (el vendedor ya aceptó la ruta). */
+export const CODIGO_HANDY_RECHAZO = 'HANDY_RECHAZO';
+
+/**
+ * `POST /eventos-carga/:id/cancelar-en-handy`: solo para cargas ya enviadas.
+ * El servidor pide a Handy que cancele la ruta y solo si Handy acepta la marca
+ * cancelada. Si Handy dice que no, nada cambia.
+ */
+export function cancelarEnHandy(eventoId: string, motivo: string): Promise<unknown> {
+  return peticion<unknown>(`${rutaEvento(eventoId)}/cancelar-en-handy`, {
+    method: 'POST',
+    cuerpo: { motivo: motivo.trim() },
+  });
+}

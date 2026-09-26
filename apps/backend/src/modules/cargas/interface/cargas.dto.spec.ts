@@ -1,4 +1,4 @@
-import { GuardarItemsSchema, IniciarCargaSchema } from './cargas.dto';
+import { CancelarCargaSchema, GuardarItemsSchema, IniciarCargaSchema } from './cargas.dto';
 
 /**
  * Pruebas del body de `PATCH /eventos-carga/:id/sesiones/:sesionId/items`:
@@ -122,5 +122,24 @@ describe('IniciarCargaSchema', () => {
         IniciarCargaSchema.safeParse({ tipo: 'INICIAL', fechaOperativa }).success,
       ).toBe(false);
     }
+  });
+});
+
+describe('CancelarCargaSchema', () => {
+  it('acepta un body vacio: el motivo es opcional para el vendedor', () => {
+    expect(CancelarCargaSchema.safeParse({}).success).toBe(true);
+  });
+
+  it('acepta un motivo de texto', () => {
+    const resultado = CancelarCargaSchema.safeParse({ motivo: 'Fecha equivocada' });
+    expect(resultado.success && resultado.data.motivo).toBe('Fecha equivocada');
+  });
+
+  it('rechaza un motivo que no es texto', () => {
+    expect(CancelarCargaSchema.safeParse({ motivo: 123 }).success).toBe(false);
+  });
+
+  it('rechaza un motivo de mas de 500 caracteres', () => {
+    expect(CancelarCargaSchema.safeParse({ motivo: 'x'.repeat(501) }).success).toBe(false);
   });
 });

@@ -43,6 +43,13 @@ export interface EventoCarga {
   fechaBloqueoCortePendiente: Date | null;
   /** Momento en que se confirmo que el corte se cerro y el evento volvio a EN_ESPERA_CONTADOR. */
   fechaDesbloqueo: Date | null;
+  /** Id de la ruta en Handy tras un envio exitoso; `null` si no se ha enviado. */
+  idHandy: string | null;
+  /** Quien cancelo el evento (estado CANCELADA); `null` si no esta cancelado. */
+  canceladaPorId: string | null;
+  fechaCancelacion: Date | null;
+  /** Obligatorio si cancelo un supervisor; opcional si fue el vendedor. */
+  motivoCancelacion: string | null;
   creadoEn: Date;
 }
 
@@ -200,7 +207,9 @@ export abstract class CargaRepository {
 
   /**
    * La carga INICIAL de la ruta para esa fecha operativa (ya normalizada), en
-   * cualquier estado; `null` si no existe. Las RECARGAS no cuentan.
+   * cualquier estado salvo CANCELADA; `null` si no existe. Las RECARGAS no
+   * cuentan. Excluir las canceladas es lo que permite reabrir el dia despues
+   * de cancelar una carga abierta por error.
    */
   abstract buscarCargaInicialDeFecha(
     rutaId: string,
@@ -268,6 +277,21 @@ export abstract class CargaRepository {
    * desbloquearse antes de llamar aca.
    */
   abstract desbloquearEvento(eventoId: string, ahora: Date): Promise<EventoCarga>;
+
+  /**
+   * Cancela el evento, en una sola transaccion: lo deja en `CANCELADA` con
+   * `canceladaPorId`, `fechaCancelacion = ahora` y `motivoCancelacion`, y
+   * cierra todas las sesiones del evento que sigan `ABIERTA` (para que no
+   * queden colgadas en ninguna cola). Nunca borra nada.
+   *
+   * El caso de uso ya valido permisos y `puedeTransicionar` antes de llamar aca.
+   */
+  abstract cancelarEvento(
+    eventoId: string,
+    usuarioAppId: string,
+    motivo: string | null,
+    ahora: Date,
+  ): Promise<EventoCarga>;
 
   /**
    * Crea una `SesionConteo` en estado `ABIERTA` para ese evento y usuario, y la

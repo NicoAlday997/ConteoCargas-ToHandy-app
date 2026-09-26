@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
@@ -26,9 +27,10 @@ const WHERE_PENDIENTE = { activo: true, factorConfirmado: false } as const;
 
 /**
  * Carga que aun puede llegar a Handy. ENVIO_INCIERTO y ERROR_ENVIO cuentan:
- * ambos vuelven a LISTA_PARA_ENVIAR y se reintentan con lo ya calculado.
+ * ambos vuelven a LISTA_PARA_ENVIAR y se reintentan con lo ya calculado. Las
+ * CANCELADAS no: ya nunca van a llegar.
  */
-const ESTADO_NO_ENVIADA = { not: 'ENVIADA' } as const;
+const ESTADO_NO_ENVIADA = { notIn: ['ENVIADA', 'CANCELADA'] } satisfies Prisma.EnumEstadoCargaFilter;
 
 /**
  * Adaptador Prisma del factor de empaque. La propuesta automatica durante la

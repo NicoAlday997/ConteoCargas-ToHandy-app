@@ -45,6 +45,10 @@ function eventoDePrueba(overrides: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    idHandy: null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
     creadoEn: AHORA,
     ...overrides,
   };
@@ -132,6 +136,9 @@ class FakeCargaRepository implements CargaRepository {
     _datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
+  }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
   }
   reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');

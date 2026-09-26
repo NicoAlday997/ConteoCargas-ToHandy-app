@@ -196,7 +196,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   // El evento se canceló o se borró en el servidor: lo guardado aquí ya no
   // tiene a dónde ir. Se quita del teléfono y el inicio explica por qué.
-  const noExiste = esNoEncontrado(consulta.error) || esNoEncontrado(evento.error);
+  const noExiste =
+    esNoEncontrado(consulta.error) || esNoEncontrado(evento.error) || evento.data?.evento?.estado === 'CANCELADA';
   useEffect(() => {
     if (!noExiste) return;
     void (async () => {

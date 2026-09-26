@@ -7,6 +7,7 @@ import { Redirect, router, useFocusEffect } from 'expo-router';
 
 import { ETIQUETAS_ROL } from '../src/api/auth';
 import {
+  cancelarCarga,
   CODIGO_FECHA_INVALIDA,
   CODIGO_YA_TIENE_CARGA,
   ETIQUETAS_TIPO_CARGA,
@@ -21,6 +22,7 @@ import {
   BloqueError,
   BloqueEsqueleto,
   Boton,
+  CampoTexto,
   Encabezado,
   Esqueleto,
   FilaMenu,
@@ -41,6 +43,7 @@ import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/Selec
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
+import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
@@ -292,6 +295,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [tipoSinRed, setTipoSinRed] = useState<TipoCarga | null>(null);
   // La carga guardada en el teléfono ya no existía en el servidor y se quitó.
   const [cargaNoDisponible, setCargaNoDisponible] = useState(false);
+  // Estado de la carga abierta según el servidor (`null` = no se pudo saber, p. ej. sin señal).
+  const [estadoCargaAbierta, setEstadoCargaAbierta] = useState<string | null>(null);
+  // El vendedor acaba de cancelar su carga: se le confirma en el inicio.
+  const [cargaCancelada, setCargaCancelada] = useState(false);
 
   // Al volver de la pantalla de conteo (finalizada o no) se relee. Antes de
   // ofrecer "Continuar carga" se pregunta al servidor si sigue existiendo: si
@@ -306,12 +313,12 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
           if (vigente) setCargaAbierta(null);
           return;
         }
-        const vigencia = await verificarCargaAbierta(carga);
-        if (vigencia === 'sesion-vencida') {
+        const verificacion = await verificarCargaAbierta(carga);
+        if (verificacion === 'sesion-vencida') {
           if (vigente) sesionVencida();
           return;
         }
-        if (vigencia === 'no-disponible') {
+        if (verificacion.vigencia === 'no-disponible') {
           await descartarCargaNoDisponible(usuario.id, carga);
           if (vigente) {
             setCargaNoDisponible(true);
@@ -319,7 +326,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
           }
           return;
         }
-        if (vigente) setCargaAbierta(carga);
+        if (vigente) {
+          setEstadoCargaAbierta(verificacion.estado);
+          setCargaAbierta(carga);
+        }
       })();
       // Las listas del servidor también: al volver de contar o de resolver, ya cambiaron.
       void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
@@ -353,6 +363,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const pedirFecha = async (tipo: TipoCarga) => {
     setError(null);
     setCargaNoDisponible(false);
+    setCargaCancelada(false);
     setTipoSinRed(null);
     // Contar sí funciona sin señal; crear la carga no: se dice antes de elegir fecha.
     if (!estaConectado(await NetInfo.fetch())) {
@@ -453,6 +464,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const aviso = cargaNoDisponible ? <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} /> : null;
 
   if (cargaAbierta) {
+    // Solo mientras el vendedor cuenta (BORRADOR): una vez que finaliza, el
+    // contador puede estar contando y cancelar sería una salida para cuando el
+    // conteo no cuadra. Sin señal no se sabe el estado: no se ofrece.
+    const puedeCancelar = usuario.rolApp === 'VENDEDOR' && estadoCargaAbierta === 'BORRADOR';
     return (
       <Seccion texto="Tienes una carga en proceso">
         <Boton
@@ -468,6 +483,18 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
             .join(' · ')}
           onPress={() => irAConteo(cargaAbierta)}
         />
+        {puedeCancelar && (
+          <BotonCancelarCarga
+            carga={cargaAbierta}
+            onCancelada={async () => {
+              await descartarCargaNoDisponible(usuario.id, cargaAbierta);
+              void clienteConsultas.invalidateQueries({ queryKey: ['historial'] });
+              setEstadoCargaAbierta(null);
+              setCargaAbierta(null);
+              setCargaCancelada(true);
+            }}
+          />
+        )}
       </Seccion>
     );
   }
@@ -489,6 +516,7 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   return (
     <Seccion texto="Cargas de tu ruta">
       {aviso}
+      {cargaCancelada && <AvisoCargaCancelada onCerrar={() => setCargaCancelada(false)} />}
       <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
       <Boton
         texto="Iniciar recarga"
@@ -520,6 +548,96 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         onCerrar={cerrarSelector}
       />
     </Seccion>
+  );
+}
+
+/**
+ * El vendedor cancela la carga que abrió por error (fecha o ruta equivocada, o
+ * sin querer). Solo mientras él cuenta. No se borra: queda cancelada en el
+ * historial. El motivo es opcional.
+ */
+function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCancelada: () => Promise<void> }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+  const [error, setError] = useState<{ titulo: string; detalle: string; tono?: 'error' | 'atencion' } | null>(null);
+
+  const confirmar = async () => {
+    setCancelando(true);
+    setError(null);
+    try {
+      await cancelarCarga(carga.eventoId, motivo);
+      setAbierto(false);
+      await onCancelada();
+    } catch (e) {
+      if (e instanceof ErrorApi && e.estado === 401) {
+        setAbierto(false);
+        sesionVencida();
+      } else if (e instanceof ErrorRed) {
+        setError({ titulo: 'Sin conexión', detalle: 'No se canceló nada. Inténtalo cuando haya señal.', tono: 'atencion' });
+      } else {
+        setError({
+          titulo: 'No se pudo cancelar',
+          detalle: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.',
+        });
+      }
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  return (
+    <>
+      <Boton
+        texto="Cancelar esta carga"
+        variante="secundario"
+        onPress={() => {
+          setMotivo('');
+          setError(null);
+          setAbierto(true);
+        }}
+      />
+      <ModalConfirmacion
+        visible={abierto}
+        titulo="¿Cancelar esta carga?"
+        textoConfirmar="Sí, cancelarla"
+        textoCargando="Cancelando…"
+        textoCerrar="No, volver"
+        variante="peligro"
+        cargando={cancelando}
+        error={error}
+        onConfirmar={() => void confirmar()}
+        onCerrar={() => setAbierto(false)}
+      >
+        <Text style={estilos.detalleModal}>
+          <Text style={estilos.negrita}>Esto no se puede deshacer.</Text> La carga queda cancelada y lo que llevas contado en
+          ella se borra de este teléfono.
+        </Text>
+        <Text style={estilos.detalleModal}>
+          No desaparece: se queda en el historial como cancelada, con tu nombre. Si todavía hay que contar, después inicias
+          una carga nueva.
+        </Text>
+        <CampoTexto
+          etiqueta="Motivo (opcional)"
+          valor={motivo}
+          onCambiar={setMotivo}
+          ejemplo="Ej. elegí la fecha equivocada"
+          multilinea
+          maxLength={200}
+        />
+      </ModalConfirmacion>
+    </>
+  );
+}
+
+function AvisoCargaCancelada({ onCerrar }: { onCerrar: () => void }) {
+  return (
+    <BloqueError
+      tono="atencion"
+      titulo="Cancelaste la carga"
+      detalle="Quedó en el historial como cancelada. Si todavía hay que contar, inicia la carga correcta."
+      secundaria={{ texto: 'Entendido', onPress: onCerrar }}
+    />
   );
 }
 

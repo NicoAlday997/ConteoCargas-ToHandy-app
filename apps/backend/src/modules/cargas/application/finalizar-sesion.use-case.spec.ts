@@ -69,6 +69,10 @@ class FakeCargaRepository implements CargaRepository {
       fechaAutorizacion: null,
       fechaBloqueoCortePendiente: null,
       fechaDesbloqueo: null,
+      idHandy: null,
+      canceladaPorId: null,
+      fechaCancelacion: null,
+      motivoCancelacion: null,
       creadoEn: datos.fechaConteo,
     };
     this.eventos.set(evento.id, evento);
@@ -200,6 +204,12 @@ class FakeCargaRepository implements CargaRepository {
     }
     Object.assign(discrepancia, datos);
     return { ...discrepancia };
+  }
+
+  async cancelarEvento(): Promise<never> {
+
+    throw new Error('no usado en estas pruebas');
+
   }
 
   async reabrirDiscrepancia(): Promise<never> {

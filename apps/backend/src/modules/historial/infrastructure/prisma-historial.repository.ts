@@ -16,10 +16,13 @@ import {
  * Adaptador Prisma del puerto `HistorialRepository`. Aqui SI se conoce el
  * esquema; la capa de aplicacion solo ve el puerto abstracto.
  *
- * Tanto el listado como el detalle resuelven ruta, vendedor, contador y
- * autorizador con un `include` sobre las relaciones de `EventoCarga` en una
- * sola consulta (Prisma la traduce a JOINs / una consulta batched por
- * relacion, no una consulta por fila): no hay N+1 por carga.
+ * Las cargas CANCELADAS se listan como cualquier otra (no hay filtro por
+ * defecto que las oculte): el historial es donde se auditan.
+ *
+ * Tanto el listado como el detalle resuelven ruta, vendedor, contador,
+ * autorizador y quien cancelo con un `include` sobre las relaciones de
+ * `EventoCarga` en una sola consulta (Prisma la traduce a JOINs / una consulta
+ * batched por relacion, no una consulta por fila): no hay N+1 por carga.
  */
 
 /** Las unicas dos sesiones que participan en la comparacion (docs/02 seccion 3). */
@@ -28,6 +31,7 @@ const TIPOS_SESION_COMPARABLE = ['VENDEDOR', 'CONTADOR'] as const;
 const includeListado = {
   ruta: { select: { nombre: true } },
   autorizadaPor: { select: { nombreCompleto: true } },
+  canceladaPor: { select: { nombreCompleto: true } },
   sesiones: {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
@@ -44,6 +48,7 @@ type FilaListado = Prisma.EventoCargaGetPayload<{ include: typeof includeListado
 const includeConsolidada = {
   ruta: { select: { nombre: true } },
   autorizadaPor: { select: { nombreCompleto: true } },
+  canceladaPor: { select: { nombreCompleto: true } },
   sesiones: {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
@@ -258,6 +263,9 @@ export class PrismaHistorialRepository extends HistorialRepository {
       productosConDiscrepancia: row._count.discrepancias,
       autorizada: row.autorizadaPorId !== null,
       autorizadaPorNombre: row.autorizadaPor?.nombreCompleto ?? null,
+      canceladaPorNombre: row.canceladaPor?.nombreCompleto ?? null,
+      fechaCancelacion: row.fechaCancelacion,
+      motivoCancelacion: row.motivoCancelacion,
     };
   }
 
@@ -276,6 +284,9 @@ export class PrismaHistorialRepository extends HistorialRepository {
       contadorNombre: sesionContador?.usuarioApp.nombreCompleto ?? null,
       autorizada: row.autorizadaPorId !== null,
       autorizadaPorNombre: row.autorizadaPor?.nombreCompleto ?? null,
+      canceladaPorNombre: row.canceladaPor?.nombreCompleto ?? null,
+      fechaCancelacion: row.fechaCancelacion,
+      motivoCancelacion: row.motivoCancelacion,
     };
   }
 }

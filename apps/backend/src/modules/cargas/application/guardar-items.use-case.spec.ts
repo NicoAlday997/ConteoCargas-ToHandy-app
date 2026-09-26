@@ -75,8 +75,30 @@ class FakeCargaRepository implements CargaRepository {
   crearEvento(_datos: DatosCrearEvento): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
   }
-  buscarEventoPorId(): Promise<EventoCarga | null> {
-    throw new Error('no usado en esta prueba');
+  /** Solo importa el estado: una carga CANCELADA no acepta items. */
+  estadoEvento: EventoCarga['estado'] = 'BORRADOR';
+  async buscarEventoPorId(id: string): Promise<EventoCarga | null> {
+    const momento = new Date('2026-09-22T09:00:00-06:00');
+    return {
+      id,
+      rutaId: 'ruta-1',
+      plantillaId: null,
+      tipo: 'INICIAL',
+      tipoOperacion: 'AUTOVENTA',
+      usuarioHandyId: 42,
+      estado: this.estadoEvento,
+      fechaConteo: momento,
+      fechaOperativa: momento,
+      autorizadaPorId: null,
+      fechaAutorizacion: null,
+      fechaBloqueoCortePendiente: null,
+      fechaDesbloqueo: null,
+      idHandy: null,
+      canceladaPorId: null,
+      fechaCancelacion: null,
+      motivoCancelacion: null,
+      creadoEn: momento,
+    };
   }
   buscarCargaInicialDeFecha(): Promise<EventoCarga | null> {
     throw new Error('no usado en esta prueba');
@@ -123,6 +145,9 @@ class FakeCargaRepository implements CargaRepository {
     _datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
+  }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
   }
   reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
@@ -245,6 +270,18 @@ describe('GuardarItemsUseCase', () => {
         exito: false,
         motivo: 'SESION_NO_ENCONTRADA',
       });
+      expect(cargas.guardados).toHaveLength(0);
+    });
+
+    it('CARGA_CANCELADA si el evento se cancelo: no escribe nada', async () => {
+      cargas.estadoEvento = 'CANCELADA';
+
+      const resultado = await useCase.ejecutar({
+        ...base,
+        items: [{ productoCode: 'PEPSI-C12', paquetes: 1, sueltas: 0 }],
+      });
+
+      expect(resultado).toEqual({ exito: false, motivo: 'CARGA_CANCELADA' });
       expect(cargas.guardados).toHaveLength(0);
     });
 

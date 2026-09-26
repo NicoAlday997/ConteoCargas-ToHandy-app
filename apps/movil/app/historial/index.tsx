@@ -20,7 +20,12 @@ import {
   type Dato,
 } from '../../src/componentes/base';
 import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
-import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  bandaDeEstado,
+  BarraSuperior,
+  DetalleCancelacion,
+} from '../../src/historial/ComponentesHistorial';
 import { agruparPorDia, type FilaHistorial, type GrupoDia } from '../../src/historial/modelo-historial';
 import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
 
@@ -231,6 +236,8 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
       accessibilityLabel={[
         `${fila.rutaNombre}, ${tipo}`,
         banda.titulo,
+        fila.cancelacion?.motivo ? `Motivo: ${fila.cancelacion.motivo}` : null,
+        fila.cancelacion?.porNombre ? `Canceló ${fila.cancelacion.porNombre}` : null,
         fila.totalProductos !== null ? `${fila.totalProductos} productos` : null,
         textoDiscrepancias,
         'Ver detalle',
@@ -253,6 +260,7 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
             <Etiqueta texto={textoDiscrepancias} tono="discrepancia" />
           </View>
         )}
+        {fila.cancelacion && <DetalleCancelacion cancelacion={fila.cancelacion} />}
       </View>
     </Tarjeta>
   );

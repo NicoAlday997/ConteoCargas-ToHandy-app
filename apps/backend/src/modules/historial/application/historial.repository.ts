@@ -35,6 +35,13 @@ export interface CargaHistorial {
   autorizada: boolean;
   /** Nombre del supervisor que autorizo el envio; `null` si aun no se autoriza. */
   autorizadaPorNombre: string | null;
+  /**
+   * Cancelacion (estado CANCELADA). El historial SI muestra las canceladas:
+   * es donde se auditan. `null` en los tres si la carga no esta cancelada.
+   */
+  canceladaPorNombre: string | null;
+  fechaCancelacion: Date | null;
+  motivoCancelacion: string | null;
 }
 
 /**
@@ -119,6 +126,10 @@ export interface EventoConsolidado {
   contadorNombre: string | null;
   autorizada: boolean;
   autorizadaPorNombre: string | null;
+  /** Ver `CargaHistorial`: quien, cuando y por que se cancelo. */
+  canceladaPorNombre: string | null;
+  fechaCancelacion: Date | null;
+  motivoCancelacion: string | null;
 }
 
 /**

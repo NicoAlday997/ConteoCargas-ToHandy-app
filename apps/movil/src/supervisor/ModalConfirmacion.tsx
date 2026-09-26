@@ -11,6 +11,11 @@ interface Props {
   children: ReactNode;
   textoConfirmar: string;
   textoCargando: string;
+  /**
+   * El botón que cierra sin hacer nada. «Cancelar» por omisión; cuando lo que
+   * se confirma ES cancelar algo, otro texto evita dos botones «Cancelar».
+   */
+  textoCerrar?: string;
   variante?: VarianteBoton;
   cargando: boolean;
   /** Por qué falló el último intento; el modal sigue abierto para reintentar o cancelar. */
@@ -30,6 +35,7 @@ export function ModalConfirmacion({
   children,
   textoConfirmar,
   textoCargando,
+  textoCerrar = 'Cancelar',
   variante = 'primario',
   cargando,
   error,
@@ -48,7 +54,7 @@ export function ModalConfirmacion({
             {children}
             {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono ?? 'error'} />}
             <View style={estilos.botones}>
-              <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={cargando} style={estilos.boton} />
+              <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} style={estilos.boton} />
               <Boton
                 texto={textoConfirmar}
                 variante={variante}

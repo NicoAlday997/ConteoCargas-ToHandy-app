@@ -27,6 +27,7 @@ export const ESTADOS_CARGA: Record<EstadoCargaApi, { etiqueta: string; tono: Ton
   ENVIADA: { etiqueta: 'Enviada a Handy', tono: 'exito' },
   ERROR_ENVIO: { etiqueta: 'Error al enviar', tono: 'error' },
   ENVIO_INCIERTO: { etiqueta: 'Envío sin confirmar', tono: 'atencion' },
+  CANCELADA: { etiqueta: 'Cancelada', tono: 'error' },
 };
 
 export function estadoDeCarga(estado: EstadoCargaApi | null): { etiqueta: string; tono: TonoEstado } {
@@ -36,6 +37,25 @@ export function estadoDeCarga(estado: EstadoCargaApi | null): { etiqueta: string
 const texto = (valor: string | null | undefined): string | null => valor?.trim() || null;
 const entero = (valor: unknown): number | null =>
   typeof valor === 'number' && Number.isInteger(valor) && valor >= 0 ? valor : null;
+
+/** Quién canceló la carga y por qué. Solo existe en las CANCELADAS. */
+export interface Cancelacion {
+  porNombre: string | null;
+  motivo: string | null;
+}
+
+/**
+ * `null` si la carga no está cancelada. Una cancelada sin nombre ni motivo
+ * (respuesta rara) sigue siendo cancelada: se muestra sin esos datos.
+ */
+export function cancelacionDe(api: {
+  estado: EstadoCargaApi | null;
+  canceladaPorNombre?: string | null;
+  motivoCancelacion?: string | null;
+}): Cancelacion | null {
+  if (api.estado !== 'CANCELADA') return null;
+  return { porNombre: texto(api.canceladaPorNombre), motivo: texto(api.motivoCancelacion) };
+}
 
 // ---------------------------------------------------------------------------
 // Listado
@@ -53,6 +73,7 @@ export interface FilaHistorial {
   totalProductos: number | null;
   /** Productos que tuvieron discrepancia, resuelta o no. */
   discrepancias: number;
+  cancelacion: Cancelacion | null;
 }
 
 export interface GrupoDia {
@@ -74,6 +95,7 @@ export function normalizarFila(fila: CargaHistorialApi): FilaHistorial | null {
     contadorNombre: texto(fila.contadorNombre),
     totalProductos: entero(fila.totalProductos),
     discrepancias: entero(fila.productosConDiscrepancia) ?? 0,
+    cancelacion: cancelacionDe(fila),
   };
 }
 
@@ -140,6 +162,7 @@ export interface EventoDetalle {
   vendedorNombre: string | null;
   contadorNombre: string | null;
   autorizadaPorNombre: string | null;
+  cancelacion: Cancelacion | null;
 }
 
 export interface CargaDetalle {
@@ -211,6 +234,7 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
       vendedorNombre: texto(evento.vendedorNombre),
       contadorNombre: texto(evento.contadorNombre),
       autorizadaPorNombre: texto(evento.autorizadaPorNombre),
+      cancelacion: cancelacionDe(evento),
     },
     familias,
     totalProductos,

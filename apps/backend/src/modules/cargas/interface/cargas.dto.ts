@@ -146,6 +146,16 @@ export const ModificarCantidadSchema = z.object({
   motivo: motivoSupervisor,
 });
 
+/**
+ * Body de `POST /eventos-carga/:id/cancelar` y `.../cancelar-en-handy`. El
+ * motivo es opcional en el esquema porque para el vendedor lo es; que el
+ * supervisor lo de (minimo 5 caracteres) lo decide el caso de uso, que es quien
+ * conoce el rol.
+ */
+export const CancelarCargaSchema = z.object({
+  motivo: z.string().max(500, 'El motivo no puede pasar de 500 caracteres').optional(),
+});
+
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
@@ -153,3 +163,4 @@ export type CapturarCantidadDto = z.infer<typeof CapturarCantidadSchema>;
 export type ConfirmarCantidadDto = z.infer<typeof ConfirmarCantidadSchema>;
 export type RechazarProductosDto = z.infer<typeof RechazarProductosSchema>;
 export type ModificarCantidadDto = z.infer<typeof ModificarCantidadSchema>;
+export type CancelarCargaDto = z.infer<typeof CancelarCargaSchema>;

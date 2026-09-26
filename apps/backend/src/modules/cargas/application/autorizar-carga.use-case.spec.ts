@@ -100,6 +100,9 @@ class FakeCargaRepository implements CargaRepository {
   async actualizarDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async reabrirDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -120,6 +123,10 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    idHandy: null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
     creadoEn: AHORA,
     ...parcial,
   };

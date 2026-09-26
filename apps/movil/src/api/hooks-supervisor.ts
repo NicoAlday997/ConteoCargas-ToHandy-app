@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { armarCola, armarPorEnviar } from '../supervisor/modelo-supervisor';
+import { cancelarCarga } from './cargas';
 import { ErrorApi } from './cliente';
 import type { EstadoCargaApi } from './historial';
 import {
   autorizarCarga,
+  cancelarEnHandy,
   enviarCarga,
   listarCargasPorEstado,
   modificarCantidad,
@@ -127,6 +129,21 @@ export function useEnviarCarga(eventoId: string) {
   return useMutation({
     mutationFn: () => enviarCarga(eventoId),
     // También al fallar: un 502 deja la carga en ENVIO_INCIERTO o ERROR_ENVIO.
+    onSettled: invalidar,
+  });
+}
+
+interface VariablesCancelar {
+  /** Una carga ya enviada se cancela primero en Handy. */
+  enHandy: boolean;
+  motivo: string;
+}
+
+export function useCancelarCargaSupervisor(eventoId: string) {
+  const invalidar = useInvalidarTrasAccion();
+  return useMutation({
+    mutationFn: ({ enHandy, motivo }: VariablesCancelar) =>
+      enHandy ? cancelarEnHandy(eventoId, motivo) : cancelarCarga(eventoId, motivo),
     onSettled: invalidar,
   });
 }

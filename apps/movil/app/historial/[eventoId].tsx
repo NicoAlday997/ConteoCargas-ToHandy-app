@@ -7,6 +7,9 @@ import { ErrorApi } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion } from '../../src/api/sesion';
 import { EstadoVacio } from '../../src/componentes/base';
+import { CancelarCargaSupervisor } from '../../src/supervisor/CancelarCargaSupervisor';
+import { accionCancelacion } from '../../src/supervisor/modelo-supervisor';
+import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import { BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import type { ProductoDetalle } from '../../src/historial/modelo-historial';
 import {
@@ -21,13 +24,15 @@ import {
   titulosCarga,
   type SeccionFamilia,
 } from '../../src/historial/VistaCarga';
-import { COLORES } from '../../src/theme/tokens';
+import { COLORES, ESPACIADO, RITMO } from '../../src/theme/tokens';
 
 /**
  * Vista consolidada de una carga. Es la que el supervisor abre en el celular
  * antes de subirse al camión: por familia, como se acomoda físicamente, y
  * con la cantidad final en paquetes y piezas, que es como se cuenta a la vista.
  * Tenga o no discrepancias se muestra con el mismo detalle (auditoría pareja).
+ * Al supervisor, al final, le ofrece cancelarla: una carga abierta por error
+ * (o ya enviada) no pasa por su cola de autorización.
  */
 
 function parametro(valor: string | string[] | undefined): string {
@@ -38,6 +43,7 @@ export default function PantallaDetalleHistorial() {
   const params = useLocalSearchParams<{ eventoId: string }>();
   const eventoId = parametro(params.eventoId);
   const consulta = useDetalleHistorial(eventoId);
+  const esSupervisor = useEsSupervisor();
   const [refrescando, setRefrescando] = useState(false);
 
   const sesionVencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
@@ -90,6 +96,16 @@ export default function PantallaDetalleHistorial() {
     void consulta.refetch().finally(() => setRefrescando(false));
   };
 
+  const cancelar =
+    esSupervisor && accionCancelacion(carga.evento.estado) !== null ? (
+      <View style={estilos.pie}>
+        <CancelarCargaSupervisor
+          carga={carga}
+          onSesionVencida={() => void cerrarSesion().then(() => router.replace('/login'))}
+        />
+      </View>
+    ) : null;
+
   return (
     <Pantalla {...titulosCarga(carga)}>
       {secciones.length === 0 ? (
@@ -103,6 +119,7 @@ export default function PantallaDetalleHistorial() {
             detalle="Aquí aparecerán los productos por familia en cuanto se capturen en el conteo."
             accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
           />
+          {cancelar && <View style={estilosVistaCarga.contenidoLista}>{cancelar}</View>}
         </>
       ) : (
         <SectionList<ProductoDetalle, SeccionFamilia>
@@ -114,6 +131,7 @@ export default function PantallaDetalleHistorial() {
           initialNumToRender={30}
           refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
           ListHeaderComponent={<ResumenCarga carga={carga} />}
+          ListFooterComponent={cancelar}
           renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
           renderItem={({ item }) => <TarjetaProducto producto={item} />}
         />
@@ -144,5 +162,10 @@ const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondoPantalla,
+  },
+  // Separada de los productos: es una decisión aparte, no parte de la lista.
+  pie: {
+    marginTop: RITMO.grupo,
+    paddingBottom: ESPACIADO.xl,
   },
 });

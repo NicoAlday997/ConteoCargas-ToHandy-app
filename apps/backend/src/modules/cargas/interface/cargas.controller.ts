@@ -24,6 +24,11 @@ import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AbrirSesionUseCase } from '../application/abrir-sesion.use-case';
 import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
+import {
+  CancelarCargaUseCase,
+  MOTIVO_MINIMO_SUPERVISOR,
+} from '../application/cancelar-carga.use-case';
+import { CancelarRutaHandyUseCase } from '../application/cancelar-ruta-handy.use-case';
 import { CargaRepository } from '../application/carga.repository';
 import { CapturarCantidadFinalUseCase } from '../application/capturar-cantidad-final.use-case';
 import { ConfirmarCantidadFinalUseCase } from '../application/confirmar-cantidad-final.use-case';
@@ -40,6 +45,7 @@ import { ModificarCantidadSupervisorUseCase } from '../application/modificar-can
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
 import {
+  CancelarCargaSchema,
   CapturarCantidadSchema,
   ConfirmarCantidadSchema,
   FinalizarSesionSchema,
@@ -48,6 +54,7 @@ import {
   IniciarCargaSchema,
   ModificarCantidadSchema,
   RechazarProductosSchema,
+  type CancelarCargaDto,
   type CapturarCantidadDto,
   type ConfirmarCantidadDto,
   type FinalizarSesionDto,
@@ -94,6 +101,8 @@ export class CargasController {
     private readonly modificarCantidadSupervisorUseCase: ModificarCantidadSupervisorUseCase,
     private readonly verificarCortePendienteUseCase: VerificarCortePendienteUseCase,
     private readonly desbloquearCargaUseCase: DesbloquearCargaUseCase,
+    private readonly cancelarCargaUseCase: CancelarCargaUseCase,
+    private readonly cancelarRutaHandyUseCase: CancelarRutaHandyUseCase,
   ) {}
 
   /**
@@ -223,6 +232,12 @@ export class CargasController {
             statusCode: 404,
             mensaje: 'El evento de carga no existe.',
           });
+        case 'CARGA_CANCELADA':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'CARGA_CANCELADA',
+            mensaje: 'Esta carga fue cancelada. Ya no se puede contar en ella.',
+          });
         case 'YA_TIENE_SESION_EN_ESTE_EVENTO':
           throw new ConflictException({
             statusCode: 409,
@@ -300,6 +315,13 @@ export class CargasController {
           throw new ForbiddenException({
             statusCode: 403,
             mensaje: 'Solo puedes modificar tu propia sesion de conteo.',
+          });
+        case 'CARGA_CANCELADA':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'CARGA_CANCELADA',
+            mensaje:
+              'Esta carga fue cancelada. Lo que contaste ya no se guarda en ella.',
           });
         case 'PRODUCTO_NO_ENCONTRADO':
           throw new NotFoundException({
@@ -726,6 +748,120 @@ export class CargasController {
           throw new ConflictException({
             statusCode: 409,
             mensaje: 'La carga no puede autorizarse en su estado actual.',
+          });
+      }
+    }
+
+    return { evento: resultado.evento };
+  }
+
+  /**
+   * Cancela una carga que no se envio a Handy. Nunca se borra: queda en
+   * `CANCELADA` con quien, cuando y por que, y sigue en el historial. El
+   * vendedor solo cancela la suya y solo en BORRADOR; el supervisor cualquiera
+   * no enviada, con motivo obligatorio. El contador nunca.
+   */
+  @Post(':id/cancelar')
+  @HttpCode(200)
+  @Roles(RolApp.VENDEDOR, RolApp.SUPERVISOR)
+  async cancelar(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(CancelarCargaSchema)) dto: CancelarCargaDto,
+  ) {
+    const resultado = await this.cancelarCargaUseCase.ejecutar(
+      {
+        eventoId,
+        usuarioAppId: usuario.usuarioAppId,
+        rolApp: usuario.rolApp,
+        usuarioHandyId: usuario.usuarioHandyId,
+        motivo: dto.motivo,
+      },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'NO_ENCONTRADA':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'El evento de carga no existe.',
+          });
+        case 'NO_PERMITIDO':
+          throw new ForbiddenException({
+            statusCode: 403,
+            mensaje: 'Solo puedes cancelar tus propias cargas.',
+          });
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'ESTADO_INVALIDO',
+            mensaje:
+              usuario.rolApp === RolApp.VENDEDOR
+                ? 'Esta carga ya no se puede cancelar: ya terminaste tu conteo. Si hay que cancelarla, pideselo a tu supervisor.'
+                : 'Esta carga ya no se puede cancelar desde aqui: ya esta cancelada, ya se envio a Handy o su envio esta sin confirmar.',
+          });
+        case 'MOTIVO_REQUERIDO':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'MOTIVO_REQUERIDO',
+            mensaje: `Escribe por que cancelas la carga (minimo ${MOTIVO_MINIMO_SUPERVISOR} caracteres).`,
+          });
+      }
+    }
+
+    return { evento: resultado.evento };
+  }
+
+  /**
+   * El supervisor cancela en Handy una carga ya ENVIADA. Solo si Handy lo
+   * confirma el evento pasa a `CANCELADA`; si Handy dice que no, no cambia
+   * nada y se responde 409.
+   */
+  @Post(':id/cancelar-en-handy')
+  @HttpCode(200)
+  @Roles(RolApp.SUPERVISOR)
+  async cancelarEnHandy(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(CancelarCargaSchema)) dto: CancelarCargaDto,
+  ) {
+    const resultado = await this.cancelarRutaHandyUseCase.ejecutar(
+      { eventoId, usuarioAppId: usuario.usuarioAppId, motivo: dto.motivo },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'NO_ENCONTRADA':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'El evento de carga no existe.',
+          });
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'ESTADO_INVALIDO',
+            mensaje: 'Esta carga no esta enviada a Handy, asi que no hay nada que cancelar alla.',
+          });
+        case 'MOTIVO_REQUERIDO':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'MOTIVO_REQUERIDO',
+            mensaje: `Escribe por que cancelas la carga (minimo ${MOTIVO_MINIMO_SUPERVISOR} caracteres).`,
+          });
+        case 'HANDY_RECHAZO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'HANDY_RECHAZO',
+            mensaje:
+              'Handy ya no permite cancelar esta ruta. Lo más probable es que el vendedor ya la haya aceptado en su celular.',
+          });
+        case 'HANDY_NO_DISPONIBLE':
+          throw new BadGatewayException({
+            statusCode: 502,
+            mensaje:
+              'No se pudo hablar con Handy. La carga sigue enviada; intenta de nuevo en un momento.',
           });
       }
     }

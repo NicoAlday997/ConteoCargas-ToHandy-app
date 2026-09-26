@@ -276,3 +276,16 @@ export function confirmarDiscrepancia(
     cuerpo: { cantidadFinal, pin },
   });
 }
+
+/**
+ * `POST /eventos-carga/:id/cancelar`. La carga no se borra: queda cancelada
+ * en el historial con quién, cuándo y por qué. El vendedor solo puede con la
+ * suya mientras no la finalice (motivo opcional); el supervisor, con motivo.
+ */
+export function cancelarCarga(eventoId: string, motivo?: string): Promise<unknown> {
+  const limpio = motivo?.trim();
+  return peticion<unknown>(`${rutaEvento(eventoId)}/cancelar`, {
+    method: 'POST',
+    cuerpo: limpio ? { motivo: limpio } : {},
+  });
+}

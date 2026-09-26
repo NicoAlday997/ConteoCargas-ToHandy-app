@@ -105,6 +105,12 @@ class FakeCargaRepository implements CargaRepository {
     }));
   }
 
+  async cancelarEvento(): Promise<never> {
+
+    throw new Error('no usado en estas pruebas');
+
+  }
+
   async reabrirDiscrepancia(
     eventoId: string,
     datos: DatosReabrirDiscrepancia,
@@ -200,6 +206,10 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    idHandy: null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
     creadoEn: INICIADA_EN,
     ...parcial,
   };

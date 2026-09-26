@@ -20,6 +20,9 @@ import type { CargaRepository, EventoCarga } from './carga.repository';
  * `BLOQUEADA_CORTE_PENDIENTE`). Este caso de uso no toca el conteo del
  * vendedor en absoluto.
  *
+ * Solo aplica a cargas INICIALES: una RECARGA nunca se bloquea (ver el
+ * comentario en `ejecutar`).
+ *
  * Se dispara on-demand al abrir la cola/sesion del contador (docs/02 seccion
  * 4.5: "verificacion hibrida"); el job en background cada 15-30 minutos es
  * responsabilidad de otro disparador que reutiliza este mismo caso de uso.
@@ -68,6 +71,16 @@ export class VerificarCortePendienteUseCase {
     const evento = await this.cargas.buscarEventoPorId(entrada.eventoId);
     if (evento === null || !permiteVerificacionDelContador(evento.estado)) {
       return { exito: false, motivo: 'ESTADO_INVALIDO' };
+    }
+
+    // Una RECARGA ocurre, por definicion, con la ruta abierta en Handy: es la
+    // ruta a la que se le suma producto (el envio usa /route/recharge, no
+    // /route). La ruta abierta que detectaria la consulta ES la que se esta
+    // recargando, no un corte anterior sin liquidar. La regla de corte
+    // pendiente (docs/01 seccion 6 regla 2) existe para que no salga un camion
+    // nuevo con el anterior sin cerrar; una recarga no es un camion nuevo.
+    if (evento.tipo === 'RECARGA') {
+      return { exito: true, bloqueado: false };
     }
 
     // 2. Consultar Handy: 404 (null) significa que no hay ruta abierta previa.

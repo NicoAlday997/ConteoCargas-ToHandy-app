@@ -118,9 +118,11 @@ Evento_Carga
 - estado: BORRADOR → EN_ESPERA_CONTADOR → [BLOQUEADA_CORTE_PENDIENTE]
           → EN_COMPARACION → CONFLICTOS_PENDIENTES → LISTA_PARA_ENVIAR
           → ENVIADA | ERROR_ENVIO | ENVIO_INCIERTO
-- fecha_conteo (cuándo se contó), fecha_operativa (día para el que sale el camión, inicio del día en America/Mexico_City; única por ruta cuando tipo = INICIAL)
+          → CANCELADA (terminal; ver 3.2)
+- fecha_conteo (cuándo se contó), fecha_operativa (día para el que sale el camión, inicio del día en America/Mexico_City; única por ruta cuando tipo = INICIAL y estado ≠ CANCELADA)
 - fecha_bloqueo_corte_pendiente, fecha_desbloqueo
 - fecha_programada_envio, fecha_envio_real, id_handy (tras éxito)
+- cancelada_por (usuario_app_id), fecha_cancelacion, motivo_cancelacion (solo en CANCELADA)
 
 Sesion_Conteo
 - id, evento_carga_id, tipo (VENDEDOR|CONTADOR|REFUERZO|SUPERVISOR)
@@ -158,6 +160,13 @@ Dispositivo_Push
 - `confirmada_por` en `Discrepancia_Resuelta` nunca puede ser igual a `capturada_por` (regla de aplicación, no solo de UI).
 - Los productos deshabilitados en Handy no se eliminan de `Producto`, solo se marcan `activo=false`, para preservar referencias en el historial.
 - `code` de producto es la llave primaria local porque es el identificador que exige la API de Handy en los payloads — debe tratarse como inmutable en el cache.
+- **Nunca se borra un `Evento_Carga`.** Una carga abierta por error (fecha o ruta equivocada, sin querer) se marca `CANCELADA` con `cancelada_por`, `fecha_cancelacion` y `motivo_cancelacion`, y sus sesiones abiertas se cierran en la misma transacción. Las canceladas quedan fuera de las colas (verificación, conflictos, autorización) y de la búsqueda de "ya hay carga inicial de ese día", pero **sí** aparecen en el historial, que es donde se auditan.
+  - Se puede cancelar desde cualquier estado previo al envío, salvo `ENVIO_INCIERTO` (no se sabe si llegó a Handy: primero se resuelve y vuelve a `LISTA_PARA_ENVIAR`).
+  - **Vendedor:** solo su propia carga y solo en `BORRADOR`, motivo opcional. Una vez que finaliza, el contador puede estar contando; poder cancelar ahí sería una salida cuando el conteo no cuadra ("cancelo, vuelvo a contar y ahora sí coincidimos").
+  - **Supervisor:** cualquier carga no enviada, con motivo obligatorio (mínimo 5 caracteres).
+  - **Contador:** nunca.
+  - `ENVIADA → CANCELADA` solo existe vía cancelación en Handy (`DELETE /route/{id}`, ver 4.1): si Handy la rechaza, la carga sigue `ENVIADA` y no cambia nada.
+- La unicidad "una `INICIAL` por ruta y `fecha_operativa`" es un índice único parcial (`WHERE tipo = 'INICIAL' AND estado <> 'CANCELADA'`) creado con SQL manual (migraciones `fecha_operativa` e `indice_inicial_sin_canceladas`); Prisma no soporta índices parciales en el esquema.
 
 ## 4. Integración con API de Handy (REST v2)
 
@@ -179,6 +188,12 @@ Body: { items: [{product, quantity}] }
 ```
 GET /api/v2/user/{userId}/route/current
 ```
+
+**Cancelar una ruta ya creada**
+```
+DELETE /api/v2/route/{routeId}
+```
+Solo funciona mientras el vendedor no haya aceptado la ruta en la app de Handy. Lo usa el supervisor para cancelar una carga `ENVIADA` (`POST /eventos-carga/:id/cancelar-en-handy`); 404/409/422 = Handy ya no permite cancelarla, y la carga no cambia.
 
 **Sincronizar catálogo de productos**
 ```
@@ -215,6 +230,7 @@ GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 
 ### 4.5 Validación de corte de venta pendiente
 - Se detecta mediante `GET /route/current`; si regresa una ruta abierta de un ciclo anterior, la carga nueva pasa a `BLOQUEADA_CORTE_PENDIENTE` (bloqueando solo la verificación del contador, no el conteo del vendedor).
+- **Solo aplica a cargas `INICIAL`.** Una `RECARGA` ocurre, por definición, con la ruta abierta en Handy: es la ruta a la que se le suma producto (se envía a `/route/recharge`). La ruta abierta que detectaría la consulta ES la que se recarga, no un corte anterior sin liquidar, así que para una recarga no se consulta Handy y nunca se bloquea. La regla existe para que no salga un camión nuevo con el anterior sin cerrar; una recarga no es un camión nuevo.
 - Verificación híbrida: on-demand al abrir la cola del contador, más un job en background cada 15-30 minutos.
 - Escalamiento: si el bloqueo persiste más de 3-4 horas, la alerta sube de urgencia media a alta.
 

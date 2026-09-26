@@ -1,4 +1,4 @@
-import type { CargaHistorialApi } from '../api/historial.ts';
+import type { CargaHistorialApi, EstadoCargaApi } from '../api/historial.ts';
 import type { EventoConTiemposApi, ProductoRechazado } from '../api/supervisor.ts';
 import { normalizarFila, type CargaDetalle, type FilaHistorial } from '../historial/modelo-historial.ts';
 
@@ -160,4 +160,31 @@ export function nombresDeProductos(codes: readonly string[], carga: CargaDetalle
     for (const p of familia.productos) nombres.set(p.code, p.nombre);
   }
   return codes.map((c) => nombres.get(c) ?? c);
+}
+
+// ---------------------------------------------------------------------------
+// Cancelación
+// ---------------------------------------------------------------------------
+
+/** El mismo mínimo que valida el servidor al cancelar: cancelar trabajo ajeno exige decir por qué. */
+export const MOTIVO_MINIMO_CANCELACION = 5;
+
+export function motivoCancelacionValido(motivo: string): boolean {
+  return motivo.trim().length >= MOTIVO_MINIMO_CANCELACION;
+}
+
+/**
+ * - cancelar: la carga aún no llega a Handy; se cancela aquí.
+ * - cancelar-en-handy: ya está en Handy; se cancela allá primero.
+ */
+export type AccionCancelacion = 'cancelar' | 'cancelar-en-handy';
+
+/**
+ * Qué puede hacer el supervisor para cancelar la carga, o `null` si nada: ya
+ * cancelada, o con el envío sin confirmar (no se sabe si llegó a Handy; primero
+ * se resuelve eso). Mismo criterio que el servidor.
+ */
+export function accionCancelacion(estado: EstadoCargaApi | null): AccionCancelacion | null {
+  if (estado === null || estado === 'CANCELADA' || estado === 'ENVIO_INCIERTO') return null;
+  return estado === 'ENVIADA' ? 'cancelar-en-handy' : 'cancelar';
 }

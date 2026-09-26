@@ -44,6 +44,10 @@ function eventoDePrueba(overrides: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    idHandy: null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
     creadoEn: AHORA,
     ...overrides,
   };
@@ -162,6 +166,9 @@ class FakeCargaRepository implements CargaRepository {
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
@@ -230,6 +237,21 @@ describe('AbrirSesionUseCase', () => {
     expect(resultado).toEqual({ exito: false, motivo: 'EVENTO_NO_ENCONTRADO' });
     expect(cargas.sesionesCreadas).toHaveLength(0);
   });
+
+  it.each(['VENDEDOR', 'CONTADOR'] as const)(
+    'rechaza CARGA_CANCELADA para el %s y no crea nada',
+    async (tipo) => {
+      cargas.evento = eventoDePrueba({ estado: 'CANCELADA' });
+
+      const resultado = await useCase.ejecutar(
+        { eventoId: 'ev-1', usuarioAppId: 'u1', tipo },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'CARGA_CANCELADA' });
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    },
+  );
 
   it('rechaza YA_TIENE_SESION_EN_ESTE_EVENTO si el usuario ya tiene una sesion abierta ahi', async () => {
     cargas.sesionesExistentes = [

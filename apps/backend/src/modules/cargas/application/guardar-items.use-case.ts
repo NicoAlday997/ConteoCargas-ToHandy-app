@@ -64,6 +64,8 @@ export interface ItemGuardado extends ItemAGuardar {
  * Motivos de rechazo:
  * - `SESION_NO_ENCONTRADA`: la sesion no existe o no pertenece al evento.
  * - `SESION_AJENA`: la sesion es de otro usuario.
+ * - `CARGA_CANCELADA`: el evento se cancelo; lo que llegue despues (p. ej. la
+ *   cola offline de un telefono) no se escribe en una carga ya auditada.
  * - `PRODUCTO_NO_ENCONTRADO`: algun `productoCode` no existe en el catalogo.
  * - `FACTOR_NO_CONFIRMADO`: se mandaron paquetes de un producto cuyo factor no
  *   ha confirmado un supervisor (o que no tiene factor). Un factor sin
@@ -76,7 +78,10 @@ export interface ItemGuardado extends ItemAGuardar {
  */
 export type ResultadoGuardarItems =
   | { exito: true; sesion: SesionConteo; items: ItemGuardado[] }
-  | { exito: false; motivo: 'SESION_NO_ENCONTRADA' | 'SESION_AJENA' }
+  | {
+      exito: false;
+      motivo: 'SESION_NO_ENCONTRADA' | 'SESION_AJENA' | 'CARGA_CANCELADA';
+    }
   | {
       exito: false;
       motivo:
@@ -117,6 +122,10 @@ export class GuardarItemsUseCase {
     }
     if (sesion.usuarioAppId !== entrada.usuarioAppId) {
       return { exito: false, motivo: 'SESION_AJENA' };
+    }
+    const evento = await this.cargas.buscarEventoPorId(entrada.eventoId);
+    if (evento?.estado === 'CANCELADA') {
+      return { exito: false, motivo: 'CARGA_CANCELADA' };
     }
 
     // 2. Factor de empaque de cada producto recibido.

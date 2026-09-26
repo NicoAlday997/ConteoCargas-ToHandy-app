@@ -23,10 +23,16 @@ import {
   type SeccionFamilia,
 } from '../../src/historial/VistaCarga';
 import { dejarAviso } from '../../src/supervisor/aviso-cola';
+import { CancelarCargaSupervisor } from '../../src/supervisor/CancelarCargaSupervisor';
 import { AvisoEnvio, ESTADOS_ENVIABLES, ModalEnviar, textoBotonEnvio, useEnvioHandy } from '../../src/supervisor/EnvioHandy';
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
 import { ModalModificar } from '../../src/supervisor/ModalModificar';
-import { MOTIVO_MINIMO, motivoValido, rechazosParaEnviar } from '../../src/supervisor/modelo-supervisor';
+import {
+  accionCancelacion,
+  MOTIVO_MINIMO,
+  motivoValido,
+  rechazosParaEnviar,
+} from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import { BORDES, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
@@ -34,7 +40,8 @@ import { BORDES, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MIN
  * Revisión de una carga que espera el visto bueno del supervisor. Se ve igual
  * que en el historial (misma vista consolidada) y abajo van sus tres salidas:
  * autorizar, rechazar productos puntuales o modificar una cantidad. Ya
- * autorizada, desde aquí mismo se envía a Handy.
+ * autorizada, desde aquí mismo se envía a Handy. En cualquier estado que lo
+ * admita, también se cancela (ya enviada, se cancela en Handy).
  */
 
 /**
@@ -346,6 +353,9 @@ function Revision({ eventoId }: { eventoId: string }) {
             cargando={envio.enviando}
             textoCargando="Enviando…"
           />
+        )}
+        {modo === 'revisar' && accionCancelacion(estado) !== null && (
+          <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} />
         )}
       </BarraAcciones>
 

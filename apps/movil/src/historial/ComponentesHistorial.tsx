@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import type { EstadoCargaApi } from '../api/historial';
-import { Encabezado, type BandaTarjeta } from '../componentes/base';
-import type { ColorTono } from '../theme/tokens';
-import { estadoDeCarga, type TonoEstado } from './modelo-historial';
+import { Encabezado, Etiqueta, type BandaTarjeta } from '../componentes/base';
+import { COLORES, PESOS, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
+import { estadoDeCarga, type Cancelacion, type TonoEstado } from './modelo-historial';
 
 /** Ancho máximo de las listas en tablet: una columna legible, no una fila de 1000 px. */
 export const ANCHO_MAXIMO_LISTA = 720;
@@ -50,3 +51,41 @@ export function BarraSuperior({
     </Encabezado>
   );
 }
+
+/**
+ * Una carga cancelada se audita en el historial: la etiqueta en rojo y, debajo,
+ * por qué y quién. Sin motivo (el vendedor no está obligado a darlo) se dice.
+ */
+export function DetalleCancelacion({ cancelacion }: { cancelacion: Cancelacion }) {
+  return (
+    <View style={estilos.cancelacion}>
+      <View style={estilos.filaEtiqueta}>
+        <Etiqueta texto="Cancelada" tono="error" />
+      </View>
+      <Text style={estilos.textoCancelacion}>
+        <Text style={estilos.rotuloCancelacion}>Motivo: </Text>
+        {cancelacion.motivo ?? 'Sin motivo escrito'}
+      </Text>
+      <Text style={estilos.textoCancelacion}>
+        <Text style={estilos.rotuloCancelacion}>Canceló: </Text>
+        {cancelacion.porNombre ?? 'No se sabe quién'}
+      </Text>
+    </View>
+  );
+}
+
+const estilos = StyleSheet.create({
+  cancelacion: {
+    gap: RITMO.interno,
+  },
+  filaEtiqueta: {
+    flexDirection: 'row',
+  },
+  textoCancelacion: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.errorTexto,
+  },
+  rotuloCancelacion: {
+    fontWeight: PESOS.negrita,
+  },
+});

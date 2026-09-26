@@ -95,6 +95,10 @@ class FakeCargaRepository implements CargaRepository {
       fechaAutorizacion: null,
       fechaBloqueoCortePendiente: null,
       fechaDesbloqueo: null,
+      idHandy: null,
+      canceladaPorId: null,
+      fechaCancelacion: null,
+      motivoCancelacion: null,
       creadoEn: datos.fechaConteo,
     };
     this.eventos.push(evento);
@@ -171,6 +175,9 @@ class FakeCargaRepository implements CargaRepository {
     _datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
+  }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
   }
   reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
@@ -440,6 +447,10 @@ describe('IniciarCargaUseCase', () => {
         fechaAutorizacion: null,
         fechaBloqueoCortePendiente: null,
         fechaDesbloqueo: null,
+        idHandy: null,
+        canceladaPorId: null,
+        fechaCancelacion: null,
+        motivoCancelacion: null,
         creadoEn: AHORA,
       };
 

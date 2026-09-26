@@ -18,14 +18,14 @@ function sesion(id: string, estado: SesionConteoApi['estado']): SesionConteoApi 
   };
 }
 
-function respuesta(sesiones: SesionConteoApi[] | null): RespuestaEvento {
+function respuesta(sesiones: SesionConteoApi[] | null, estado = 'BORRADOR'): RespuestaEvento {
   return {
     evento: {
       id: 'e1',
       rutaId: 'r1',
       plantillaId: null,
       tipo: 'INICIAL',
-      estado: 'BORRADOR',
+      estado,
       fechaConteo: null,
       fechaOperativa: null,
       creadoEn: null,
@@ -35,6 +35,10 @@ function respuesta(sesiones: SesionConteoApi[] | null): RespuestaEvento {
 }
 
 describe('vigenciaDesdeEvento', () => {
+  it('una carga CANCELADA ya no se puede continuar, aunque la sesión figure abierta', () => {
+    assert.equal(vigenciaDesdeEvento(respuesta([sesion('s1', 'ABIERTA')], 'CANCELADA'), 's1'), 'no-disponible');
+  });
+
   it('con la sesión abierta se puede continuar', () => {
     assert.equal(vigenciaDesdeEvento(respuesta([sesion('s1', 'ABIERTA')]), 's1'), 'vigente');
   });

@@ -18,7 +18,8 @@ export type EstadoCargaApi =
   | 'LISTA_PARA_ENVIAR'
   | 'ENVIADA'
   | 'ERROR_ENVIO'
-  | 'ENVIO_INCIERTO';
+  | 'ENVIO_INCIERTO'
+  | 'CANCELADA';
 
 /** Fila de `GET /historial`. */
 export interface CargaHistorialApi {
@@ -35,6 +36,10 @@ export interface CargaHistorialApi {
   productosConDiscrepancia: number | null;
   autorizada: boolean | null;
   autorizadaPorNombre: string | null;
+  /** Solo en CANCELADA: quién, cuándo y por qué. El historial sí muestra las canceladas. */
+  canceladaPorNombre?: string | null;
+  fechaCancelacion?: string | null;
+  motivoCancelacion?: string | null;
 }
 
 export interface PaginaHistorialApi {
@@ -77,6 +82,9 @@ export interface EventoConsolidadoApi {
   contadorNombre: string | null;
   autorizada: boolean | null;
   autorizadaPorNombre: string | null;
+  canceladaPorNombre?: string | null;
+  fechaCancelacion?: string | null;
+  motivoCancelacion?: string | null;
 }
 
 export interface FamiliaConsolidadaApi {

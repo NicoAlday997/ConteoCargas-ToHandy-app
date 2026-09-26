@@ -14,14 +14,21 @@ import { vigenciaDesdeEstadoHttp, vigenciaDesdeEvento, type VigenciaCarga } from
 /** Con señal agonizante no se deja al usuario esperando: se ofrece continuar y el conteo lo resuelve. */
 const TIEMPO_LIMITE_VERIFICACION_MS = 8_000;
 
-export async function verificarCargaAbierta(carga: CargaAbierta): Promise<VigenciaCarga | 'sesion-vencida'> {
+export interface VerificacionCarga {
+  vigencia: VigenciaCarga;
+  /** Estado del evento según el servidor; `null` si no se pudo saber (sin señal). */
+  estado: string | null;
+}
+
+export async function verificarCargaAbierta(carga: CargaAbierta): Promise<VerificacionCarga | 'sesion-vencida'> {
   const control = new AbortController();
   const limite = setTimeout(() => control.abort(), TIEMPO_LIMITE_VERIFICACION_MS);
   try {
-    return vigenciaDesdeEvento(await obtenerEvento(carga.eventoId, control.signal), carga.sesionId);
+    const respuesta = await obtenerEvento(carga.eventoId, control.signal);
+    return { vigencia: vigenciaDesdeEvento(respuesta, carga.sesionId), estado: respuesta?.evento?.estado ?? null };
   } catch (e) {
     if (e instanceof ErrorApi && e.estado === 401) return 'sesion-vencida';
-    return e instanceof ErrorApi ? vigenciaDesdeEstadoHttp(e.estado) : 'sin-verificar';
+    return { vigencia: e instanceof ErrorApi ? vigenciaDesdeEstadoHttp(e.estado) : 'sin-verificar', estado: null };
   } finally {
     clearTimeout(limite);
   }

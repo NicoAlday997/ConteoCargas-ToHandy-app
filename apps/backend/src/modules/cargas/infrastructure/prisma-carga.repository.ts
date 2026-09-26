@@ -80,9 +80,15 @@ export class PrismaCargaRepository extends CargaRepository {
     rutaId: string,
     fechaOperativa: Date,
   ): Promise<EventoCarga | null> {
-    // No existe un estado "cancelada": cualquier INICIAL de ese dia cuenta.
+    // Las CANCELADAS no cuentan: si no, cancelar una carga inicial abierta por
+    // error dejaria el dia bloqueado (mismo criterio que el indice parcial).
     const row = await this.prisma.eventoCarga.findFirst({
-      where: { rutaId, fechaOperativa, tipo: 'INICIAL' },
+      where: {
+        rutaId,
+        fechaOperativa,
+        tipo: 'INICIAL',
+        estado: { not: 'CANCELADA' },
+      },
       orderBy: { creadoEn: 'asc' },
     });
     return row === null ? null : this.aEventoCarga(row);
@@ -153,6 +159,32 @@ export class PrismaCargaRepository extends CargaRepository {
       data: { fechaDesbloqueo: ahora, estado: 'EN_ESPERA_CONTADOR' },
     });
     return this.aEventoCarga(row);
+  }
+
+  async cancelarEvento(
+    eventoId: string,
+    usuarioAppId: string,
+    motivo: string | null,
+    ahora: Date,
+  ): Promise<EventoCarga> {
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.eventoCarga.update({
+        where: { id: eventoId },
+        data: {
+          estado: 'CANCELADA',
+          canceladaPorId: usuarioAppId,
+          fechaCancelacion: ahora,
+          motivoCancelacion: motivo,
+        },
+      });
+      // Una sesion abierta de un evento cancelado apareceria como pendiente en
+      // la cola del contador o en "Continuar carga": se cierran todas.
+      await tx.sesionConteo.updateMany({
+        where: { eventoCargaId: eventoId, estado: 'ABIERTA' },
+        data: { estado: 'CERRADA', finalizadaEn: ahora },
+      });
+      return this.aEventoCarga(row);
+    });
   }
 
   async crearSesion(
@@ -354,6 +386,10 @@ export class PrismaCargaRepository extends CargaRepository {
       fechaAutorizacion: row.fechaAutorizacion,
       fechaBloqueoCortePendiente: row.fechaBloqueoCortePendiente,
       fechaDesbloqueo: row.fechaDesbloqueo,
+      idHandy: row.idHandy,
+      canceladaPorId: row.canceladaPorId,
+      fechaCancelacion: row.fechaCancelacion,
+      motivoCancelacion: row.motivoCancelacion,
       creadoEn: row.creadoEn,
     };
   }

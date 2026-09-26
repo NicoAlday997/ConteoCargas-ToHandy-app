@@ -41,6 +41,8 @@ export interface EntradaAbrirSesion {
  * dos sesiones de conteo sobre la misma carga y duplicar su conteo,
  * arruinando la comparacion contra el segundo conteo (RF-14).
  *
+ * `CARGA_CANCELADA`: el evento se cancelo; no se abren sesiones nuevas.
+ *
  * `CORTE_PENDIENTE`: solo para el CONTADOR. El vendedor tiene la ruta anterior
  * sin liquidar en Handy (recien detectado, o la carga ya estaba bloqueada).
  */
@@ -51,6 +53,7 @@ export type ResultadoAbrirSesion =
       motivo:
         | 'EVENTO_NO_ENCONTRADO'
         | 'YA_TIENE_SESION_EN_ESTE_EVENTO'
+        | 'CARGA_CANCELADA'
         | 'CORTE_PENDIENTE';
     };
 
@@ -70,6 +73,9 @@ export class AbrirSesionUseCase {
     const evento = await this.cargas.buscarEventoPorId(entrada.eventoId);
     if (evento === null) {
       return { exito: false, motivo: 'EVENTO_NO_ENCONTRADO' };
+    }
+    if (evento.estado === 'CANCELADA') {
+      return { exito: false, motivo: 'CARGA_CANCELADA' };
     }
 
     // Bloqueo por liquidacion: exclusivo del CONTADOR.

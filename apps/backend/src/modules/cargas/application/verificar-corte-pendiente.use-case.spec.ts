@@ -103,6 +103,9 @@ class FakeCargaRepository implements CargaRepository {
   async actualizarDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async cancelarEvento(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async reabrirDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -155,6 +158,10 @@ function nuevoEvento(parcial: Partial<EventoCarga> = {}): EventoCarga {
     fechaAutorizacion: null,
     fechaBloqueoCortePendiente: null,
     fechaDesbloqueo: null,
+    idHandy: null,
+    canceladaPorId: null,
+    fechaCancelacion: null,
+    motivoCancelacion: null,
     creadoEn: AHORA,
     ...parcial,
   };
@@ -214,6 +221,19 @@ describe('VerificarCortePendienteUseCase', () => {
     const evento = await cargas.buscarEventoPorId(EVENTO_ID);
     expect(evento?.estado).toBe('BLOQUEADA_CORTE_PENDIENTE');
     expect(evento?.fechaBloqueoCortePendiente).toEqual(AHORA);
+  });
+
+  it('RECARGA con ruta abierta en Handy: no bloquea y NO consulta Handy (la ruta abierta es la que se recarga)', async () => {
+    cargas.sembrarEvento(nuevoEvento({ tipo: 'RECARGA' }));
+    handy.rutaAbierta = { id: 'ruta-del-dia-que-se-recarga' };
+
+    const resultado = await useCase.ejecutar({ eventoId: EVENTO_ID }, AHORA);
+
+    expect(resultado).toEqual({ exito: true, bloqueado: false });
+    expect(handy.llamadas.consultarRutaAbierta).toEqual([]);
+    expect(cargas.bloqueos).toEqual([]);
+    const evento = await cargas.buscarEventoPorId(EVENTO_ID);
+    expect(evento?.estado).toBe('EN_ESPERA_CONTADOR');
   });
 
   it('rechaza ESTADO_INVALIDO si el evento no existe y no consulta Handy', async () => {

@@ -6,11 +6,13 @@ import { describe, it } from 'node:test';
 import type { CargaHistorialApi } from '../api/historial.ts';
 import type { EventoConTiemposApi } from '../api/supervisor.ts';
 import {
+  accionCancelacion,
   armarCola,
   armarPorEnviar,
   codigosDeDetalle,
   inicioEspera,
   minutosEspera,
+  motivoCancelacionValido,
   nivelEspera,
   rechazosParaEnviar,
   textoEspera,
@@ -149,5 +151,40 @@ describe('codigosDeDetalle', () => {
   it('sin detalle, nada', () => {
     assert.deepEqual(codigosDeDetalle(null), []);
     assert.deepEqual(codigosDeDetalle('Productos rechazados: '), []);
+  });
+});
+
+describe('accionCancelacion', () => {
+  it('ENVIADA se cancela en Handy', () => {
+    assert.equal(accionCancelacion('ENVIADA'), 'cancelar-en-handy');
+  });
+
+  it('lo que aún no llega a Handy se cancela aquí', () => {
+    for (const estado of [
+      'BORRADOR',
+      'EN_ESPERA_CONTADOR',
+      'BLOQUEADA_CORTE_PENDIENTE',
+      'EN_COMPARACION',
+      'CONFLICTOS_PENDIENTES',
+      'EN_ESPERA_AUTORIZACION',
+      'LISTA_PARA_ENVIAR',
+      'ERROR_ENVIO',
+    ] as const) {
+      assert.equal(accionCancelacion(estado), 'cancelar', estado);
+    }
+  });
+
+  it('nada en CANCELADA, en ENVIO_INCIERTO ni sin estado', () => {
+    assert.equal(accionCancelacion('CANCELADA'), null);
+    assert.equal(accionCancelacion('ENVIO_INCIERTO'), null);
+    assert.equal(accionCancelacion(null), null);
+  });
+});
+
+describe('motivoCancelacionValido', () => {
+  it('pide al menos 5 caracteres sin contar espacios de los lados', () => {
+    assert.equal(motivoCancelacionValido('abcde'), true);
+    assert.equal(motivoCancelacionValido('  abcd  '), false);
+    assert.equal(motivoCancelacionValido(''), false);
   });
 });

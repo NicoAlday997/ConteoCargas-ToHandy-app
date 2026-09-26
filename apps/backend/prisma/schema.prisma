@@ -45,6 +45,9 @@ enum EstadoCarga {
   ENVIADA
   ERROR_ENVIO
   ENVIO_INCIERTO
+  // Terminal. Nunca se borra un evento: se marca cancelado con quien, cuando y
+  // por que (canceladaPorId, fechaCancelacion, motivoCancelacion).
+  CANCELADA
 }
 
 enum TipoSesion {
@@ -166,6 +169,7 @@ model UsuarioApp {
   alertasResueltas            Alerta[]                       @relation("AlertaResueltaPor")
   dispositivosPush            DispositivoPush[]
   cargasAutorizadas           EventoCarga[]                  @relation("EventoCargaAutorizadaPor")
+  cargasCanceladas            EventoCarga[]                  @relation("EventoCargaCanceladaPor")
   factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
   cambiosFactor               CambioFactorEmpaque[]
 
@@ -369,6 +373,10 @@ model EventoCarga {
   // el tercer par de ojos, la haya revisado fisicamente o no.
   autorizadaPorId            String?
   fechaAutorizacion          DateTime?
+  // Cancelacion (estado CANCELADA): el evento no se borra, queda auditable.
+  canceladaPorId             String?
+  fechaCancelacion           DateTime?
+  motivoCancelacion          String?
   creadoEn                   DateTime      @default(now())
   actualizadoEn              DateTime      @updatedAt
 
@@ -376,6 +384,7 @@ model EventoCarga {
   usuarioHandy  UsuarioHandy    @relation(fields: [usuarioHandyId], references: [idHandy])
   plantilla     PlantillaCarga? @relation(fields: [plantillaId], references: [id])
   autorizadaPor UsuarioApp?     @relation("EventoCargaAutorizadaPor", fields: [autorizadaPorId], references: [id])
+  canceladaPor  UsuarioApp?     @relation("EventoCargaCanceladaPor", fields: [canceladaPorId], references: [id])
 
   sesiones      SesionConteo[]
   discrepancias DiscrepanciaResuelta[]
@@ -387,6 +396,7 @@ model EventoCarga {
   @@index([estado])
   @@index([plantillaId])
   @@index([autorizadaPorId])
+  @@index([canceladaPorId])
   @@map("eventos_carga")
 }
 
