@@ -6,11 +6,11 @@ import { Redirect, router } from 'expo-router';
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { useCambiarPin } from '../src/api/hooks-auth';
 import { cerrarSesion, obtenerPinTemporal, olvidarPinTemporal } from '../src/api/sesion';
-import { Encabezado } from '../src/componentes/base';
+import { Chevron, Encabezado } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../src/theme/tokens';
 
 const ANCHO_MAXIMO_PIN = 440;
 
@@ -166,7 +166,10 @@ export default function PantallaCambiarPin() {
             style={({ pressed }) => [estilos.botonCancelar, pressed && estilos.botonCancelarPresionado]}
           >
             {({ pressed }) => (
-              <Text style={[estilos.textoBotonCancelar, pressed && estilos.textoInvertido]}>‹ Cancelar</Text>
+              <>
+                <Chevron direccion="izquierda" color={pressed ? COLORES.textoSobreColor : undefined} />
+                <Text style={[estilos.textoBotonCancelar, pressed && estilos.textoInvertido]}>Cancelar</Text>
+              </>
             )}
           </Pressable>
           <View style={estilos.titulo}>
@@ -207,7 +210,7 @@ export default function PantallaCambiarPin() {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   contenido: {
     flex: 1,
@@ -223,6 +226,8 @@ const estilos = StyleSheet.create({
   botonCancelar: {
     minHeight: TOQUE_MINIMO,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
     marginLeft: -ESPACIADO.md,
@@ -252,7 +257,7 @@ const estilos = StyleSheet.create({
   },
   textoGuardando: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.medio,
+    fontFamily: FUENTE.medio,
     color: COLORES.textoSecundario,
   },
   recuadroAviso: {
@@ -262,7 +267,7 @@ const estilos = StyleSheet.create({
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     textAlign: 'center',
   },
   detalleAviso: {

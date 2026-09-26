@@ -14,6 +14,7 @@ const DESFASE_NEGOCIO_MS = -6 * 60 * 60 * 1000;
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const MESES = [
   'enero',
   'febrero',
@@ -105,6 +106,23 @@ export function formatearDia(dia: string): string {
   const fecha = desdeTexto(dia);
   if (!fecha) return dia;
   return `${DIAS_SEMANA[fecha.getUTCDay()]} ${fecha.getUTCDate()} de ${MESES[fecha.getUTCMonth()]}`;
+}
+
+/** "24 sep": para listas y tarjetas, donde la fecha larga se corta. */
+export function formatearFechaCorta(dia: string): string {
+  const fecha = desdeTexto(dia);
+  if (!fecha) return dia;
+  return `${fecha.getUTCDate()} ${MESES[fecha.getUTCMonth()].slice(0, 3)}`;
+}
+
+/** "Sale mañana, sáb 26 de septiembre": el subtítulo del encabezado de conteo, en un renglón. */
+export function textoSalidaCorta(dia: string, hoy: string): string {
+  const fecha = desdeTexto(dia);
+  if (!fecha) return dia;
+  const legible = `${DIAS_CORTOS[fecha.getUTCDay()]} ${fecha.getUTCDate()} de ${MESES[fecha.getUTCMonth()]}`;
+  if (dia === hoy) return `Sale hoy, ${legible}`;
+  if (dia === sumarDias(hoy, 1)) return `Sale mañana, ${legible}`;
+  return `Sale el ${legible}`;
 }
 
 /** "Hoy", "Mañana" o "Ayer" respecto a `hoy`; `null` para cualquier otro día. */

@@ -1,14 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
 
 /**
  * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
- * - `marca`: datos que identifican, como el factor de empaque.
  * - `fuerte`: fondo oscuro; lo que debe resaltar sin ser un estado.
  * - `neutro`: fondo gris claro; para lo que no pide ninguna decisión.
+ * - `referencia`: fondo gris claro y texto secundario; un dato que se consulta
+ *   y no es un estado, como el factor de empaque confirmado. Se retira.
+ * `marca` no es para etiquetas: el azul es para la acción principal y lo que
+ * se edita (ver la regla del azul en tokens.ts).
  */
-export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro';
+export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro' | 'referencia';
 
 /**
  * - tintada (por omisión): fondo claro del color con texto oscuro del mismo
@@ -40,8 +43,9 @@ interface Props {
 /** Sólido, fondo tintado y texto sobre ese fondo, por tono. */
 const COLORES_TONO: Record<TonoEtiqueta, { solido: string; fondo: string; texto: string }> = {
   ...TONOS,
-  fuerte: { solido: COLORES.texto, fondo: COLORES.superficie, texto: COLORES.texto },
-  neutro: { solido: COLORES.superficie, fondo: COLORES.superficie, texto: COLORES.texto },
+  fuerte: { solido: COLORES.texto, fondo: COLORES.superficieHonda, texto: COLORES.texto },
+  neutro: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.texto },
+  referencia: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.textoSecundario },
 };
 
 export function Etiqueta({
@@ -59,7 +63,7 @@ export function Etiqueta({
   if (relleno === 'contorno') {
     apariencia = [estilos.contorno, { borderColor: tono === 'neutro' ? COLORES.borde : colores.solido }];
     colorTexto = tono === 'neutro' ? COLORES.texto : colores.solido;
-  } else if (relleno === 'tintada' || tono === 'neutro') {
+  } else if (relleno === 'tintada' || tono === 'neutro' || tono === 'referencia') {
     apariencia = { backgroundColor: colores.fondo };
     colorTexto = colores.texto;
   } else {
@@ -116,16 +120,16 @@ const estilos = StyleSheet.create({
     minWidth: TOQUE_MINIMO + ESPACIADO.xl,
   },
   contorno: {
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
   },
   texto_normal: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
   },
   texto_destacada: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
   texto_grande: {

@@ -27,7 +27,8 @@ interface Props {
 /**
  * Pregunta antes de una acción del supervisor que no se deshace desde aquí.
  * Mismo aspecto que el aviso de cerrar sesión: título, qué pasará y dos
- * botones del mismo ancho.
+ * botones del mismo ancho. Con `variante="peligro"` la acción destructiva
+ * nunca es el botón dominante: el sólido es cerrar sin hacer nada.
  */
 export function ModalConfirmacion({
   visible,
@@ -53,17 +54,32 @@ export function ModalConfirmacion({
             <Encabezado titulo={titulo} variante="plano" />
             {children}
             {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono ?? 'error'} />}
-            <View style={estilos.botones}>
-              <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} style={estilos.boton} />
-              <Boton
-                texto={textoConfirmar}
-                variante={variante}
-                onPress={onConfirmar}
-                cargando={cargando}
-                textoCargando={textoCargando}
-                style={estilos.boton}
-              />
-            </View>
+            {variante === 'peligro' ? (
+              // Destructivo: la salida segura es el sólido y va primero; lo que
+              // no se deshace queda de contorno, debajo.
+              <View style={estilos.botonesApilados}>
+                <Boton texto={textoCerrar} onPress={cerrar} deshabilitado={cargando} />
+                <Boton
+                  texto={textoConfirmar}
+                  variante="peligro"
+                  onPress={onConfirmar}
+                  cargando={cargando}
+                  textoCargando={textoCargando}
+                />
+              </View>
+            ) : (
+              <View style={estilos.botones}>
+                <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} style={estilos.boton} />
+                <Boton
+                  texto={textoConfirmar}
+                  variante={variante}
+                  onPress={onConfirmar}
+                  cargando={cargando}
+                  textoCargando={textoCargando}
+                  style={estilos.boton}
+                />
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>
@@ -87,7 +103,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   botones: {
@@ -97,5 +113,9 @@ const estilos = StyleSheet.create({
   },
   boton: {
     flex: 1,
+  },
+  botonesApilados: {
+    gap: RITMO.relacionado,
+    marginTop: ESPACIADO.sm,
   },
 });

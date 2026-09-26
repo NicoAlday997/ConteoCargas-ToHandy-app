@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
-import { Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
+import { Chevron, Tarjeta } from '../componentes/base';
+import { CIFRAS, COLORES, ETIQUETA_DATO, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -44,7 +44,7 @@ export function AccesoConflictos() {
                 <Text style={estilos.numero}>{faltan}</Text>
                 <Text style={estilos.unidad}>de {total} por resolver</Text>
               </View>
-              <Text style={estilos.flecha}>›</Text>
+              <Chevron />
             </View>
           </Tarjeta>
         );
@@ -68,11 +68,11 @@ const estilos = StyleSheet.create({
   },
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // El tipo es el rótulo de la ruta: arriba, pegado, se retira.
-  tipo: ROTULO,
+  tipo: ETIQUETA_DATO,
   cifra: {
     alignItems: 'flex-end',
   },
@@ -84,11 +84,5 @@ const estilos = StyleSheet.create({
   unidad: {
     ...ROTULO,
     color: COLORES.discrepanciaTexto,
-  },
-  // Solo dice "se abre": no compite con la cifra.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
   },
 });

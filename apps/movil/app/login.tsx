@@ -13,11 +13,11 @@ import {
   type UsuarioElegible,
 } from '../src/api/hooks-auth';
 import { recordarPinTemporal } from '../src/api/sesion';
-import { BloqueError, EstadoVacio, Esqueleto, LineaEsqueleto, SEPARACION_TARJETAS, Tarjeta } from '../src/componentes/base';
+import { BloqueError, Chevron, Esqueleto, EstadoVacio, LineaEsqueleto, SEPARACION_TARJETAS, Tarjeta } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ELEVACION, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { COLORES, ELEVACION, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Corto: la transición orienta al usuario, no debe hacerlo esperar. */
 const DURACION_TRANSICION_MS = 180;
@@ -45,7 +45,7 @@ export default function PantallaLogin() {
     setUsuario(null);
   };
 
-  // Azul solo detrás de la barra de estado y la banda de marca; lo demás, fondo tintado.
+  // Sin bloque azul: la entrada va sobre el fondo de pantalla, con el título grande.
   return (
     <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
       {usuario ? (
@@ -73,7 +73,7 @@ export default function PantallaLogin() {
 // Paso 1: selección de usuario (RF-01)
 // ---------------------------------------------------------------------------
 
-/** Banda de marca de la entrada: lo primero que se ve al abrir la app. */
+/** Encabezado de la entrada, sobre el fondo de pantalla: lo primero que se ve al abrir la app. */
 function BandaMarca({ antetitulo, titulo }: { antetitulo: string; titulo: string }) {
   return (
     <View style={estilos.bandaMarca}>
@@ -181,7 +181,7 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
           {nombre}
         </Text>
       </View>
-      <Text style={estilos.flecha}>›</Text>
+      <Chevron />
     </Tarjeta>
   );
 }
@@ -298,7 +298,8 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
             accessibilityLabel="Volver y elegir otro usuario"
             style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
           >
-            <Text style={estilos.textoBotonVolver}>‹ Elegir otro usuario</Text>
+            <Chevron direccion="izquierda" color={COLORES.texto} />
+            <Text style={estilos.textoBotonVolver}>Elegir otro usuario</Text>
           </Pressable>
           <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
             {nombre}
@@ -426,21 +427,19 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.fondo,
   },
   paso: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   bandaMarca: {
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.xl,
-    paddingBottom: ESPACIADO.xxl,
-    backgroundColor: COLORES.marca,
+    paddingBottom: ESPACIADO.sm,
   },
   bandaPin: {
     paddingTop: ESPACIADO.sm,
-    paddingBottom: ESPACIADO.xl,
   },
   columnaBanda: {
     width: '100%',
@@ -450,20 +449,16 @@ const estilos = StyleSheet.create({
   },
   antetitulo: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaClaro,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: COLORES.marca,
   },
   tituloBanda: {
     ...TIPOGRAFIA.display,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.textoSobreColor,
+    color: COLORES.texto,
   },
   subtituloBanda: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.medio,
-    color: COLORES.marcaClaro,
+    fontFamily: FUENTE.medio,
+    color: COLORES.textoSecundario,
   },
 
   // Paso 1
@@ -493,13 +488,14 @@ const estilos = StyleSheet.create({
     height: TAMANO_AVATAR,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.superficieHonda,
     borderRadius: RADIOS.completo,
   },
+  // Neutro: las iniciales identifican, no son una acción (ver la regla del azul).
   textoAvatar: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.textoSecundario,
   },
   datosUsuario: {
     flex: 1,
@@ -507,24 +503,18 @@ const estilos = StyleSheet.create({
   // El nombre es lo que se busca: domina la fila.
   nombreUsuario: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // El rol es su rótulo, arriba y pegado: se retira.
-  rolUsuario: ROTULO,
-  // Solo dice "se abre": no compite con el nombre.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
+  rolUsuario: ETIQUETA_DATO,
   filaSkeleton: {
     ...ELEVACION[1],
     padding: RITMO.margen,
     borderRadius: RADIOS.grande,
   },
   avatarSkeleton: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.superficieHonda,
   },
 
   // Paso 2
@@ -542,17 +532,19 @@ const estilos = StyleSheet.create({
   botonVolver: {
     minHeight: TOQUE_MINIMO,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
     marginLeft: -ESPACIADO.md,
     borderRadius: RADIOS.medio,
   },
   botonVolverPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
+    backgroundColor: COLORES.superficieHonda,
   },
   textoBotonVolver: {
     ...TIPOGRAFIA.subtitulo,
-    color: COLORES.textoSobreColor,
+    color: COLORES.texto,
   },
   zonaIndicadores: {
     alignItems: 'center',
@@ -567,12 +559,12 @@ const estilos = StyleSheet.create({
   },
   textoVerificando: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.medio,
+    fontFamily: FUENTE.medio,
     color: COLORES.textoSecundario,
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     textAlign: 'center',
   },
   detalleAviso: {
@@ -607,10 +599,10 @@ const estilos = StyleSheet.create({
   },
   textoPanelBloqueo: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSobreColor,
   },
   textoPanelAccion: {
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
   },
 });

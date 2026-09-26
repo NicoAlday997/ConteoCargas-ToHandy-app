@@ -2,18 +2,15 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
-  BORDES,
   CIFRAS,
   COLORES,
   ELEVACION,
   ESPACIADO,
-  PESOS,
+  ETIQUETA_DATO,
   RADIOS,
   RITMO,
-  ROTULO,
   TIPOGRAFIA,
   TONOS,
-  type ColorEstado,
   type ColorTono,
   type NivelElevacion,
 } from '../../theme/tokens';
@@ -36,8 +33,6 @@ interface Props {
   children?: ReactNode;
   /** 0: bloque plano dentro de otro. 1 (por omisión): bloque independiente en una lista. */
   elevacion?: NivelElevacion;
-  /** Barra de color a la izquierda: el estado se ve sin leer. */
-  acento?: ColorEstado;
   /**
    * El estado como primera línea: un bloque tintado con su nombre, y un
    * detalle a la derecha como rótulo. La tarjeta sigue blanca; el estado es lo
@@ -60,7 +55,6 @@ interface Props {
 export function Tarjeta({
   children,
   elevacion = 1,
-  acento,
   conAcento,
   tintada,
   compacta = false,
@@ -76,8 +70,6 @@ export function Tarjeta({
     ELEVACION[elevacion],
     relleno,
     tintada && { backgroundColor: TONOS[tintada].fondo },
-    // La barra de estado es el único borde de una tarjeta: comunica, no delimita.
-    acento && [estilos.acento, { borderLeftColor: COLORES[acento] }],
     style,
   ];
 
@@ -135,33 +127,27 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
     padding: RITMO.margen,
   },
-  acento: {
-    borderLeftWidth: BORDES.acento,
-  },
   banda: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: RITMO.relacionado,
   },
-  // Del ancho de su texto: un bloque que se reconoce como estado, no una franja.
+  // Pastilla del ancho de su texto: tinte del estado y texto hondo del mismo color.
   bloqueEstado: {
     flexShrink: 1,
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.chico,
+    borderRadius: RADIOS.completo,
   },
-  tituloBanda: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
-  },
+  tituloBanda: TIPOGRAFIA.etiqueta,
   detalleBanda: {
-    ...ROTULO,
+    ...ETIQUETA_DATO,
     ...CIFRAS,
   },
   // Tinte de marca y la tarjeta se hunde un poco: el toque se nota al instante.
   presionada: {
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
     transform: [{ scale: 0.98 }],
   },
 });

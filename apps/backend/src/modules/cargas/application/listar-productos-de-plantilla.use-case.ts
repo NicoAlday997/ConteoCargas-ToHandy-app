@@ -23,12 +23,17 @@ import type {
  * alfabetico —con comparacion numerica— los deja juntos y en orden de tamano.
  * Las familias van en orden alfabetico; los productos sin familia, al final.
  *
+ * Cada familia trae el color que le asigno el supervisor (o `null`): la app lo
+ * usa solo para identificar la familia, nunca para el estado de una fila.
+ *
  * Capa de aplicacion: solo depende de los puertos.
  */
 
 export interface GrupoFamilia {
   /** `null` agrupa los productos sin familia en el catalogo. */
   familia: string | null;
+  /** Color de la paleta de familias; `null` sin color (y siempre para `familia: null`). */
+  color: string | null;
   productos: ProductoDeConteo[];
 }
 
@@ -84,10 +89,15 @@ export class ListarProductosDePlantillaUseCase {
       }
     }
 
+    const colores = await this.productos.buscarColoresDeFamilias(
+      [...porFamilia.keys()].filter((f): f is string => f !== null),
+    );
+
     const familias: GrupoFamilia[] = [...porFamilia.entries()]
       .sort(([a], [b]) => compararFamilias(a, b))
       .map(([familia, grupo]) => ({
         familia,
+        color: familia === null ? null : (colores.get(familia) ?? null),
         productos: grupo.sort(
           (a, b) =>
             comparador.compare(a.nombre, b.nombre) ||

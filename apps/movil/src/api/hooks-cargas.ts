@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { guardarProductosLocal, obtenerProductosLocal } from '../conteo/almacen-local';
+import { colorFamiliaDesdeApi } from '../theme/colores-familia';
 import { modalidadDesdeApi, type FamiliaConteo, type ProductoConteo } from '../conteo/estado-conteo';
 import { estadoDe, type ConteoLado, type Discrepancia } from '../discrepancias/estado-discrepancia';
 import {
@@ -77,7 +78,7 @@ function normalizarProductos(respuesta: RespuestaProductos | null): ProductosDeC
       });
     }
     if (deFamilia.length > 0) {
-      familias.push({ familia, productos: deFamilia });
+      familias.push({ familia, color: familia === null ? null : colorFamiliaDesdeApi(grupo.color), productos: deFamilia });
       productos.push(...deFamilia);
     }
   }

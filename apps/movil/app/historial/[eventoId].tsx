@@ -150,7 +150,7 @@ function Pantalla({
   children: ReactNode;
 }) {
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo={titulo} subtitulo={subtitulo} />
       {children}
     </SafeAreaView>
@@ -161,7 +161,7 @@ const estilos = StyleSheet.create({
   // Lectura pausada: tarjetas blancas sobre el fondo tintado, cada producto un bloque aparte.
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   // Separada de los productos: es una decisión aparte, no parte de la lista.
   pie: {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { BandaTarjeta } from '../componentes/base';
-import type { ColorEstado, ColorTono } from '../theme/tokens';
+import type { ColorTono } from '../theme/tokens';
 import { minutosEspera, nivelEspera, textoEspera, type NivelEspera } from './modelo-supervisor';
 
 /** Cada cuánto se recalcula "cuánto lleva esperando" en pantalla. */
@@ -26,14 +26,6 @@ export const TONO_ESPERA: Record<NivelEspera, ColorTono> = {
   atencion: 'discrepancia',
   detenida: 'error',
   desconocida: 'pendiente',
-};
-
-/** Barra lateral solo para lo que ya pesa: lo demás no pide mirar. */
-export const ACENTO_ESPERA: Record<NivelEspera, ColorEstado | undefined> = {
-  reciente: undefined,
-  atencion: 'discrepancia',
-  detenida: 'error',
-  desconocida: undefined,
 };
 
 export interface Espera {

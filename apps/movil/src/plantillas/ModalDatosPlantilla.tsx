@@ -113,7 +113,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   botones: {

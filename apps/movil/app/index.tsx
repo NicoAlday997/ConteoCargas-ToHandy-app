@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,7 +47,7 @@ import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
-import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Una columna legible también en tablet. */
 const ANCHO_CONTENIDO = 560;
@@ -92,24 +92,22 @@ export default function PantallaInicio() {
 
   // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones, los empaques y las plantillas. El
   // historial es para los tres: qué ve cada quien lo decide el servidor.
-  // Densidad generosa: son pocas acciones y cada una importa. Banda de marca
-  // arriba (quién está en sesión) y, debajo, las acciones sobre el fondo
-  // tintado, separadas por aire. El margen inferior lo pone la lista para que
-  // el azul solo cubra el borde superior.
+  // Densidad generosa: son pocas acciones y cada una importa. Arriba, sobre el
+  // fondo de pantalla y sin bloque azul, quién está en sesión con el nombre
+  // grande; debajo, las acciones separadas por aire; hasta abajo, suelto,
+  // cerrar sesión.
   return (
     <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
-      <View style={estilos.bandaMarca}>
-        <View style={estilos.columna}>
+      <ScrollView
+        style={estilos.cuerpo}
+        contentContainerStyle={[estilos.contenido, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}
+      >
+        <View style={estilos.identidad}>
           <Text style={estilos.nombre} accessibilityRole="header">
             {usuario?.nombreCompleto ?? 'Usuario'}
           </Text>
           {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
         </View>
-      </View>
-      <ScrollView
-        style={estilos.cuerpo}
-        contentContainerStyle={[estilos.contenido, { paddingBottom: ESPACIADO.xxxl + margenes.bottom }]}
-      >
         {cuenta && usuario && (
           <>
             <AccesoConflictos />
@@ -128,9 +126,16 @@ export default function PantallaInicio() {
               onPress={() => router.push('/plantillas')}
             />
           )}
+          {usuario?.rolApp === 'SUPERVISOR' && (
+            <FilaMenu
+              texto="Colores de familias"
+              detalle="Para ubicar cada familia más rápido al contar"
+              onPress={() => router.push('/familias')}
+            />
+          )}
           {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
-          <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
         </GrupoMenu>
+        <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -140,15 +145,11 @@ export default function PantallaInicio() {
 function EsqueletoInicio() {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
-      <Esqueleto etiqueta="Abriendo la app">
-        <View style={estilos.bandaMarca}>
-          <View style={estilos.columna}>
-            <LineaEsqueleto nivel="display" ancho="70%" sobreMarca />
-            <LineaEsqueleto nivel="cuerpo" ancho="30%" sobreMarca />
-          </View>
-        </View>
-      </Esqueleto>
       <View style={[estilos.cuerpo, estilos.contenido]}>
+        <Esqueleto etiqueta="Abriendo la app" style={estilos.identidad}>
+          <LineaEsqueleto nivel="display" ancho="70%" />
+          <LineaEsqueleto nivel="cuerpo" ancho="30%" />
+        </Esqueleto>
         <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
           <LineaEsqueleto nivel="subtitulo" ancho="40%" />
           <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
@@ -205,7 +206,16 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
 
   return (
     <>
-      <FilaMenu texto="Cerrar sesión" salida onPress={() => void alTocar()} cargando={consultando} />
+      {/* Suelto, hasta abajo: no es una pantalla más del menú. */}
+      <Pressable
+        onPress={() => void alTocar()}
+        disabled={consultando}
+        accessibilityRole="button"
+        accessibilityState={{ busy: consultando }}
+        style={({ pressed }) => [estilos.cerrarSesion, pressed && estilos.cerrarSesionPresionado]}
+      >
+        <Text style={estilos.textoCerrarSesion}>{consultando ? 'Un momento…' : 'Cerrar sesión'}</Text>
+      </Pressable>
       <Modal visible={progreso !== null} transparent animationType="none" onRequestClose={() => setProgreso(null)}>
         <View style={estilos.fondoModal}>
           <View style={estilos.modal}>
@@ -644,7 +654,7 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
       <ModalConfirmacion
         visible={abierto}
         titulo="¿Cancelar esta carga?"
-        textoConfirmar="Sí, cancelarla"
+        textoConfirmar="Sí, cancelar la carga"
         textoCargando="Cancelando…"
         textoCerrar="No, volver"
         variante="peligro"
@@ -726,36 +736,40 @@ function AvisoCargaNoDisponible({ onCerrar }: { onCerrar: () => void }) {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.fondo,
   },
-  bandaMarca: {
-    paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xl,
-    paddingBottom: ESPACIADO.xxl,
-    backgroundColor: COLORES.marca,
-  },
-  columna: {
-    width: '100%',
-    maxWidth: ANCHO_CONTENIDO,
-    alignSelf: 'center',
-    gap: ESPACIADO.xs,
+  identidad: {
+    gap: RITMO.interno,
+    paddingTop: ESPACIADO.md,
   },
   nombre: {
     ...TIPOGRAFIA.display,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.textoSobreColor,
+    color: COLORES.texto,
   },
-  // El rol es un rótulo: pequeño, en mayúsculas, se retira. El nombre domina.
   rol: {
-    ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.medio,
-    color: COLORES.marcaClaro,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...TIPOGRAFIA.cuerpo,
+    fontFamily: FUENTE.medio,
+    color: COLORES.textoSecundario,
+  },
+  // Texto en rojo, sin relleno: se encuentra, pero no invita.
+  cerrarSesion: {
+    minHeight: TOQUE_MINIMO,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.xl,
+    borderRadius: RADIOS.medio,
+    marginTop: 'auto',
+  },
+  cerrarSesionPresionado: {
+    backgroundColor: COLORES.errorFondo,
+  },
+  textoCerrarSesion: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.error,
   },
   cuerpo: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   // Generosa: el aire entre secciones las hace leerse como decisiones distintas.
   contenido: {
@@ -763,9 +777,9 @@ const estilos = StyleSheet.create({
     width: '100%',
     maxWidth: ANCHO_CONTENIDO,
     alignSelf: 'center',
-    gap: RITMO.seccion,
+    gap: RITMO.grupo,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xl,
+    paddingTop: ESPACIADO.md,
   },
   esqueletoAcciones: {
     gap: RITMO.relacionado,
@@ -782,7 +796,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   detalleModal: {
@@ -790,7 +804,7 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
   botonesModal: {

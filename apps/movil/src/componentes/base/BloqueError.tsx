@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TONOS } from '../../theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS } from '../../theme/tokens';
 import { Boton } from './Boton';
 
 interface Props {
@@ -92,13 +92,13 @@ const estilos = StyleSheet.create({
   },
   textoSigno: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.textoSobreColor,
   },
   titulo: {
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
   // Alineado con el título, no bajo el signo.
   detalle: {

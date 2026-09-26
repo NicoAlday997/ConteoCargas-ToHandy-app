@@ -3,9 +3,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { useColaAutorizacion, usePorEnviar } from '../api/hooks-supervisor';
-import { FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, PESOS, RITMO, ROTULO, TIPOGRAFIA, TONOS } from '../theme/tokens';
-import { ACENTO_ESPERA, espera, TONO_ESPERA, useAhora } from './ComponentesSupervisor';
+import { Chevron, FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
+import { CIFRAS, COLORES, FUENTE, RITMO, ROTULO, TIPOGRAFIA, TONOS } from '../theme/tokens';
+import { espera, TONO_ESPERA, useAhora } from './ComponentesSupervisor';
 
 function abrir() {
   router.push('/supervisor');
@@ -61,7 +61,6 @@ export function AccesoAutorizaciones() {
   return (
     <Tarjeta
       conAcento={{ titulo: 'Cargas por autorizar', tono }}
-      acento={ACENTO_ESPERA[masAntigua.nivel]}
       onPress={abrir}
       accessibilityLabel={[
         `${n === 1 ? '1 carga espera' : `${n} cargas esperan`} tu autorización`,
@@ -82,7 +81,7 @@ export function AccesoAutorizaciones() {
           <Text style={[estilos.numero, { color: colorCifra }]}>{n}</Text>
           <Text style={[estilos.unidad, { color: colorCifra }]}>{n === 1 ? 'espera' : 'esperan'}</Text>
         </View>
-        <Text style={estilos.flecha}>›</Text>
+        <Chevron />
       </View>
     </Tarjeta>
   );
@@ -100,17 +99,17 @@ const estilos = StyleSheet.create({
   },
   explicacion: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   espera: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
   cifra: {
@@ -121,10 +120,4 @@ const estilos = StyleSheet.create({
     ...CIFRAS,
   },
   unidad: ROTULO,
-  // Solo dice "se abre": no compite con la cifra.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
 });

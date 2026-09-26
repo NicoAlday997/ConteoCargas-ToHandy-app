@@ -21,7 +21,7 @@ import { desglose } from '../discrepancias/estado-discrepancia';
 import type { ProductoDetalle } from '../historial/modelo-historial';
 import { cantidadEnUnidad } from '../historial/VistaCarga';
 import { useLayout } from '../theme/breakpoints';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import { motivoValido, MOTIVO_MINIMO } from './modelo-supervisor';
 
 /** Igual que en el conteo: 9999 ya es un error de dedo. */
@@ -194,7 +194,8 @@ function Editor({
       texto={edicion.texto}
       reemplazar={edicion.reemplazar}
       captura={visible}
-      etiquetaSiguiente={edicion.campo === 'paquetes' && admiteSueltas(producto) ? 'Sueltas ›' : 'Motivo ›'}
+      etiquetaSiguiente={edicion.campo === 'paquetes' && admiteSueltas(producto) ? 'Sueltas' : 'Motivo'}
+      siguienteConChevron
       lateral={esTablet}
       onDigito={alDigito}
       onBorrar={alBorrar}
@@ -211,7 +212,7 @@ function Editor({
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cerrar}>
       <SafeAreaProvider>
         <SafeAreaView style={estilos.pantalla}>
-          <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" marca />
+          <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
           <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
             <ScrollView
               style={estilos.scroll}
@@ -312,7 +313,7 @@ function Editor({
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   cuerpo: {
     flex: 1,
@@ -346,7 +347,7 @@ const estilos = StyleSheet.create({
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.discrepanciaTexto,
   },
   textoAviso: {
@@ -354,12 +355,12 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
   editor: {
     gap: ESPACIADO.xs,
   },
-  rotulo: ROTULO,
+  rotulo: ETIQUETA_DATO,
   campos: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -370,7 +371,7 @@ const estilos = StyleSheet.create({
     minHeight: TOQUE_MINIMO,
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
@@ -396,8 +397,8 @@ const estilos = StyleSheet.create({
   total: {
     flexShrink: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
     ...CIFRAS,
   },
   avisoCampo: {
@@ -413,7 +414,7 @@ const estilos = StyleSheet.create({
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
     borderLeftWidth: BORDES.grueso,
     borderLeftColor: COLORES.marca,
   },

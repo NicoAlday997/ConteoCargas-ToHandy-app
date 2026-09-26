@@ -10,9 +10,11 @@ import {
   diaRelativo,
   esDia,
   formatearDia,
+  formatearFechaCorta,
   opcionesFechaOperativa,
   sumarDias,
   textoSalida,
+  textoSalidaCorta,
 } from './fecha-operativa.ts';
 
 describe('diaNegocio', () => {
@@ -95,5 +97,18 @@ describe('deLaSalida', () => {
     assert.equal(deLaSalida('2026-09-23', '2026-09-23'), 'de hoy');
     assert.equal(deLaSalida('2026-09-24', '2026-09-23'), 'de mañana');
     assert.equal(deLaSalida('2026-09-26', '2026-09-23'), 'del sábado 26 de septiembre');
+  });
+});
+
+describe('formatos cortos', () => {
+  it('formatearFechaCorta: "24 sep"', () => {
+    assert.equal(formatearFechaCorta('2026-09-24'), '24 sep');
+    assert.equal(formatearFechaCorta('2026-01-05'), '5 ene');
+  });
+
+  it('textoSalidaCorta: día abreviado, en un renglón', () => {
+    assert.equal(textoSalidaCorta('2026-09-26', '2026-09-25'), 'Sale mañana, sáb 26 de septiembre');
+    assert.equal(textoSalidaCorta('2026-09-25', '2026-09-25'), 'Sale hoy, vie 25 de septiembre');
+    assert.equal(textoSalidaCorta('2026-09-30', '2026-09-25'), 'Sale el mié 30 de septiembre');
   });
 });

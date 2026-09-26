@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatearNombreFamilia } from '../conteo/formato-nombre';
 import { router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
@@ -7,7 +8,7 @@ import { cerrarSesion } from '../api/sesion';
 import { Etiqueta, Tarjeta } from '../componentes/base';
 import { textoEmpaque, type EmpaqueConfirmado } from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Piezas comunes de las pantallas de plantillas: filas de producto, casillas y avisos. */
 
@@ -62,7 +63,7 @@ export function EncabezadoFamilia({
     <View style={estilos.encabezadoFamilia}>
       <View style={estilos.lineaFamilia} accessible accessibilityRole="header" accessibilityLabel={`${titulo}: ${detalle}`}>
         <Text style={estilos.textoFamilia} numberOfLines={2}>
-          {titulo}
+          {formatearNombreFamilia(titulo)}
         </Text>
         <Text style={estilos.cantidadFamilia}>{detalle}</Text>
       </View>
@@ -117,7 +118,7 @@ export function FilaProducto({
         {modo.tipo === 'incluido' ? (
           <Etiqueta texto="Ya está en la plantilla" tono="capturado" />
         ) : (
-          <Etiqueta texto={textoEmp} tono={empaque ? 'marca' : 'pendiente'} />
+          <Etiqueta texto={textoEmp} tono={empaque ? 'referencia' : 'pendiente'} />
         )}
         {inactivo && <Etiqueta texto="Inactivo en Handy" tono="pendiente" relleno="contorno" />}
       </View>
@@ -202,12 +203,11 @@ const estilos = StyleSheet.create({
   },
   textoFamilia: {
     flexShrink: 1,
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    ...TIPOGRAFIA.familia,
+    color: COLORES.texto,
   },
   cantidadFamilia: {
-    ...ROTULO,
+    ...ETIQUETA_DATO,
     ...CIFRAS,
   },
   botonFamilia: {
@@ -216,17 +216,15 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.completo,
-    borderWidth: BORDES.fino,
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
   },
   botonFamiliaPresionado: {
     backgroundColor: COLORES.marca,
   },
   textoBotonFamilia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -240,10 +238,10 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO.md,
     padding: RITMO.margen,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
     borderWidth: BORDES.medio,
-    borderColor: COLORES.fondo,
+    borderColor: COLORES.superficie,
   },
   filaMarcadaError: {
     borderColor: COLORES.error,
@@ -251,7 +249,7 @@ const estilos = StyleSheet.create({
   },
   filaMarcadaMarca: {
     borderColor: COLORES.marca,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
   },
   filaPresionada: {
     transform: [{ scale: 0.98 }],
@@ -262,7 +260,7 @@ const estilos = StyleSheet.create({
   },
   nombre: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   nombreIncluido: {
@@ -279,7 +277,7 @@ const estilos = StyleSheet.create({
     height: TAMANO_CAJA,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.chico,
@@ -305,7 +303,7 @@ const estilos = StyleSheet.create({
   barra: {
     paddingHorizontal: RITMO.margen,
     paddingVertical: ESPACIADO.md,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderTopWidth: BORDES.grueso,
     borderTopColor: COLORES.marca,
   },

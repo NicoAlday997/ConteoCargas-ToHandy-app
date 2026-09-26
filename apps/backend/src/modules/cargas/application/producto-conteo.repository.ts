@@ -58,4 +58,13 @@ export abstract class ProductoConteoRepository {
   abstract listarContadosEnEvento(
     eventoId: string,
   ): Promise<ProductoDeConteo[]>;
+
+  /**
+   * Color que el supervisor asigno a cada familia indicada (clave de la
+   * paleta de `catalogo/domain/colores-familia.ts`). Las familias sin color
+   * no aparecen en el mapa.
+   */
+  abstract buscarColoresDeFamilias(
+    familias: string[],
+  ): Promise<Map<string, string>>;
 }

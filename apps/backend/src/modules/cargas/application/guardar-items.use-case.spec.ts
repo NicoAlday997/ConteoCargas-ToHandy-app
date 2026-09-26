@@ -218,6 +218,9 @@ class FakeProductoConteoRepository implements ProductoConteoRepository {
   listarActivos(): Promise<ProductoDeConteo[]> {
     throw new Error('no usado en esta prueba');
   }
+  buscarColoresDeFamilias(): Promise<Map<string, string>> {
+    throw new Error('no usado en esta prueba');
+  }
 }
 
 function exigirExito(

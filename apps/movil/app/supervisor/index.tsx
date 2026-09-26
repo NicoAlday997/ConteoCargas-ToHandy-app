@@ -9,9 +9,10 @@ import { useColaAutorizacion, usePorEnviar } from '../../src/api/hooks-superviso
 import { cerrarSesion } from '../../src/api/sesion';
 import {
   BloqueError,
+  Chevron,
   Datos,
-  EstadoVacio,
   Esqueleto,
+  EstadoVacio,
   Etiqueta,
   NotaEncabezado,
   Seccion,
@@ -19,14 +20,14 @@ import {
   TarjetaEsqueleto,
   type Dato,
 } from '../../src/componentes/base';
-import { diaNegocio, textoSalida } from '../../src/conteo/fecha-operativa';
+import { diaNegocio, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import type { FilaHistorial } from '../../src/historial/modelo-historial';
 import { tomarAviso, type AvisoCola } from '../../src/supervisor/aviso-cola';
-import { ACENTO_ESPERA, bandaDeEspera, espera, useAhora } from '../../src/supervisor/ComponentesSupervisor';
+import { bandaDeEspera, espera, useAhora } from '../../src/supervisor/ComponentesSupervisor';
 import type { CargaEnEspera } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ESPACIADO, PESOS, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Cargas que esperan el visto bueno del supervisor. Ninguna llega a Handy sin
@@ -162,7 +163,7 @@ function Cola() {
 
 function Pantalla({ children }: { children: ReactNode }) {
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo="Autorizar cargas">
         <NotaEncabezado>Ninguna carga llega a Handy sin tu visto bueno</NotaEncabezado>
       </BarraSuperior>
@@ -219,13 +220,12 @@ function datosCarga(fila: FilaHistorial): Dato[] {
 function TarjetaEnEspera({ carga, ahora, hoy }: { carga: CargaEnEspera; ahora: number; hoy: string }) {
   const e = espera(carga.esperaDesde, ahora);
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
-  const salida = carga.dia ? textoSalida(carga.dia, hoy) : null;
+  const salida = carga.dia ? textoSalidaCorta(carga.dia, hoy) : null;
 
   return (
     <Tarjeta
       onPress={() => abrir(carga.id)}
       conAcento={bandaDeEspera(e, tipo)}
-      acento={ACENTO_ESPERA[e.nivel]}
       accessibilityLabel={[`${carga.rutaNombre}, ${tipo}`, e.titulo, salida, textoDiscrepancias(carga.discrepancias), 'Revisar y autorizar']
         .filter(Boolean)
         .join('. ')}
@@ -237,7 +237,7 @@ function TarjetaEnEspera({ carga, ahora, hoy }: { carga: CargaEnEspera; ahora: n
 
 function TarjetaPorEnviar({ fila, hoy }: { fila: FilaHistorial; hoy: string }) {
   const tipo = fila.tipo ? ETIQUETAS_TIPO_CARGA[fila.tipo] : 'Carga';
-  const salida = fila.dia ? textoSalida(fila.dia, hoy) : null;
+  const salida = fila.dia ? textoSalidaCorta(fila.dia, hoy) : null;
   const banda = bandaDeEstado(fila.estado, tipo);
   return (
     <Tarjeta
@@ -260,9 +260,7 @@ function CuerpoCarga({ fila, salida }: { fila: FilaHistorial; salida: string | n
           </Text>
           {salida && <Text style={estilos.salida}>{salida}</Text>}
         </View>
-        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-          ›
-        </Text>
+        <Chevron />
       </View>
       <View style={estilos.grupoDatos}>
         <Datos datos={datosCarga(fila)} />
@@ -277,7 +275,7 @@ function CuerpoCarga({ fila, salida }: { fila: FilaHistorial; salida: string | n
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   scroll: {
     flex: 1,
@@ -305,7 +303,7 @@ const estilos = StyleSheet.create({
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.discrepanciaTexto,
   },
   textoAviso: {
@@ -323,12 +321,12 @@ const estilos = StyleSheet.create({
   // El punto focal de la tarjeta: nada más en ella tiene este tamaño ni peso.
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   salida: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.textoSecundario,
   },
   // Aire de grupo sobre los datos: la ruta y quién la contó son dos bloques.
@@ -340,11 +338,5 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: RITMO.interno,
-  },
-  // Solo dice "se abre": no compite con la ruta.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
   },
 });

@@ -16,10 +16,11 @@ import {
   type Persona,
 } from '../componentes/base';
 import { factorEfectivo, unidadCompleta, type ProductoConteo } from '../conteo/estado-conteo';
-import { diaNegocio, textoSalida } from '../conteo/fecha-operativa';
+import { formatearNombreFamilia, formatearNombreProducto } from '../conteo/formato-nombre';
+import { diaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
 import { EtiquetaFactor } from '../conteo/FilaProducto';
 import { formatearCifra, formatearEnPaquetes, formatearTotalPiezas } from '../conteo/formato-cantidad';
-import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, DetalleCancelacion, volver } from './ComponentesHistorial';
 import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from './modelo-historial';
 
@@ -46,7 +47,7 @@ export function seccionesDeCarga(carga: CargaDetalle | null): SeccionFamilia[] {
 export function titulosCarga({ evento }: CargaDetalle): { titulo: string; subtitulo: string } {
   const tipo = evento.tipo ? ETIQUETAS_TIPO_CARGA[evento.tipo] : 'Carga';
   if (!evento.dia) return { titulo: evento.rutaNombre, subtitulo: tipo };
-  return { titulo: textoSalida(evento.dia, diaNegocio(new Date())), subtitulo: `${evento.rutaNombre} · ${tipo}` };
+  return { titulo: textoSalidaCorta(evento.dia, diaNegocio(new Date())), subtitulo: `${evento.rutaNombre} · ${tipo}` };
 }
 
 /** En la unidad en que se contó: paquetes y piezas, o la unidad de lo que se vende completo. */
@@ -103,7 +104,7 @@ export function EncabezadoFamilia({ familia }: { familia: FamiliaDetalle }) {
   return (
     <View style={estilos.encabezadoFamilia} accessibilityRole="header">
       <Text style={estilos.nombreFamilia} numberOfLines={1}>
-        {familia.familia}
+        {formatearNombreFamilia(familia.familia)}
       </Text>
       {familia.conDiscrepancia > 0 && (
         <Text style={estilos.discrepanciasFamilia}>
@@ -134,28 +135,29 @@ export function EsqueletoCarga() {
  * nombre y el empaque la acompañan; la discrepancia, si hubo, va aparte en un
  * bloque tintado con dos grupos: cuánto contó cada quien y quién la resolvió.
  *
- * `pie` va al final de la tarjeta (los controles del supervisor) y `acento`
- * reemplaza la barra ámbar de la discrepancia (p. ej. un producto marcado).
+ * `pie` va al final de la tarjeta (los controles del supervisor) y `tintada`
+ * tiñe la tarjeta entera cuando comunica un estado (p. ej. un producto
+ * marcado para rechazar). Sin barras laterales: la discrepancia ya se ve en
+ * su bloque tintado.
  */
 export function TarjetaProducto({
   producto,
   pie,
-  acento,
+  tintada,
 }: {
   producto: ProductoDetalle;
   pie?: ReactNode;
-  acento?: ColorEstado;
+  tintada?: ColorEstado;
 }) {
   const factor = factorEfectivo(producto);
   const { discrepancia, cantidadFinal } = producto;
   const sinResolver = discrepancia !== null && cantidadFinal === null;
 
   return (
-    // Ámbar a la izquierda: se distingue de un vistazo al recorrer la lista.
-    <Tarjeta compacta acento={acento ?? (discrepancia ? 'discrepancia' : undefined)} style={estilos.fila}>
+    <Tarjeta compacta tintada={tintada} style={estilos.fila}>
       <View style={estilos.lineaProducto}>
         <EtiquetaFactor producto={producto} />
-        <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
+        <Text style={estilos.nombreProducto}>{formatearNombreProducto(producto.nombre)}</Text>
       </View>
       {/* A la derecha y con dígitos del mismo ancho: las cantidades de todas las tarjetas quedan en columna. */}
       {sinResolver ? (
@@ -295,11 +297,11 @@ const estilos = StyleSheet.create({
     gap: RITMO.grupo,
     rowGap: RITMO.relacionado,
   },
-  rotulo: ROTULO,
+  rotulo: ETIQUETA_DATO,
   // El único dato en grande de la pantalla: lo que se sube al camión.
   numero: {
     ...TIPOGRAFIA.numero,
-    color: COLORES.marcaOscuro,
+    color: COLORES.texto,
     ...CIFRAS,
   },
   // Igual que en el conteo: la familia fija arriba mientras se recorre. Mucho
@@ -312,19 +314,16 @@ const estilos = StyleSheet.create({
     paddingHorizontal: RITMO.margen,
     paddingTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xs,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   nombreFamilia: {
     flex: 1,
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...TIPOGRAFIA.familia,
+    color: COLORES.texto,
   },
   discrepanciasFamilia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.discrepanciaTexto,
     ...CIFRAS,
   },
@@ -339,7 +338,7 @@ const estilos = StyleSheet.create({
   nombreProducto: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   lineaCantidad: {
@@ -352,8 +351,7 @@ const estilos = StyleSheet.create({
   // La cantidad final domina la tarjeta: es lo que se carga al camión.
   cantidadFinal: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    color: COLORES.texto,
     textAlign: 'right',
     ...CIFRAS,
   },
@@ -370,9 +368,6 @@ const estilos = StyleSheet.create({
   },
   tituloDiscrepancia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
     color: COLORES.discrepanciaTexto,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
 });

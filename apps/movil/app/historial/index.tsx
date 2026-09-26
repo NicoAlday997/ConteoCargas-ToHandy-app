@@ -9,9 +9,10 @@ import { useHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
 import {
   BloqueError,
+  Chevron,
   Datos,
-  EstadoVacio,
   Esqueleto,
+  EstadoVacio,
   Etiqueta,
   LineaEsqueleto,
   NotaEncabezado,
@@ -19,7 +20,7 @@ import {
   TarjetaEsqueleto,
   type Dato,
 } from '../../src/componentes/base';
-import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
+import { diaNegocio, diaRelativo, formatearFechaCorta } from '../../src/conteo/fecha-operativa';
 import {
   ANCHO_MAXIMO_LISTA,
   bandaDeEstado,
@@ -27,7 +28,7 @@ import {
   DetalleCancelacion,
 } from '../../src/historial/ComponentesHistorial';
 import { agruparPorDia, type FilaHistorial, type GrupoDia } from '../../src/historial/modelo-historial';
-import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Historial de cargas por fecha operativa (docs/06 §3.8). Lo primero que se
@@ -59,7 +60,7 @@ export default function PantallaHistorial() {
 
   if (usuario === undefined) {
     return (
-      <SafeAreaView style={estilos.pantalla}>
+      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
         <BarraSuperior titulo="Historial de cargas" />
         <EsqueletoHistorial />
       </SafeAreaView>
@@ -68,7 +69,7 @@ export default function PantallaHistorial() {
 
   if (usuario === null) {
     return (
-      <SafeAreaView style={estilos.pantalla}>
+      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
         <BarraSuperior titulo="Historial de cargas" />
         <EstadoVacio
           icono="candado"
@@ -169,7 +170,7 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
   }
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo="Historial de cargas">
         {alcance && <NotaEncabezado>{alcance}</NotaEncabezado>}
       </BarraSuperior>
@@ -184,8 +185,8 @@ function EncabezadoDia({ grupo, hoy }: { grupo: GrupoDia; hoy: string }) {
   return (
     <View style={estilos.encabezadoDia} accessibilityRole="header">
       <Text style={estilos.textoDia} numberOfLines={2}>
-        {grupo.dia ? formatearDia(grupo.dia) : 'Sin fecha'}
-        {relativo && <Text style={estilos.relativo}> · {relativo}</Text>}
+        {relativo ?? (grupo.dia ? formatearFechaCorta(grupo.dia) : 'Sin fecha')}
+        {relativo && grupo.dia && <Text style={estilos.relativo}> · {formatearFechaCorta(grupo.dia)}</Text>}
       </Text>
       <Text style={estilos.cantidadDia}>{cantidad === 1 ? '1 carga' : `${cantidad} cargas`}</Text>
     </View>
@@ -249,9 +250,7 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
         <Text style={estilos.ruta} numberOfLines={2}>
           {fila.rutaNombre}
         </Text>
-        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-          ›
-        </Text>
+        <Chevron />
       </View>
       <View style={estilos.grupoDatos}>
         <Datos datos={datos} />
@@ -270,7 +269,7 @@ const estilos = StyleSheet.create({
   // Lectura pausada: tarjetas blancas sobre el fondo tintado.
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   esqueleto: {
     width: '100%',
@@ -310,21 +309,20 @@ const estilos = StyleSheet.create({
     paddingHorizontal: RITMO.margen,
     paddingTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xs,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   textoDia: {
     flex: 1,
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    ...TIPOGRAFIA.tituloBarra,
+    color: COLORES.texto,
   },
   relativo: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
   cantidadDia: {
-    ...ROTULO,
+    ...ETIQUETA_DATO,
     ...CIFRAS,
   },
   fila: {
@@ -339,7 +337,7 @@ const estilos = StyleSheet.create({
   ruta: {
     flex: 1,
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // Aire de grupo sobre los datos: la ruta y quién la contó son dos bloques.
@@ -351,12 +349,6 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: RITMO.interno,
-  },
-  // Solo dice "se abre": no compite con la ruta.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
   },
   pie: {
     marginTop: ESPACIADO.lg,

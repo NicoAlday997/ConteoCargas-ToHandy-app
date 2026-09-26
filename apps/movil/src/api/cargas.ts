@@ -110,6 +110,8 @@ export interface ProductoApi {
 
 export interface FamiliaApi {
   familia: string | null;
+  /** Clave de la paleta de familias (`theme/colores-familia.ts`); `null` sin color. */
+  color?: string | null;
   productos: ProductoApi[] | null;
 }
 

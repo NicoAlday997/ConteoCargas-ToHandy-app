@@ -70,4 +70,15 @@ export class PrismaProductoConteoRepository extends ProductoConteoRepository {
       select: PrismaProductoConteoRepository.SELECT_CONTEO,
     });
   }
+
+  async buscarColoresDeFamilias(
+    familias: string[],
+  ): Promise<Map<string, string>> {
+    if (familias.length === 0) return new Map();
+    const filas = await this.prisma.colorFamilia.findMany({
+      where: { familia: { in: familias } },
+      select: { familia: true, color: true },
+    });
+    return new Map(filas.map((f) => [f.familia, f.color]));
+  }
 }

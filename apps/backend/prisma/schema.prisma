@@ -172,6 +172,7 @@ model UsuarioApp {
   cargasCanceladas            EventoCarga[]                  @relation("EventoCargaCanceladaPor")
   factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
   cambiosFactor               CambioFactorEmpaque[]
+  coloresFamiliaAsignados     ColorFamilia[]                 @relation("ColorFamiliaAsignadoPor")
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -261,6 +262,22 @@ model Producto {
 
   @@index([factorConfirmadoPorId])
   @@map("productos")
+}
+
+// Color que el supervisor le da a una familia del catalogo para ubicarla mas
+// rapido en el grid de conteo. La familia es un texto libre de Producto (viene
+// de Handy), asi que no hay llave foranea: una familia sin fila aqui no tiene
+// color. `color` es una clave de la paleta cerrada de
+// `modules/catalogo/domain/colores-familia.ts`, nunca un hex libre.
+model ColorFamilia {
+  familia       String   @id
+  color         String
+  asignadoPorId String?
+  actualizadoEn DateTime @updatedAt
+
+  asignadoPor UsuarioApp? @relation("ColorFamiliaAsignadoPor", fields: [asignadoPorId], references: [id])
+
+  @@map("colores_familia")
 }
 
 // Bitacora de cada confirmacion o correccion del empaque de un producto. Las

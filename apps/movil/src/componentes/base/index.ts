@@ -1,13 +1,13 @@
 export { BloqueError } from './BloqueError';
 export { Boton, type VarianteBoton } from './Boton';
 export { CampoTexto } from './CampoTexto';
-export { Encabezado, NotaEncabezado, useSobreMarca } from './Encabezado';
+export { BarraAvance, Encabezado, NotaEncabezado, PanelEncabezado, useSobreMarca } from './Encabezado';
 export { BloqueEsqueleto, Esqueleto, LineaEsqueleto, TarjetaEsqueleto } from './Esqueleto';
 export { EstadoVacio, type AccionEstado } from './EstadoVacio';
 export { Etiqueta, type RellenoEtiqueta, type TamanoEtiqueta, type TonoEtiqueta } from './Etiqueta';
 export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
-export { Icono, type NombreIcono } from './Icono';
+export { Chevron, Icono, Palomita, type NombreIcono } from './Icono';
 export { Datos, Personas, type Dato, type Persona } from './Personas';
 export { Seccion, TituloSeccion } from './Seccion';
 export { SEPARACION_TARJETAS, Tarjeta, type BandaTarjeta } from './Tarjeta';

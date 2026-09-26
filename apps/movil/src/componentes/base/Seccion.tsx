@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { COLORES, CIFRAS, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
 
 interface PropsTitulo {
   texto: string;
@@ -78,16 +78,16 @@ const estilos = StyleSheet.create({
   seccion: {
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   grupo: {
     flex: 1,
-    ...ROTULO,
+    ...ETIQUETA_DATO,
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
     ...CIFRAS,
   },
@@ -101,12 +101,14 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   accionPresionada: {
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.texto,
   },
+  // Enlace de texto: neutro y subrayado (ver la regla del azul en tokens.ts).
   textoAccion: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marca,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.texto,
+    textDecorationLine: 'underline',
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

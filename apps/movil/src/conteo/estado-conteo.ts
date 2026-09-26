@@ -4,6 +4,8 @@
  * las filas memoizadas re-renderizar solo cuando cambia su producto.
  */
 
+import type { ColorFamilia } from '../theme/colores-familia.ts';
+
 /**
  * Cómo se vende. `COMPLETO`: el paquete es la unidad de venta (los dulces:
  * Handy cobra la bolsa y el "c/70" del nombre no es factor); se cuenta 1 a 1
@@ -34,6 +36,8 @@ export interface ProductoConteo {
 
 export interface FamiliaConteo {
   familia: string | null;
+  /** Color que le dio el supervisor. Solo identifica la familia; nunca el estado de una fila. */
+  color: ColorFamilia | null;
   productos: readonly ProductoConteo[];
 }
 

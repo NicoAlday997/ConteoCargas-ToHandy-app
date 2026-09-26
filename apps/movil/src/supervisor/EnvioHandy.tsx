@@ -7,7 +7,7 @@ import { useEnviarCarga } from '../api/hooks-supervisor';
 import { BloqueError, FilaDato, Tarjeta } from '../componentes/base';
 import { formatearCifra } from '../conteo/formato-cantidad';
 import type { CargaDetalle } from '../historial/modelo-historial';
-import { COLORES, PESOS, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
 import { codigosDeDetalle, nombresDeProductos } from './modelo-supervisor';
 import { ModalConfirmacion } from './ModalConfirmacion';
 
@@ -221,7 +221,7 @@ const estilos = StyleSheet.create({
   },
   tituloExito: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.capturadoTexto,
   },
   texto: {
@@ -229,6 +229,6 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
 });

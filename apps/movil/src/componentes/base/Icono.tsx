@@ -1,10 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
-import { BORDES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TONOS, type ColorTono } from '../../theme/tokens';
+import { BORDES, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, type ColorTono } from '../../theme/tokens';
 
 /**
  * Iconos dibujados con vistas, sin librerías: pocos, simples y del mismo trazo.
- * Solo acompañan a un estado vacío o a un error; nunca decoran un botón o una fila.
+ * Solo acompañan a un estado vacío o a un error; nunca decoran un botón o una
+ * fila. Las excepciones son `Chevron` ("esto lleva a otra pantalla" o
+ * "volver") y `Palomita` ("contado"), que no decoran: comunican.
  * - lista: un historial o registro (aquí aparecerán las cargas).
  * - listo: nada pendiente (la cola está al día, todo resuelto).
  * - reloj: algo con vigencia o en espera.
@@ -35,6 +38,47 @@ export function Icono({ nombre, tono = 'marca' }: Props) {
       importantForAccessibility="no-hide-descendants"
     >
       <Dibujo nombre={nombre} color={solido} />
+    </View>
+  );
+}
+
+/**
+ * Chevron en SVG ("›" o "‹"): mismo tamaño y grosor en toda la app y centrado
+ * en su renglón, cosa que el carácter de texto no garantiza (queda fino y cae
+ * sobre la línea base). Ocupa un cuadro fijo para que las filas alineen.
+ */
+export function Chevron({
+  direccion = 'derecha',
+  color = COLORES.textoTerciario,
+  tamano = ESPACIADO.xl,
+}: {
+  direccion?: 'derecha' | 'izquierda';
+  /** Terciario por omisión; blanco sobre azul. */
+  color?: string;
+  tamano?: number;
+}) {
+  return (
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
+        <Path
+          d={direccion === 'derecha' ? 'M9 5l7 7-7 7' : 'M15 5l-7 7 7 7'}
+          stroke={color}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+/** Palomita en SVG: "contado", "completa". */
+export function Palomita({ color, tamano = ESPACIADO.lg + ESPACIADO.xs }: { color: string; tamano?: number }) {
+  return (
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
+        <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
     </View>
   );
 }
@@ -96,7 +140,7 @@ const estilos = StyleSheet.create({
   },
   signo: {
     ...TIPOGRAFIA.display,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
   },
   lista: {
     gap: ESPACIADO.xs,

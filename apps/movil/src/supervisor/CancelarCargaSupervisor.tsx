@@ -6,7 +6,7 @@ import { useCancelarCargaSupervisor } from '../api/hooks-supervisor';
 import { CODIGO_HANDY_RECHAZO } from '../api/supervisor';
 import { Boton, CampoTexto } from '../componentes/base';
 import type { CargaDetalle } from '../historial/modelo-historial';
-import { COLORES, PESOS, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, FUENTE, TIPOGRAFIA } from '../theme/tokens';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { accionCancelacion, MOTIVO_MINIMO_CANCELACION, motivoCancelacionValido } from './modelo-supervisor';
 
@@ -141,6 +141,6 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
 });

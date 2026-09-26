@@ -44,7 +44,7 @@ import {
 import { SelectorProductos } from '../../src/plantillas/SelectorProductos';
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
  * Detalle de una plantilla (solo Supervisor): sus productos por familia, en
@@ -107,7 +107,7 @@ function Pantalla({
 }) {
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <Encabezado titulo={titulo} subtitulo={subtitulo} onVolver={volver} accion={accion} marca>
+      <Encabezado titulo={titulo} subtitulo={subtitulo} onVolver={volver} accion={accion}>
         {nota ? <NotaEncabezado>{nota}</NotaEncabezado> : null}
       </Encabezado>
       {children}
@@ -543,7 +543,7 @@ function EsqueletoDetalle() {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   lista: {
     flex: 1,
@@ -580,7 +580,7 @@ const estilos = StyleSheet.create({
   },
   textoAviso: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.capturadoTexto,
   },
   rutas: {
@@ -601,7 +601,7 @@ const estilos = StyleSheet.create({
   },
   productoListado: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   botonEditar: {
@@ -610,15 +610,15 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.superficieHonda,
   },
   botonEditarPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
+    backgroundColor: COLORES.texto,
   },
   textoEditar: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.texto,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

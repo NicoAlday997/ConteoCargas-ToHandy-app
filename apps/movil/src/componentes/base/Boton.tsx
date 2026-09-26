@@ -1,11 +1,13 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { ALTO_CONTROL, BORDES, COLORES, ESPACIADO, FUENTE, OPACIDAD, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
 
 /**
  * - primario: la acción que se espera. Una por pantalla o por modal.
- * - secundario: volver, cancelar, alternativas.
- * - peligro: la acción no se puede deshacer.
+ * - secundario: volver, cancelar, alternativas. Gris, sin borde.
+ * - peligro: la acción no se puede deshacer. NUNCA es el botón dominante:
+ *   contorno y texto en rojo; el sólido de ese modal es la salida segura
+ *   ("No, volver").
  */
 export type VarianteBoton = 'primario' | 'secundario' | 'peligro';
 
@@ -28,10 +30,10 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
-const CONTENIDO_INVERTIDO: Record<VarianteBoton, boolean> = {
-  primario: true,
-  secundario: false,
-  peligro: true,
+const COLOR_CONTENIDO: Record<VarianteBoton, string> = {
+  primario: COLORES.textoSobreColor,
+  secundario: COLORES.texto,
+  peligro: COLORES.error,
 };
 
 export function Boton({
@@ -67,10 +69,8 @@ export function Boton({
         style,
       ]}
     >
-      {({ pressed }) => {
-        // Inversión completa al presionar: se nota aun con poca luz.
-        const invertido = CONTENIDO_INVERTIDO[variante] || pressed;
-        const colorContenido = invertido ? COLORES.textoSobreColor : COLORES.marcaOscuro;
+      {() => {
+        const colorContenido = COLOR_CONTENIDO[variante];
         return (
           <>
             <View style={estilos.linea}>
@@ -89,12 +89,11 @@ export function Boton({
 
 const estilos = StyleSheet.create({
   boton: {
-    minHeight: TOQUE_MINIMO,
+    minHeight: ALTO_CONTROL,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.lg,
     paddingVertical: ESPACIADO.sm,
-    borderWidth: BORDES.medio,
     borderRadius: RADIOS.medio,
   },
   botonGrande: {
@@ -104,28 +103,24 @@ const estilos = StyleSheet.create({
   },
   primario: {
     backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
   },
   primarioPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
-    borderColor: COLORES.marcaOscuro,
+    backgroundColor: COLORES.marcaHonda,
   },
-  // Blanco con contorno de marca: se lee como botón sobre el fondo tintado.
   secundario: {
-    backgroundColor: COLORES.fondo,
-    borderColor: COLORES.marca,
+    backgroundColor: COLORES.superficieHonda,
   },
   secundarioPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
-    borderColor: COLORES.marcaOscuro,
+    backgroundColor: COLORES.divisor,
   },
+  // Contorno: se lee como posible, no como lo esperado.
   peligro: {
-    backgroundColor: COLORES.error,
+    backgroundColor: COLORES.superficie,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.error,
   },
   peligroPresionado: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.errorFondo,
   },
   deshabilitado: {
     opacity: OPACIDAD.deshabilitado,
@@ -145,7 +140,7 @@ const estilos = StyleSheet.create({
   },
   detalle: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.medio,
+    fontFamily: FUENTE.medio,
     textAlign: 'center',
   },
 });

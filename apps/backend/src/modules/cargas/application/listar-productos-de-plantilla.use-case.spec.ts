@@ -172,6 +172,17 @@ class FakeProductoConteoRepository implements ProductoConteoRepository {
     return this.contados.map((p) => ({ ...p }));
   }
 
+  /** Color asignado por familia; lo que no esta aqui no tiene color. */
+  colores = new Map<string, string>();
+  readonly consultasColores: string[][] = [];
+
+  async buscarColoresDeFamilias(
+    familias: string[],
+  ): Promise<Map<string, string>> {
+    this.consultasColores.push(familias);
+    return new Map([...this.colores].filter(([f]) => familias.includes(f)));
+  }
+
   buscarFactores(): Promise<Map<string, FactorDeConteo>> {
     throw new Error('no usado en esta prueba');
   }
@@ -301,6 +312,40 @@ describe('ListarProductosDePlantillaUseCase', () => {
 
     expect(resumen(resultado)).toEqual([
       ['REFRESCOS', ['BIG COLA 3L', 'BIG COLA 10L']],
+    ]);
+  });
+
+  it('por omision ninguna familia tiene color', async () => {
+    productos.porPlantilla.set('pl-1', [
+      producto('1', 'PEPSI 2L', 'REFRESCOS'),
+      producto('2', 'CHICLE', null),
+    ]);
+
+    const resultado = exigirExito(await useCase.ejecutar({ eventoId: 'ev-1' }));
+
+    expect(resultado.familias.map((g) => [g.familia, g.color])).toEqual([
+      ['REFRESCOS', null],
+      [null, null],
+    ]);
+  });
+
+  it('cada familia trae el color asignado; sin familia nunca tiene color', async () => {
+    productos.porPlantilla.set('pl-1', [
+      producto('1', 'PEPSI 2L', 'REFRESCOS'),
+      producto('2', 'CACAHUATE', 'BOTANAS'),
+      producto('3', 'CHICLE', null),
+    ]);
+    productos.colores.set('REFRESCOS', 'rojo');
+    productos.colores.set('DULCES', 'rosa');
+
+    const resultado = exigirExito(await useCase.ejecutar({ eventoId: 'ev-1' }));
+
+    // Solo se consultan las familias con nombre que aparecen en el grid.
+    expect(productos.consultasColores).toEqual([['REFRESCOS', 'BOTANAS']]);
+    expect(resultado.familias.map((g) => [g.familia, g.color])).toEqual([
+      ['BOTANAS', null],
+      ['REFRESCOS', 'rojo'],
+      [null, null],
     ]);
   });
 

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESPACIADO, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   factorEfectivo,
   sueltasExcedenPaquete,
@@ -8,6 +8,7 @@ import {
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
+import { Chevron } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 
 /** Cabe una cantidad de 4 dígitos al tamaño de título. */
@@ -31,6 +32,8 @@ interface Props {
   /** Captura con lo tecleado aplicado, para avisar si las sueltas ya son un paquete. */
   captura: CapturaProducto;
   etiquetaSiguiente: string;
+  /** La tecla de avance lleva a otro campo (no termina): muestra un chevron. */
+  siguienteConChevron?: boolean;
   lateral: boolean;
   onDigito: (digito: string) => void;
   onBorrar: () => void;
@@ -52,6 +55,7 @@ export function TecladoCantidad({
   reemplazar,
   captura,
   etiquetaSiguiente,
+  siguienteConChevron = false,
   lateral,
   onDigito,
   onBorrar,
@@ -116,7 +120,7 @@ export function TecladoCantidad({
         <View style={estilos.fila}>
           <Tecla etiqueta="Borrar" alto={altoTecla} onPress={onBorrar} secundaria etiquetaAccesible="Borrar último dígito" />
           <Tecla etiqueta="0" alto={altoTecla} onPress={() => onDigito('0')} />
-          <Tecla etiqueta={etiquetaSiguiente} alto={altoTecla} onPress={onSiguiente} secundaria avance />
+          <Tecla etiqueta={etiquetaSiguiente} alto={altoTecla} onPress={onSiguiente} secundaria avance chevron={siguienteConChevron} />
         </View>
       </View>
     </View>
@@ -131,9 +135,10 @@ interface PropsTecla {
   /** La tecla que avanza: tinte de marca, se encuentra sin buscarla. */
   avance?: boolean;
   etiquetaAccesible?: string;
+  chevron?: boolean;
 }
 
-function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, etiquetaAccesible }: PropsTecla) {
+function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, etiquetaAccesible, chevron = false }: PropsTecla) {
   return (
     <Pressable
       onPress={onPress}
@@ -146,29 +151,43 @@ function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, et
         pressed && estilos.teclaPresionada,
       ]}
     >
-      {({ pressed }) => (
-        <Text
-          style={[
-            secundaria ? estilos.textoSecundario : estilos.textoDigito,
-            avance && estilos.textoAvance,
-            pressed && estilos.textoInvertido,
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-        >
-          {etiqueta}
-        </Text>
-      )}
+      {({ pressed }) => {
+        const texto = (
+          <Text
+            style={[
+              secundaria ? estilos.textoSecundario : estilos.textoDigito,
+              avance && estilos.textoAvance,
+              pressed && estilos.textoInvertido,
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {etiqueta}
+          </Text>
+        );
+        if (!chevron) return texto;
+        return (
+          <View style={estilos.conChevron}>
+            {texto}
+            <Chevron color={pressed ? COLORES.textoSobreColor : COLORES.marcaHonda} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+          </View>
+        );
+      }}
     </Pressable>
   );
 }
 
 const estilos = StyleSheet.create({
+  conChevron: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
+  },
   panel: {
     gap: ESPACIADO.sm,
     padding: ESPACIADO.md,
     // Teclas blancas sobre el fondo tintado, igual que las tarjetas sobre la pantalla.
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
     borderTopWidth: BORDES.grueso,
     borderTopColor: COLORES.marca,
   },
@@ -195,7 +214,7 @@ const estilos = StyleSheet.create({
   nombre: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   lineaValor: {
@@ -206,8 +225,8 @@ const estilos = StyleSheet.create({
   // Rótulo del campo: se lee de reojo ("¿paquetes o sueltas?") sin competir con la cifra.
   campo: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
@@ -225,7 +244,7 @@ const estilos = StyleSheet.create({
   valor: {
     ...TIPOGRAFIA.titulo,
     fontSize: 30,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
     textAlign: 'right',
     ...CIFRAS,
@@ -244,7 +263,7 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   botonListoPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
+    backgroundColor: COLORES.marcaHonda,
   },
   textoListo: {
     ...TIPOGRAFIA.subtitulo,
@@ -279,13 +298,13 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.xs,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.fino,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
   },
   teclaAvance: {
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
     borderColor: COLORES.marca,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
@@ -295,17 +314,17 @@ const estilos = StyleSheet.create({
   },
   textoDigito: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   textoSecundario: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   textoAvance: {
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

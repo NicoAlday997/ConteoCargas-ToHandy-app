@@ -3,7 +3,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { BloqueError, Boton } from '../componentes/base';
-import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import { deLaSalida, diaNegocio, diaRelativo, formatearDia, opcionesFechaOperativa, textoSalida } from './fecha-operativa';
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
@@ -279,7 +279,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   titulo: {
@@ -299,7 +299,7 @@ const estilos = StyleSheet.create({
     borderWidth: BORDES.medio,
     borderColor: COLORES.texto,
     borderRadius: RADIOS.medio,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
   },
   opcionPropuesta: {
     backgroundColor: COLORES.texto,
@@ -320,18 +320,18 @@ const estilos = StyleSheet.create({
   },
   diaOpcion: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.medio,
+    fontFamily: FUENTE.medio,
     color: COLORES.texto,
   },
   etiqueta: {
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs,
     borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
   },
   textoEtiqueta: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   textoInvertido: {

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, COLORES, ESPACIADO, OPACIDAD, PESOS, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Por encima del mínimo de 56: el PIN se teclea de pie y con prisa. */
 const ALTO_TECLA = TOQUE_MINIMO + ESPACIADO.lg;
@@ -96,7 +96,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Blanca: resalta sobre el fondo tintado de la pantalla, como una tarjeta.
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.fino,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
@@ -114,7 +114,7 @@ const estilos = StyleSheet.create({
   },
   textoDigito: {
     ...TIPOGRAFIA.display,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   textoSecundario: {

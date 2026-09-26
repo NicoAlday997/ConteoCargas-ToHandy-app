@@ -1,81 +1,112 @@
 import type { TextStyle } from 'react-native';
 
 /**
- * Sistema de diseño de la app.
+ * Sistema de diseño de la app (docs/06 §1).
  *
  * Contexto operativo: el contador usa tablet en bodega con poca luz, de pie,
- * con las manos ocupadas. Alto contraste siempre; nunca gris sobre gris.
- * Los colores de estado comunican estado (ver docs/06), nunca decoran: un
- * color, un estado. La identidad la pone la marca (azul), que nunca significa
- * un estado: acciones principales, encabezados y lo que se está editando.
+ * con las manos ocupadas. Los colores de estado comunican estado, nunca
+ * decoran: un color, un estado.
  *
- * Todo texto cumple al menos 4.5:1 sobre el fondo en que aparece (ver
- * contraste.spec.ts, que lo comprueba par por par).
+ * DOS SISTEMAS DE COLOR QUE NUNCA SE PISAN.
+ *   - El ESTADO de una fila (falta, contado, no lleva, tecleando) tiñe la fila
+ *     completa: fondo, borde, total y pastilla del factor.
+ *   - El color de FAMILIA (lo asigna el supervisor, ver colores-familia.ts)
+ *     solo identifica: el punto y la pastilla del encabezado de familia, y
+ *     nada más.
+ *
+ * EL AZUL (`marca`) es el encabezado de las pantallas de trabajo, la acción
+ * principal (un botón por pantalla) y lo que se está tecleando. Nunca un
+ * estado.
+ *
+ * Todo texto cumple 4.5:1 sobre el fondo en que aparece salvo las
+ * excepciones documentadas par por par en contraste.spec.ts.
  */
 
+/**
+ * La tipografía entera sale de aquí: cambiar de fuente es tocar solo esto (y
+ * la carga en app/_layout.tsx). Con fuente propia React Native NO aplica
+ * `fontWeight`: el peso se elige con la variante. Nunca se usa `fontWeight`
+ * en un estilo; se usa `fontFamily: FUENTE.x`.
+ */
+export const FUENTE = {
+  regular: 'Archivo_400Regular',
+  medio: 'Archivo_500Medium',
+  semiNegrita: 'Archivo_600SemiBold',
+  negrita: 'Archivo_700Bold',
+} as const;
+
+export type PesoFuente = keyof typeof FUENTE;
+
 export const COLORES = {
-  // Marca: azul profundo. Es el lenguaje de logística y distribución, se lee
-  // con poca luz y no se confunde con los verdes y ámbares que comunican
-  // estado. Nunca verde: verde ya significa "capturado".
-  /** Acción principal, encabezados de marca, lo que se está editando. Texto blanco encima. */
-  marca: '#1D4ED8',
-  /** Texto de marca sobre fondos claros; estado presionado de lo que es `marca`. */
-  marcaOscuro: '#1E3A8A',
-  /** Fondo tintado de marca (pastillas, bloques informativos); texto secundario sobre `marca`. */
-  marcaClaro: '#DBEAFE',
-
-  /** Fondo de las pantallas: tinte muy sutil hacia la marca. Las tarjetas van en blanco encima. */
-  fondoPantalla: '#EEF2F9',
-  /** Tarjetas, modales y controles (nivel 1). */
-  fondo: '#FFFFFF',
-  /** Bloques planos dentro de una tarjeta (nivel 0) y estado presionado. */
-  superficie: '#E8EEF7',
-  texto: '#0F172A',
-  textoSecundario: '#334155',
+  /** Fondo de pantalla. */
+  fondo: '#EDF0F7',
+  /** Tarjetas, modales, filas. */
+  superficie: '#FFFFFF',
+  /** Campos en reposo, pastillas neutras, bloques planos dentro de una tarjeta. */
+  superficieHonda: '#E3E7F2',
+  texto: '#13172A',
+  textoSecundario: '#5A6076',
+  /** Rótulos de un dato ("Contó", "Productos"). Solo sobre `superficie`. */
+  textoTerciario: '#8B92A8',
   textoSobreColor: '#FFFFFF',
-  /** Contorno de controles: 3:1 sobre fondo, superficie y los fondos de estado; se distingue con poca luz. */
-  borde: '#74849B',
-  /** Línea que cierra una tabla (el total bajo los sumandos); nunca delimita un control. */
-  divisor: '#CBD5E1',
+  divisor: '#DDE2EE',
+  /** Contorno de controles que no son campos (opciones, botón de contorno): 3:1 sobre blanco. */
+  borde: '#8B92A8',
   /** Oscurece lo de atrás de un modal. */
-  velo: 'rgba(15, 23, 42, 0.6)',
+  velo: 'rgba(19, 23, 42, 0.6)',
 
-  // Estados semánticos. Cada uno tiene tres tonos:
-  // - sólido: sirve igual como texto, borde o fondo con texto blanco;
-  // - Fondo: bloque completo tintado del estado;
-  // - Texto: texto oscuro sobre su Fondo (≥ 4.5:1).
-  /** Verde: capturado, coincide, listo. */
-  capturado: '#157A3A',
-  capturadoFondo: '#DCFCE7',
-  capturadoTexto: '#14532D',
-  /** Gris: en espera, marcado en cero, inactivo. */
-  pendiente: '#475569',
-  pendienteFondo: '#E2E8F0',
-  pendienteTexto: '#1E293B',
-  /** Ámbar: atención, discrepancia. Oscurecido para leerse como texto (el ámbar claro no llega a 3.2:1). */
-  discrepancia: '#A44B07',
+  // MARCA: encabezado de trabajo y lo que se está tecleando.
+  marca: '#1E4FE0',
+  /** Bloques dentro del encabezado azul; campo inactivo de la fila que se teclea; presionado de `marca`. */
+  marcaHonda: '#1638B0',
+  /** Canal de la barra de progreso. */
+  marcaProfunda: '#102A86',
+  /** Texto que se retira sobre azul. */
+  marcaTenue: '#C9D7FF',
+  marcaTinte: '#E7EDFF',
+
+  // CONTADO
+  capturado: '#14B8A6',
+  capturadoHondo: '#0E7E72',
+  capturadoFondo: '#D6F5F0',
+  capturadoTexto: '#0B3B37',
+
+  // FALTA
+  discrepancia: '#F59E0B',
+  discrepanciaHonda: '#D97706',
   discrepanciaFondo: '#FEF3C7',
-  discrepanciaTexto: '#78350F',
-  /** Rojo: bloqueado, rechazado, error. */
-  error: '#B91C1C',
-  errorFondo: '#FEE2E2',
-  errorTexto: '#7F1D1D',
+  discrepanciaTexto: '#92400E',
+
+  // NO LLEVA / inactivo
+  pendiente: '#6B7185',
+  pendienteFondo: '#E4E6EE',
+
+  // ERROR
+  error: '#DC2626',
+  errorFondo: '#FEE7E7',
+  errorTexto: '#911B1B',
 } as const;
 
 export type ClaveColor = keyof typeof COLORES;
 
-/** Colores que comunican un estado; los únicos que admiten Etiqueta y acento de Tarjeta. */
+/** Colores que comunican un estado; los únicos que admiten Etiqueta y tarjeta tintada. */
 export type ColorEstado = 'capturado' | 'pendiente' | 'discrepancia' | 'error';
 
-/** Estados más la marca: lo que admite una banda de color o una pastilla tintada. */
+/** Estados más la marca: lo que admite una pastilla tintada. */
 export type ColorTono = ColorEstado | 'marca';
 
-/** Los tres tonos de un color: sólido (con texto blanco), fondo tintado y texto sobre ese fondo. */
+/**
+ * Los tres tonos de un color:
+ * - solido: relleno con texto blanco encima (≥ 4.5:1);
+ * - fondo: tinte del estado;
+ * - texto: texto oscuro sobre ese tinte (≥ 4.5:1).
+ * Las pastillas de estado son siempre `fondo` + `texto`.
+ */
 export const TONOS: Record<ColorTono, { solido: string; fondo: string; texto: string }> = {
-  marca: { solido: COLORES.marca, fondo: COLORES.marcaClaro, texto: COLORES.marcaOscuro },
-  capturado: { solido: COLORES.capturado, fondo: COLORES.capturadoFondo, texto: COLORES.capturadoTexto },
-  pendiente: { solido: COLORES.pendiente, fondo: COLORES.pendienteFondo, texto: COLORES.pendienteTexto },
-  discrepancia: { solido: COLORES.discrepancia, fondo: COLORES.discrepanciaFondo, texto: COLORES.discrepanciaTexto },
+  marca: { solido: COLORES.marca, fondo: COLORES.marcaTinte, texto: COLORES.marcaHonda },
+  capturado: { solido: COLORES.capturadoHondo, fondo: COLORES.capturadoFondo, texto: COLORES.capturadoTexto },
+  pendiente: { solido: COLORES.pendiente, fondo: COLORES.pendienteFondo, texto: COLORES.textoSecundario },
+  discrepancia: { solido: COLORES.discrepanciaTexto, fondo: COLORES.discrepanciaFondo, texto: COLORES.discrepanciaTexto },
   error: { solido: COLORES.error, fondo: COLORES.errorFondo, texto: COLORES.errorTexto },
 };
 
@@ -94,8 +125,7 @@ export type ClaveEspaciado = keyof typeof ESPACIADO;
 /**
  * Ritmo. Lo que hace que el ojo agrupe solo es la PROPORCIÓN: poco aire dentro
  * de un grupo y mucho entre grupos, nunca divisores. Todo valor es múltiplo de
- * 4 y sale de aquí o de ESPACIADO; nada inventado caso por caso. Un rótulo va
- * pegado a su dato (sin hueco: el interlineado basta).
+ * 4 y sale de aquí o de ESPACIADO; nada inventado caso por caso.
  */
 export const RITMO = {
   /** Dentro de un grupo: título y detalle, datos de un mismo bloque. */
@@ -110,95 +140,98 @@ export const RITMO = {
   margen: ESPACIADO.lg,
 } as const;
 
-type TextoPeso = '400' | '500' | '600' | '700' | '800';
-
-/** Para resaltar una palabra dentro de un estilo de la escala, sin cambiar su tamaño. */
-export const PESOS = {
-  regular: '400',
-  medio: '500',
-  semiNegrita: '600',
-  negrita: '700',
-  extraNegrita: '800',
-} as const satisfies Record<string, TextoPeso>;
-
 interface EstiloTexto {
+  fontFamily: (typeof FUENTE)[PesoFuente];
   fontSize: number;
-  fontWeight: TextoPeso;
   lineHeight: number;
 }
 
 /**
- * Escala tipográfica. Cada nivel se lee claramente distinto del de al lado:
- * el dato principal se lee de lejos y lo secundario se retira.
+ * Escala tipográfica. Cada nivel lleva su variante de fuente.
  *
  * - numero: la cifra que domina la pantalla (total de piezas de una carga).
- * - display: el número que se busca con la mirada (dígitos del PIN, avance del conteo).
- * - titulo: título de pantalla o de modal; lo que domina una tarjeta (la ruta).
- * - subtitulo: el dato bajo su rótulo (un nombre, una cantidad), el nombre de un producto.
+ * - display: el número que se busca con la mirada (dígitos del PIN).
+ * - titulo: el nombre grande de login e inicio de rol, título de un modal.
+ * - total: el total de una fila de conteo (33 px); no es tocable.
+ * - avance: el "4" del avance en el encabezado de conteo.
+ * - campo: el número dentro de un campo de captura.
+ * - tituloBarra: título del encabezado azul.
+ * - subtitulo: el dato bajo su rótulo, el texto de un botón, el nombre de un producto.
  * - cuerpo: texto corrido e instrucciones.
- * - etiqueta: texto de las etiquetas de estado, notas.
- * - micro: rótulos en mayúsculas ("CONTÓ", "RUTA") y unidades.
+ * - familia: nombre de la familia en su encabezado de la lista de conteo.
+ * - etiqueta: texto de pastillas y notas.
+ * - micro: rótulos de un dato y líneas de contexto (12 px).
+ * - rotulo: rótulo en mayúsculas de un campo de captura (9 px).
  */
 export const TIPOGRAFIA = {
-  numero: { fontSize: 48, fontWeight: PESOS.extraNegrita, lineHeight: 54 },
-  display: { fontSize: 34, fontWeight: PESOS.negrita, lineHeight: 40 },
-  titulo: { fontSize: 24, fontWeight: PESOS.negrita, lineHeight: 30 },
-  subtitulo: { fontSize: 18, fontWeight: PESOS.semiNegrita, lineHeight: 24 },
-  cuerpo: { fontSize: 16, fontWeight: PESOS.regular, lineHeight: 22 },
-  etiqueta: { fontSize: 14, fontWeight: PESOS.semiNegrita, lineHeight: 18 },
-  micro: { fontSize: 12, fontWeight: PESOS.semiNegrita, lineHeight: 16 },
+  numero: { fontFamily: FUENTE.negrita, fontSize: 48, lineHeight: 54 },
+  display: { fontFamily: FUENTE.negrita, fontSize: 34, lineHeight: 40 },
+  total: { fontFamily: FUENTE.negrita, fontSize: 33, lineHeight: 38 },
+  titulo: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 32 },
+  avance: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 30 },
+  campo: { fontFamily: FUENTE.semiNegrita, fontSize: 21, lineHeight: 26 },
+  tituloBarra: { fontFamily: FUENTE.semiNegrita, fontSize: 19, lineHeight: 24 },
+  subtitulo: { fontFamily: FUENTE.semiNegrita, fontSize: 17, lineHeight: 22 },
+  cuerpo: { fontFamily: FUENTE.regular, fontSize: 16, lineHeight: 22 },
+  familia: { fontFamily: FUENTE.semiNegrita, fontSize: 15, lineHeight: 20 },
+  etiqueta: { fontFamily: FUENTE.semiNegrita, fontSize: 13, lineHeight: 18 },
+  micro: { fontFamily: FUENTE.regular, fontSize: 12, lineHeight: 16 },
+  rotulo: { fontFamily: FUENTE.semiNegrita, fontSize: 9, lineHeight: 12 },
 } as const satisfies Record<string, EstiloTexto>;
 
+export type NivelTipografia = keyof typeof TIPOGRAFIA;
+
 /**
- * Rótulo de un dato ("CONTÓ", "VERIFICÓ", "RUTA", "FECHA"). Pequeño, en
- * mayúsculas, espaciado, color secundario y peso medio: se reconoce como
- * rótulo sin leerlo y nunca compite con su dato.
+ * Rótulo en MAYÚSCULAS: solo los campos de captura ("PAQUETES", "SUELTAS") y
+ * la unidad de un total ("PIEZAS"). Cualquier otro rótulo usa ETIQUETA_DATO.
  */
 export const ROTULO = {
-  ...TIPOGRAFIA.micro,
-  fontWeight: PESOS.medio,
+  ...TIPOGRAFIA.rotulo,
   color: COLORES.textoSecundario,
   textTransform: 'uppercase',
   letterSpacing: 0.8,
 } as const satisfies TextStyle;
 
 /**
- * El dato bajo su rótulo ("Irvin Alday"): tres niveles más grande que el
- * rótulo, fuerte y en el color principal. La distancia entre los dos es lo que
- * hace que "CONTÓ Irvin Alday" se lea como rótulo y dato, no como una frase.
+ * Rótulo de un dato ("Contó", "Verificó", "Productos"): mayúscula inicial,
+ * 12 px, en terciario. Va sobre tarjeta blanca (ver contraste.spec.ts).
  */
+export const ETIQUETA_DATO = {
+  ...TIPOGRAFIA.micro,
+  color: COLORES.textoTerciario,
+} as const satisfies TextStyle;
+
+/** El dato bajo su rótulo ("Irvin Alday"): fuerte y en el color principal. */
 export const DATO = {
   ...TIPOGRAFIA.subtitulo,
-  fontWeight: PESOS.negrita,
+  fontFamily: FUENTE.negrita,
   color: COLORES.texto,
 } as const satisfies TextStyle;
 
-/**
- * Un dato que todavía no existe ("Pendiente", "Sin dato"): mismo tamaño que
- * DATO para que la fila no salte, pero sin peso y en secundario, así no se
- * confunde con un nombre.
- */
+/** Un dato que todavía no existe ("Pendiente"): mismo tamaño que DATO, sin peso y en secundario. */
 export const DATO_AUSENTE = {
   ...TIPOGRAFIA.subtitulo,
-  fontWeight: PESOS.regular,
+  fontFamily: FUENTE.regular,
   color: COLORES.textoSecundario,
 } as const satisfies TextStyle;
 
-export type NivelTipografia = keyof typeof TIPOGRAFIA;
-
 /**
  * Para toda cifra que se compara con otra (cantidades, totales, progreso):
- * dígitos del mismo ancho, así 120 y 99 quedan alineados y nada baila al cambiar.
+ * dígitos del mismo ancho, así las columnas quedan alineadas al recorrer la lista.
  */
 export const CIFRAS: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
 export const RADIOS = {
   /** Bloques internos y avisos. */
   chico: 6,
-  /** Filas de la lista de conteo, campos, teclas y botones. */
+  /** Campos, teclas, botones, el botón 0. */
   medio: 12,
-  /** Tarjetas y modales. No más: más redondo roba espacio en las esquinas de listas largas. */
-  grande: 16,
+  /** Paneles dentro del encabezado azul. */
+  panel: 14,
+  /** Tarjetas, filas de conteo y modales. */
+  grande: 18,
+  /** Esquinas inferiores del encabezado azul. */
+  encabezado: 22,
   completo: 999,
 } as const;
 
@@ -208,24 +241,20 @@ export const BORDES = {
   fino: 1,
   medio: 2,
   grueso: 3,
-  /** Barra de estado a la izquierda de una tarjeta. */
-  acento: 4,
 } as const;
 
 /**
- * Elevación sin sombras ni contornos: separan el cambio de fondo y el espacio.
- * El contorno se reserva para los controles (campos, teclas, opciones), donde
- * marca lo que se toca; un bloque de lectura nunca lo lleva.
+ * Elevación sin sombras: separan el cambio de fondo y el espacio.
  * - 0: plano, un bloque dentro de otro (resúmenes, tablas).
- * - 1: separado, un bloque independiente en una lista (tarjeta blanca sobre el fondo tintado).
+ * - 1: una tarjeta blanca sobre el fondo de pantalla.
  */
 export const ELEVACION = {
   0: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.superficieHonda,
     borderWidth: 0,
   },
   1: {
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: 0,
   },
 } as const;
@@ -248,6 +277,9 @@ export const OPACIDAD = {
  * con las manos ocupadas contando cajas — no hay margen para fallar el tap.
  */
 export const TOQUE_MINIMO = 56;
+
+/** Alto del botón principal y de los campos de captura. */
+export const ALTO_CONTROL = 54;
 
 /** Ancho máximo de un modal en tablet: una columna que se lee de un vistazo. */
 export const ANCHO_MODAL = 480;

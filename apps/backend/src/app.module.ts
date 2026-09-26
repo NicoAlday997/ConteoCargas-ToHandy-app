@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { CargasModule } from './modules/cargas/cargas.module';
+import { CatalogoModule } from './modules/catalogo/catalogo.module';
 import { HistorialModule } from './modules/historial/historial.module';
 import { PlantillasModule } from './modules/plantillas/plantillas.module';
 import { SincronizacionModule } from './modules/sincronizacion/sincronizacion.module';
@@ -26,6 +27,7 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     CargasModule,
     HistorialModule,
     PlantillasModule,
+    CatalogoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

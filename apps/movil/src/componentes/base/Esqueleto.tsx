@@ -117,7 +117,7 @@ const estilos = StyleSheet.create({
     opacity: OPACIDAD.esqueleto,
   },
   barraMarca: {
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
   },
   tarjeta: {
     ...ELEVACION[1],

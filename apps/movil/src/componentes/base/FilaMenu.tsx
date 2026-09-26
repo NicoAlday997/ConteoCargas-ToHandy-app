@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
-import { COLORES, ELEVACION, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { COLORES, ELEVACION, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { Chevron } from './Icono';
 
 /**
  * Opciones de navegación agrupadas en un solo bloque blanco, sin líneas entre
@@ -40,7 +41,7 @@ export function FilaMenu({ texto, detalle, onPress, salida = false, cargando = f
             </Text>
             {detalle ? <Text style={[estilos.detalle, pressed && estilos.invertido]}>{detalle}</Text> : null}
           </View>
-          {!salida && <Text style={[estilos.flecha, pressed && estilos.invertido]}>›</Text>}
+          {!salida && <Chevron color={pressed ? COLORES.textoSobreColor : undefined} />}
         </>
       )}
     </Pressable>
@@ -75,19 +76,14 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   textoSalida: {
-    color: COLORES.marcaOscuro,
+    color: COLORES.marcaHonda,
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
   invertido: {
     color: COLORES.textoSobreColor,
-  },
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.marca,
   },
 });

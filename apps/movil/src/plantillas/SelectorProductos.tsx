@@ -182,7 +182,6 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
         subtitulo={nombrePlantilla}
         onVolver={cerrar}
         etiquetaVolver="Cerrar sin agregar"
-        marca
       >
         <NotaEncabezado>Marca los que debe ver el vendedor al contar. Los que ya están no se repiten.</NotaEncabezado>
       </Encabezado>
@@ -220,7 +219,7 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   buscador: {
     width: '100%',

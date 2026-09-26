@@ -8,8 +8,9 @@ import { useCrearPlantilla, usePlantillas } from '../../src/api/hooks-plantillas
 import {
   BloqueError,
   Boton,
-  EstadoVacio,
+  Chevron,
   Esqueleto,
+  EstadoVacio,
   NotaEncabezado,
   Seccion,
   Tarjeta,
@@ -21,7 +22,7 @@ import { sesionVencida } from '../../src/plantillas/ComponentesPlantillas';
 import { ModalDatosPlantilla } from '../../src/plantillas/ModalDatosPlantilla';
 import { textoRutas, type Plantilla } from '../../src/plantillas/modelo-plantillas';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { CIFRAS, COLORES, ESPACIADO, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Plantillas de carga (solo Supervisor): qué productos ve el vendedor de cada
@@ -65,7 +66,7 @@ export default function PantallaPlantillas() {
 function Pantalla({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={estilos.pantalla}>
-      <BarraSuperior titulo={TITULO}>
+      <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>Qué productos ve cada ruta al contar.</NotaEncabezado>
       </BarraSuperior>
       {children}
@@ -188,7 +189,6 @@ function TarjetaPlantilla({ plantilla }: { plantilla: Plantilla }) {
   return (
     <Tarjeta
       onPress={() => abrir(plantilla.id)}
-      acento={plantilla.activa ? undefined : 'pendiente'}
       accessibilityLabel={[
         plantilla.nombre,
         plantilla.activa ? null : 'Desactivada',
@@ -205,11 +205,9 @@ function TarjetaPlantilla({ plantilla }: { plantilla: Plantilla }) {
         </Text>
         <View style={estilos.cifra}>
           <Text style={estilos.numero}>{plantilla.totalProductos}</Text>
-          <Text style={estilos.rotulo}>{plantilla.totalProductos === 1 ? 'producto' : 'productos'}</Text>
+          <Text style={estilos.unidad}>{plantilla.totalProductos === 1 ? 'producto' : 'productos'}</Text>
         </View>
-        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-          ›
-        </Text>
+        <Chevron />
       </View>
       {plantilla.descripcion && (
         <Text style={estilos.descripcion} numberOfLines={2}>
@@ -237,7 +235,7 @@ function EsqueletoLista() {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   cuerpo: {
     flex: 1,
@@ -272,26 +270,23 @@ const estilos = StyleSheet.create({
   },
   numero: {
     ...TIPOGRAFIA.display,
-    color: COLORES.marcaOscuro,
+    color: COLORES.texto,
     ...CIFRAS,
   },
-  rotulo: ROTULO,
+  // La unidad de la cifra se lee de un vistazo, en mayúsculas; el rótulo de un dato, no.
+  unidad: ROTULO,
+  rotulo: ETIQUETA_DATO,
   descripcion: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.textoSecundario,
   },
   rutas: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   sinRutas: {
     ...TIPOGRAFIA.cuerpo,
-    color: COLORES.textoSecundario,
-  },
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
     color: COLORES.textoSecundario,
   },
 });

@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, PESOS, ROTULO, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
+import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, ETIQUETA_DATO, FUENTE, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
 
 interface Props {
-  /** Qué es: rótulo pequeño en mayúsculas, se retira, a la izquierda. */
+  /** Qué es: rótulo pequeño, con mayúscula inicial, se retira, a la izquierda. */
   etiqueta: string;
   /** El dato: domina, a la derecha. `null` = todavía no existe (se muestra `ausente`, sin peso). */
   valor: string | null;
@@ -74,7 +74,7 @@ const estilos = StyleSheet.create({
   // o "Contó Irvin Alday" se lee como una frase donde todo pesa igual.
   etiqueta: {
     flex: 1,
-    ...ROTULO,
+    ...ETIQUETA_DATO,
   },
   etiquetaApilada: {
     flex: 0,
@@ -98,7 +98,7 @@ const estilos = StyleSheet.create({
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
     ...CIFRAS,
   },

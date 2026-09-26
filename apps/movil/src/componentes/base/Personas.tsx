@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CIFRAS, COLORES, DATO, DATO_AUSENTE, RITMO, ROTULO } from '../../theme/tokens';
+import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ETIQUETA_DATO, RITMO } from '../../theme/tokens';
 
 /** Un dato con su rótulo: "RUTA" + "Norte 3", "PRODUCTOS" + "42". */
 export interface Dato {
@@ -78,7 +78,7 @@ const estilos = StyleSheet.create({
   dato: {
     flexShrink: 1,
   },
-  rotulo: ROTULO,
+  rotulo: ETIQUETA_DATO,
   valor: DATO,
   ausente: DATO_AUSENTE,
   invertido: {

@@ -19,10 +19,11 @@ import {
   BloqueError,
   Boton,
   CampoTexto,
+  Chevron,
   Datos,
   Encabezado,
-  EstadoVacio,
   Esqueleto,
+  EstadoVacio,
   Etiqueta,
   FilaMenu,
   GrupoMenu,
@@ -33,7 +34,8 @@ import {
   type Dato,
 } from '../../src/componentes/base';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
-import { diaNegocio, formatearDia } from '../../src/conteo/fecha-operativa';
+import { diaNegocio, formatearFechaCorta } from '../../src/conteo/fecha-operativa';
+import { formatearNombreFamilia, formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import {
   contarPendientes,
   esMismoEmpaque,
@@ -64,10 +66,10 @@ import {
   CIFRAS,
   COLORES,
   ESPACIADO,
-  PESOS,
+  ETIQUETA_DATO,
+  FUENTE,
   RADIOS,
   RITMO,
-  ROTULO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
 } from '../../src/theme/tokens';
@@ -127,7 +129,7 @@ export default function PantallaFactores() {
 
   if (usuario === undefined) {
     return (
-      <SafeAreaView style={estilos.pantalla}>
+      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
         <BarraSuperior titulo={TITULO} />
         <EsqueletoLista />
       </SafeAreaView>
@@ -136,7 +138,7 @@ export default function PantallaFactores() {
 
   if (usuario === null) {
     return (
-      <SafeAreaView style={estilos.pantalla}>
+      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
         <BarraSuperior titulo={TITULO} />
         <EstadoVacio
           icono="candado"
@@ -157,7 +159,7 @@ export default function PantallaFactores() {
 
 function SinAcceso() {
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo={TITULO} />
       <EstadoVacio
         icono="candado"
@@ -190,7 +192,7 @@ function ListaFactores() {
   if (estados.includes(403)) return <SinAcceso />;
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior
         titulo={TITULO}
         subtitulo={consultaPendientes.data && pendientes > 0 ? `${textoProductos(pendientes)} por confirmar` : null}
@@ -276,28 +278,30 @@ function Pestanas({
 }) {
   const opciones: { valor: Pestana; texto: string; contador: number | null }[] = [
     { valor: 'pendientes', texto: 'Por confirmar', contador: pendientes },
-    { valor: 'todos', texto: 'Todos los productos', contador: null },
+    { valor: 'todos', texto: 'Todos', contador: null },
   ];
   return (
-    <View style={estilos.pestanas} accessibilityRole="tablist">
-      {opciones.map((o) => {
-        const activa = pestana === o.valor;
-        return (
-          <Pressable
-            key={o.valor}
-            onPress={() => onCambiar(o.valor)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: activa }}
-            accessibilityLabel={o.contador !== null ? `${o.texto}: ${textoProductos(o.contador)}` : o.texto}
-            style={({ pressed }) => [estilos.pestana, activa && estilos.pestanaActiva, pressed && !activa && estilos.pestanaPresionada]}
-          >
-            <Text style={[estilos.textoPestana, activa && estilos.textoPestanaActiva]} numberOfLines={1}>
-              {o.texto}
-              {o.contador !== null && o.contador > 0 ? ` (${o.contador})` : ''}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={estilos.marcoPestanas}>
+      <View style={estilos.pestanas} accessibilityRole="tablist">
+        {opciones.map((o) => {
+          const activa = pestana === o.valor;
+          return (
+            <Pressable
+              key={o.valor}
+              onPress={() => onCambiar(o.valor)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activa }}
+              accessibilityLabel={o.contador !== null ? `${o.texto}: ${textoProductos(o.contador)}` : o.texto}
+              style={({ pressed }) => [estilos.pestana, activa && estilos.pestanaActiva, pressed && !activa && estilos.pestanaPresionada]}
+            >
+              <Text style={[estilos.textoPestana, activa && estilos.textoPestanaActiva]} numberOfLines={1}>
+                {o.texto}
+                {o.contador !== null && o.contador > 0 ? ` (${o.contador})` : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -462,7 +466,7 @@ function EncabezadoFamilia({
     <View style={estilos.encabezadoFamilia}>
       <View style={estilos.lineaFamilia} accessible accessibilityRole="header" accessibilityLabel={`${familia.titulo}: ${cantidad}`}>
         <Text style={estilos.textoFamilia} numberOfLines={2}>
-          {familia.titulo}
+          {formatearNombreFamilia(familia.titulo)}
         </Text>
         <Text style={estilos.cantidadFamilia}>{cantidad}</Text>
       </View>
@@ -495,7 +499,7 @@ function EtiquetaSugerido({ sugerido }: { sugerido: number | null }) {
   return (
     <Etiqueta
       texto={`Sugerido: ${sugerido} piezas`}
-      tono="marca"
+      tono="neutro"
       relleno="contorno"
       accessibilityLabel={`El nombre sugiere ${sugerido} piezas por paquete, sin confirmar`}
     />
@@ -517,15 +521,13 @@ function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onP
     >
       <View style={estilos.lineaNombre}>
         <Text style={estilos.nombre} numberOfLines={2}>
-          {producto.nombre}
+          {formatearNombreProducto(producto.nombre)}
         </Text>
-        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-          ›
-        </Text>
+        <Chevron />
       </View>
       <View style={estilos.lineaDatos}>
         <Text style={estilos.rotulo} numberOfLines={1}>
-          {producto.familia ?? 'Sin familia'}
+          {producto.familia ? formatearNombreProducto(producto.familia) : 'Sin familia'}
         </Text>
         <EtiquetaSugerido sugerido={producto.sugerido} />
       </View>
@@ -538,7 +540,7 @@ function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPre
   const empaque = textoEmpaque(producto.confirmado);
   const traza =
     producto.confirmado && producto.confirmadoPor
-      ? `Confirmó ${producto.confirmadoPor}${producto.fechaConfirmacion ? ` · ${formatearDia(diaNegocio(producto.fechaConfirmacion))}` : ''}`
+      ? `Confirmó ${producto.confirmadoPor}${producto.fechaConfirmacion ? ` · ${formatearFechaCorta(diaNegocio(producto.fechaConfirmacion))}` : ''}`
       : null;
   return (
     <Tarjeta
@@ -552,17 +554,15 @@ function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPre
     >
       <View style={estilos.lineaNombre}>
         <Text style={estilos.nombre} numberOfLines={2}>
-          {producto.nombre}
+          {formatearNombreProducto(producto.nombre)}
         </Text>
-        <Text style={estilos.flecha} accessibilityElementsHidden importantForAccessibility="no">
-          ›
-        </Text>
+        <Chevron />
       </View>
       <View style={estilos.lineaDatos}>
         <Text style={estilos.rotulo} numberOfLines={1}>
-          {producto.familia ?? 'Sin familia'}
+          {producto.familia ? formatearNombreProducto(producto.familia) : 'Sin familia'}
         </Text>
-        <Etiqueta texto={empaque} tono={producto.confirmado ? 'marca' : 'pendiente'} />
+        <Etiqueta texto={empaque} tono={producto.confirmado ? 'referencia' : 'pendiente'} />
       </View>
       {traza && (
         <Text style={estilos.traza} numberOfLines={1}>
@@ -1140,7 +1140,7 @@ const estilos = StyleSheet.create({
   // Lectura pausada: tarjetas blancas sobre el fondo tintado.
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   esqueleto: {
     width: '100%',
@@ -1158,41 +1158,42 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     padding: RITMO.margen,
   },
-  pestanas: {
-    flexDirection: 'row',
+  // Control segmentado: la activa en blanco sobre el canal gris.
+  marcoPestanas: {
     width: '100%',
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
-    gap: ESPACIADO.xs,
     paddingHorizontal: RITMO.margen,
     paddingTop: RITMO.relacionado,
   },
+  pestanas: {
+    flexDirection: 'row',
+    padding: ESPACIADO.xs,
+    gap: ESPACIADO.xs,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
+  },
   pestana: {
     flex: 1,
-    minHeight: TOQUE_MINIMO,
+    minHeight: TOQUE_MINIMO - ESPACIADO.sm,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
-    borderWidth: BORDES.medio,
-    borderColor: COLORES.borde,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.medio - ESPACIADO.xs,
   },
   pestanaActiva: {
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.superficie,
   },
   pestanaPresionada: {
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.divisor,
   },
   textoPestana: {
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.textoSecundario,
     ...CIFRAS,
   },
   textoPestanaActiva: {
-    color: COLORES.textoSobreColor,
+    color: COLORES.texto,
   },
   buscador: {
     width: '100%',
@@ -1238,26 +1239,23 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.completo,
-    borderWidth: BORDES.fino,
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
   },
   botonAccionesPresionado: {
     backgroundColor: COLORES.marca,
   },
   textoBotonAcciones: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
   },
   textoFamilia: {
     flexShrink: 1,
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    ...TIPOGRAFIA.familia,
+    color: COLORES.texto,
   },
   cantidadFamilia: {
-    ...ROTULO,
+    ...ETIQUETA_DATO,
     ...CIFRAS,
   },
   fila: {
@@ -1271,7 +1269,7 @@ const estilos = StyleSheet.create({
   nombre: {
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   lineaDatos: {
@@ -1281,16 +1279,10 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: RITMO.interno,
   },
-  rotulo: ROTULO,
+  rotulo: ETIQUETA_DATO,
   traza: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
-  },
-  // Solo dice "se abre": no compite con el nombre.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
 
@@ -1310,25 +1302,25 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: RITMO.margen,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   modalTeclado: {
     maxWidth: ANCHO_MODAL_TECLADO,
   },
-  pasoIndicador: ROTULO,
+  pasoIndicador: ETIQUETA_DATO,
   empaqueActual: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.discrepanciaTexto,
   },
   nombreModal: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   detalleModal: {
@@ -1336,7 +1328,7 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
   botones: {
@@ -1353,14 +1345,14 @@ const estilos = StyleSheet.create({
     minHeight: TOQUE_MINIMO * 2,
     gap: ESPACIADO.xs,
     padding: RITMO.margen,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
   },
   opcionSeleccionada: {
     borderColor: COLORES.marca,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
   opcionPresionada: {
@@ -1369,11 +1361,11 @@ const estilos = StyleSheet.create({
   },
   tituloOpcion: {
     ...TIPOGRAFIA.titulo,
-    color: COLORES.marcaOscuro,
+    color: COLORES.marcaHonda,
   },
   descripcionOpcion: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   ejemploOpcion: {
@@ -1381,7 +1373,7 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
   },
   rotuloEjemplo: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -1426,8 +1418,8 @@ const estilos = StyleSheet.create({
   // Resumen
   fraseResumen: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
   },
   lineaProductoFamilia: {
     flexDirection: 'row',
@@ -1439,13 +1431,13 @@ const estilos = StyleSheet.create({
   },
   piezasProductoFamilia: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
     ...CIFRAS,
   },
   productoFamilia: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
 });

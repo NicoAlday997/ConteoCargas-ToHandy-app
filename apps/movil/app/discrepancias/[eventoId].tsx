@@ -7,6 +7,7 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useCapturarDiscrepancia, useConfirmarDiscrepancia, useDiscrepancias } from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
+  BarraAvance,
   BloqueError,
   Boton,
   Encabezado,
@@ -17,6 +18,7 @@ import {
   Personas,
   Tarjeta,
   TarjetaEsqueleto,
+  PanelEncabezado,
 } from '../../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
@@ -31,6 +33,7 @@ import {
   type CampoCaptura,
   type CapturaProducto,
 } from '../../src/conteo/estado-conteo';
+import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { EtiquetaFactor, nombreCampo } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearPiezas, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
@@ -52,7 +55,8 @@ import {
   CIFRAS,
   COLORES,
   ESPACIADO,
-  PESOS,
+  ETIQUETA_DATO,
+  FUENTE,
   RADIOS,
   RITMO,
   ROTULO,
@@ -284,8 +288,8 @@ function Resolucion({ eventoId }: { eventoId: string }) {
 
   if (consulta.isPending) {
     return (
-      <SafeAreaView style={estilos.pantalla}>
-        <Encabezado titulo="Diferencias por resolver" marca lineasTitulo={1} onVolver={volver} etiquetaVolver="Volver al inicio" />
+      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+        <Encabezado variante="marca" titulo="Diferencias por resolver" onVolver={volver} etiquetaVolver="Volver al inicio" />
         <Esqueleto etiqueta="Cargando diferencias" style={estilos.contenidoLista}>
           {[0, 1].map((i) => (
             <View key={i} style={estilos.tarjetaEsqueleto}>
@@ -363,11 +367,12 @@ function Resolucion({ eventoId }: { eventoId: string }) {
         captura={capturaVisible(edicion)}
         etiquetaSiguiente={
           edicion.campo === 'paquetes' && admiteSueltas(editada.producto)
-            ? 'Sueltas ›'
+            ? 'Sueltas'
             : capturar.isPending
               ? 'Guardando…'
               : 'Guardar'
         }
+        siguienteConChevron={edicion.campo === 'paquetes' && admiteSueltas(editada.producto)}
         lateral={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
@@ -377,30 +382,27 @@ function Resolucion({ eventoId }: { eventoId: string }) {
     ) : null;
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <Encabezado
+        variante="marca"
         titulo="Diferencias por resolver"
-        marca
-        lineasTitulo={1}
         onVolver={volver}
         etiquetaVolver="Volver al inicio"
         inferior={
-          <>
+          <PanelEncabezado>
             <Text
               style={estilos.progreso}
               accessibilityLiveRegion="polite"
-              accessibilityLabel={`${faltan === 1 ? 'Falta 1' : `Faltan ${faltan}`} de ${total}`}
+              accessibilityLabel={`${resueltas} de ${total} resueltas`}
             >
-              <Text style={estilos.numeroProgreso}>{faltan}</Text>
-              {`  ${faltan === 1 ? 'falta' : 'faltan'} de `}
-              <Text style={estilos.totalProgreso}>{total}</Text>
+              <Text style={estilos.numeroProgreso}>{resueltas}</Text>
+              {` de ${total} ${total === 1 ? 'resuelta' : 'resueltas'}`}
             </Text>
-            <View style={estilos.barra} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: resueltas }}>
-              <View style={[estilos.rellenoBarra, { width: `${(resueltas / total) * 100}%` }]} />
-            </View>
-          </>
+            <BarraAvance actual={resueltas} total={total} />
+          </PanelEncabezado>
         }
       />
+      <Text style={estilos.faltan}>{faltan === 1 ? 'Falta 1 diferencia por resolver' : `Faltan ${faltan} diferencias por resolver`}</Text>
 
       <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
         <ScrollView
@@ -509,7 +511,7 @@ function TarjetaDiscrepancia({
       <View style={estilos.lineaProducto}>
         <EtiquetaFactor producto={d.producto} />
         <Text style={estilos.nombreProducto} numberOfLines={2}>
-          {d.producto.nombre}
+          {formatearNombreProducto(d.producto.nombre)}
         </Text>
       </View>
 
@@ -774,7 +776,7 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
                 <View style={estilos.lineaProducto}>
                   <EtiquetaFactor producto={d.producto} />
                   <Text style={estilos.nombreProductoModal} numberOfLines={2}>
-                    {d.producto.nombre}
+                    {formatearNombreProducto(d.producto.nombre)}
                   </Text>
                 </View>
                 {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} tono="marca" />}
@@ -827,7 +829,7 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   contenedorAviso: {
     width: '100%',
@@ -839,37 +841,23 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
   },
 
-  // Sobre el azul del encabezado.
   // La línea toma el alto del número grande para que no se recorte.
   progreso: {
-    ...TIPOGRAFIA.cuerpo,
-    lineHeight: 36,
-    color: COLORES.marcaClaro,
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.medio,
+    color: COLORES.marcaTenue,
     ...CIFRAS,
   },
-  // Lo que se busca al levantar la vista: cuántas faltan.
+  // Lo que se busca al levantar la vista: cuántas van.
   numeroProgreso: {
-    ...TIPOGRAFIA.display,
-    lineHeight: 36,
-    fontWeight: PESOS.extraNegrita,
+    ...TIPOGRAFIA.avance,
     color: COLORES.textoSobreColor,
-    ...CIFRAS,
   },
-  totalProgreso: {
-    ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.textoSobreColor,
-    ...CIFRAS,
-  },
-  barra: {
-    height: ESPACIADO.sm,
-    backgroundColor: COLORES.marcaOscuro,
-    borderRadius: RADIOS.completo,
-    overflow: 'hidden',
-  },
-  rellenoBarra: {
-    height: '100%',
-    backgroundColor: COLORES.capturadoFondo,
+  faltan: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.sm,
   },
 
   // Cuerpo: se lee con calma, una diferencia a la vez.
@@ -893,12 +881,12 @@ const estilos = StyleSheet.create({
   },
   instruccion: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.semiNegrita,
+    color: COLORES.marcaHonda,
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
     borderLeftWidth: BORDES.grueso,
     borderLeftColor: COLORES.marca,
   },
@@ -924,7 +912,7 @@ const estilos = StyleSheet.create({
   nombreProducto: {
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   final: {
@@ -935,11 +923,11 @@ const estilos = StyleSheet.create({
     padding: RITMO.margen,
     borderRadius: RADIOS.medio,
   },
-  etiquetaFinal: ROTULO,
+  etiquetaFinal: ETIQUETA_DATO,
   // El único número grande de la tarjeta: lo que se carga al camión.
   valorFinal: {
     ...TIPOGRAFIA.display,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
   detalleFinal: {
@@ -950,7 +938,7 @@ const estilos = StyleSheet.create({
   // Discreta a propósito: es un dato, no un error.
   notaAtipica: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
   aviso: {
@@ -965,7 +953,7 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
     overflow: 'hidden',
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.errorTexto,
     textAlign: 'center',
   },
@@ -974,7 +962,7 @@ const estilos = StyleSheet.create({
   editor: {
     gap: RITMO.interno,
     padding: RITMO.relacionado,
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.marcaTinte,
     borderRadius: RADIOS.medio,
   },
   camposEditor: {
@@ -987,7 +975,7 @@ const estilos = StyleSheet.create({
     minHeight: TOQUE_MINIMO,
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
@@ -1014,8 +1002,8 @@ const estilos = StyleSheet.create({
   totalEditor: {
     flexShrink: 1,
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.marcaHonda,
     ...CIFRAS,
   },
 
@@ -1044,7 +1032,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: RITMO.margen,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   modalPin: {
@@ -1057,7 +1045,7 @@ const estilos = StyleSheet.create({
   nombreProductoModal: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   zonaIndicadores: {
@@ -1072,7 +1060,7 @@ const estilos = StyleSheet.create({
   },
   textoVerificando: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.medio,
+    fontFamily: FUENTE.medio,
     color: COLORES.textoSecundario,
   },
   avisoRed: {

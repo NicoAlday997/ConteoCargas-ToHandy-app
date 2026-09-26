@@ -8,6 +8,7 @@ import { useAbrirSesion, useDesbloquearCarga, usePendientesVerificacion } from '
 import {
   BloqueError,
   Boton,
+  Chevron,
   EstadoVacio,
   Esqueleto,
   Datos,
@@ -22,14 +23,13 @@ import { estaConectado } from '../conteo/cola-sincronizacion';
 import { horaNegocio } from '../conteo/fecha-operativa';
 import {
   ANCHO_MODAL,
-  BORDES,
   COLORES,
   ESPACIADO,
+  ETIQUETA_DATO,
   OPACIDAD,
-  PESOS,
+  FUENTE,
   RADIOS,
   RITMO,
-  ROTULO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
   type ColorTono,
@@ -234,13 +234,6 @@ function Grupo({
   );
 }
 
-const COLOR_ESTADO: Record<CargaEnCola['estado'], string> = {
-  lista: COLORES.capturado,
-  propia: COLORES.capturado,
-  bloqueada: COLORES.discrepancia,
-  otro: COLORES.pendiente,
-};
-
 function FilaCarga({
   carga,
   abriendo,
@@ -265,14 +258,14 @@ function FilaCarga({
   let estado: { texto: string; tono: ColorTono } | null = null;
   switch (carga.estado) {
     case 'lista':
-      accion = abriendo ? 'Abriendo…' : 'Verificar ›';
+      accion = abriendo ? 'Abriendo…' : 'Verificar';
       break;
     case 'propia':
-      accion = 'Continuar ›';
+      accion = 'Continuar';
       estado = { texto: 'Ya empezaste a verificarla', tono: 'marca' };
       break;
     case 'bloqueada':
-      accion = 'Ver ›';
+      accion = 'Ver';
       estado = { texto: 'Corte de venta pendiente en Handy', tono: 'discrepancia' };
       break;
     case 'otro':
@@ -287,7 +280,6 @@ function FilaCarga({
   // aire, quién contó y cuánto, como rótulo y dato; el estado, como bloque.
   const contenido = (presionada: boolean) => (
     <>
-      <View style={[estilos.barraEstado, { backgroundColor: COLOR_ESTADO[carga.estado] }]} />
       <View style={estilos.cuerpoFila}>
         <View>
           <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>{tipo}</Text>
@@ -311,7 +303,12 @@ function FilaCarga({
           </View>
         )}
       </View>
-      {accion && <Text style={[estilos.accion, presionada && estilos.textoInvertido]}>{accion}</Text>}
+      {accion && (
+        <View style={estilos.accion}>
+          <Text style={[estilos.textoAccion, presionada && estilos.textoInvertido]}>{accion}</Text>
+          <Chevron color={presionada ? COLORES.textoSobreColor : undefined} />
+        </View>
+      )}
     </>
   );
 
@@ -464,8 +461,8 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: RITMO.margen,
-    paddingRight: RITMO.margen,
-    backgroundColor: COLORES.fondo,
+    paddingHorizontal: RITMO.margen,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
     overflow: 'hidden',
   },
@@ -476,29 +473,29 @@ const estilos = StyleSheet.create({
   filaPresionada: {
     backgroundColor: COLORES.marca,
   },
-  barraEstado: {
-    alignSelf: 'stretch',
-    width: BORDES.acento,
-  },
   // Entre la ruta y sus datos, aire de grupo: se leen como dos bloques.
   cuerpoFila: {
     flex: 1,
     gap: RITMO.relacionado,
     paddingVertical: RITMO.margen,
   },
-  tipo: ROTULO,
+  tipo: ETIQUETA_DATO,
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.extraNegrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   filaEstado: {
     flexDirection: 'row',
   },
   accion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RITMO.interno,
+  },
+  textoAccion: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marca,
+    color: COLORES.texto,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -518,7 +515,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   tituloModal: {

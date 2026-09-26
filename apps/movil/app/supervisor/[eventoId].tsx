@@ -34,7 +34,7 @@ import {
   rechazosParaEnviar,
 } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { BORDES, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { BORDES, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
  * Revisión de una carga que espera el visto bueno del supervisor. Se ve igual
@@ -247,7 +247,7 @@ function Revision({ eventoId }: { eventoId: string }) {
       return (
         <TarjetaProducto
           producto={producto}
-          acento={marcado ? 'error' : undefined}
+          tintada={marcado ? 'error' : undefined}
           pie={
             <ControlRechazo
               nombre={producto.nombre}
@@ -529,7 +529,7 @@ function BarraAcciones({ children }: { children: ReactNode }) {
 
 function Pantalla({ titulo, subtitulo, children }: { titulo: string; subtitulo?: string; children: ReactNode }) {
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo={titulo} subtitulo={subtitulo} />
       {children}
     </SafeAreaView>
@@ -541,7 +541,7 @@ const TAMANO_CAJA = ESPACIADO.xl + ESPACIADO.xs;
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   panel: {
     marginTop: RITMO.relacionado,
@@ -549,12 +549,12 @@ const estilos = StyleSheet.create({
   },
   instruccion: {
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
-    color: COLORES.marcaOscuro,
+    fontFamily: FUENTE.semiNegrita,
+    color: COLORES.marcaHonda,
   },
   tituloListo: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.capturadoTexto,
   },
   texto: {
@@ -562,7 +562,7 @@ const estilos = StyleSheet.create({
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
   listaRechazo: {
     gap: RITMO.interno,
@@ -574,7 +574,7 @@ const estilos = StyleSheet.create({
   barra: {
     paddingHorizontal: RITMO.margen,
     paddingVertical: ESPACIADO.md,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderTopWidth: BORDES.grueso,
     borderTopColor: COLORES.marca,
   },
@@ -605,14 +605,14 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   casillaPresionada: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.superficieHonda,
   },
   caja: {
     width: TAMANO_CAJA,
     height: TAMANO_CAJA,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.chico,
@@ -635,11 +635,11 @@ const estilos = StyleSheet.create({
   textoCasilla: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   textoCasillaMarcada: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.errorTexto,
   },
 });

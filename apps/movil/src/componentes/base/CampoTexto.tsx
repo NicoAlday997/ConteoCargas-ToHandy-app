@@ -1,7 +1,7 @@
 import { useState, type Ref } from 'react';
 import { StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { BORDES, COLORES, ESPACIADO, PESOS, RADIOS, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { BORDES, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
 
 interface Props {
   /** Qué se escribe: rótulo arriba, pegado al campo. */
@@ -94,14 +94,14 @@ const estilos = StyleSheet.create({
   contenedor: {
     gap: ESPACIADO.xs,
   },
-  etiqueta: ROTULO,
+  etiqueta: ETIQUETA_DATO,
   campo: {
     minHeight: TOQUE_MINIMO,
     paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.sm,
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
     borderRadius: RADIOS.medio,
@@ -118,11 +118,11 @@ const estilos = StyleSheet.create({
     borderColor: COLORES.error,
   },
   deshabilitado: {
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.superficieHonda,
   },
   ayuda: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.regular,
+    fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
   error: {

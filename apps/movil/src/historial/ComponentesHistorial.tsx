@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import type { EstadoCargaApi } from '../api/historial';
-import { Encabezado, Etiqueta, type BandaTarjeta } from '../componentes/base';
-import { COLORES, PESOS, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
+import { Encabezado, type BandaTarjeta } from '../componentes/base';
+import { BORDES, COLORES, FUENTE, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
 import { estadoDeCarga, type Cancelacion, type TonoEstado } from './modelo-historial';
 
 /** Ancho máximo de las listas en tablet: una columna legible, no una fila de 1000 px. */
@@ -17,13 +17,14 @@ export function volver() {
 
 /**
  * Un color por estado: verde listo, ámbar atención, rojo error. Lo que sigue
- * su curso (contando, en verificación) va en azul de marca: no pide nada.
+ * su curso (contando, en verificación) va en gris: no pide nada, y el azul no
+ * es un estado (ver la regla del azul en tokens.ts).
  */
 const TONO_ESTADO: Record<TonoEstado, ColorTono> = {
   exito: 'capturado',
   atencion: 'discrepancia',
   error: 'error',
-  neutro: 'marca',
+  neutro: 'pendiente',
 };
 
 /** Banda de color de la tarjeta de una carga: el estado se lee antes que nada. */
@@ -33,59 +34,58 @@ export function bandaDeEstado(estado: EstadoCargaApi | null, detalle?: string | 
 }
 
 /**
- * Barra superior fija: volver, título y, con peso propio, el subtítulo. Lo
- * demás (contexto que se retira) lo pone cada pantalla como hijos.
+ * Encabezado de las pantallas de trabajo: bloque azul con volver, título y
+ * subtítulo. Sube bajo la barra de estado: la pantalla no aplica el margen
+ * superior de área segura. `marca={false}` para las pantallas de
+ * administración (plantillas), que van sobre el fondo de pantalla.
  */
 export function BarraSuperior({
   titulo,
   subtitulo,
+  marca = true,
   children,
 }: {
   titulo: string;
   subtitulo?: string | null;
+  marca?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <Encabezado titulo={titulo} subtitulo={subtitulo} onVolver={volver} marca>
+    <Encabezado variante={marca ? 'marca' : 'barra'} titulo={titulo} subtitulo={subtitulo} onVolver={volver}>
       {children}
     </Encabezado>
   );
 }
 
 /**
- * Una carga cancelada se audita en el historial: la etiqueta en rojo y, debajo,
- * por qué y quién. Sin motivo (el vendedor no está obligado a darlo) se dice.
+ * Una carga cancelada se audita en el historial. El estado "Cancelada" ya lo
+ * dice la banda de la tarjeta (una sola vez); aquí va quién y por qué, debajo
+ * de una línea, en secundario y sin rojo. Sin motivo (el vendedor no está
+ * obligado a darlo) se dice.
  */
+export function textoCancelacion(cancelacion: Cancelacion): string {
+  const quien = cancelacion.porNombre ? `Cancelada por ${cancelacion.porNombre}` : 'Cancelada';
+  const porque = cancelacion.motivo ? `“${cancelacion.motivo}”` : 'sin motivo escrito';
+  return `${quien} · ${porque}`;
+}
+
 export function DetalleCancelacion({ cancelacion }: { cancelacion: Cancelacion }) {
   return (
     <View style={estilos.cancelacion}>
-      <View style={estilos.filaEtiqueta}>
-        <Etiqueta texto="Cancelada" tono="error" />
-      </View>
-      <Text style={estilos.textoCancelacion}>
-        <Text style={estilos.rotuloCancelacion}>Motivo: </Text>
-        {cancelacion.motivo ?? 'Sin motivo escrito'}
-      </Text>
-      <Text style={estilos.textoCancelacion}>
-        <Text style={estilos.rotuloCancelacion}>Canceló: </Text>
-        {cancelacion.porNombre ?? 'No se sabe quién'}
-      </Text>
+      <Text style={estilos.textoCancelacion}>{textoCancelacion(cancelacion)}</Text>
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
   cancelacion: {
-    gap: RITMO.interno,
-  },
-  filaEtiqueta: {
-    flexDirection: 'row',
+    paddingTop: RITMO.relacionado,
+    borderTopWidth: BORDES.fino,
+    borderTopColor: COLORES.divisor,
   },
   textoCancelacion: {
-    ...TIPOGRAFIA.cuerpo,
-    color: COLORES.errorTexto,
-  },
-  rotuloCancelacion: {
-    fontWeight: PESOS.negrita,
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.regular,
+    color: COLORES.textoSecundario,
   },
 });

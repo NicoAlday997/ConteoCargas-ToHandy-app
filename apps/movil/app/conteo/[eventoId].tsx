@@ -17,14 +17,17 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
+  BarraAvance,
   BloqueError,
   BloqueEsqueleto,
   Boton,
+  Chevron,
   Encabezado as EncabezadoBase,
   EstadoVacio,
   Esqueleto,
   LineaEsqueleto,
-  NotaEncabezado,
+  Palomita,
+  PanelEncabezado,
 } from '../../src/componentes/base';
 import { olvidarCarga } from '../../src/conteo/almacen-conteo';
 import { avisarCargaNoDisponible, descartarCargaNoDisponible } from '../../src/conteo/carga-no-disponible';
@@ -46,21 +49,23 @@ import {
   type ProductoConteo,
 } from '../../src/conteo/estado-conteo';
 import { EtiquetaFactor, FilaProducto, type EnvioFila } from '../../src/conteo/FilaProducto';
+import { formatearNombreFamilia, formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
-import { diaDesdeApi, diaNegocio, esDia, textoSalida } from '../../src/conteo/fecha-operativa';
+import { diaDesdeApi, diaNegocio, esDia, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
+import { TONOS_COLOR_FAMILIA, type ColorFamilia } from '../../src/theme/colores-familia';
 import {
+  ALTO_CONTROL,
   ANCHO_MODAL,
   BORDES,
   CIFRAS,
   COLORES,
   ESPACIADO,
-  OPACIDAD,
-  PESOS,
+  ETIQUETA_DATO,
+  FUENTE,
   RADIOS,
   RITMO,
-  ROTULO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
 } from '../../src/theme/tokens';
@@ -92,6 +97,8 @@ interface Edicion {
 interface SeccionFamilia {
   clave: string;
   titulo: string;
+  /** Solo identifica la familia (punto y pastilla); nunca el estado de una fila. */
+  color: ColorFamilia | null;
   productos: readonly ProductoConteo[];
   /** Filas visuales: 1 o 2 productos según las columnas. */
   data: ProductoConteo[][];
@@ -352,7 +359,13 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         for (let j = 0; j < f.productos.length; j += columnas) {
           data.push(f.productos.slice(j, j + columnas));
         }
-        return { clave: f.familia ?? `sin-familia-${i}`, titulo: f.familia ?? 'Sin familia', productos: f.productos, data };
+        return {
+          clave: f.familia ?? `sin-familia-${i}`,
+          titulo: f.familia ?? 'Sin familia',
+          color: f.color,
+          productos: f.productos,
+          data,
+        };
       }),
     [familias, columnas],
   );
@@ -473,7 +486,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion.code)}
-        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas ›' : destinoSiguiente(edicion) ? 'Siguiente ›' : 'Terminar'}
+        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas' : destinoSiguiente(edicion) ? 'Siguiente' : 'Terminar'}
+        siguienteConChevron={siguienteEsSueltas || destinoSiguiente(edicion) !== null}
         lateral={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
@@ -483,11 +497,10 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     ) : null;
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <Encabezado
         titulo={tituloCarga}
         fechaOperativa={fechaOperativa}
-        subtitulo={usuario?.nombre ?? null}
         capturados={capturados}
         total={total}
         sincronizacion={sincronizacion}
@@ -587,7 +600,6 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 interface PropsEncabezado {
   titulo: string;
   fechaOperativa: string | null;
-  subtitulo: string | null;
   capturados: number;
   total: number;
   sincronizacion: EstadoSincronizacion;
@@ -598,10 +610,37 @@ interface PropsEncabezado {
   onVolver: () => void;
 }
 
+/**
+ * Por qué todavía no se puede finalizar, en una línea bajo el avance. Que no
+ * se pueda no es lo mismo que no saber por qué. `null`: ya se puede.
+ */
+function razonNoFinalizar(faltan: number, bloqueo: BloqueoFinalizar): string | null {
+  if (faltan > 0) return faltan === 1 ? 'Falta 1 producto por contar' : `Faltan ${faltan} productos por contar`;
+  switch (bloqueo) {
+    case 'sin-conexion':
+      return 'Sin conexión: falta que tu conteo llegue al servidor';
+    case 'por-enviar':
+      return 'Falta que tu conteo llegue al servidor';
+    case 'rechazados':
+      return 'El servidor rechazó productos: vuelve a capturarlos';
+    case 'sesion-expirada':
+      return 'Tu sesión venció: entra de nuevo para finalizar';
+    case 'error':
+      return 'El servidor no aceptó el conteo';
+    case null:
+      return null;
+  }
+}
+
+/**
+ * Bloque azul de dos renglones: título, fecha de salida y Finalizar; y un
+ * panel con el avance, la barra de progreso y el estado de envío. Sin el
+ * nombre de quien cuenta: está en su propio teléfono. Debajo, sobre el fondo,
+ * por qué todavía no se puede finalizar.
+ */
 function Encabezado({
   titulo,
   fechaOperativa,
-  subtitulo,
   capturados,
   total,
   sincronizacion,
@@ -611,73 +650,54 @@ function Encabezado({
   onFinalizar,
   onVolver,
 }: PropsEncabezado) {
-  const completo = faltan === 0;
-  const listo = completo && bloqueo === null;
-  const fraccion = total > 0 ? capturados / total : 0;
+  const razon = razonNoFinalizar(faltan, bloqueo);
+  const listo = razon === null;
+  // Siempre a la vista: quien cuenta debe saber para qué día es la carga.
+  const salida = fechaOperativa ? textoSalidaCorta(fechaOperativa, diaNegocio(new Date())) : null;
 
   return (
-    <EncabezadoBase
-      titulo={titulo}
-      marca
-      lineasTitulo={1}
-      // Siempre a la vista y con peso: quien cuenta debe saber para qué día es la carga.
-      subtitulo={fechaOperativa ? textoSalida(fechaOperativa, diaNegocio(new Date())) : null}
-      onVolver={onVolver}
-      etiquetaVolver="Volver al inicio. Lo contado queda guardado."
-      accion={
-        // Se ve deshabilitado pero responde: al tocarlo dice CUÁLES faltan, o por qué aún no se puede.
-        <Pressable
-          onPress={onFinalizar}
-          accessibilityRole="button"
-          accessibilityLabel={
-            listo
-              ? 'Finalizar conteo'
-              : !completo
-                ? `Finalizar. Faltan ${faltan} productos`
-                : 'Finalizar. Aún no se puede: falta enviar el conteo al servidor'
-          }
-          accessibilityState={{ disabled: !listo }}
-          style={({ pressed }) => [
-            estilos.botonFinalizar,
-            listo ? estilos.botonFinalizarListo : estilos.botonFinalizarBloqueado,
-            pressed && estilos.botonFinalizarPresionado,
-          ]}
-        >
-          <Text style={estilos.textoFinalizar}>{listo ? '✓ Finalizar' : 'Finalizar'}</Text>
-        </Pressable>
-      }
-      inferior={
-        <>
-          <View style={estilos.filaProgreso}>
-            <Text
-              style={estilos.textoProgreso}
-              accessibilityLiveRegion="polite"
-              accessibilityLabel={`${capturados} de ${total} capturados`}
-            >
-              <Text style={estilos.numeroProgreso}>{capturados}</Text>
-              {'  de '}
-              <Text style={estilos.totalProgreso}>{total}</Text>
-            </Text>
-            <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
-          </View>
-          <View
-            style={estilos.barra}
-            accessibilityRole="progressbar"
-            accessibilityValue={{ min: 0, max: total, now: capturados }}
+    <View>
+      <EncabezadoBase
+        variante="marca"
+        titulo={titulo}
+        subtitulo={salida}
+        onVolver={onVolver}
+        etiquetaVolver="Volver al inicio. Lo contado queda guardado."
+        accion={
+          // Se ve deshabilitado pero responde: al tocarlo dice CUÁLES faltan, o por qué aún no se puede.
+          <Pressable
+            onPress={onFinalizar}
+            accessibilityRole="button"
+            accessibilityLabel={listo ? 'Finalizar conteo' : `Finalizar. Aún no se puede: ${razon}`}
+            accessibilityState={{ disabled: !listo }}
+            style={({ pressed }) => [
+              estilos.botonFinalizar,
+              listo ? estilos.botonFinalizarListo : estilos.botonFinalizarBloqueado,
+              pressed && estilos.botonFinalizarPresionado,
+            ]}
           >
-            <View
-              style={[
-                estilos.rellenoBarra,
-                { width: `${fraccion * 100}%` },
-                completo && estilos.rellenoBarraCompleto,
-              ]}
-            />
-          </View>
-        </>
-      }
-    >
-      {subtitulo && <NotaEncabezado lineas={1}>{subtitulo}</NotaEncabezado>}
-    </EncabezadoBase>
+            <Text style={[estilos.textoFinalizar, !listo && estilos.textoFinalizarBloqueado]}>Finalizar</Text>
+          </Pressable>
+        }
+        inferior={
+          <PanelEncabezado>
+            <View style={estilos.filaProgreso}>
+              <Text
+                style={estilos.textoProgreso}
+                accessibilityLiveRegion="polite"
+                accessibilityLabel={`${capturados} de ${total} ${plural(total, 'producto contado', 'productos contados')}`}
+              >
+                <Text style={estilos.numeroProgreso}>{capturados}</Text>
+                {` de ${total}`}
+              </Text>
+              <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
+            </View>
+            <BarraAvance actual={capturados} total={total} />
+          </PanelEncabezado>
+        }
+      />
+      {razon && <Text style={estilos.razonFinalizar}>{razon}</Text>}
+    </View>
   );
 }
 
@@ -696,7 +716,8 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
         hitSlop={ESPACIADO.sm}
         style={[estilos.pildoraEstado, estilos.pildoraError]}
       >
-        <Text style={[estilos.guardado, estilos.guardadoError]}>Sesión vencida · entra de nuevo ›</Text>
+        <Text style={[estilos.guardado, estilos.guardadoError]}>Sesión vencida · entra de nuevo</Text>
+        <Chevron color={COLORES.errorTexto} tamano={ESPACIADO.lg} />
       </Pressable>
     );
   }
@@ -718,25 +739,31 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
     texto = `${pendientes} por enviar · reintentando`;
     tono = 'atencion';
   } else {
-    texto = '✓ Al día';
+    texto = 'Al día';
   }
 
   const reintentable = hayConexion && !sincronizando && (pendientes > 0 || ultimoError?.tipo === 'rechazo');
-  // Píldora tintada: se lee igual sobre el azul del encabezado y no crece la línea.
+  // Al día, en el tono del panel: no pide nada. Con algo pendiente, pastilla tintada del estado.
   const pildora = [
     estilos.pildoraEstado,
     tono === 'atencion' && estilos.pildoraAtencion,
     tono === 'error' && estilos.pildoraError,
   ];
+  const colorIcono =
+    tono === 'atencion' ? COLORES.discrepanciaTexto : tono === 'error' ? COLORES.errorTexto : COLORES.textoSobreColor;
+  const alDia = tono === 'normal' && !sincronizando;
   const contenido = (
-    <Text
-      style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
-      numberOfLines={2}
-      accessibilityLiveRegion="polite"
-    >
-      {texto}
-      {reintentable ? ' ›' : ''}
-    </Text>
+    <>
+      {alDia && <Palomita color={COLORES.capturado} tamano={ESPACIADO.lg} />}
+      <Text
+        style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
+        numberOfLines={2}
+        accessibilityLiveRegion="polite"
+      >
+        {texto}
+      </Text>
+      {reintentable && <Chevron color={colorIcono} tamano={ESPACIADO.lg} />}
+    </>
   );
 
   if (!reintentable) return <View style={pildora}>{contenido}</View>;
@@ -754,24 +781,29 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 }
 
 /**
- * Banda de marca: al recorrer la lista, el cambio de familia se ve sin leer.
- * Fija arriba mientras se recorre su familia. Completa, el avance pasa a una
- * píldora verde: la familia ya no pide nada.
+ * Fila simple sobre el fondo de pantalla, fija arriba mientras se recorre su
+ * familia. El color de la familia (si el supervisor le dio uno) va SOLO en el
+ * punto y en la pastilla del avance: identifica, no comunica estado. Sin
+ * color, todo neutro. Completa, la pastilla pasa a "Completa" en verde.
  */
 function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conteo: EstadoConteo }) {
   const { capturados, total } = progreso(seccion.productos, conteo);
   const completa = capturados === total;
+  const tonos = seccion.color ? TONOS_COLOR_FAMILIA[seccion.color] : null;
+  const fondoPastilla = completa ? COLORES.capturadoFondo : (tonos?.tinte ?? COLORES.superficieHonda);
+  const textoPastilla = completa ? COLORES.capturadoHondo : (tonos?.texto ?? COLORES.textoSecundario);
   return (
     <View style={estilos.encabezadoFamilia} accessibilityRole="header">
-      <View style={estilos.bandaFamilia}>
-        <Text style={estilos.nombreFamilia} numberOfLines={1}>
-          {seccion.titulo}
-        </Text>
+      {tonos && <View style={[estilos.puntoFamilia, { backgroundColor: tonos.solido }]} />}
+      <Text style={estilos.nombreFamilia} numberOfLines={1}>
+        {formatearNombreFamilia(seccion.titulo)}
+      </Text>
+      <View style={[estilos.pastillaFamilia, { backgroundColor: fondoPastilla }]}>
         <Text
-          style={[estilos.conteoFamilia, completa && estilos.conteoFamiliaCompleta]}
+          style={[estilos.conteoFamilia, { color: textoPastilla }]}
           accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
         >
-          {completa ? `✓ ${total} de ${total}` : `${capturados} de ${total}`}
+          {completa ? 'Completa' : `${capturados} de ${total}`}
         </Text>
       </View>
     </View>
@@ -813,20 +845,20 @@ function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPend
           <ScrollView style={estilos.listaModal} contentContainerStyle={estilos.contenidoListaModal}>
             {porFamilia.map(([familia, productos]) => (
               <View key={familia} style={estilos.grupoModal}>
-                <Text style={estilos.familiaModal}>{familia}</Text>
+                <Text style={estilos.familiaModal}>{formatearNombreFamilia(familia)}</Text>
                 {productos.map((p) => (
                   <Pressable
                     key={p.code}
                     onPress={() => onIr(p)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Ir a ${p.nombre}`}
+                    accessibilityLabel={`Ir a ${formatearNombreProducto(p.nombre)}`}
                     style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
                   >
                     <EtiquetaFactor producto={p} />
                     <Text style={estilos.nombrePendiente} numberOfLines={2}>
-                      {p.nombre}
+                      {formatearNombreProducto(p.nombre)}
                     </Text>
-                    <Text style={estilos.flechaPendiente}>›</Text>
+                    <Chevron />
                   </Pressable>
                 ))}
               </View>
@@ -925,14 +957,14 @@ function PanelBloqueo({
                   key={p.code}
                   onPress={() => onIr(p)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Ir a ${p.nombre}`}
+                  accessibilityLabel={`Ir a ${formatearNombreProducto(p.nombre)}`}
                   style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
                 >
                   <EtiquetaFactor producto={p} />
                   <Text style={estilos.nombrePendiente} numberOfLines={2}>
-                    {p.nombre}
+                    {formatearNombreProducto(p.nombre)}
                   </Text>
-                  <Text style={estilos.flechaPendiente}>›</Text>
+                  <Chevron />
                 </Pressable>
               ))}
             </ScrollView>
@@ -1076,21 +1108,32 @@ function PanelConfirmar({
  */
 function EsqueletoConteo({ titulo }: { titulo: string }) {
   return (
-    <SafeAreaView style={estilos.pantalla}>
-      <EncabezadoBase titulo={titulo} marca lineasTitulo={1} onVolver={volverAlInicio} etiquetaVolver="Volver al inicio">
-        <LineaEsqueleto nivel="subtitulo" ancho="60%" sobreMarca />
-      </EncabezadoBase>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+      <EncabezadoBase
+        variante="marca"
+        titulo={titulo}
+        onVolver={volverAlInicio}
+        etiquetaVolver="Volver al inicio"
+        inferior={
+          <PanelEncabezado>
+            <View style={estilos.filaProgreso}>
+              <Text style={estilos.textoProgreso}>
+                <Text style={estilos.numeroProgreso}>–</Text>
+              </Text>
+            </View>
+            <BarraAvance actual={0} total={1} />
+          </PanelEncabezado>
+        }
+      />
       <Esqueleto etiqueta="Cargando productos" style={estilos.contenidoLista}>
         <View style={estilos.encabezadoFamilia}>
-          <View style={estilos.bandaFamilia}>
-            <LineaEsqueleto nivel="cuerpo" ancho="40%" sobreMarca />
-          </View>
+          <LineaEsqueleto nivel="subtitulo" ancho="40%" />
         </View>
         {Array.from({ length: FILAS_ESQUELETO }, (_, i) => (
           <View key={i} style={[estilos.filaColumnas, estilos.filaEsqueleto]}>
             <View style={estilos.cuerpoFilaEsqueleto}>
               <LineaEsqueleto nivel="titulo" ancho="70%" />
-              <BloqueEsqueleto alto={TOQUE_MINIMO} />
+              <BloqueEsqueleto alto={ALTO_CONTROL} />
             </View>
           </View>
         ))}
@@ -1102,7 +1145,7 @@ function EsqueletoConteo({ titulo }: { titulo: string }) {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
   },
   contenedorAviso: {
     width: '100%',
@@ -1114,33 +1157,31 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSobreColor,
   },
 
-  // Encabezado (sobre el azul de marca: todo texto en blanco o en píldora tintada)
+  // Encabezado (azul)
+  // Listo: blanco sobre azul, la acción de la pantalla. Si no, hundido en
+  // marcaHonda con texto tenue, y la razón escrita bajo el encabezado.
   botonFinalizar: {
-    minHeight: TOQUE_MINIMO,
+    minHeight: TOQUE_MINIMO - ESPACIADO.md,
     paddingHorizontal: ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.medio,
-    borderWidth: BORDES.medio,
   },
-  // Verde con contorno blanco: sobre el azul, el contorno lo separa del fondo.
   botonFinalizarListo: {
-    backgroundColor: COLORES.capturado,
-    borderColor: COLORES.textoSobreColor,
+    backgroundColor: COLORES.superficie,
   },
   botonFinalizarBloqueado: {
-    borderColor: COLORES.marcaClaro,
-    opacity: OPACIDAD.deshabilitado,
+    backgroundColor: COLORES.marcaHonda,
   },
   botonFinalizarPresionado: {
-    backgroundColor: COLORES.marcaOscuro,
-    borderColor: COLORES.textoSobreColor,
-    opacity: 1,
+    opacity: 0.8,
   },
   textoFinalizar: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
-    color: COLORES.textoSobreColor,
+    color: COLORES.marca,
+  },
+  textoFinalizarBloqueado: {
+    color: COLORES.marcaTenue,
   },
   filaProgreso: {
     flexDirection: 'row',
@@ -1148,33 +1189,30 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: ESPACIADO.md,
   },
-  // La línea toma el alto del número grande para que no se recorte.
   textoProgreso: {
-    ...TIPOGRAFIA.cuerpo,
-    lineHeight: 36,
-    color: COLORES.marcaClaro,
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.medio,
+    color: COLORES.marcaTenue,
     ...CIFRAS,
   },
-  // Lo que se busca al levantar la vista: cuántos van. El número más grande
-  // del encabezado; alto de línea ajustado (los dígitos no tienen descendentes).
+  // Lo que se busca al levantar la vista: cuántos van.
   numeroProgreso: {
-    ...TIPOGRAFIA.display,
-    lineHeight: 36,
-    fontWeight: PESOS.extraNegrita,
+    ...TIPOGRAFIA.avance,
     color: COLORES.textoSobreColor,
-    ...CIFRAS,
   },
-  totalProgreso: {
-    ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.textoSobreColor,
-    ...CIFRAS,
+  razonFinalizar: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.sm,
   },
   pildoraEstado: {
     flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs,
-    backgroundColor: COLORES.marcaClaro,
     borderRadius: RADIOS.completo,
   },
   pildoraAtencion: {
@@ -1184,33 +1222,17 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.errorFondo,
   },
   guardado: {
+    flexShrink: 1,
     textAlign: 'right',
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.semiNegrita,
-    color: COLORES.marcaOscuro,
+    color: COLORES.textoSobreColor,
     ...CIFRAS,
   },
   guardadoAtencion: {
     color: COLORES.discrepanciaTexto,
-    fontWeight: PESOS.negrita,
   },
   guardadoError: {
     color: COLORES.errorTexto,
-    fontWeight: PESOS.negrita,
-  },
-  barra: {
-    height: ESPACIADO.sm,
-    backgroundColor: COLORES.marcaOscuro,
-    borderRadius: RADIOS.completo,
-    overflow: 'hidden',
-  },
-  rellenoBarra: {
-    height: '100%',
-    backgroundColor: COLORES.textoSobreColor,
-  },
-  // Verde claro: sobre el azul se distingue del blanco sin perder contraste.
-  rellenoBarraCompleto: {
-    backgroundColor: COLORES.capturadoFondo,
   },
 
   // Lista (densa: ver SEPARACION_FILAS)
@@ -1227,45 +1249,35 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     paddingBottom: ESPACIADO.xxxl,
   },
-  // Aire arriba (separa de la familia anterior) y la banda de marca a todo el
-  // ancho. Mide lo mismo que el encabezado de texto de antes (16 de relleno +
-  // una línea de cuerpo): no cuesta productos por pantalla.
+  // Sobre el fondo de pantalla, sin banda: el fondo propio lo tapa al fijarse arriba.
   encabezadoFamilia: {
-    marginHorizontal: -ESPACIADO.md,
-    paddingTop: ESPACIADO.sm,
-    backgroundColor: COLORES.fondoPantalla,
-  },
-  bandaFamilia: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.xs,
-    backgroundColor: COLORES.marca,
+    gap: ESPACIADO.sm,
+    marginHorizontal: -ESPACIADO.md,
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.lg,
+    paddingBottom: ESPACIADO.xs,
+    backgroundColor: COLORES.fondo,
+  },
+  puntoFamilia: {
+    width: 9,
+    height: 9,
+    borderRadius: RADIOS.completo,
   },
   nombreFamilia: {
     flex: 1,
-    ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.extraNegrita,
-    color: COLORES.textoSobreColor,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    ...TIPOGRAFIA.familia,
+    color: COLORES.texto,
   },
-  // Texto sobre la banda: el avance informa, no pide acción.
+  pastillaFamilia: {
+    paddingHorizontal: ESPACIADO.sm + ESPACIADO.xs,
+    paddingVertical: 2,
+    borderRadius: RADIOS.completo,
+  },
   conteoFamilia: {
     ...TIPOGRAFIA.etiqueta,
-    fontWeight: PESOS.negrita,
-    color: COLORES.marcaClaro,
     ...CIFRAS,
-  },
-  // Completa: píldora verde, se lee "ya está" sin leer los números.
-  conteoFamiliaCompleta: {
-    overflow: 'hidden',
-    paddingHorizontal: ESPACIADO.sm,
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.capturadoFondo,
-    color: COLORES.capturadoTexto,
   },
   // Más aire entre productos que dentro de cada uno: un renglón no se confunde con el siguiente.
   filaColumnas: {
@@ -1281,14 +1293,13 @@ const estilos = StyleSheet.create({
   },
   cuerpoFilaEsqueleto: {
     gap: ESPACIADO.sm,
-    padding: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
-    backgroundColor: COLORES.fondo,
-    borderRadius: RADIOS.medio,
+    padding: ESPACIADO.md,
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.grande,
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
-    backgroundColor: COLORES.fondoPantalla,
+    backgroundColor: COLORES.fondo,
     borderLeftWidth: BORDES.grueso,
     borderLeftColor: COLORES.marca,
   },
@@ -1321,7 +1332,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   tituloModal: {
@@ -1341,7 +1352,7 @@ const estilos = StyleSheet.create({
   grupoModal: {
     gap: ESPACIADO.xs,
   },
-  familiaModal: ROTULO,
+  familiaModal: ETIQUETA_DATO,
   // Renglón sobre fondo gris claro: se distingue del blanco del panel sin contorno.
   pendiente: {
     minHeight: TOQUE_MINIMO,
@@ -1349,23 +1360,18 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.sm,
-    backgroundColor: COLORES.superficie,
+    backgroundColor: COLORES.superficieHonda,
     borderRadius: RADIOS.medio,
   },
   pendientePresionado: {
-    backgroundColor: COLORES.marcaClaro,
+    backgroundColor: COLORES.divisor,
     transform: [{ scale: 0.98 }],
   },
   nombrePendiente: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
-  },
-  flechaPendiente: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.marca,
   },
   botonesModal: {
     flexDirection: 'row',

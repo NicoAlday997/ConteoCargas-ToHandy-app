@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { useFactoresPendientes } from '../api/hooks-factores';
-import { FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, PESOS, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
+import { Chevron, FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
+import { CIFRAS, COLORES, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
 import { contarPendientes, textoProductos } from './modelo-factores';
 
 function abrir() {
@@ -55,7 +55,7 @@ export function AccesoFactores() {
           <Text style={estilos.numero}>{pendientes}</Text>
           <Text style={estilos.unidad}>{pendientes === 1 ? 'producto' : 'productos'}</Text>
         </View>
-        <Text style={estilos.flecha}>›</Text>
+        <Chevron />
       </View>
     </Tarjeta>
   );
@@ -70,7 +70,7 @@ const estilos = StyleSheet.create({
   explicacion: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontWeight: PESOS.semiNegrita,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
   cifra: {
@@ -84,11 +84,5 @@ const estilos = StyleSheet.create({
   unidad: {
     ...ROTULO,
     color: COLORES.discrepanciaTexto,
-  },
-  // Solo dice "se abre": no compite con la cifra.
-  flecha: {
-    ...TIPOGRAFIA.titulo,
-    fontWeight: PESOS.regular,
-    color: COLORES.textoSecundario,
   },
 });

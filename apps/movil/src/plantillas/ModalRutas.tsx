@@ -5,7 +5,7 @@ import { ErrorRed } from '../api/cliente';
 import { useAsignarRuta, useRutasConPlantilla } from '../api/hooks-plantillas';
 import { BloqueError, Boton, Encabezado, Esqueleto, Etiqueta, TarjetaEsqueleto, Tarjeta } from '../componentes/base';
 import { textoProductos } from '../factores/modelo-factores';
-import { ANCHO_MODAL, COLORES, ESPACIADO, PESOS, RADIOS, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
+import { ANCHO_MODAL, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA } from '../theme/tokens';
 import { avisoDeError, estilosPlantillas } from './ComponentesPlantillas';
 import { rutasRespectoA, type RutaAsignable } from './modelo-plantillas';
 
@@ -188,7 +188,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
   },
   lista: {
@@ -205,15 +205,15 @@ const estilos = StyleSheet.create({
   },
   nombreRuta: {
     ...TIPOGRAFIA.subtitulo,
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
-  rotulo: ROTULO,
+  rotulo: ETIQUETA_DATO,
   detalle: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
   },
   negrita: {
-    fontWeight: PESOS.negrita,
+    fontFamily: FUENTE.negrita,
   },
 });
