@@ -1,12 +1,18 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
+import { Etiqueta } from './Etiqueta';
 
 interface PropsTitulo {
   texto: string;
-  /** A la derecha, con menos peso: un conteo ("3 de 5") o un dato del grupo. */
+  /** A la derecha, con menos peso: un dato del grupo que no es trabajo pendiente. */
   detalle?: string | null;
+  /**
+   * A la derecha, en lugar del detalle: cuánto trabajo espera ("3 cargas"),
+   * en una pastilla tintada del color de la tarea. Nunca en texto gris.
+   */
+  contador?: { texto: string; tono: ColorTono } | null;
   /** A la derecha, en lugar del detalle: una acción del grupo (p. ej. "Actualizar"). */
   accion?: { texto: string; onPress: () => void; accessibilityLabel?: string };
   /**
@@ -20,7 +26,7 @@ interface PropsTitulo {
  * Título que agrupa lo que viene debajo. El aire lo pone quien lo contiene:
  * más arriba (entre secciones) que abajo (hasta su contenido).
  */
-export function TituloSeccion({ texto, detalle, accion, nivel = 'seccion' }: PropsTitulo) {
+export function TituloSeccion({ texto, detalle, contador, accion, nivel = 'seccion' }: PropsTitulo) {
   return (
     <View style={estilos.cabecera}>
       <Text style={nivel === 'seccion' ? estilos.seccion : estilos.grupo} accessibilityRole="header" numberOfLines={2}>
@@ -36,6 +42,8 @@ export function TituloSeccion({ texto, detalle, accion, nivel = 'seccion' }: Pro
         >
           {({ pressed }) => <Text style={[estilos.textoAccion, pressed && estilos.textoInvertido]}>{accion.texto}</Text>}
         </Pressable>
+      ) : contador ? (
+        <Etiqueta texto={contador.texto} tono={contador.tono} />
       ) : detalle ? (
         <Text style={estilos.detalle}>{detalle}</Text>
       ) : null}

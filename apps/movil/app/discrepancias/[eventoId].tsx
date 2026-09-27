@@ -13,6 +13,7 @@ import {
   Encabezado,
   EstadoVacio,
   Esqueleto,
+  Etiqueta,
   FilaDato,
   LineaEsqueleto,
   Personas,
@@ -402,7 +403,13 @@ function Resolucion({ eventoId }: { eventoId: string }) {
           </PanelEncabezado>
         }
       />
-      <Text style={estilos.faltan}>{faltan === 1 ? 'Falta 1 diferencia por resolver' : `Faltan ${faltan} diferencias por resolver`}</Text>
+      {/* Trabajo pendiente: en pastilla tintada, no en texto gris. */}
+      <View style={estilos.faltan}>
+        <Etiqueta
+          texto={faltan === 1 ? 'Falta 1 diferencia por resolver' : `Faltan ${faltan} diferencias por resolver`}
+          tono="discrepancia"
+        />
+      </View>
 
       <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
         <ScrollView
@@ -854,8 +861,7 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSobreColor,
   },
   faltan: {
-    ...TIPOGRAFIA.micro,
-    color: COLORES.textoSecundario,
+    alignItems: 'flex-start',
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.sm,
   },

@@ -99,7 +99,7 @@ interface Edicion {
 interface SeccionFamilia {
   clave: string;
   titulo: string;
-  /** Solo identifica la familia (punto y pastilla); nunca el estado de una fila. */
+  /** Solo identifica la familia (su banda); nunca el estado de una fila. */
   color: ColorFamilia | null;
   productos: readonly ProductoConteo[];
   /** Filas visuales: 1 o 2 productos según las columnas. */
@@ -551,6 +551,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             if (codeEditado) setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS * 4);
           }}
           renderSectionHeader={({ section }) => <EncabezadoFamilia seccion={section} conteo={conteo} />}
+          renderSectionFooter={() => <View style={estilos.pieFamilia} />}
           renderItem={({ item: fila }) => (
             <View style={estilos.filaColumnas}>
               {fila.map((producto) => (
@@ -842,24 +843,28 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 }
 
 /**
- * Fila simple sobre el fondo de pantalla, fija arriba mientras se recorre su
- * familia. El color de la familia (si el supervisor le dio uno) va SOLO en el
- * punto y en la pastilla del avance: identifica, no comunica estado. Sin
- * color, todo neutro. Completa, la pastilla pasa a "Completa" en verde.
+ * Banda a todo el ancho, fija arriba mientras se recorre su familia: con 60
+ * productos, es lo que dice en qué parte de la lista vas. Con color de familia
+ * (lo da el supervisor) la banda va en su tinte, el nombre y el avance en su
+ * tono fuerte y una línea del sólido abajo: identifica, no comunica estado, y
+ * no toca las filas. Sin color, gris claro con texto normal. Completa, el
+ * avance pasa a "Completa" en verde.
  */
 function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conteo: EstadoConteo }) {
   const { capturados, total } = progreso(seccion.productos, conteo);
   const completa = capturados === total;
   const tonos = seccion.color ? TONOS_COLOR_FAMILIA[seccion.color] : null;
-  const fondoPastilla = completa ? COLORES.capturadoFondo : (tonos?.tinte ?? COLORES.superficieHonda);
+  const fondoBanda = tonos?.tinte ?? COLORES.superficieHonda;
+  // Sin color, la línea toma el fondo de la banda: todas miden lo mismo.
+  const linea = tonos?.solido ?? fondoBanda;
+  const textoNombre = tonos?.texto ?? COLORES.texto;
   const textoPastilla = completa ? COLORES.capturadoHondo : (tonos?.texto ?? COLORES.textoSecundario);
   return (
-    <View style={estilos.encabezadoFamilia} accessibilityRole="header">
-      {tonos && <View style={[estilos.puntoFamilia, { backgroundColor: tonos.solido }]} />}
-      <Text style={estilos.nombreFamilia} numberOfLines={1}>
+    <View style={[estilos.encabezadoFamilia, { backgroundColor: fondoBanda, borderBottomColor: linea }]} accessibilityRole="header">
+      <Text style={[estilos.nombreFamilia, { color: textoNombre }]} numberOfLines={1}>
         {formatearNombreFamilia(seccion.titulo)}
       </Text>
-      <View style={[estilos.pastillaFamilia, { backgroundColor: fondoPastilla }]}>
+      <View style={estilos.pastillaFamilia}>
         <Text
           style={[estilos.conteoFamilia, { color: textoPastilla }]}
           accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
@@ -1325,31 +1330,31 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     paddingBottom: ESPACIADO.xxxl,
   },
-  // Sobre el fondo de pantalla, sin banda: el fondo propio lo tapa al fijarse arriba.
+  // Banda a todo el ancho (sin los márgenes de la lista), opaca: tapa las filas al fijarse arriba.
   encabezadoFamilia: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
     marginHorizontal: -ESPACIADO.md,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.lg,
-    paddingBottom: ESPACIADO.xs,
-    backgroundColor: COLORES.fondo,
-  },
-  puntoFamilia: {
-    width: 9,
-    height: 9,
-    borderRadius: RADIOS.completo,
+    paddingVertical: ESPACIADO.sm + ESPACIADO.xs,
+    backgroundColor: COLORES.superficieHonda,
+    borderBottomWidth: BORDES.grueso,
+    borderBottomColor: COLORES.superficieHonda,
   },
   nombreFamilia: {
     flex: 1,
     ...TIPOGRAFIA.familia,
-    color: COLORES.texto,
   },
   pastillaFamilia: {
     paddingHorizontal: ESPACIADO.sm + ESPACIADO.xs,
     paddingVertical: 2,
     borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.superficie,
+  },
+  // Aire entre la última fila de una familia y la banda de la siguiente.
+  pieFamilia: {
+    height: ESPACIADO.lg,
   },
   conteoFamilia: {
     ...TIPOGRAFIA.etiqueta,

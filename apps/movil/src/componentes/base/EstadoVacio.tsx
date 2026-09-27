@@ -23,7 +23,7 @@ interface Props {
   accion?: AccionEstado;
   /** Una alternativa menor (p. ej. "Volver" junto a "Reintentar"). */
   secundaria?: AccionEstado;
-  /** Verde cuando lo vacío es buena noticia (nada pendiente). */
+  /** Verde (`capturado`) cuando lo vacío es buena noticia (todo en orden); `marca` cuando es informativo. */
   tono?: ColorTono;
   /** Dentro de una sección o un formulario: sin el aire de pantalla completa. */
   enLinea?: boolean;
@@ -33,7 +33,8 @@ interface Props {
 /**
  * Una lista vacía o una pantalla sin contenido: explica por qué está así y
  * qué hacer, alineado a la izquierda como cualquier texto de lectura. Nunca un
- * "no hay datos" gris y suelto.
+ * "no hay datos" gris y suelto: lo encabeza el círculo tintado de 72 px con su
+ * ícono en el color fuerte, que dice de un vistazo si es buena noticia.
  */
 export function EstadoVacio({ icono, titulo, detalle, accion, secundaria, tono = 'marca', enLinea = false, style }: Props) {
   return (
@@ -94,7 +95,7 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
   },
   titulo: {
-    ...TIPOGRAFIA.titulo,
+    ...TIPOGRAFIA.tituloVacio,
     color: COLORES.texto,
   },
   detalle: {

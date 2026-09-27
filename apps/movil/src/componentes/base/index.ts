@@ -7,7 +7,7 @@ export { EstadoVacio, type AccionEstado } from './EstadoVacio';
 export { Etiqueta, type RellenoEtiqueta, type TamanoEtiqueta, type TonoEtiqueta } from './Etiqueta';
 export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
-export { Chevron, Icono, Lapiz, Palomita, type NombreIcono } from './Icono';
+export { Chevron, Icono, IconoTarea, Lapiz, Palomita, type NombreIcono } from './Icono';
 export { Datos, Personas, type Dato, type Persona } from './Personas';
 export { Seccion, TituloSeccion } from './Seccion';
 export { SEPARACION_TARJETAS, Tarjeta, type BandaTarjeta } from './Tarjeta';

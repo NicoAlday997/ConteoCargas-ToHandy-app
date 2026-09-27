@@ -64,6 +64,7 @@ import {
   ANCHO_MODAL,
   BORDES,
   CIFRAS,
+  COLOR_TAREA,
   COLORES,
   ESPACIADO,
   ETIQUETA_DATO,
@@ -468,7 +469,11 @@ function EncabezadoFamilia({
         <Text style={estilos.textoFamilia} numberOfLines={2}>
           {formatearNombreFamilia(familia.titulo)}
         </Text>
-        <Text style={estilos.cantidadFamilia}>{cantidad}</Text>
+        {porConfirmar ? (
+          <Etiqueta texto={cantidad} tono={COLOR_TAREA.empaques} />
+        ) : (
+          <Text style={estilos.cantidadFamilia}>{cantidad}</Text>
+        )}
       </View>
       {conAcciones && (
         <Pressable
@@ -1227,7 +1232,7 @@ const estilos = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     columnGap: RITMO.relacionado,
   },

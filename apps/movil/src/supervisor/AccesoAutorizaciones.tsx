@@ -44,6 +44,7 @@ export function AccesoAutorizaciones() {
     return (
       <GrupoMenu>
         <FilaMenu
+          tarea="autorizar"
           texto="Autorizar cargas"
           detalle={sinEnviar ?? (cargas ? 'Ninguna carga espera tu autorización' : undefined)}
           onPress={abrir}

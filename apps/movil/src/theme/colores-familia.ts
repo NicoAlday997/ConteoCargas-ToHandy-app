@@ -4,13 +4,13 @@
  * comprueba que coincidan). El supervisor le da a cada familia uno de estos
  * colores; por omisión ninguna tiene y se ven neutras.
  *
- * El color de familia IDENTIFICA: solo el punto y la pastilla del encabezado
- * de familia en el conteo. El estado de una fila lo COMUNICA otro sistema
- * (ver tokens.ts); nunca se pisan.
+ * El color de familia IDENTIFICA: solo la banda del encabezado de familia en
+ * el conteo. El estado de una fila lo COMUNICA otro sistema (ver tokens.ts);
+ * nunca se pisan.
  *
- * - solido: el punto; al menos 3:1 sobre el fondo de pantalla.
- * - tinte: fondo de la pastilla, el sólido al 15 % sobre el fondo de pantalla.
- * - texto: texto de la pastilla; al menos 4.5:1 sobre el tinte.
+ * - solido: la línea de 3 px bajo la banda; al menos 3:1 sobre el fondo de pantalla.
+ * - tinte: fondo de la banda, el sólido al 15 % sobre el fondo de pantalla.
+ * - texto: nombre de la familia (4.5:1 sobre el tinte) y avance en la pastilla blanca.
  */
 
 export const COLORES_FAMILIA = [

@@ -69,8 +69,8 @@ describe('contraste: encabezado azul', () => {
 describe('contraste: filas de conteo', () => {
   comprobar(
     [
-      ['FALTA: nombre', 'texto', 'superficie'],
-      ['FALTA: pastilla del factor', 'discrepanciaTexto', 'discrepanciaFondo'],
+      ['SIN CONTAR: nombre', 'texto', 'superficie'],
+      ['SIN CONTAR: pastilla del factor', 'textoSecundario', 'superficieHonda'],
       ['CONTADO: nombre', 'texto', 'capturadoFondo'],
       ['CONTADO: pastilla del factor', 'textoSobreColor', 'capturadoHondo'],
       ['CONTADO: número en el campo blanco', 'texto', 'superficie'],
@@ -87,7 +87,7 @@ describe('contraste: filas de conteo', () => {
   // Total de 33 px negrita: texto grande.
   comprobar(
     [
-      ['FALTA: total (33 px negrita)', 'discrepanciaHonda', 'superficie'],
+      ['SIN CONTAR: total "—" (33 px negrita)', 'textoTerciario', 'superficie'],
       ['CONTADO: total (33 px negrita)', 'capturadoHondo', 'capturadoFondo'],
       ['NO LLEVA: total (33 px negrita)', 'pendiente', 'pendienteFondo'],
       ['TECLEANDO: total (33 px negrita)', 'textoSobreColor', 'marca'],
@@ -118,8 +118,9 @@ describe('contraste: excepciones documentadas de la paleta', () => {
     ['texto de la fila "no lleva"', 'pendiente', 'pendienteFondo', 3.9],
     // 4.28:1. Pastilla "Completa" del encabezado de familia (13 px seminegrita) y unidad del total contado.
     ['pastilla "Completa"', 'capturadoHondo', 'capturadoFondo', 4.28],
-    // 1.88:1. Borde ámbar de la fila FALTA: la fila se distingue por su fondo blanco sobre el fondo de pantalla; el borde refuerza.
-    ['borde de la fila FALTA', 'discrepancia', 'fondo', 1.88],
+    // 1.14:1. Fila SIN CONTAR: neutra a propósito (es el estado normal, no un aviso). Se separa del fondo por su blanco y su borde gris claro (1.37:1 sobre blanco).
+    ['fila SIN CONTAR: blanco sobre el fondo de pantalla', 'superficie', 'fondo', 1.14],
+    ['borde de la fila SIN CONTAR', 'bordeSinContar', 'superficie', 1.37],
     // 2.18:1. Borde turquesa de la fila CONTADO: igual, la fila se distingue por su fondo tintado.
     ['borde de la fila CONTADO', 'capturado', 'fondo', 2.18],
     // 4.51:1 justo: subtítulo de 12 px del encabezado azul.
@@ -134,6 +135,26 @@ describe('contraste: excepciones documentadas de la paleta', () => {
   it('el rótulo terciario NO se usa sobre el fondo de pantalla (no llega ni a 3:1)', () => {
     assert.ok(razonContraste(COLORES.textoTerciario, COLORES.fondo) < MINIMO_GRANDE);
   });
+});
+
+describe('contraste: inicio y menús', () => {
+  comprobar(
+    [
+      ['nombre sobre la banda de identidad', 'texto', 'marcaTinte'],
+      ['rol sobre la banda de identidad', 'textoSecundario', 'marcaTinte'],
+      ['iniciales sobre el círculo de marca', 'textoSobreColor', 'marca'],
+      ['"Completa" en la pastilla blanca de la banda de familia', 'capturadoHondo', 'superficie'],
+    ],
+    MINIMO_TEXTO,
+  );
+});
+
+describe('contraste: íconos de tarea y de estado vacío (gráficos)', () => {
+  for (const [nombre, tono] of Object.entries(TONOS)) {
+    it(`${nombre}.solido sobre ${nombre}.fondo ≥ ${MINIMO_GRANDE}:1`, () => {
+      assert.ok(razonContraste(tono.solido, tono.fondo) >= MINIMO_GRANDE);
+    });
+  }
 });
 
 describe('contraste: pastillas de estado (tinte + texto hondo)', () => {

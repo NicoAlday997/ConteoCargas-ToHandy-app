@@ -199,8 +199,8 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
         />
       )}
 
-      <Grupo titulo="Listas para verificar" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
-      <Grupo titulo="Bloqueadas por corte pendiente" cargas={bloqueadas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
+      <Grupo titulo="Listas para verificar" tono="capturado" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
+      <Grupo titulo="Bloqueadas por corte pendiente" tono="discrepancia" cargas={bloqueadas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
       <Grupo titulo="Las verifica otra persona" cargas={deOtros} abriendo={abriendo} />
 
       <PanelBloqueada
@@ -215,18 +215,22 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
 
 function Grupo({
   titulo,
+  tono,
   cargas,
   abriendo,
   onPress,
 }: {
   titulo: string;
+  /** Solo lo que es trabajo propio lleva su cifra en pastilla tintada; lo de otros, en texto. */
+  tono?: ColorTono;
   cargas: CargaEnCola[];
   abriendo: string | null;
   onPress?: (carga: CargaEnCola) => void;
 }) {
   if (cargas.length === 0) return null;
+  const cifra = String(cargas.length);
   return (
-    <Seccion texto={titulo} detalle={String(cargas.length)} nivel="grupo">
+    <Seccion texto={titulo} contador={tono ? { texto: cifra, tono } : null} detalle={cifra} nivel="grupo">
       {cargas.map((c) => (
         <FilaCarga key={c.id} carga={c} abriendo={abriendo === c.id} deshabilitada={abriendo !== null} onPress={onPress} />
       ))}

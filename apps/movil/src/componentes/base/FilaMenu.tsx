@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
-import { COLORES, ELEVACION, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
-import { Chevron } from './Icono';
+import { COLORES, ELEVACION, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type Tarea } from '../../theme/tokens';
+import { Chevron, IconoTarea } from './Icono';
 
 /**
  * Opciones de navegación agrupadas en un solo bloque blanco, sin líneas entre
@@ -16,6 +16,11 @@ interface Props {
   texto: string;
   /** Lo que hay detrás, en una línea que se retira. */
   detalle?: string;
+  /**
+   * La tarea a la que lleva: pone a la izquierda su ícono en su color (el
+   * mismo en toda la app, ver COLOR_TAREA). Toda fila de navegación lleva una.
+   */
+  tarea?: Tarea;
   onPress: () => void;
   /** Salir, cerrar sesión: sin flecha, porque no lleva a otra pantalla. */
   salida?: boolean;
@@ -23,7 +28,7 @@ interface Props {
   accessibilityHint?: string;
 }
 
-export function FilaMenu({ texto, detalle, onPress, salida = false, cargando = false, accessibilityHint }: Props) {
+export function FilaMenu({ texto, detalle, tarea, onPress, salida = false, cargando = false, accessibilityHint }: Props) {
   return (
     <Pressable
       onPress={onPress}
@@ -35,6 +40,7 @@ export function FilaMenu({ texto, detalle, onPress, salida = false, cargando = f
     >
       {({ pressed }) => (
         <>
+          {tarea && <IconoTarea tarea={tarea} />}
           <View style={estilos.textos}>
             <Text style={[estilos.texto, salida && estilos.textoSalida, pressed && estilos.invertido]}>
               {cargando ? 'Un momento…' : texto}

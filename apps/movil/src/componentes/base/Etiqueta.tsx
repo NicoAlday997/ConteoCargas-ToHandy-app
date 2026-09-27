@@ -8,8 +8,9 @@ import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, 
  * - `neutro`: fondo gris claro; para lo que no pide ninguna decisión.
  * - `referencia`: fondo gris claro y texto secundario; un dato que se consulta
  *   y no es un estado, como el factor de empaque confirmado. Se retira.
- * `marca` no es para etiquetas: el azul es para la acción principal y lo que
- * se edita (ver la regla del azul en tokens.ts).
+ * `marca` no es para etiquetas de estado: el azul es para la acción principal
+ * y lo que se edita (ver la regla del azul en tokens.ts). Solo lo usa el
+ * contador de trabajo pendiente de una tarea cuyo color es `marca` (COLOR_TAREA).
  */
 export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro' | 'referencia';
 

@@ -5,10 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORES, ESPACIADO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
 import { Chevron } from './Icono';
 
-/** Botón de volver sobre azul: un tono más claro que la marca, para que se vea como botón. */
-const FONDO_VOLVER_MARCA = '#3A62EF';
 const LADO_VOLVER = 36;
-const RADIO_VOLVER = 11;
 
 interface Props {
   titulo: string;
@@ -172,10 +169,10 @@ const estilos = StyleSheet.create({
     height: LADO_VOLVER,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIO_VOLVER,
+    borderRadius: RADIOS.icono,
   },
   botonVolverMarca: {
-    backgroundColor: FONDO_VOLVER_MARCA,
+    backgroundColor: COLORES.marcaClara,
   },
   botonVolverClaro: {
     backgroundColor: COLORES.superficie,

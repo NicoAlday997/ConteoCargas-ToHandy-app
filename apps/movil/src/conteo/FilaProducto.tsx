@@ -38,8 +38,6 @@ const ANCHO_TOTAL = 84;
 const ANCHO_CERO = 52;
 /** Pastilla del factor: mismo ancho en todas las filas, así quedan en columna. */
 const ANCHO_FACTOR = 60;
-/** Borde de la fila "no lleva": un gris apenas más hondo que su fondo. */
-const BORDE_NO_LLEVA = '#D3D6E0';
 
 /** "Cajas" para lo que se vende completo; "Paquetes" / "Sueltas" para lo demás. */
 export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): string {
@@ -52,15 +50,17 @@ export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): stri
 /**
  * Cómo se ve una fila. El estado MANDA y tiñe la fila completa (fondo, borde,
  * total, pastilla del factor); el color de la familia nunca entra aquí.
- * - falta: sin capturar; lo único que debe llamar la atención.
+ * - sin-contar: el estado NORMAL al abrir una carga, no un aviso: neutro, sin
+ *   ámbar. El color aparece conforme se avanza; el ámbar queda para los avisos
+ *   dentro de la fila (empaque sin confirmar, sueltas, rechazo).
  * - contado: con cantidad.
  * - no-lleva: marcado en cero; se retira.
  * - tecleando: la fila entera en marca; imposible perder dónde vas.
  */
-export type AspectoFila = 'falta' | 'contado' | 'no-lleva' | 'tecleando';
+export type AspectoFila = 'sin-contar' | 'contado' | 'no-lleva' | 'tecleando';
 
 const ASPECTO_DE_ESTADO: Record<EstadoFila, AspectoFila> = {
-  'sin-capturar': 'falta',
+  'sin-capturar': 'sin-contar',
   'con-cantidad': 'contado',
   'en-cero': 'no-lleva',
 };
@@ -79,14 +79,14 @@ interface ColoresAspecto {
 }
 
 const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
-  falta: {
+  'sin-contar': {
     fondo: COLORES.superficie,
-    borde: COLORES.discrepancia,
+    borde: COLORES.bordeSinContar,
     nombre: COLORES.texto,
-    total: COLORES.discrepanciaHonda,
+    total: COLORES.textoTerciario,
     unidad: COLORES.textoSecundario,
-    factorFondo: COLORES.discrepanciaFondo,
-    factorTexto: COLORES.discrepanciaTexto,
+    factorFondo: COLORES.superficieHonda,
+    factorTexto: COLORES.textoSecundario,
     campo: COLORES.superficieHonda,
     campoTexto: COLORES.texto,
   },
@@ -103,7 +103,7 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
   },
   'no-lleva': {
     fondo: COLORES.pendienteFondo,
-    borde: BORDE_NO_LLEVA,
+    borde: COLORES.bordeNoLleva,
     nombre: COLORES.pendiente,
     total: COLORES.pendiente,
     unidad: COLORES.pendiente,
@@ -364,7 +364,7 @@ function useDestello(estado: EstadoFila) {
 
 /**
  * Discreta a propósito: con 73 filas, una marca llamativa en cada una compite
- * con lo único que debe llamar la atención (lo que falta por contar). El
+ * con los avisos ámbar de la fila, lo único que debe llamar la atención. El
  * estado general está en el encabezado; aquí solo se avisa lo que aún no
  * llegó (↑) o lo que el servidor rechazó (!). Lo enviado no lleva marca: la
  * palomita de "contado" ya dice que está.
@@ -387,7 +387,10 @@ function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boole
   );
 }
 
-/** Bloque tintado del estado, con su texto oscuro: se lee con poca luz y no suma alto a la fila. */
+/**
+ * Bloque tintado con su texto oscuro: se lee con poca luz y no suma alto a la
+ * fila. Es lo único ámbar de la lista de conteo, por eso destaca.
+ */
 function Aviso({ texto, error = false }: { texto: string; error?: boolean }) {
   return (
     <View style={[estilos.aviso, error && estilos.avisoError]}>

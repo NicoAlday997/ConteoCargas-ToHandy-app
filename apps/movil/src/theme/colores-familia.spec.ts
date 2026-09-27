@@ -22,8 +22,12 @@ describe('colores de familia', () => {
       assert.ok(razonContraste(texto, tinte) >= 4.5);
     });
 
-    it(`${color}: el punto se distingue del fondo de pantalla (≥ 3:1)`, () => {
+    it(`${color}: la línea sólida se distingue del fondo de pantalla (≥ 3:1)`, () => {
       assert.ok(razonContraste(solido, COLORES.fondo) >= 3);
+    });
+
+    it(`${color}: el avance en la pastilla blanca de la banda ≥ 4.5:1`, () => {
+      assert.ok(razonContraste(texto, COLORES.superficie) >= 4.5);
     });
 
     it(`${color}: el tinte es el sólido al 15 % sobre el fondo de pantalla`, () => {

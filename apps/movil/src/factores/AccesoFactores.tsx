@@ -34,6 +34,7 @@ export function AccesoFactores() {
     return (
       <GrupoMenu>
         <FilaMenu
+          tarea="empaques"
           texto="Empaque de productos"
           detalle={pendientes === 0 ? 'Todos los productos tienen su empaque confirmado' : undefined}
           onPress={abrir}

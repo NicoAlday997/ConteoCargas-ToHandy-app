@@ -93,76 +93,98 @@ export default function PantallaInicio() {
 
   // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones, los empaques y las plantillas. El
   // historial es para los tres: qué ve cada quien lo decide el servidor.
-  // Densidad generosa: son pocas acciones y cada una importa. Arriba, sobre el
-  // fondo de pantalla y sin bloque azul, quién está en sesión con el nombre
-  // grande; debajo, las acciones separadas por aire; hasta abajo, suelto,
-  // cerrar sesión.
+  // Densidad generosa: son pocas acciones y cada una importa. Arriba, en una
+  // banda tintada de marca a todo el ancho, quién está en sesión con sus
+  // iniciales y el nombre grande; debajo, las acciones separadas por aire;
+  // hasta abajo, suelto, cerrar sesión.
+  const nombre = usuario?.nombreCompleto ?? 'Usuario';
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={estilos.cuerpo}
-        contentContainerStyle={[estilos.contenido, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}
-      >
-        <View style={estilos.identidad}>
-          <Text style={estilos.nombre} accessibilityRole="header">
-            {usuario?.nombreCompleto ?? 'Usuario'}
-          </Text>
-          {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
+      <ScrollView style={estilos.cuerpo} contentContainerStyle={[estilos.scroll, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}>
+        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.lg }]}>
+          <View style={[estilos.columna, estilos.identidad]}>
+            <View style={estilos.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Text style={estilos.iniciales}>{iniciales(nombre)}</Text>
+            </View>
+            <View style={estilos.textosIdentidad}>
+              <Text style={estilos.nombre} accessibilityRole="header">
+                {nombre}
+              </Text>
+              {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
+            </View>
+          </View>
         </View>
-        {cuenta && usuario && (
-          <>
-            <AccesoConflictos />
-            <AccionesCarga usuario={usuario} />
-          </>
-        )}
-        {/* Primero lo que frena al camión: ninguna carga llega a Handy sin autorización. */}
-        {usuario?.rolApp === 'SUPERVISOR' && <AccesoAutorizaciones />}
-        {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
-        {usuario?.rolApp === 'SUPERVISOR' && <AccesoFactores />}
-        <GrupoMenu>
-          {usuario?.rolApp === 'SUPERVISOR' && (
-            <FilaMenu
-              texto="Plantillas de carga"
-              detalle="Qué productos ve cada ruta al contar"
-              onPress={() => router.push('/plantillas')}
-            />
+        <View style={[estilos.columna, estilos.contenido]}>
+          {cuenta && usuario && (
+            <>
+              <AccesoConflictos />
+              <AccionesCarga usuario={usuario} />
+            </>
           )}
-          {usuario?.rolApp === 'SUPERVISOR' && (
-            <FilaMenu
-              texto="Colores de familias"
-              detalle="Para ubicar cada familia más rápido al contar"
-              onPress={() => router.push('/familias')}
-            />
-          )}
-          {usuario?.rolApp === 'SUPERVISOR' && (
-            <FilaMenu
-              texto="Días no laborables"
-              detalle="Festivos, paros o cierres en que no sale ningún camión"
-              onPress={() => router.push('/dias-no-laborables')}
-            />
-          )}
-          {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
-        </GrupoMenu>
-        <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
+          {/* Primero lo que frena al camión: ninguna carga llega a Handy sin autorización. */}
+          {usuario?.rolApp === 'SUPERVISOR' && <AccesoAutorizaciones />}
+          {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
+          {usuario?.rolApp === 'SUPERVISOR' && <AccesoFactores />}
+          <GrupoMenu>
+            {usuario?.rolApp === 'SUPERVISOR' && (
+              <FilaMenu
+                tarea="plantillas"
+                texto="Plantillas de carga"
+                detalle="Qué productos ve cada ruta al contar"
+                onPress={() => router.push('/plantillas')}
+              />
+            )}
+            {usuario?.rolApp === 'SUPERVISOR' && (
+              <FilaMenu
+                tarea="coloresFamilia"
+                texto="Colores de familias"
+                detalle="Para ubicar cada familia más rápido al contar"
+                onPress={() => router.push('/familias')}
+              />
+            )}
+            {usuario?.rolApp === 'SUPERVISOR' && (
+              <FilaMenu
+                tarea="diasNoLaborables"
+                texto="Días no laborables"
+                detalle="Festivos, paros o cierres en que no sale ningún camión"
+                onPress={() => router.push('/dias-no-laborables')}
+              />
+            )}
+            {usuario && <FilaMenu tarea="historial" texto="Historial de cargas" onPress={() => router.push('/historial')} />}
+          </GrupoMenu>
+          <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+/** "Irvin Alday" → "IA"; una sola palabra, su primera letra. */
+function iniciales(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/).filter(Boolean);
+  const letras = palabras.length > 1 ? [palabras[0], palabras[palabras.length - 1]] : palabras;
+  return letras.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
+}
+
 /** La forma del inicio mientras se lee la sesión: la banda con el nombre y el bloque de acciones. */
 function EsqueletoInicio() {
+  const margenes = useSafeAreaInsets();
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
-      <View style={[estilos.cuerpo, estilos.contenido]}>
-        <Esqueleto etiqueta="Abriendo la app" style={estilos.identidad}>
-          <LineaEsqueleto nivel="display" ancho="70%" />
-          <LineaEsqueleto nivel="cuerpo" ancho="30%" />
-        </Esqueleto>
-        <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
-          <LineaEsqueleto nivel="subtitulo" ancho="40%" />
-          <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
-          <BloqueEsqueleto alto={TOQUE_MINIMO} />
-        </Esqueleto>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
+      <View style={estilos.cuerpo}>
+        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.lg }]}>
+          <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad]}>
+            <LineaEsqueleto nivel="display" ancho="70%" />
+            <LineaEsqueleto nivel="cuerpo" ancho="30%" />
+          </Esqueleto>
+        </View>
+        <View style={[estilos.columna, estilos.contenido]}>
+          <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
+            <LineaEsqueleto nivel="subtitulo" ancho="40%" />
+            <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
+            <BloqueEsqueleto alto={TOQUE_MINIMO} />
+          </Esqueleto>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -803,9 +825,43 @@ const estilos = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
+  scroll: {
+    flexGrow: 1,
+  },
+  // A todo el ancho, en el tinte de marca: quién está en sesión deja de ser blanco sobre blanco.
+  bandaIdentidad: {
+    paddingHorizontal: RITMO.margen,
+    paddingTop: ESPACIADO.lg,
+    paddingBottom: ESPACIADO.xl,
+    backgroundColor: COLORES.marcaTinte,
+  },
+  // Una columna legible también en tablet; la banda sí va a todo el ancho.
+  columna: {
+    width: '100%',
+    maxWidth: ANCHO_CONTENIDO,
+    alignSelf: 'center',
+  },
   identidad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RITMO.relacionado + ESPACIADO.xs,
+  },
+  avatar: {
+    width: TOQUE_MINIMO,
+    height: TOQUE_MINIMO,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.marca,
+  },
+  iniciales: {
+    ...TIPOGRAFIA.tituloBarra,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.textoSobreColor,
+  },
+  textosIdentidad: {
+    flex: 1,
     gap: RITMO.interno,
-    paddingTop: ESPACIADO.md,
   },
   nombre: {
     ...TIPOGRAFIA.display,
@@ -839,12 +895,9 @@ const estilos = StyleSheet.create({
   // Generosa: el aire entre secciones las hace leerse como decisiones distintas.
   contenido: {
     flexGrow: 1,
-    width: '100%',
-    maxWidth: ANCHO_CONTENIDO,
-    alignSelf: 'center',
     gap: RITMO.grupo,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.md,
+    paddingTop: ESPACIADO.xl,
   },
   esqueletoAcciones: {
     gap: RITMO.relacionado,

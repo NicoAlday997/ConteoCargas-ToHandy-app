@@ -8,11 +8,16 @@ import type { TextStyle } from 'react-native';
  * decoran: un color, un estado.
  *
  * DOS SISTEMAS DE COLOR QUE NUNCA SE PISAN.
- *   - El ESTADO de una fila (falta, contado, no lleva, tecleando) tiñe la fila
- *     completa: fondo, borde, total y pastilla del factor.
+ *   - El ESTADO de una fila (sin contar, contado, no lleva, tecleando) tiñe la
+ *     fila completa: fondo, borde, total y pastilla del factor.
  *   - El color de FAMILIA (lo asigna el supervisor, ver colores-familia.ts)
- *     solo identifica: el punto y la pastilla del encabezado de familia, y
- *     nada más.
+ *     solo identifica: la banda del encabezado de familia, y nada más.
+ *
+ * LO QUE FALTA CONTAR ES EL ESTADO NORMAL, NO UN AVISO: va neutro (blanco con
+ * borde gris claro) y el color aparece conforme se avanza. El ÁMBAR
+ * (`discrepancia`) es para avisos reales (empaque sin confirmar, sueltas que
+ * completan un paquete, diferencias): si lo que falta fuera ámbar, al abrir
+ * una carga la pantalla entera sería alarma y el ámbar dejaría de significar.
  *
  * EL AZUL (`marca`) es el encabezado de las pantallas de trabajo, la acción
  * principal (un botón por pantalla) y lo que se está tecleando. Nunca un
@@ -52,6 +57,10 @@ export const COLORES = {
   divisor: '#DDE2EE',
   /** Contorno de controles que no son campos (opciones, botón de contorno): 3:1 sobre blanco. */
   borde: '#8B92A8',
+  /** Borde de la fila SIN CONTAR: gris claro; la fila se distingue por su blanco sobre el fondo. */
+  bordeSinContar: '#D8DCE8',
+  /** Borde de la fila NO LLEVA: un gris apenas más hondo que su fondo. */
+  bordeNoLleva: '#D3D6E0',
   /** Oscurece lo de atrás de un modal. */
   velo: 'rgba(19, 23, 42, 0.6)',
 
@@ -64,6 +73,8 @@ export const COLORES = {
   /** Texto que se retira sobre azul. */
   marcaTenue: '#C9D7FF',
   marcaTinte: '#E7EDFF',
+  /** Botón de volver sobre azul: un tono más claro que la marca, para que se vea como botón. */
+  marcaClara: '#3A62EF',
 
   // CONTADO
   capturado: '#14B8A6',
@@ -71,7 +82,7 @@ export const COLORES = {
   capturadoFondo: '#D6F5F0',
   capturadoTexto: '#0B3B37',
 
-  // FALTA
+  // AVISO (ámbar): solo lo que pide atención, nunca lo que falta contar
   discrepancia: '#F59E0B',
   discrepanciaHonda: '#D97706',
   discrepanciaFondo: '#FEF3C7',
@@ -108,6 +119,30 @@ export const TONOS: Record<ColorTono, { solido: string; fondo: string; texto: st
   pendiente: { solido: COLORES.pendiente, fondo: COLORES.pendienteFondo, texto: COLORES.textoSecundario },
   discrepancia: { solido: COLORES.discrepanciaTexto, fondo: COLORES.discrepanciaFondo, texto: COLORES.discrepanciaTexto },
   error: { solido: COLORES.error, fondo: COLORES.errorFondo, texto: COLORES.errorTexto },
+};
+
+/**
+ * Cada tipo de tarea tiene UN color, el mismo en toda la app: el cuadro del
+ * ícono en el menú, el de su pantalla y el de sus avisos. En el menú el color
+ * ubica la tarea; no es un estado.
+ */
+export type Tarea =
+  | 'autorizar'
+  | 'empaques'
+  | 'plantillas'
+  | 'historial'
+  | 'personas'
+  | 'diasNoLaborables'
+  | 'coloresFamilia';
+
+export const COLOR_TAREA: Record<Tarea, ColorTono> = {
+  autorizar: 'marca',
+  empaques: 'discrepancia',
+  plantillas: 'capturado',
+  historial: 'pendiente',
+  personas: 'marca',
+  diasNoLaborables: 'discrepancia',
+  coloresFamilia: 'capturado',
 };
 
 export const ESPACIADO = {
@@ -156,6 +191,7 @@ interface EstiloTexto {
  * - avance: el "4" del avance en el encabezado de conteo.
  * - campo: el número dentro de un campo de captura.
  * - tituloBarra: título del encabezado azul.
+ * - tituloVacio: título de un estado vacío.
  * - subtitulo: el dato bajo su rótulo, el texto de un botón, el nombre de un producto.
  * - cuerpo: texto corrido e instrucciones.
  * - familia: nombre de la familia en su encabezado de la lista de conteo.
@@ -171,6 +207,7 @@ export const TIPOGRAFIA = {
   avance: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 30 },
   campo: { fontFamily: FUENTE.semiNegrita, fontSize: 21, lineHeight: 26 },
   tituloBarra: { fontFamily: FUENTE.semiNegrita, fontSize: 19, lineHeight: 24 },
+  tituloVacio: { fontFamily: FUENTE.semiNegrita, fontSize: 20, lineHeight: 26 },
   subtitulo: { fontFamily: FUENTE.semiNegrita, fontSize: 17, lineHeight: 22 },
   cuerpo: { fontFamily: FUENTE.regular, fontSize: 16, lineHeight: 22 },
   familia: { fontFamily: FUENTE.semiNegrita, fontSize: 15, lineHeight: 20 },
@@ -226,6 +263,8 @@ export const RADIOS = {
   chico: 6,
   /** Campos, teclas, botones, el botón 0. */
   medio: 12,
+  /** Cuadro del ícono de una fila de menú. */
+  icono: 11,
   /** Paneles dentro del encabezado azul. */
   panel: 14,
   /** Tarjetas, filas de conteo y modales. */
