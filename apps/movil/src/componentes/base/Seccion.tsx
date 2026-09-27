@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
-import { Etiqueta } from './Etiqueta';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import { Etiqueta, type TonoEtiqueta } from './Etiqueta';
+import { Pulsable } from './Pulsable';
 
 interface PropsTitulo {
   texto: string;
@@ -12,7 +13,7 @@ interface PropsTitulo {
    * A la derecha, en lugar del detalle: cuánto trabajo espera ("3 cargas"),
    * en una pastilla tintada del color de la tarea. Nunca en texto gris.
    */
-  contador?: { texto: string; tono: ColorTono } | null;
+  contador?: { texto: string; tono: TonoEtiqueta; relleno?: 'solida' | 'tintada' } | null;
   /** A la derecha, en lugar del detalle: una acción del grupo (p. ej. "Actualizar"). */
   accion?: { texto: string; onPress: () => void; accessibilityLabel?: string };
   /**
@@ -33,7 +34,7 @@ export function TituloSeccion({ texto, detalle, contador, accion, nivel = 'secci
         {texto}
       </Text>
       {accion ? (
-        <Pressable
+        <Pulsable
           onPress={accion.onPress}
           accessibilityRole="button"
           accessibilityLabel={accion.accessibilityLabel}
@@ -41,9 +42,9 @@ export function TituloSeccion({ texto, detalle, contador, accion, nivel = 'secci
           style={({ pressed }) => [estilos.accion, pressed && estilos.accionPresionada]}
         >
           {({ pressed }) => <Text style={[estilos.textoAccion, pressed && estilos.textoInvertido]}>{accion.texto}</Text>}
-        </Pressable>
+        </Pulsable>
       ) : contador ? (
-        <Etiqueta texto={contador.texto} tono={contador.tono} />
+        <Etiqueta texto={contador.texto} tono={contador.tono} relleno={contador.relleno} />
       ) : detalle ? (
         <Text style={estilos.detalle}>{detalle}</Text>
       ) : null}

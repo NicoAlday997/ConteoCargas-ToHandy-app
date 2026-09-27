@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { COLOR_TAREA, COLORES, ESPACIADO, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
+import { COLORES, ESPACIADO, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
 
 /**
  * Iconos en SVG, sin librerías: pocos, simples y del mismo trazo. Van en un
@@ -21,6 +21,10 @@ import { COLOR_TAREA, COLORES, ESPACIADO, RADIOS, TONOS, type ColorTono, type Ta
  * - plantilla: qué productos ve cada ruta.
  * - calendario: días no laborables.
  * - colores: colores de familia.
+ * - camion: la ruta, la salida.
+ * - subir: guardado en el teléfono, falta que llegue al servidor.
+ * - sinSenal: sin conexión.
+ * - persona: quién hizo algo.
  */
 export type NombreIcono =
   | 'lista'
@@ -33,9 +37,13 @@ export type NombreIcono =
   | 'autorizar'
   | 'plantilla'
   | 'calendario'
-  | 'colores';
+  | 'colores'
+  | 'camion'
+  | 'subir'
+  | 'sinSenal'
+  | 'persona';
 
-/** Qué ícono lleva cada tarea; el color sale de COLOR_TAREA. */
+/** Qué ícono lleva cada tarea. Todos en tinta: el color es de los estados. */
 export const ICONO_TAREA: Record<Tarea, NombreIcono> = {
   autorizar: 'autorizar',
   empaques: 'caja',
@@ -72,16 +80,18 @@ export function Icono({ nombre, tono = 'marca' }: Props) {
   );
 }
 
-/** Cuadro de 40 px de una fila de menú: el ícono de la tarea en el color de la tarea. */
-export function IconoTarea({ tarea }: { tarea: Tarea }) {
-  const { solido, fondo } = TONOS[COLOR_TAREA[tarea]];
+/**
+ * Cuadro de 40 px de una fila de menú: el ícono de la tarea en tinta sobre gris
+ * hundido. `invertido` cuando la fila está presionada (fondo azul).
+ */
+export function IconoTarea({ tarea, invertido = false }: { tarea: Tarea; invertido?: boolean }) {
   return (
     <View
-      style={[estilos.cuadro, { backgroundColor: fondo }]}
+      style={[estilos.cuadro, { backgroundColor: invertido ? COLORES.marcaHonda : COLORES.superficieHonda }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Dibujo nombre={ICONO_TAREA[tarea]} color={solido} tamano={DIBUJO_TAREA} />
+      <Dibujo nombre={ICONO_TAREA[tarea]} color={invertido ? COLORES.textoSobreColor : COLORES.texto} tamano={DIBUJO_TAREA} />
     </View>
   );
 }
@@ -140,6 +150,19 @@ export function Lapiz({ color, tamano = ESPACIADO.lg }: { color: string; tamano?
           strokeLinejoin="round"
         />
       </Svg>
+    </View>
+  );
+}
+
+/**
+ * El dibujo suelto, sin bloque: junto a un texto que dice lo mismo (una
+ * pastilla de estado, un aviso). Nunca solo: el color y la forma acompañan al
+ * texto, no lo sustituyen.
+ */
+export function Glifo({ nombre, color, tamano = ESPACIADO.lg + ESPACIADO.xs }: { nombre: NombreIcono; color: string; tamano?: number }) {
+  return (
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Dibujo nombre={nombre} color={color} tamano={tamano} />
     </View>
   );
 }
@@ -224,6 +247,34 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
           <Circle cx={8} cy={8.5} r={4} {...trazo} />
           <Circle cx={16} cy={8.5} r={4} {...trazo} />
           <Circle cx={12} cy={15.5} r={4} {...trazo} />
+        </>
+      );
+      break;
+    case 'camion':
+      contenido = (
+        <>
+          <Path d="M2.5 6h11v9.5h-11zM13.5 9.5h4l3 3.5v2.5h-7" {...trazo} />
+          <Circle cx={7} cy={18} r={1.75} {...trazo} />
+          <Circle cx={17} cy={18} r={1.75} {...trazo} />
+        </>
+      );
+      break;
+    case 'subir':
+      contenido = <Path d="M12 19V6M6.5 11.5L12 6l5.5 5.5" {...trazo} strokeWidth={2.5} />;
+      break;
+    case 'sinSenal':
+      contenido = (
+        <>
+          <Path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M9 16a4.5 4.5 0 0 1 6 0" {...trazo} />
+          <Path d="M4 4l16 16" {...trazo} strokeWidth={2.5} />
+        </>
+      );
+      break;
+    case 'persona':
+      contenido = (
+        <>
+          <Circle cx={12} cy={8} r={4} {...trazo} />
+          <Path d="M4.5 20.5c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5" {...trazo} />
         </>
       );
       break;

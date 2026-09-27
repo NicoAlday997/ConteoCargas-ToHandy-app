@@ -1,10 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useModificarCantidad } from '../api/hooks-supervisor';
-import { BloqueError, Boton, CampoTexto, Encabezado, FilaDato, Tarjeta } from '../componentes/base';
+import {
+  BloqueError,
+  Boton,
+  CampoTexto,
+  Encabezado,
+  FilaDato,
+  Tarjeta,
+  Pulsable,
+} from '../componentes/base';
 import {
   admitePaquetes,
   admiteSueltas,
@@ -71,7 +79,7 @@ function Editor({
   onModificada,
   onSesionVencida,
 }: Omit<Props, 'producto'> & { producto: ProductoDetalle }) {
-  const { esTablet } = useLayout();
+  const { esTablet, tecladoLateral } = useLayout();
   const modificar = useModificarCantidad(eventoId);
   // Se corrige desde la cantidad actual, no se recaptura de cero.
   const [captura, setCaptura] = useState<CapturaProducto>(() => desglose(producto.cantidadFinal ?? 0, producto));
@@ -196,7 +204,9 @@ function Editor({
       captura={visible}
       etiquetaSiguiente={edicion.campo === 'paquetes' && admiteSueltas(producto) ? 'Sueltas' : 'Motivo'}
       siguienteConChevron
-      lateral={esTablet}
+      lateral={tecladoLateral}
+      teclasGrandes={esTablet}
+      areaSegura={!tecladoLateral}
       onDigito={alDigito}
       onBorrar={alBorrar}
       onSiguiente={alSiguiente}
@@ -211,9 +221,9 @@ function Editor({
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cerrar}>
       <SafeAreaProvider>
-        <SafeAreaView style={estilos.pantalla}>
+        <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['top', 'left', 'right'] : undefined}>
           <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
-          <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
+          <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
             <ScrollView
               style={estilos.scroll}
               contentContainerStyle={estilos.contenido}
@@ -250,7 +260,7 @@ function Editor({
                     const activo = edicion?.campo === campo;
                     const valor = visible[campo];
                     return (
-                      <Pressable
+                      <Pulsable
                         key={campo}
                         onPress={() => abrirCampo(campo)}
                         accessibilityRole="button"
@@ -265,7 +275,7 @@ function Editor({
                             <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
                           </>
                         )}
-                      </Pressable>
+                      </Pulsable>
                     );
                   })}
                   {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
@@ -302,7 +312,7 @@ function Editor({
                 />
               </View>
             </ScrollView>
-            {esTablet ? <View style={estilos.lateral}>{teclado}</View> : teclado}
+            {tecladoLateral ? <View style={estilos.lateral}>{teclado}</View> : teclado}
           </View>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -415,7 +425,7 @@ const estilos = StyleSheet.create({
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: BORDES.grueso,
-    borderLeftColor: COLORES.marca,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORES.contornoTarjeta,
   },
 });

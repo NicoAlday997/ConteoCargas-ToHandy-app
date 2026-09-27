@@ -1,6 +1,21 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { ALTO_CONTROL, BORDES, COLORES, ESPACIADO, FUENTE, OPACIDAD, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import type { Tacto } from '../../theme/tacto';
+import {
+  ALTO_CONTROL,
+  BORDES,
+  COLORES,
+  ESCALA_PRESIONADO,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  FUENTE,
+  OPACIDAD,
+  RADIOS,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../theme/tokens';
+import { Chevron } from './Icono';
+import { Pulsable } from './Pulsable';
 
 /**
  * - primario: la acción que se espera. Una por pantalla o por modal.
@@ -26,6 +41,8 @@ interface Props {
   textoCargando?: string;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  /** Qué se siente al tocarlo; por omisión un toque ligero. */
+  tacto?: Tacto | null;
   /** Solo para acomodarlo (flex, márgenes, ancho); la apariencia la dan los tokens. */
   style?: StyleProp<ViewStyle>;
 }
@@ -33,7 +50,14 @@ interface Props {
 const COLOR_CONTENIDO: Record<VarianteBoton, string> = {
   primario: COLORES.textoSobreColor,
   secundario: COLORES.texto,
-  peligro: COLORES.error,
+  peligro: COLORES.errorTexto,
+};
+
+/** Onda de Android: un velo del color del contenido, se ve sobre cualquier relleno. */
+const ONDA: Record<VarianteBoton, string> = {
+  primario: 'rgba(255, 255, 255, 0.24)',
+  secundario: 'rgba(13, 17, 32, 0.12)',
+  peligro: 'rgba(220, 38, 38, 0.16)',
 };
 
 export function Boton({
@@ -47,15 +71,18 @@ export function Boton({
   textoCargando,
   accessibilityLabel,
   accessibilityHint,
+  tacto = 'toque',
   style,
 }: Props) {
   const inactivo = deshabilitado || cargando;
   const textoVisible = cargando ? (textoCargando ?? texto) : texto;
 
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       disabled={inactivo}
+      tacto={tacto}
+      onda={ONDA[variante]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (detalle && grande ? `${textoVisible}. ${detalle}` : textoVisible)}
       accessibilityHint={accessibilityHint}
@@ -65,25 +92,53 @@ export function Boton({
         grande && estilos.botonGrande,
         estilos[variante],
         pressed && estilos[`${variante}Presionado`],
+        pressed && estilos.hundido,
         inactivo && estilos.deshabilitado,
         style,
       ]}
     >
       {() => {
         const colorContenido = COLOR_CONTENIDO[variante];
+        if (grande) {
+          // La acción principal de un inicio: se lee como un renglón (qué y
+          // para cuándo) y la flecha dice que lleva a otra pantalla.
+          return (
+            <>
+              <View style={estilos.textosGrande}>
+                <View style={estilos.linea}>
+                  {cargando && <ActivityIndicator color={colorContenido} />}
+                  <Text
+                    style={[estilos.textoGrande, { color: colorContenido }]}
+                    numberOfLines={2}
+                    maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                  >
+                    {textoVisible}
+                  </Text>
+                </View>
+                {detalle ? (
+                  <Text style={[estilos.detalle, { color: colorContenido }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                    {detalle}
+                  </Text>
+                ) : null}
+              </View>
+              <Chevron color={colorContenido} tamano={ESPACIADO.xxl} />
+            </>
+          );
+        }
         return (
-          <>
-            <View style={estilos.linea}>
-              {cargando && <ActivityIndicator color={colorContenido} />}
-              <Text style={[grande ? estilos.textoGrande : estilos.texto, { color: colorContenido }]} numberOfLines={2}>
-                {textoVisible}
-              </Text>
-            </View>
-            {grande && detalle && <Text style={[estilos.detalle, { color: colorContenido }]}>{detalle}</Text>}
-          </>
+          <View style={estilos.linea}>
+            {cargando && <ActivityIndicator color={colorContenido} />}
+            <Text
+              style={[estilos.texto, { color: colorContenido }]}
+              numberOfLines={2}
+              maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+            >
+              {textoVisible}
+            </Text>
+          </View>
         );
       }}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -98,8 +153,20 @@ const estilos = StyleSheet.create({
   },
   botonGrande: {
     minHeight: TOQUE_MINIMO * 2,
-    gap: ESPACIADO.xs,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: ESPACIADO.lg,
     paddingHorizontal: ESPACIADO.xl,
+    paddingVertical: ESPACIADO.lg,
+    borderRadius: RADIOS.grande,
+  },
+  textosGrande: {
+    flex: 1,
+    gap: ESPACIADO.xs,
+  },
+  // Se hunde apenas: el toque se siente aunque la onda no se vea al sol.
+  hundido: {
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
   primario: {
     backgroundColor: COLORES.marca,
@@ -109,6 +176,8 @@ const estilos = StyleSheet.create({
   },
   secundario: {
     backgroundColor: COLORES.superficieHonda,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.bordeSinContar,
   },
   secundarioPresionado: {
     backgroundColor: COLORES.divisor,
@@ -135,12 +204,11 @@ const estilos = StyleSheet.create({
     textAlign: 'center',
   },
   textoGrande: {
+    flexShrink: 1,
     ...TIPOGRAFIA.titulo,
-    textAlign: 'center',
   },
   detalle: {
     ...TIPOGRAFIA.cuerpo,
     fontFamily: FUENTE.medio,
-    textAlign: 'center',
   },
 });

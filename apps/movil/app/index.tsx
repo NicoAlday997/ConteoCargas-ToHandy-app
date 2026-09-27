@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,17 +21,23 @@ import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
 import { obtenerToken } from '../src/api/token';
 import {
+  AccionesHoja,
   BloqueError,
   BloqueEsqueleto,
   Boton,
   CampoTexto,
-  Encabezado,
   Esqueleto,
   FilaMenu,
   GrupoMenu,
+  Hoja,
   LineaEsqueleto,
+  Pulsable,
   Seccion,
+  type TonoEtiqueta,
 } from '../src/componentes/base';
+import { queSigue, tomarAvisoConteoFinalizado, type ConteoFinalizado } from '../src/conteo/aviso-finalizado';
+import { estadoDeCarga, type TonoEstado } from '../src/historial/modelo-historial';
+import type { EstadoCargaApi } from '../src/api/historial';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
 import { ModalCambiarFecha } from '../src/conteo/CambiarFechaCarga';
 import {
@@ -48,7 +54,7 @@ import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
-import { ANCHO_MODAL, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Una columna legible también en tablet. */
 const ANCHO_CONTENIDO = 560;
@@ -237,52 +243,53 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
   return (
     <>
       {/* Suelto, hasta abajo: no es una pantalla más del menú. */}
-      <Pressable
+      <Pulsable
         onPress={() => void alTocar()}
         disabled={consultando}
+        onda="rgba(220, 38, 38, 0.16)"
         accessibilityRole="button"
         accessibilityState={{ busy: consultando }}
         style={({ pressed }) => [estilos.cerrarSesion, pressed && estilos.cerrarSesionPresionado]}
       >
         <Text style={estilos.textoCerrarSesion}>{consultando ? 'Un momento…' : 'Cerrar sesión'}</Text>
-      </Pressable>
-      <Modal visible={progreso !== null} transparent animationType="none" onRequestClose={() => setProgreso(null)}>
-        <View style={estilos.fondoModal}>
-          <View style={estilos.modal}>
-            <Encabezado titulo="Tienes una carga en proceso" variante="plano" />
-            {progreso && (
-              <>
-                <Text style={estilos.detalleModal}>
-                  Llevas <Text style={estilos.negrita}>{progreso.capturados}</Text>
-                  {progreso.total !== null ? ` de ${progreso.total}` : ''} productos capturados.
-                </Text>
-                <Text style={estilos.detalleModal}>
-                  Tu progreso queda guardado en este teléfono y podrás continuar donde te quedaste al volver a entrar.
-                </Text>
-                {progreso.porEnviar > 0 && (
-                  <Text style={estilos.detalleModal}>
-                    {progreso.porEnviar === 1
-                      ? '1 cambio todavía no llega al servidor: se enviará'
-                      : `${progreso.porEnviar} cambios todavía no llegan al servidor: se enviarán`}{' '}
-                    cuando vuelvas a entrar y abras la carga con señal.
-                  </Text>
-                )}
-              </>
+      </Pulsable>
+      <Hoja
+        visible={progreso !== null}
+        onCerrar={() => setProgreso(null)}
+        titulo="Tienes una carga en proceso"
+        pie={
+          <AccionesHoja>
+            <Boton texto="Cancelar" variante="secundario" onPress={() => setProgreso(null)} />
+            <Boton
+              texto="Cerrar sesión"
+              onPress={() => {
+                setProgreso(null);
+                salir();
+              }}
+            />
+          </AccionesHoja>
+        }
+      >
+        {progreso && (
+          <>
+            <Text style={estilos.detalleModal}>
+              Llevas <Text style={estilos.negrita}>{progreso.capturados}</Text>
+              {progreso.total !== null ? ` de ${progreso.total}` : ''} productos capturados.
+            </Text>
+            <Text style={estilos.detalleModal}>
+              Tu progreso queda guardado en este teléfono y podrás continuar donde te quedaste al volver a entrar.
+            </Text>
+            {progreso.porEnviar > 0 && (
+              <Text style={estilos.detalleModal}>
+                {progreso.porEnviar === 1
+                  ? '1 cambio todavía no llega al servidor: se enviará'
+                  : `${progreso.porEnviar} cambios todavía no llegan al servidor: se enviarán`}{' '}
+                cuando vuelvas a entrar y abras la carga con señal.
+              </Text>
             )}
-            <View style={estilos.botonesModal}>
-              <Boton texto="Cancelar" variante="secundario" onPress={() => setProgreso(null)} style={estilos.botonModal} />
-              <Boton
-                texto="Cerrar sesión"
-                onPress={() => {
-                  setProgreso(null);
-                  salir();
-                }}
-                style={estilos.botonModal}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      </Hoja>
     </>
   );
 }
@@ -300,6 +307,7 @@ function irAConteo(carga: CargaAbierta) {
       sesionId: carga.sesionId,
       tipo: carga.tipo ?? '',
       fechaOperativa: carga.fechaOperativa ?? '',
+      ruta: carga.rutaNombre ?? '',
     },
   });
 }
@@ -350,6 +358,8 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const [estadoCargaAbierta, setEstadoCargaAbierta] = useState<string | null>(null);
   // El vendedor acaba de cancelar su carga: se le confirma en el inicio.
   const [cargaCancelada, setCargaCancelada] = useState(false);
+  // Acaba de finalizar un conteo: el cierre (que llegó y qué sigue).
+  const [finalizado, setFinalizado] = useState<ConteoFinalizado | null>(null);
 
   // Al volver de la pantalla de conteo (finalizada o no) se relee. Antes de
   // ofrecer "Continuar carga" se pregunta al servidor si sigue existiendo: si
@@ -358,6 +368,8 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     useCallback(() => {
       let vigente = true;
       if (tomarAvisoCargaNoDisponible()) setCargaNoDisponible(true);
+      const recienFinalizado = tomarAvisoConteoFinalizado();
+      if (recienFinalizado) setFinalizado(recienFinalizado);
       void (async () => {
         const carga = await obtenerCargaAbierta(usuario.id);
         if (!carga) {
@@ -542,15 +554,24 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     );
   }
 
-  const aviso = cargaNoDisponible ? <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} /> : null;
+  const aviso = (
+    <>
+      {finalizado && <AvisoConteoFinalizado datos={finalizado} onCerrar={() => setFinalizado(null)} />}
+      {cargaNoDisponible && <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} />}
+    </>
+  );
 
   if (cargaAbierta) {
     // Solo mientras el vendedor cuenta (BORRADOR): una vez que finaliza, el
     // contador puede estar contando y cancelar sería una salida para cuando el
     // conteo no cuadra. Sin señal no se sabe el estado: no se ofrece.
     const puedeCancelar = usuario.rolApp === 'VENDEDOR' && estadoCargaAbierta === 'BORRADOR';
+    const estado = estadoCargaAbierta ? estadoDeCarga(estadoCargaAbierta as EstadoCargaApi) : null;
     return (
-      <Seccion texto="Tienes una carga en proceso">
+      <Seccion
+        texto="Tienes una carga en proceso"
+        contador={estado ? { texto: estado.etiqueta, tono: TONO_ETIQUETA[estado.tono] } : null}
+      >
         <Boton
           grande
           texto="Continuar carga"
@@ -687,7 +708,7 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
     <>
       <Boton
         texto="Cancelar esta carga"
-        variante="secundario"
+        variante="peligro"
         onPress={() => {
           setMotivo('');
           setError(null);
@@ -771,6 +792,27 @@ function BotonCambiarFecha({
   );
 }
 
+/** El estado de una carga, como pastilla: el mismo tono que en el historial. */
+const TONO_ETIQUETA: Record<TonoEstado, TonoEtiqueta> = {
+  exito: 'capturado',
+  atencion: 'discrepancia',
+  error: 'error',
+  neutro: 'neutro',
+};
+
+/** El cierre del conteo: llegó, cuántos productos, y qué sigue. */
+function AvisoConteoFinalizado({ datos, onCerrar }: { datos: ConteoFinalizado; onCerrar: () => void }) {
+  const tipo = datos.tipo ? ETIQUETAS_TIPO_CARGA[datos.tipo].toLowerCase() : 'carga';
+  return (
+    <BloqueError
+      tono="exito"
+      titulo="Terminaste tu conteo"
+      detalle={`Tu conteo de ${tipo} (${datos.productos} productos) llegó al servidor. ${queSigue(datos.estado)}`}
+      secundaria={{ texto: 'Entendido', onPress: onCerrar }}
+    />
+  );
+}
+
 function AvisoCargaCancelada({ onCerrar }: { onCerrar: () => void }) {
   return (
     <BloqueError
@@ -828,12 +870,15 @@ const estilos = StyleSheet.create({
   scroll: {
     flexGrow: 1,
   },
-  // A todo el ancho, en el tinte de marca: quién está en sesión deja de ser blanco sobre blanco.
+  // A todo el ancho, blanca con contorno abajo: quién está en sesión, como la
+  // etiqueta de un turno. Sin azul: el azul es donde está la mano.
   bandaIdentidad: {
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.lg,
     paddingBottom: ESPACIADO.xl,
-    backgroundColor: COLORES.marcaTinte,
+    backgroundColor: COLORES.superficie,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES.contornoTarjeta,
   },
   // Una columna legible también en tablet; la banda sí va a todo el ancho.
   columna: {
@@ -852,7 +897,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.texto,
   },
   iniciales: {
     ...TIPOGRAFIA.tituloBarra,
@@ -902,21 +947,6 @@ const estilos = StyleSheet.create({
   esqueletoAcciones: {
     gap: RITMO.relacionado,
   },
-  fondoModal: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-    backgroundColor: COLORES.velo,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
   detalleModal: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
@@ -924,13 +954,5 @@ const estilos = StyleSheet.create({
   negrita: {
     fontFamily: FUENTE.negrita,
     ...CIFRAS,
-  },
-  botonesModal: {
-    flexDirection: 'row',
-    gap: RITMO.relacionado,
-    marginTop: ESPACIADO.sm,
-  },
-  botonModal: {
-    flex: 1,
   },
 });

@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import {
-  BackHandler,
-  Modal,
-  Pressable,
-  ScrollView,
-  SectionList,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { BackHandler, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
+import { ETIQUETAS_TIPO_CARGA, esTipoCarga, type TipoCarga } from '../../src/api/cargas';
+import { ETIQUETAS_ROL } from '../../src/api/auth';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
+  AccionesHoja,
+  BarraAccion,
   BarraAvance,
   BloqueError,
   BloqueEsqueleto,
@@ -25,11 +19,15 @@ import {
   Encabezado as EncabezadoBase,
   EstadoVacio,
   Esqueleto,
+  Glifo,
+  Hoja,
   Lapiz,
   LineaEsqueleto,
   Palomita,
   PanelEncabezado,
+  Pulsable,
 } from '../../src/componentes/base';
+import { avisarConteoFinalizado } from '../../src/conteo/aviso-finalizado';
 import { actualizarFechaCargaAbierta, olvidarCarga } from '../../src/conteo/almacen-conteo';
 import { ModalCambiarFecha } from '../../src/conteo/CambiarFechaCarga';
 import { avisarCargaNoDisponible, descartarCargaNoDisponible } from '../../src/conteo/carga-no-disponible';
@@ -57,12 +55,15 @@ import { diaDesdeApi, diaNegocio, esDia, textoSalidaCorta } from '../../src/cont
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
 import { TONOS_COLOR_FAMILIA, type ColorFamilia } from '../../src/theme/colores-familia';
+import { sentir } from '../../src/theme/tacto';
 import {
   ALTO_CONTROL,
   ANCHO_MODAL,
   BORDES,
   CIFRAS,
   COLORES,
+  ESCALA_PRESIONADO,
+  ESCALA_TEXTO,
   ESPACIADO,
   ETIQUETA_DATO,
   FUENTE,
@@ -151,11 +152,13 @@ export default function PantallaConteo() {
     sesionId: string;
     tipo: string;
     fechaOperativa: string;
+    ruta: string;
   }>();
   const eventoId = parametro(params.eventoId);
   const sesionId = parametro(params.sesionId);
   const tipo = parametro(params.tipo);
   const fechaOperativa = parametro(params.fechaOperativa);
+  const ruta = parametro(params.ruta);
 
   if (!eventoId || !sesionId) {
     return (
@@ -176,6 +179,7 @@ export default function PantallaConteo() {
       sesionId={sesionId}
       tituloCarga={esTipoCarga(tipo) ? ETIQUETAS_TIPO_CARGA[tipo] : 'Carga'}
       fechaOperativa={esDia(fechaOperativa) ? fechaOperativa : null}
+      rutaNombre={ruta || null}
     />
   );
 }
@@ -189,10 +193,12 @@ interface PropsConteo {
    * del servidor manda en cuanto llega: la fecha se puede cambiar.
    */
   fechaOperativa: string | null;
+  /** Solo la trae la navegación del contador: cuenta rutas ajenas y debe ver cuál. */
+  rutaNombre: string | null;
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion }: PropsConteo) {
-  const { esTablet, ancho } = useLayout();
+function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, rutaNombre }: PropsConteo) {
+  const { esTablet, tecladoLateral, ancho } = useLayout();
   // Siempre: además de la fecha trae el estado, que decide si se puede cambiar el día.
   const evento = useEventoCarga(eventoId, true);
   const fechaOperativa = diaDesdeApi(evento.data?.evento?.fechaOperativa) ?? fechaNavegacion;
@@ -357,8 +363,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   // ---- Lista -----------------------------------------------------------
 
-  const anchoLista = esTablet ? ancho - ANCHO_TECLADO_LATERAL : ancho;
-  const columnas = esTablet && anchoLista >= ANCHO_MINIMO_FILA * 2 + ESPACIADO.md * 3 ? 2 : 1;
+  const anchoLista = tecladoLateral ? ancho - ANCHO_TECLADO_LATERAL : ancho;
+  const columnas = tecladoLateral && anchoLista >= ANCHO_MINIMO_FILA * 2 + ESPACIADO.md * 3 ? 2 : 1;
 
   const secciones = useMemo<SeccionFamilia[]>(
     () =>
@@ -501,7 +507,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         captura={capturaVisible(edicion.code)}
         etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas' : destinoSiguiente(edicion) ? 'Siguiente' : 'Terminar'}
         siguienteConChevron={siguienteEsSueltas || destinoSiguiente(edicion) !== null}
-        lateral={esTablet}
+        lateral={tecladoLateral}
+        teclasGrandes={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
         onSiguiente={alSiguiente}
@@ -509,17 +516,38 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       />
     ) : null;
 
+  const razon = razonNoFinalizar(pendientes.length, bloqueo);
+  const quienCuenta = usuario?.nombre
+    ? `${usuario.nombre}${usuario.rol && usuario.rol in ETIQUETAS_ROL ? ` · ${ETIQUETAS_ROL[usuario.rol as keyof typeof ETIQUETAS_ROL]}` : ''}`
+    : null;
+
+  // Abajo, al alcance del pulgar: Finalizar y, sobre él, por qué aún no se
+  // puede. En celular se esconde mientras el teclado ocupa ese lugar.
+  const barraFinalizar = (
+    <BarraAccion nota={razon}>
+      <Boton
+        texto="Finalizar conteo"
+        variante={razon ? 'secundario' : 'primario'}
+        onPress={intentarFinalizar}
+        tacto={razon ? 'aviso' : 'toque'}
+        accessibilityLabel={razon ? `Finalizar conteo. Aún no se puede: ${razon}` : 'Finalizar conteo'}
+        accessibilityHint={razon ? 'Muestra qué falta' : undefined}
+        style={estilos.botonFinalizar}
+      />
+    </BarraAccion>
+  );
+
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <Encabezado
         titulo={tituloCarga}
+        rutaNombre={rutaNombre}
+        quienCuenta={quienCuenta}
         fechaOperativa={fechaOperativa}
         capturados={capturados}
         total={total}
         sincronizacion={sincronizacion}
-        bloqueo={bloqueo}
         onReintentar={() => cola.sincronizarAhora()}
-        faltan={pendientes.length}
         onCambiarFecha={
           puedeCambiarFecha
             ? () => {
@@ -528,54 +556,57 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
               }
             : undefined
         }
-        onFinalizar={intentarFinalizar}
         onVolver={() => {
           cerrarTeclado();
           volverAlInicio();
         }}
       />
 
-      <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
-        <SectionList<ProductoConteo[], SeccionFamilia>
-          ref={lista}
-          key={`columnas-${columnas}`}
-          style={estilos.lista}
-          sections={secciones}
-          keyExtractor={(fila) => fila.map((p) => p.code).join('|')}
-          extraData={{ conteo, edicion, items: estadoCola.items }}
-          stickySectionHeadersEnabled
-          initialNumToRender={total}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={estilos.contenidoLista}
-          onScrollToIndexFailed={() => {
-            if (codeEditado) setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS * 4);
-          }}
-          renderSectionHeader={({ section }) => <EncabezadoFamilia seccion={section} conteo={conteo} />}
-          renderSectionFooter={() => <View style={estilos.pieFamilia} />}
-          renderItem={({ item: fila }) => (
-            <View style={estilos.filaColumnas}>
-              {fila.map((producto) => (
-                <FilaProducto
-                  key={producto.code}
-                  producto={producto}
-                  captura={capturaVisible(producto.code)}
-                  campoActivo={edicion?.code === producto.code ? edicion.campo : null}
-                  envio={envioDe(estadoCola.items[producto.code])}
-                  errorEnvio={estadoCola.items[producto.code]?.error ?? null}
-                  onAbrirCampo={abrirCampo}
-                  onCero={marcarCero}
-                />
-              ))}
-              {fila.length < columnas && <View style={estilos.huecoColumna} />}
-            </View>
-          )}
-        />
+      <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
+        <View style={estilos.columnaLista}>
+          <SectionList<ProductoConteo[], SeccionFamilia>
+            ref={lista}
+            key={`columnas-${columnas}`}
+            style={estilos.lista}
+            sections={secciones}
+            keyExtractor={(fila) => fila.map((p) => p.code).join('|')}
+            extraData={{ conteo, edicion, items: estadoCola.items }}
+            stickySectionHeadersEnabled
+            initialNumToRender={total}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[estilos.contenidoLista, esTablet && !tecladoLateral && estilos.contenidoListaMedio]}
+            onScrollToIndexFailed={() => {
+              if (codeEditado) setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS * 4);
+            }}
+            renderSectionHeader={({ section }) => <EncabezadoFamilia seccion={section} conteo={conteo} />}
+            renderSectionFooter={() => <View style={estilos.pieFamilia} />}
+            renderItem={({ item: fila }) => (
+              <View style={estilos.filaColumnas}>
+                {fila.map((producto) => (
+                  <FilaProducto
+                    key={producto.code}
+                    producto={producto}
+                    captura={capturaVisible(producto.code)}
+                    campoActivo={edicion?.code === producto.code ? edicion.campo : null}
+                    envio={envioDe(estadoCola.items[producto.code])}
+                    errorEnvio={estadoCola.items[producto.code]?.error ?? null}
+                    onAbrirCampo={abrirCampo}
+                    onCero={marcarCero}
+                  />
+                ))}
+                {fila.length < columnas && <View style={estilos.huecoColumna} />}
+              </View>
+            )}
+          />
+          {(tecladoLateral || !teclado) && barraFinalizar}
+        </View>
 
-        {esTablet ? (
+        {tecladoLateral ? (
           <View style={estilos.lateral}>
             {teclado ?? (
               <View style={estilos.lateralVacio}>
-                <Text style={estilos.textoLateralVacio}>Toca un campo de un producto para capturar.</Text>
+                <Glifo nombre="caja" color={COLORES.textoSecundario} tamano={ESPACIADO.xxxl} />
+                <Text style={estilos.textoLateralVacio}>Toca Paquetes o Sueltas de un producto para capturar.</Text>
                 <Text style={estilos.detalleLateralVacio}>Si no lleva, toca su botón 0.</Text>
               </View>
             )}
@@ -629,6 +660,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         conteo={conteo}
         bloqueo={bloqueo}
         usuarioId={usuario?.id ?? null}
+        tipo={tipoEvento}
         onCerrar={() => setPanel('ninguno')}
       />
     </SafeAreaView>
@@ -641,125 +673,120 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
 interface PropsEncabezado {
   titulo: string;
+  rutaNombre: string | null;
+  /** Quién cuenta en este teléfono ("Irvin Alday · Vendedor"). */
+  quienCuenta: string | null;
   fechaOperativa: string | null;
   capturados: number;
   total: number;
   sincronizacion: EstadoSincronizacion;
-  bloqueo: BloqueoFinalizar;
   onReintentar: () => void;
-  faltan: number;
   /** Solo si se puede mover la carga de día: la línea de la fecha se vuelve tocable. */
   onCambiarFecha?: () => void;
-  onFinalizar: () => void;
   onVolver: () => void;
 }
 
 /**
- * Por qué todavía no se puede finalizar, en una línea bajo el avance. Que no
+ * Por qué todavía no se puede finalizar, en una línea sobre el botón. Que no
  * se pueda no es lo mismo que no saber por qué. `null`: ya se puede.
  */
 function razonNoFinalizar(faltan: number, bloqueo: BloqueoFinalizar): string | null {
-  if (faltan > 0) return faltan === 1 ? 'Falta 1 producto por contar' : `Faltan ${faltan} productos por contar`;
+  if (faltan > 0) return faltan === 1 ? 'Falta 1 producto por contar.' : `Faltan ${faltan} productos por contar.`;
   switch (bloqueo) {
     case 'sin-conexion':
-      return 'Sin conexión: falta que tu conteo llegue al servidor';
+      return 'Sin conexión: falta que tu conteo llegue al servidor.';
     case 'por-enviar':
-      return 'Falta que tu conteo llegue al servidor';
+      return 'Falta que tu conteo llegue al servidor.';
     case 'rechazados':
-      return 'El servidor rechazó productos: vuelve a capturarlos';
+      return 'El servidor rechazó productos: vuelve a capturarlos.';
     case 'sesion-expirada':
-      return 'Tu sesión venció: entra de nuevo para finalizar';
+      return 'Tu sesión venció: entra de nuevo para finalizar.';
     case 'error':
-      return 'El servidor no aceptó el conteo';
+      return 'El servidor no aceptó el conteo.';
     case null:
       return null;
   }
 }
 
 /**
- * Bloque azul de dos renglones: título, fecha de salida y Finalizar; y un
- * panel con el avance, la barra de progreso y el estado de envío. Sin el
- * nombre de quien cuenta: está en su propio teléfono. Debajo, sobre el fondo,
- * por qué todavía no se puede finalizar.
+ * Bloque azul: qué se cuenta (tipo, ruta, día de salida), quién cuenta, y un
+ * panel con la lectura del avance, la barra y el estado de envío. Finalizar
+ * no vive aquí: va abajo, donde llega el pulgar.
  */
 function Encabezado({
   titulo,
+  rutaNombre,
+  quienCuenta,
   fechaOperativa,
   capturados,
   total,
   sincronizacion,
-  bloqueo,
   onReintentar,
-  faltan,
   onCambiarFecha,
-  onFinalizar,
   onVolver,
 }: PropsEncabezado) {
-  const razon = razonNoFinalizar(faltan, bloqueo);
-  const listo = razon === null;
   // Siempre a la vista: quien cuenta debe saber para qué día es la carga.
   const salida = fechaOperativa ? textoSalidaCorta(fechaOperativa, diaNegocio(new Date())) : null;
+  const completo = capturados === total;
 
   return (
-    <View>
-      <EncabezadoBase
-        variante="marca"
-        titulo={titulo}
-        subtitulo={onCambiarFecha ? null : salida}
-        onVolver={onVolver}
-        etiquetaVolver="Volver al inicio. Lo contado queda guardado."
-        accion={
-          // Se ve deshabilitado pero responde: al tocarlo dice CUÁLES faltan, o por qué aún no se puede.
-          <Pressable
-            onPress={onFinalizar}
-            accessibilityRole="button"
-            accessibilityLabel={listo ? 'Finalizar conteo' : `Finalizar. Aún no se puede: ${razon}`}
-            accessibilityState={{ disabled: !listo }}
-            style={({ pressed }) => [
-              estilos.botonFinalizar,
-              listo ? estilos.botonFinalizarListo : estilos.botonFinalizarBloqueado,
-              pressed && estilos.botonFinalizarPresionado,
-            ]}
-          >
-            <Text style={[estilos.textoFinalizar, !listo && estilos.textoFinalizarBloqueado]}>Finalizar</Text>
-          </Pressable>
-        }
-        inferior={
-          <PanelEncabezado>
-            <View style={estilos.filaProgreso}>
-              <Text
-                style={estilos.textoProgreso}
-                accessibilityLiveRegion="polite"
-                accessibilityLabel={`${capturados} de ${total} ${plural(total, 'producto contado', 'productos contados')}`}
-              >
-                <Text style={estilos.numeroProgreso}>{capturados}</Text>
-                {` de ${total}`}
-              </Text>
-              <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
-            </View>
-            <BarraAvance actual={capturados} total={total} />
-          </PanelEncabezado>
-        }
-      >
-        {onCambiarFecha && salida && (
-          // Subrayada y con lápiz: se ve que se toca. Mismo lugar que el subtítulo normal.
-          <Pressable
-            onPress={onCambiarFecha}
-            hitSlop={{ top: ESPACIADO.md, bottom: ESPACIADO.md, left: ESPACIADO.sm, right: ESPACIADO.sm }}
-            accessibilityRole="button"
-            accessibilityLabel={`${salida}. Cambiar la fecha`}
-            accessibilityHint="Lo contado se conserva"
-            style={({ pressed }) => [estilos.fechaTocable, pressed && estilos.fechaTocablePresionada]}
-          >
-            <Text style={estilos.textoFechaTocable} numberOfLines={1}>
-              {salida}
+    <EncabezadoBase
+      variante="marca"
+      titulo={rutaNombre ? `${titulo} · ${rutaNombre}` : titulo}
+      subtitulo={onCambiarFecha ? null : salida}
+      onVolver={onVolver}
+      etiquetaVolver="Volver al inicio. Lo contado queda guardado."
+      inferior={
+        <PanelEncabezado>
+          <View style={estilos.filaProgreso}>
+            <Text
+              style={estilos.textoProgreso}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${capturados} de ${total} ${plural(total, 'producto contado', 'productos contados')}`}
+              maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+            >
+              <Text style={estilos.numeroProgreso}>{capturados}</Text>
+              {` de ${total} ${plural(total, 'producto', 'productos')}`}
             </Text>
-            <Lapiz color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
-          </Pressable>
-        )}
-      </EncabezadoBase>
-      {razon && <Text style={estilos.razonFinalizar}>{razon}</Text>}
-    </View>
+            <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
+          </View>
+          <BarraAvance actual={capturados} total={total} />
+          {completo && (
+            <View style={estilos.lineaCompleto}>
+              <Palomita color={COLORES.capturado} tamano={ESPACIADO.lg} />
+              <Text style={estilos.textoCompleto} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                Todo contado. Revisa y finaliza abajo.
+              </Text>
+            </View>
+          )}
+        </PanelEncabezado>
+      }
+    >
+      {onCambiarFecha && salida && (
+        // Subrayada y con lápiz: se ve que se toca. Mismo lugar que el subtítulo normal.
+        <Pulsable
+          onPress={onCambiarFecha}
+          hitSlop={{ top: ESPACIADO.md, bottom: ESPACIADO.md, left: ESPACIADO.sm, right: ESPACIADO.sm }}
+          accessibilityRole="button"
+          accessibilityLabel={`${salida}. Cambiar la fecha`}
+          accessibilityHint="Lo contado se conserva"
+          style={({ pressed }) => [estilos.fechaTocable, pressed && estilos.fechaTocablePresionada]}
+        >
+          <Text style={estilos.textoFechaTocable} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            {salida}
+          </Text>
+          <Lapiz color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
+        </Pulsable>
+      )}
+      {quienCuenta && (
+        <View style={estilos.lineaPersona} accessible accessibilityLabel={`Cuenta ${quienCuenta}`}>
+          <Glifo nombre="persona" color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
+          <Text style={estilos.textoPersona} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            Cuenta {quienCuenta}
+          </Text>
+        </View>
+      )}
+    </EncabezadoBase>
   );
 }
 
@@ -772,15 +799,17 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 
   if (ultimoError?.tipo === 'sesion-expirada') {
     return (
-      <Pressable
+      <Pulsable
         onPress={() => router.replace('/login')}
         accessibilityRole="button"
         hitSlop={ESPACIADO.sm}
         style={[estilos.pildoraEstado, estilos.pildoraError]}
       >
-        <Text style={[estilos.guardado, estilos.guardadoError]}>Sesión vencida · entra de nuevo</Text>
+        <Text style={[estilos.guardado, estilos.guardadoError]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+          Sesión vencida · entra de nuevo
+        </Text>
         <Chevron color={COLORES.errorTexto} tamano={ESPACIADO.lg} />
-      </Pressable>
+      </Pulsable>
     );
   }
 
@@ -817,10 +846,12 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   const contenido = (
     <>
       {alDia && <Palomita color={COLORES.capturado} tamano={ESPACIADO.lg} />}
+      {!hayConexion && <Glifo nombre="sinSenal" color={colorIcono} tamano={ESPACIADO.lg} />}
       <Text
         style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
         numberOfLines={2}
         accessibilityLiveRegion="polite"
+        maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
       >
         {texto}
       </Text>
@@ -830,7 +861,7 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 
   if (!reintentable) return <View style={pildora}>{contenido}</View>;
   return (
-    <Pressable
+    <Pulsable
       onPress={onReintentar}
       accessibilityRole="button"
       accessibilityLabel={`${texto}. Reintentar ahora`}
@@ -838,7 +869,7 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
       style={pildora}
     >
       {contenido}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -901,41 +932,44 @@ function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPend
   const n = pendientes.length;
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onCerrar}>
-      <View style={estilos.fondoModal}>
-        <View style={estilos.modal}>
-          <Text style={estilos.tituloModal} accessibilityRole="header">
-            {n === 1 ? 'Falta 1 producto' : `Faltan ${n} productos`}
-          </Text>
-          <Text style={estilos.detalleModal}>Cuéntalos, o márcalos en 0 si no llevan, antes de finalizar.</Text>
-          <ScrollView style={estilos.listaModal} contentContainerStyle={estilos.contenidoListaModal}>
-            {porFamilia.map(([familia, productos]) => (
-              <View key={familia} style={estilos.grupoModal}>
-                <Text style={estilos.familiaModal}>{formatearNombreFamilia(familia)}</Text>
-                {productos.map((p) => (
-                  <Pressable
-                    key={p.code}
-                    onPress={() => onIr(p)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ir a ${formatearNombreProducto(p.nombre)}`}
-                    style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
-                  >
-                    <EtiquetaFactor producto={p} />
-                    <Text style={estilos.nombrePendiente} numberOfLines={2}>
-                      {formatearNombreProducto(p.nombre)}
-                    </Text>
-                    <Chevron />
-                  </Pressable>
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-          <View style={estilos.botonesModal}>
-            <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} style={estilos.botonModal} />
-          </View>
+    <Hoja
+      visible={visible}
+      onCerrar={onCerrar}
+      cerrarAlTocarFondo
+      titulo={n === 1 ? 'Falta 1 producto' : `Faltan ${n} productos`}
+      detalle="Cuéntalos, o márcalos en 0 si no llevan, antes de finalizar. Toca uno para ir a él."
+      estiloContenido={estilos.contenidoListaModal}
+      pie={<Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} />}
+    >
+      {porFamilia.map(([familia, productos]) => (
+        <View key={familia} style={estilos.grupoModal}>
+          <Text style={estilos.familiaModal}>{formatearNombreFamilia(familia)}</Text>
+          {productos.map((p) => (
+            <RenglonIrAProducto key={p.code} producto={p} onIr={onIr} />
+          ))}
         </View>
-      </View>
-    </Modal>
+      ))}
+    </Hoja>
+  );
+}
+
+/** Un producto al que se puede saltar: factor, nombre y flecha. */
+function RenglonIrAProducto({ producto, onIr }: { producto: ProductoConteo; onIr: (producto: ProductoConteo) => void }) {
+  const nombre = formatearNombreProducto(producto.nombre);
+  return (
+    <Pulsable
+      onPress={() => onIr(producto)}
+      onda="rgba(13, 17, 32, 0.12)"
+      accessibilityRole="button"
+      accessibilityLabel={`Ir a ${nombre}`}
+      style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
+    >
+      <EtiquetaFactor producto={producto} />
+      <Text style={estilos.nombrePendiente} numberOfLines={2}>
+        {nombre}
+      </Text>
+      <Chevron />
+    </Pulsable>
   );
 }
 
@@ -1009,39 +1043,20 @@ function PanelBloqueo({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onCerrar}>
-      <View style={estilos.fondoModal}>
-        <View style={estilos.modal}>
-          <Text style={estilos.tituloModal} accessibilityRole="header" accessibilityLiveRegion="polite">
-            {titulo}
-          </Text>
-          <Text style={estilos.detalleModal}>{detalle}</Text>
-          {bloqueo === 'rechazados' && (
-            <ScrollView style={estilos.listaModal} contentContainerStyle={estilos.contenidoListaModal}>
-              {rechazados.map((p) => (
-                <Pressable
-                  key={p.code}
-                  onPress={() => onIr(p)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ir a ${formatearNombreProducto(p.nombre)}`}
-                  style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
-                >
-                  <EtiquetaFactor producto={p} />
-                  <Text style={estilos.nombrePendiente} numberOfLines={2}>
-                    {formatearNombreProducto(p.nombre)}
-                  </Text>
-                  <Chevron />
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-          <View style={estilos.botonesModal}>
-            <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} style={estilos.botonModal} />
-            {accion && <Boton texto={accion.texto} onPress={accion.onPress} style={estilos.botonModal} />}
-          </View>
-        </View>
-      </View>
-    </Modal>
+    <Hoja
+      visible={visible}
+      onCerrar={onCerrar}
+      titulo={titulo}
+      detalle={detalle}
+      pie={
+        <AccionesHoja>
+          <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} />
+          {accion && <Boton texto={accion.texto} onPress={accion.onPress} />}
+        </AccionesHoja>
+      }
+    >
+      {bloqueo === 'rechazados' && rechazados.map((p) => <RenglonIrAProducto key={p.code} producto={p} onIr={onIr} />)}
+    </Hoja>
   );
 }
 
@@ -1053,6 +1068,7 @@ interface PropsPanelConfirmar {
   conteo: EstadoConteo;
   bloqueo: BloqueoFinalizar;
   usuarioId: string | null;
+  tipo: TipoCarga | null;
   onCerrar: () => void;
 }
 
@@ -1064,6 +1080,7 @@ function PanelConfirmar({
   conteo,
   bloqueo,
   usuarioId,
+  tipo,
   onCerrar,
 }: PropsPanelConfirmar) {
   const mutacion = useFinalizarSesion();
@@ -1096,6 +1113,7 @@ function PanelConfirmar({
             () => undefined,
           );
           setFase('confirmando');
+          sentir('exito');
           onCerrar();
           // Fue el segundo conteo y hubo diferencias: resolverlas es lo siguiente,
           // con la otra persona al lado. Se reemplaza el conteo: ya no se puede volver a él.
@@ -1103,10 +1121,13 @@ function PanelConfirmar({
             router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
             return;
           }
+          // El inicio confirma que llegó y dice qué sigue: el cierre del conteo.
+          avisarConteoFinalizado({ tipo, estado: respuesta?.evento?.estado ?? null, productos: productos.length });
           volverAlInicio();
         },
         onError: (e) => {
           setFase('confirmando');
+          sentir('error');
           if (e instanceof ErrorApi && e.estado === 401) {
             setError('Tu sesión venció. Entra de nuevo: lo contado sigue guardado en este dispositivo.');
           } else if (e instanceof ErrorRed) {
@@ -1120,51 +1141,61 @@ function PanelConfirmar({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={cerrar}>
-      <View style={estilos.fondoModal}>
-        <View style={estilos.modal}>
-          <Text style={estilos.tituloModal} accessibilityRole="header">
-            ¿Finalizar tu conteo?
-          </Text>
-          <Text style={estilos.detalleModal}>
-            {productos.length} productos revisados: {conCantidad} con cantidad y {enCero} en cero.
-          </Text>
-          <Text style={estilos.detalleModal}>Después de finalizar ya no podrás cambiarlo.</Text>
-
-          {!puedeFinalizar && !error && (
-            <BloqueError
-              tono="atencion"
-              titulo={bloqueo === 'sin-conexion' ? 'Se perdió la conexión' : 'Falta enviar parte del conteo'}
-              detalle={
-                bloqueo === 'sin-conexion'
-                  ? 'Para finalizar necesitas señal: la comparación de conteos ocurre en el servidor.'
-                  : 'Espera a que todo el conteo llegue al servidor; se envía solo.'
-              }
-            />
-          )}
-
-          {error && <BloqueError titulo="No se pudo finalizar" detalle={error} />}
-
-          <View style={estilos.botonesModal}>
-            <Boton
-              texto="Seguir contando"
-              variante="secundario"
-              onPress={cerrar}
-              deshabilitado={ocupado}
-              style={estilos.botonModal}
-            />
-            <Boton
-              texto="Finalizar conteo"
-              onPress={finalizar}
-              cargando={fase === 'finalizando'}
-              textoCargando="Finalizando…"
-              deshabilitado={!puedeFinalizar}
-              style={estilos.botonModal}
-            />
-          </View>
-        </View>
+    <Hoja
+      visible={visible}
+      onCerrar={cerrar}
+      bloqueada={ocupado}
+      titulo="¿Finalizar tu conteo?"
+      detalle="Después de finalizar ya no podrás cambiarlo."
+      pie={
+        <AccionesHoja>
+          <Boton texto="Seguir contando" variante="secundario" onPress={cerrar} deshabilitado={ocupado} />
+          <Boton
+            texto="Finalizar conteo"
+            onPress={finalizar}
+            cargando={fase === 'finalizando'}
+            textoCargando="Finalizando…"
+            deshabilitado={!puedeFinalizar}
+          />
+        </AccionesHoja>
+      }
+    >
+      {/* El resumen como lectura: tres cifras que se comparan de un vistazo. */}
+      <View style={estilos.resumen} accessible accessibilityLabel={`${productos.length} productos revisados: ${conCantidad} con cantidad y ${enCero} en cero`}>
+        <CifraResumen valor={productos.length} rotulo="Revisados" />
+        <CifraResumen valor={conCantidad} rotulo="Con cantidad" tono="capturado" />
+        <CifraResumen valor={enCero} rotulo="No llevan" tono="pendiente" />
       </View>
-    </Modal>
+
+      {!puedeFinalizar && !error && (
+        <BloqueError
+          tono="atencion"
+          titulo={bloqueo === 'sin-conexion' ? 'Se perdió la conexión' : 'Falta enviar parte del conteo'}
+          detalle={
+            bloqueo === 'sin-conexion'
+              ? 'Para finalizar necesitas señal: la comparación de conteos ocurre en el servidor.'
+              : 'Espera a que todo el conteo llegue al servidor; se envía solo.'
+          }
+        />
+      )}
+
+      {error && <BloqueError titulo="No se pudo finalizar" detalle={error} />}
+    </Hoja>
+  );
+}
+
+/** Una cifra del resumen: el número domina, el rótulo debajo. */
+function CifraResumen({ valor, rotulo, tono }: { valor: number; rotulo: string; tono?: 'capturado' | 'pendiente' }) {
+  const color = tono === 'capturado' ? COLORES.capturadoHondo : tono === 'pendiente' ? COLORES.pendiente : COLORES.texto;
+  return (
+    <View style={estilos.cifraResumen}>
+      <Text style={[estilos.numeroResumen, { color }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+        {valor}
+      </Text>
+      <Text style={estilos.rotuloResumen} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+        {rotulo}
+      </Text>
+    </View>
   );
 }
 
@@ -1224,30 +1255,28 @@ const estilos = StyleSheet.create({
   },
 
   // Encabezado (azul)
-  // Listo: blanco sobre azul, la acción de la pantalla. Si no, hundido en
-  // marcaHonda con texto tenue, y la razón escrita bajo el encabezado.
   botonFinalizar: {
-    minHeight: TOQUE_MINIMO - ESPACIADO.md,
-    paddingHorizontal: ESPACIADO.lg,
+    flex: 1,
+  },
+  lineaPersona: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.medio,
+    gap: ESPACIADO.xs,
+    marginTop: 2,
   },
-  botonFinalizarListo: {
-    backgroundColor: COLORES.superficie,
-  },
-  botonFinalizarBloqueado: {
-    backgroundColor: COLORES.marcaHonda,
-  },
-  botonFinalizarPresionado: {
-    opacity: 0.8,
-  },
-  textoFinalizar: {
-    ...TIPOGRAFIA.subtitulo,
-    color: COLORES.marca,
-  },
-  textoFinalizarBloqueado: {
+  textoPersona: {
+    flexShrink: 1,
+    ...TIPOGRAFIA.micro,
     color: COLORES.marcaTenue,
+  },
+  lineaCompleto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
+  },
+  textoCompleto: {
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.textoSobreColor,
   },
   fechaTocable: {
     flexDirection: 'row',
@@ -1280,12 +1309,6 @@ const estilos = StyleSheet.create({
   numeroProgreso: {
     ...TIPOGRAFIA.avance,
     color: COLORES.textoSobreColor,
-  },
-  razonFinalizar: {
-    ...TIPOGRAFIA.micro,
-    color: COLORES.textoSecundario,
-    paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.sm,
   },
   pildoraEstado: {
     flexShrink: 1,
@@ -1323,12 +1346,21 @@ const estilos = StyleSheet.create({
   cuerpoTablet: {
     flexDirection: 'row',
   },
+  columnaLista: {
+    flex: 1,
+  },
   lista: {
     flex: 1,
   },
   contenidoLista: {
     paddingHorizontal: ESPACIADO.md,
-    paddingBottom: ESPACIADO.xxxl,
+    paddingBottom: ESPACIADO.xl,
+  },
+  // Tablet en vertical: una columna, pero no de 800 de ancho; el ojo no viaja de más.
+  contenidoListaMedio: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   // Banda a todo el ancho (sin los márgenes de la lista), opaca: tapa las filas al fijarse arriba.
   encabezadoFamilia: {
@@ -1381,8 +1413,8 @@ const estilos = StyleSheet.create({
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: BORDES.grueso,
-    borderLeftColor: COLORES.marca,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORES.contornoTarjeta,
   },
   lateralVacio: {
     flex: 1,
@@ -1400,32 +1432,25 @@ const estilos = StyleSheet.create({
   },
 
   // Paneles
-  fondoModal: {
+  resumen: {
+    flexDirection: 'row',
+    gap: ESPACIADO.sm,
+  },
+  cifraResumen: {
     flex: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-    backgroundColor: COLORES.velo,
+    gap: 2,
+    padding: ESPACIADO.md,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
   },
-  modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    maxHeight: '90%',
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
-  tituloModal: {
+  numeroResumen: {
     ...TIPOGRAFIA.titulo,
-    color: COLORES.texto,
+    fontFamily: FUENTE.extraNegrita,
+    ...CIFRAS,
   },
-  detalleModal: {
-    ...TIPOGRAFIA.cuerpo,
-    color: COLORES.texto,
-  },
-  listaModal: {
-    flexGrow: 0,
+  rotuloResumen: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
   },
   contenidoListaModal: {
     gap: RITMO.grupo,
@@ -1446,19 +1471,12 @@ const estilos = StyleSheet.create({
   },
   pendientePresionado: {
     backgroundColor: COLORES.divisor,
-    transform: [{ scale: 0.98 }],
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
   nombrePendiente: {
     flex: 1,
     ...TIPOGRAFIA.cuerpo,
     fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
-  },
-  botonesModal: {
-    flexDirection: 'row',
-    gap: RITMO.relacionado,
-  },
-  botonModal: {
-    flex: 1,
   },
 });

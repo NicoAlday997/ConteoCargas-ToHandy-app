@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
   CIFRAS,
   COLORES,
   ELEVACION,
+  ESCALA_PRESIONADO,
   ESPACIADO,
   ETIQUETA_DATO,
   RADIOS,
@@ -14,6 +15,7 @@ import {
   type ColorTono,
   type NivelElevacion,
 } from '../../theme/tokens';
+import { Pulsable } from './Pulsable';
 
 /** Espacio entre tarjetas de una lista: que un renglón no se confunda con el siguiente. */
 export const SEPARACION_TARJETAS = RITMO.relacionado;
@@ -102,15 +104,16 @@ export function Tarjeta({
   }
 
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
+      onda="rgba(30, 79, 224, 0.12)"
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       style={({ pressed }) => [estilo, pressed && estilos.presionada]}
     >
       {contenido}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -148,6 +151,7 @@ const estilos = StyleSheet.create({
   // Tinte de marca y la tarjeta se hunde un poco: el toque se nota al instante.
   presionada: {
     backgroundColor: COLORES.marcaTinte,
-    transform: [{ scale: 0.98 }],
+    borderColor: COLORES.marca,
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
 });

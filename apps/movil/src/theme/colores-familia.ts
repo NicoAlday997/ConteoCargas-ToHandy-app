@@ -35,16 +35,16 @@ export interface TonosColorFamilia {
 }
 
 export const TONOS_COLOR_FAMILIA: Record<ColorFamilia, TonosColorFamilia> = {
-  rojo: { solido: '#DC2626', tinte: '#EAD2D8', texto: '#991B1B' },
-  naranja: { solido: '#EA580C', tinte: '#EDD9D4', texto: '#9A3412' },
-  ambar: { solido: '#B45309', tinte: '#E4D8D3', texto: '#78350F' },
-  verde: { solido: '#15803D', tinte: '#CDDFDB', texto: '#14532D' },
-  turquesa: { solido: '#0D9488', tinte: '#CBE2E6', texto: '#115E59' },
-  azul: { solido: '#2563EB', tinte: '#CFDBF5', texto: '#1E40AF' },
-  indigo: { solido: '#4F46E5', tinte: '#D5D7F4', texto: '#3730A3' },
-  violeta: { solido: '#7C3AED', tinte: '#DCD5F6', texto: '#5B21B6' },
-  rosa: { solido: '#DB2777', tinte: '#EAD2E4', texto: '#9D174D' },
-  cafe: { solido: '#92613A', tinte: '#DFDBDB', texto: '#5C3A1E' },
+  rojo: { solido: '#DC2626', tinte: '#E2CAD1', texto: '#991B1B' },
+  naranja: { solido: '#C2410C', tinte: '#DECECD', texto: '#9A3412' },
+  ambar: { solido: '#B45309', tinte: '#DCD1CD', texto: '#78350F' },
+  verde: { solido: '#15803D', tinte: '#C4D8D4', texto: '#14532D' },
+  turquesa: { solido: '#0D9488', tinte: '#C3DBE0', texto: '#115E59' },
+  azul: { solido: '#2563EB', tinte: '#C7D3EE', texto: '#1E40AF' },
+  indigo: { solido: '#4F46E5', tinte: '#CDCFEE', texto: '#3730A3' },
+  violeta: { solido: '#7C3AED', tinte: '#D4CDEF', texto: '#5B21B6' },
+  rosa: { solido: '#DB2777', tinte: '#E2CADD', texto: '#9D174D' },
+  cafe: { solido: '#92613A', tinte: '#D7D3D4', texto: '#5C3A1E' },
 };
 
 /** Nombre que ve el supervisor al elegir. */

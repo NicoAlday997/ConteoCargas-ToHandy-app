@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ErrorRed } from '../api/cliente';
 import { useAsignarRuta, useRutasConPlantilla } from '../api/hooks-plantillas';
-import { BloqueError, Boton, Encabezado, Esqueleto, Etiqueta, TarjetaEsqueleto, Tarjeta } from '../componentes/base';
+import { BloqueError, Boton, Encabezado, Esqueleto, Etiqueta, Hoja, TarjetaEsqueleto, Tarjeta } from '../componentes/base';
 import { textoProductos } from '../factores/modelo-factores';
-import { ANCHO_MODAL, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
 import { avisoDeError, estilosPlantillas } from './ComponentesPlantillas';
 import { rutasRespectoA, type RutaAsignable } from './modelo-plantillas';
 
@@ -22,13 +22,9 @@ interface Props {
  */
 export function ModalRutas({ visible, plantilla, onCerrar }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onCerrar}>
-      <View style={estilos.fondo}>
-        <ScrollView contentContainerStyle={estilos.centrado} bounces={false}>
-          {visible && <Contenido plantilla={plantilla} onCerrar={onCerrar} />}
-        </ScrollView>
-      </View>
-    </Modal>
+    <Hoja visible={visible} onCerrar={onCerrar}>
+      {visible && <Contenido plantilla={plantilla} onCerrar={onCerrar} />}
+    </Hoja>
   );
 }
 
@@ -173,23 +169,8 @@ function FilaRuta({ ruta, puedeAsignar, onAsignar }: { ruta: RutaAsignable; pued
 }
 
 const estilos = StyleSheet.create({
-  fondo: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  centrado: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-  },
   modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
     gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
   },
   lista: {
     gap: RITMO.relacionado,

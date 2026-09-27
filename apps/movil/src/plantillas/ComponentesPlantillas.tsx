@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { formatearNombreFamilia } from '../conteo/formato-nombre';
 import { router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { cerrarSesion } from '../api/sesion';
-import { Etiqueta, Tarjeta } from '../componentes/base';
+import {
+  Etiqueta,
+  Tarjeta,
+  Pulsable,
+} from '../componentes/base';
 import { textoEmpaque, type EmpaqueConfirmado } from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
 import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
@@ -68,7 +72,7 @@ export function EncabezadoFamilia({
         <Text style={estilos.cantidadFamilia}>{detalle}</Text>
       </View>
       {accion && (
-        <Pressable
+        <Pulsable
           onPress={accion.onPress}
           accessibilityRole="button"
           accessibilityLabel={accion.accessibilityLabel}
@@ -80,7 +84,7 @@ export function EncabezadoFamilia({
               {accion.texto}
             </Text>
           )}
-        </Pressable>
+        </Pulsable>
       )}
     </View>
   );
@@ -146,7 +150,7 @@ export function FilaProducto({
 
   const { marcado, tono, onAlternar } = modo;
   return (
-    <Pressable
+    <Pulsable
       onPress={onAlternar}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: marcado }}
@@ -162,7 +166,7 @@ export function FilaProducto({
         {marcado && <View style={estilos.palomita} />}
       </View>
       {datos}
-    </Pressable>
+    </Pulsable>
   );
 }
 

@@ -19,7 +19,7 @@ import {
   type PesoFuente,
 } from './tokens.ts';
 
-/** Bodega con poca luz: AA normal para todo texto. */
+/** Bodega con poca luz y calle a pleno sol: AA normal para todo texto. */
 const MINIMO_TEXTO = 4.5;
 /** Texto grande (≥ 18.66 px negrita) y gráficos: WCAG 1.4.3 / 1.4.11. */
 const MINIMO_GRANDE = 3;
@@ -44,6 +44,9 @@ describe('contraste: texto general', () => {
       ['secundario sobre tarjeta', 'textoSecundario', 'superficie'],
       ['secundario sobre pastilla neutra', 'textoSecundario', 'superficieHonda'],
       ['error como texto ("Cerrar sesión")', 'error', 'superficie'],
+      ['rótulo terciario sobre tarjeta', 'textoTerciario', 'superficie'],
+      ['rótulo terciario sobre el fondo de pantalla', 'textoTerciario', 'fondo'],
+      ['texto del botón de peligro', 'errorTexto', 'superficie'],
       ['botón destructivo de contorno', 'error', 'superficie'],
       ['antetítulo del login', 'marca', 'fondo'],
       ['texto de "Finalizar" listo (blanco con texto azul)', 'marca', 'superficie'],
@@ -56,7 +59,7 @@ describe('contraste: encabezado azul', () => {
   comprobar(
     [
       ['título', 'textoSobreColor', 'marca'],
-      ['subtítulo y "de 14"', 'marcaTenue', 'marca'],
+      ['subtítulo, "de 14" y quién cuenta', 'marcaTenue', 'marca'],
       ['avance y "Al día" en el panel', 'textoSobreColor', 'marcaHonda'],
       ['"de 14" y Finalizar deshabilitado en el panel', 'marcaTenue', 'marcaHonda'],
       ['botón principal', 'textoSobreColor', 'marca'],
@@ -74,8 +77,13 @@ describe('contraste: filas de conteo', () => {
       ['CONTADO: nombre', 'texto', 'capturadoFondo'],
       ['CONTADO: pastilla del factor', 'textoSobreColor', 'capturadoHondo'],
       ['CONTADO: número en el campo blanco', 'texto', 'superficie'],
-      ['NO LLEVA: pastilla "NO LLEVA" en blanco', 'pendiente', 'superficie'],
-      ['NO LLEVA: 0 relleno', 'textoSobreColor', 'pendiente'],
+      ['NO LLEVA: nombre', 'pendiente', 'pendienteFondo'],
+      ['NO LLEVA: 0 del botón', 'pendiente', 'superficie'],
+      ['NO LLEVA: visor "0 · No lleva"', 'textoSobreColor', 'pendiente'],
+      ['CONTADO: visor (lectura en blanco sobre turquesa hondo)', 'textoSobreColor', 'capturadoHondo'],
+      ['CONTADO: palomita y "Completa"', 'capturadoHondo', 'capturadoFondo'],
+      ['SIN CONTAR: rótulo "PIEZAS" del visor vacío', 'textoSecundario', 'superficie'],
+      ['TECLEANDO: visor', 'textoSobreColor', 'marcaHonda'],
       ['TECLEANDO: nombre', 'textoSobreColor', 'marca'],
       ['TECLEANDO: campo activo', 'texto', 'superficie'],
       ['TECLEANDO: campo inactivo', 'textoSobreColor', 'marcaHonda'],
@@ -85,64 +93,46 @@ describe('contraste: filas de conteo', () => {
     MINIMO_TEXTO,
   );
   // Total de 33 px negrita: texto grande.
+  // Contornos y gráficos: 3:1 (WCAG 1.4.11).
   comprobar(
     [
-      ['SIN CONTAR: total "—" (33 px negrita)', 'textoTerciario', 'superficie'],
-      ['CONTADO: total (33 px negrita)', 'capturadoHondo', 'capturadoFondo'],
-      ['NO LLEVA: total (33 px negrita)', 'pendiente', 'pendienteFondo'],
-      ['TECLEANDO: total (33 px negrita)', 'textoSobreColor', 'marca'],
-    ],
-    MINIMO_GRANDE,
-  );
-  // Bordes de la fila: gráficos.
-  comprobar(
-    [
+      ['SIN CONTAR: "—" del visor vacío', 'textoTerciario', 'superficie'],
       ['botón 0: contorno', 'borde', 'superficie'],
+      ['contorno de campo sobre el fondo de pantalla', 'borde', 'fondo'],
       ['chevron sobre tarjeta', 'textoTerciario', 'superficie'],
+      ['contorno del visor CONTADO sobre la fila', 'capturadoHondo', 'capturadoFondo'],
     ],
     MINIMO_GRANDE,
   );
 });
 
 /**
- * Pares de la paleta aprobada que NO llegan a 4.5:1 como texto chico. Son
- * decisiones de diseño tomadas a sabiendas (docs/06 §1): quedan aquí con su
- * umbral real para que un cambio que los empeore falle, y para que nadie los
- * use en otro lugar creyendo que cumplen AA.
+ * Pares que NO llegan a 3:1 y se aceptan a sabiendas: contornos suaves que
+ * nunca son la única señal. La fila SIN CONTAR se separa del fondo por su
+ * blanco, su contorno y, sobre todo, por su visor punteado; la CONTADO, por su
+ * visor sólido. Quedan aquí con su umbral para que un cambio que los empeore falle.
  */
 describe('contraste: excepciones documentadas de la paleta', () => {
   const EXCEPCIONES: [string, ClaveColor, ClaveColor, number][] = [
-    // 3.10:1. Rótulos de 12 px ("Contó", "Productos"): solo sobre tarjeta blanca, nunca sobre el fondo de pantalla (2.72:1).
-    ['rótulo terciario sobre tarjeta', 'textoTerciario', 'superficie', 3.1],
-    // 3.90:1. Nombre y rótulos de la fila "no lleva": se retira a propósito.
-    ['texto de la fila "no lleva"', 'pendiente', 'pendienteFondo', 3.9],
-    // 4.28:1. Pastilla "Completa" del encabezado de familia (13 px seminegrita) y unidad del total contado.
-    ['pastilla "Completa"', 'capturadoHondo', 'capturadoFondo', 4.28],
-    // 1.14:1. Fila SIN CONTAR: neutra a propósito (es el estado normal, no un aviso). Se separa del fondo por su blanco y su borde gris claro (1.37:1 sobre blanco).
-    ['fila SIN CONTAR: blanco sobre el fondo de pantalla', 'superficie', 'fondo', 1.14],
-    ['borde de la fila SIN CONTAR', 'bordeSinContar', 'superficie', 1.37],
-    // 2.18:1. Borde turquesa de la fila CONTADO: igual, la fila se distingue por su fondo tintado.
-    ['borde de la fila CONTADO', 'capturado', 'fondo', 2.18],
-    // 4.51:1 justo: subtítulo de 12 px del encabezado azul.
-    ['subtítulo sobre azul', 'marcaTenue', 'marca', 4.5],
+    ['fila SIN CONTAR: blanco sobre el fondo de pantalla', 'superficie', 'fondo', 1.24],
+    ['borde de la fila SIN CONTAR', 'bordeSinContar', 'superficie', 2.04],
+    ['contorno de tarjeta', 'contornoTarjeta', 'superficie', 1.5],
+    ['borde de la fila CONTADO', 'capturado', 'capturadoFondo', 2.0],
   ];
   for (const [donde, texto, fondo, minimo] of EXCEPCIONES) {
     it(`${donde}: ${texto} sobre ${fondo} se mantiene ≥ ${minimo}:1`, () => {
       assert.ok(razonContraste(COLORES[texto], COLORES[fondo]) >= minimo - 0.005);
     });
   }
-
-  it('el rótulo terciario NO se usa sobre el fondo de pantalla (no llega ni a 3:1)', () => {
-    assert.ok(razonContraste(COLORES.textoTerciario, COLORES.fondo) < MINIMO_GRANDE);
-  });
 });
 
 describe('contraste: inicio y menús', () => {
   comprobar(
     [
-      ['nombre sobre la banda de identidad', 'texto', 'marcaTinte'],
-      ['rol sobre la banda de identidad', 'textoSecundario', 'marcaTinte'],
-      ['iniciales sobre el círculo de marca', 'textoSobreColor', 'marca'],
+      ['nombre sobre la banda de identidad', 'texto', 'superficie'],
+      ['rol sobre la banda de identidad', 'textoSecundario', 'superficie'],
+      ['iniciales sobre el círculo de tinta', 'textoSobreColor', 'texto'],
+      ['ícono de tarea en tinta sobre gris hundido', 'texto', 'superficieHonda'],
       ['"Completa" en la pastilla blanca de la banda de familia', 'capturadoHondo', 'superficie'],
     ],
     MINIMO_TEXTO,
@@ -199,6 +189,7 @@ describe('tipografía', () => {
     [FUENTE.medio]: 500,
     [FUENTE.semiNegrita]: 600,
     [FUENTE.negrita]: 700,
+    [FUENTE.extraNegrita]: 800,
   };
 
   it('cada nivel lleva una familia de FUENTE (con fuente propia fontWeight no aplica)', () => {
@@ -209,8 +200,11 @@ describe('tipografía', () => {
     }
   });
 
-  it('FUENTE tiene exactamente los cuatro pesos que se cargan', () => {
-    assert.deepEqual(Object.keys(FUENTE).sort(), (['medio', 'negrita', 'regular', 'semiNegrita'] satisfies PesoFuente[]).sort());
+  it('FUENTE tiene exactamente los cinco pesos que se cargan', () => {
+    assert.deepEqual(
+      Object.keys(FUENTE).sort(),
+      (['extraNegrita', 'medio', 'negrita', 'regular', 'semiNegrita'] satisfies PesoFuente[]).sort(),
+    );
   });
 
   it('el dato es más grande y pesa más que su rótulo', () => {
@@ -218,10 +212,16 @@ describe('tipografía', () => {
     assert.ok(PESO[DATO.fontFamily] - PESO[ETIQUETA_DATO.fontFamily] >= 200);
   });
 
-  it('el total de la fila es 33 px negrita y el número del campo 21 px', () => {
-    assert.equal(TIPOGRAFIA.total.fontSize, 33);
-    assert.equal(TIPOGRAFIA.total.fontFamily, FUENTE.negrita);
-    assert.equal(TIPOGRAFIA.campo.fontSize, 21);
-    assert.equal(ROTULO.fontSize, 9);
+  it('la lectura de la fila es 32 px ExtraBold y el número del campo 22 px', () => {
+    assert.equal(TIPOGRAFIA.total.fontSize, 32);
+    assert.equal(TIPOGRAFIA.total.fontFamily, FUENTE.extraNegrita);
+    assert.equal(TIPOGRAFIA.campo.fontSize, 22);
+  });
+
+  it('ningún texto baja de 12 px: "PAQUETES" contra "SUELTAS" se lee a pleno sol', () => {
+    for (const [nivel, estilo] of Object.entries(TIPOGRAFIA)) {
+      assert.ok(estilo.fontSize >= 12, `${nivel} mide ${estilo.fontSize}`);
+    }
+    assert.ok(ROTULO.fontSize >= 12);
   });
 });

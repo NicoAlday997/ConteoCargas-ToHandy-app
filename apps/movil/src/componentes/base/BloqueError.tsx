@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 
 import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS } from '../../theme/tokens';
 import { Boton } from './Boton';
+import { Glifo } from './Icono';
 
 interface Props {
   /** Qué pasó, en una frase: "No se pudo cargar el historial". */
@@ -17,8 +18,9 @@ interface Props {
   /**
    * - error: algo falló o se rechazó.
    * - atencion: no es una falla de nadie (sin señal); se resuelve solo o esperando.
+   * - exito: algo terminó bien y se confirma (el conteo quedó enviado).
    */
-  tono?: 'error' | 'atencion';
+  tono?: 'error' | 'atencion' | 'exito';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -36,13 +38,16 @@ export function BloqueError({
   tono = 'error',
   style,
 }: Props) {
-  const colores = tono === 'error' ? TONOS.error : TONOS.discrepancia;
+  const colores = tono === 'error' ? TONOS.error : tono === 'exito' ? TONOS.capturado : TONOS.discrepancia;
+  const borde = tono === 'error' ? COLORES.error : tono === 'exito' ? COLORES.capturadoHondo : COLORES.discrepanciaHonda;
+  const glifo = tono === 'error' ? 'alerta' : tono === 'exito' ? 'listo' : 'reloj';
   return (
-    <View style={[estilos.bloque, { backgroundColor: colores.fondo }, style]} accessibilityRole="alert">
+    <View
+      style={[estilos.bloque, { backgroundColor: colores.fondo, borderColor: borde }, style]}
+      accessibilityRole={tono === 'exito' ? 'summary' : 'alert'}
+    >
       <View style={estilos.cabecera}>
-        <View style={[estilos.signo, { backgroundColor: colores.solido }]}>
-          <Text style={estilos.textoSigno}>!</Text>
-        </View>
+        <Glifo nombre={glifo} color={colores.texto} tamano={TAMANO_SIGNO} />
         <Text style={[estilos.titulo, { color: colores.texto }]}>{titulo}</Text>
       </View>
       {detalle ? <Text style={estilos.detalle}>{detalle}</Text> : null}
@@ -77,23 +82,12 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
     padding: RITMO.margen,
     borderRadius: RADIOS.medio,
+    borderWidth: 1,
   },
   cabecera: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: HUECO_SIGNO,
-  },
-  signo: {
-    width: TAMANO_SIGNO,
-    height: TAMANO_SIGNO,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.completo,
-  },
-  textoSigno: {
-    ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.textoSobreColor,
   },
   titulo: {
     flex: 1,

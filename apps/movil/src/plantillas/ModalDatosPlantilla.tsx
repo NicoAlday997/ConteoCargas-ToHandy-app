@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ErrorApi } from '../api/cliente';
 import { CODIGO_NOMBRE_DUPLICADO } from '../api/plantillas';
-import { BloqueError, Boton, CampoTexto, Encabezado } from '../componentes/base';
-import { ANCHO_MODAL, COLORES, ESPACIADO, RADIOS, RITMO } from '../theme/tokens';
+import { BloqueError, Boton, CampoTexto, Encabezado, Hoja } from '../componentes/base';
+import { ESPACIADO, RITMO } from '../theme/tokens';
 import { avisoDeError, estilosPlantillas } from './ComponentesPlantillas';
 import { DESCRIPCION_MAXIMO, errorNombre, NOMBRE_MAXIMO } from './modelo-plantillas';
 
@@ -30,13 +30,9 @@ export function ModalDatosPlantilla(props: Props) {
     if (!props.guardando) props.onCerrar();
   };
   return (
-    <Modal visible={props.visible} transparent animationType="none" onRequestClose={cerrar}>
-      <View style={estilos.fondo}>
-        <ScrollView contentContainerStyle={estilos.centrado} bounces={false} keyboardShouldPersistTaps="handled">
-          {props.visible && <Formulario {...props} onCerrar={cerrar} />}
-        </ScrollView>
-      </View>
-    </Modal>
+    <Hoja visible={props.visible} onCerrar={cerrar}>
+      {props.visible && <Formulario {...props} onCerrar={cerrar} />}
+    </Hoja>
   );
 }
 
@@ -98,23 +94,8 @@ function Formulario({ titulo, textoGuardar, inicial, guardando, error, onGuardar
 }
 
 const estilos = StyleSheet.create({
-  fondo: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  centrado: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-  },
   modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
     gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
   },
   botones: {
     marginTop: ESPACIADO.sm,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -7,7 +7,7 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { useAutorizarCarga, useRechazarProductos } from '../../src/api/hooks-supervisor';
 import { cerrarSesion } from '../../src/api/sesion';
-import { Boton, CampoTexto, EstadoVacio, Tarjeta } from '../../src/componentes/base';
+import { Boton, CampoTexto, EstadoVacio, Palomita, Pulsable, Tarjeta } from '../../src/componentes/base';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import { estadoDeCarga, type CargaDetalle, type ProductoDetalle } from '../../src/historial/modelo-historial';
 import {
@@ -139,6 +139,8 @@ function Revision({ eventoId }: { eventoId: string }) {
   const [confirmandoAutorizacion, setConfirmandoAutorizacion] = useState(false);
   const [errorAutorizacion, setErrorAutorizacion] = useState<ReturnType<typeof mensajeError> | null>(null);
   const [aModificar, setAModificar] = useState<ProductoDetalle | null>(null);
+  /** Las acciones de excepción se guardan tras «Más acciones»: la barra no se come la lista. */
+  const [masAcciones, setMasAcciones] = useState(false);
   const lista = useRef<SectionList<ProductoDetalle, SeccionFamilia>>(null);
 
   const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
@@ -182,6 +184,8 @@ function Revision({ eventoId }: { eventoId: string }) {
   }
 
   const enEspera = estado === 'EN_ESPERA_AUTORIZACION';
+  const enviable = estado !== null && ESTADOS_ENVIABLES.has(estado);
+  const hayMasAcciones = enEspera || accionCancelacion(estado) !== null || puedeCambiarFecha(estado);
   const marcados = Object.keys(seleccion).length;
 
   const refrescar = () => {
@@ -191,6 +195,7 @@ function Revision({ eventoId }: { eventoId: string }) {
 
   const cambiarModo = (nuevo: Modo) => {
     setModo(nuevo);
+    setMasAcciones(false);
     setSeleccion({});
     setIntentoRechazo(false);
     setErrorRechazo(null);
@@ -315,21 +320,22 @@ function Revision({ eventoId }: { eventoId: string }) {
       />
 
       <BarraAcciones>
-        {enEspera && modo === 'revisar' && (
-          <>
-            <Boton
-              texto="Autorizar carga"
-              onPress={() => {
-                setErrorAutorizacion(null);
-                setConfirmandoAutorizacion(true);
-              }}
-              deshabilitado={secciones.length === 0}
-            />
-            <View style={estilos.filaBotones}>
-              <Boton texto="Rechazar productos" variante="secundario" onPress={() => cambiarModo('rechazar')} style={estilos.botonFila} />
-              <Boton texto="Modificar cantidad" variante="secundario" onPress={() => cambiarModo('modificar')} style={estilos.botonFila} />
-            </View>
-          </>
+        {/* Lo que se espera va solo y grande; lo demás, tras «Más acciones». */}
+        {modo === 'revisar' && masAcciones && (
+          <View style={estilos.bandejaAcciones}>
+            {enEspera && (
+              <View style={estilos.filaBotones}>
+                <Boton texto="Rechazar productos" variante="secundario" onPress={() => cambiarModo('rechazar')} style={estilos.botonFila} />
+                <Boton texto="Modificar cantidad" variante="secundario" onPress={() => cambiarModo('modificar')} style={estilos.botonFila} />
+              </View>
+            )}
+            {(accionCancelacion(estado) !== null || puedeCambiarFecha(estado)) && (
+              <View style={estilos.filaBotones}>
+                <CambiarFechaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
+                <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
+              </View>
+            )}
+          </View>
         )}
         {enEspera && modo === 'rechazar' && (
           <View style={estilos.filaBotones}>
@@ -347,20 +353,39 @@ function Revision({ eventoId }: { eventoId: string }) {
         {enEspera && modo === 'modificar' && (
           <Boton texto="Cancelar" variante="secundario" onPress={() => cambiarModo('revisar')} />
         )}
-        {estado !== null && ESTADOS_ENVIABLES.has(estado) && (
-          <Boton
-            texto={textoBotonEnvio(estado)}
-            variante={estado === 'ERROR_ENVIO' ? 'secundario' : 'primario'}
-            onPress={envio.pedirConfirmacion}
-            cargando={envio.enviando}
-            textoCargando="Enviando…"
-          />
-        )}
-        {modo === 'revisar' && (accionCancelacion(estado) !== null || puedeCambiarFecha(estado)) && (
-          // Lado a lado: son las acciones de excepción, no deben comerse la lista.
+        {modo === 'revisar' && (hayMasAcciones || enEspera || enviable) && (
           <View style={estilos.filaBotones}>
-            <CambiarFechaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
-            <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
+            {hayMasAcciones && (
+              <Boton
+                texto={masAcciones ? 'Menos' : 'Más acciones'}
+                variante="secundario"
+                tacto="seleccion"
+                onPress={() => setMasAcciones((v) => !v)}
+                accessibilityHint={masAcciones ? 'Oculta las acciones de excepción' : 'Rechazar, modificar, cambiar fecha o cancelar'}
+                style={enEspera || enviable ? estilos.botonMas : estilos.botonFila}
+              />
+            )}
+            {enEspera && (
+              <Boton
+                texto="Autorizar carga"
+                onPress={() => {
+                  setErrorAutorizacion(null);
+                  setConfirmandoAutorizacion(true);
+                }}
+                deshabilitado={secciones.length === 0}
+                style={estilos.botonFila}
+              />
+            )}
+            {enviable && estado !== null && (
+              <Boton
+                texto={textoBotonEnvio(estado)}
+                variante={estado === 'ERROR_ENVIO' ? 'secundario' : 'primario'}
+                onPress={envio.pedirConfirmacion}
+                cargando={envio.enviando}
+                textoCargando="Enviando…"
+                style={estilos.botonFila}
+              />
+            )}
           </View>
         )}
       </BarraAcciones>
@@ -447,7 +472,7 @@ function PanelEstado({ carga, modo, envio }: { carga: CargaDetalle; modo: Modo; 
           ? 'Toca «Modificar cantidad» en el producto a corregir. Solo uno por ronda: al guardarlo, la carga vuelve a diferencias por resolver.'
           : 'Revisa las cantidades. Ninguna carga llega a Handy sin tu autorización.';
     return (
-      <Tarjeta elevacion={0} tintada="marca" compacta style={estilos.panel}>
+      <Tarjeta elevacion={0} compacta style={estilos.panel}>
         <Text style={estilos.instruccion}>{texto}</Text>
       </Tarjeta>
     );
@@ -493,18 +518,21 @@ function ControlRechazo({
 }) {
   return (
     <View style={estilos.control}>
-      <Pressable
+      <Pulsable
         onPress={onAlternar}
+        tacto="seleccion"
         accessibilityRole="checkbox"
         accessibilityState={{ checked: marcado }}
         accessibilityLabel={`Rechazar ${nombre}`}
         style={({ pressed }) => [estilos.casilla, pressed && estilos.casillaPresionada]}
       >
-        <View style={[estilos.caja, marcado && estilos.cajaMarcada]}>{marcado && <View style={estilos.palomita} />}</View>
+        <View style={[estilos.caja, marcado && estilos.cajaMarcada]}>
+          {marcado && <Palomita color={COLORES.textoSobreColor} tamano={ESPACIADO.lg + ESPACIADO.xs} />}
+        </View>
         <Text style={[estilos.textoCasilla, marcado && estilos.textoCasillaMarcada]}>
           {marcado ? 'Marcado para rechazar' : 'Rechazar este producto'}
         </Text>
-      </Pressable>
+      </Pulsable>
       {marcado && (
         <CampoTexto
           etiqueta="Motivo del rechazo"
@@ -556,7 +584,7 @@ const estilos = StyleSheet.create({
   instruccion: {
     ...TIPOGRAFIA.cuerpo,
     fontFamily: FUENTE.semiNegrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.texto,
   },
   tituloListo: {
     ...TIPOGRAFIA.subtitulo,
@@ -576,13 +604,21 @@ const estilos = StyleSheet.create({
   botonPie: {
     marginTop: RITMO.interno,
   },
-  // Acciones fijas abajo, en blanco sobre el fondo tintado: siempre a la mano.
+  // Acciones fijas abajo, en blanco: siempre a la mano del pulgar.
   barra: {
     paddingHorizontal: RITMO.margen,
     paddingVertical: ESPACIADO.md,
     backgroundColor: COLORES.superficie,
-    borderTopWidth: BORDES.grueso,
-    borderTopColor: COLORES.marca,
+    borderTopWidth: 1,
+    borderTopColor: COLORES.contornoTarjeta,
+  },
+  bandejaAcciones: {
+    gap: RITMO.relacionado,
+    paddingBottom: ESPACIADO.xs,
+  },
+  botonMas: {
+    flexGrow: 0,
+    flexBasis: '34%',
   },
   columnaBarra: {
     width: '100%',
@@ -627,16 +663,6 @@ const estilos = StyleSheet.create({
   cajaMarcada: {
     backgroundColor: COLORES.error,
     borderColor: COLORES.error,
-  },
-  // Palomita: dos lados de un rectángulo, girados (como el icono «listo»).
-  palomita: {
-    width: ESPACIADO.sm,
-    height: ESPACIADO.md + ESPACIADO.xs,
-    marginTop: -ESPACIADO.xs / 2,
-    borderRightWidth: BORDES.grueso,
-    borderBottomWidth: BORDES.grueso,
-    borderColor: COLORES.textoSobreColor,
-    transform: [{ rotate: '45deg' }],
   },
   textoCasilla: {
     flex: 1,

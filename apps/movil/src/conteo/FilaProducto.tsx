@@ -1,15 +1,17 @@
 import { memo, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { Palomita } from '../componentes/base';
+import { Glifo, Palomita, Pulsable } from '../componentes/base';
 import {
   ALTO_CONTROL,
   BORDES,
   CIFRAS,
   COLORES,
+  ESCALA_TEXTO,
   ESPACIADO,
   FUENTE,
+  MOVIMIENTO,
   OPACIDAD,
   RADIOS,
   ROTULO,
@@ -32,9 +34,10 @@ import { unidadEnPlural, unidadEnSingular } from './formato-cantidad';
 import { formatearNombreProducto } from './formato-nombre';
 
 /** Un destello corto: confirma el toque sin hacer esperar al siguiente. */
-const DURACION_DESTELLO_MS = 280;
+const DURACION_DESTELLO_MS = MOVIMIENTO.destello;
 const OPACIDAD_DESTELLO = 0.3;
-const ANCHO_TOTAL = 84;
+/** El visor cabe "9999" en la lectura y "NO LLEVA" en su rótulo. */
+const ANCHO_VISOR = 96;
 const ANCHO_CERO = 52;
 /** Pastilla del factor: mismo ancho en todas las filas, así quedan en columna. */
 const ANCHO_FACTOR = 60;
@@ -76,6 +79,14 @@ interface ColoresAspecto {
   /** Fondo de los campos en reposo. */
   campo: string;
   campoTexto: string;
+  /**
+   * El visor: la lectura de la báscula. Vacío es un marco punteado; con
+   * lectura es un bloque sólido. Se distingue por FORMA (hueco o lleno), no
+   * solo por tinte: a pleno sol, blanco y verde agua casi se confunden.
+   */
+  visorFondo: string;
+  visorBorde: string;
+  visorPunteado: boolean;
 }
 
 const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
@@ -89,28 +100,37 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
     factorTexto: COLORES.textoSecundario,
     campo: COLORES.superficieHonda,
     campoTexto: COLORES.texto,
+    visorFondo: COLORES.superficie,
+    visorBorde: COLORES.bordeSinContar,
+    visorPunteado: true,
   },
   contado: {
     fondo: COLORES.capturadoFondo,
     borde: COLORES.capturado,
     nombre: COLORES.texto,
-    total: COLORES.capturadoHondo,
-    unidad: COLORES.capturadoHondo,
+    total: COLORES.textoSobreColor,
+    unidad: COLORES.textoSobreColor,
     factorFondo: COLORES.capturadoHondo,
     factorTexto: COLORES.textoSobreColor,
     campo: COLORES.superficie,
     campoTexto: COLORES.texto,
+    visorFondo: COLORES.capturadoHondo,
+    visorBorde: COLORES.capturadoHondo,
+    visorPunteado: false,
   },
   'no-lleva': {
     fondo: COLORES.pendienteFondo,
     borde: COLORES.bordeNoLleva,
     nombre: COLORES.pendiente,
-    total: COLORES.pendiente,
-    unidad: COLORES.pendiente,
+    total: COLORES.textoSobreColor,
+    unidad: COLORES.textoSobreColor,
     factorFondo: COLORES.superficie,
     factorTexto: COLORES.pendiente,
     campo: COLORES.superficie,
     campoTexto: COLORES.pendiente,
+    visorFondo: COLORES.pendiente,
+    visorBorde: COLORES.pendiente,
+    visorPunteado: false,
   },
   tecleando: {
     fondo: COLORES.marca,
@@ -122,6 +142,9 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
     factorTexto: COLORES.textoSobreColor,
     campo: COLORES.marcaHonda,
     campoTexto: COLORES.textoSobreColor,
+    visorFondo: COLORES.marcaHonda,
+    visorBorde: COLORES.marcaHonda,
+    visorPunteado: false,
   },
 };
 
@@ -185,7 +208,12 @@ export function EtiquetaFactor({
       accessible
       accessibilityLabel={accesible}
     >
-      <Text style={[grande ? estilos.textoFactorGrande : estilos.textoFactor, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text
+        style={[grande ? estilos.textoFactorGrande : estilos.textoFactor, { color }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={ESCALA_TEXTO.control}
+      >
         {texto}
       </Text>
     </View>
@@ -240,16 +268,11 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
 
       <View style={estilos.encabezado}>
         <EtiquetaFactor producto={producto} aspecto={aspecto} />
-        <Text style={[estilos.nombre, { color: colores.nombre }]} numberOfLines={2}>
+        <Text style={[estilos.nombre, { color: colores.nombre }]} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
           {nombre}
         </Text>
-        {estado === 'en-cero' && aspecto !== 'tecleando' && (
-          <View style={estilos.marcaCero}>
-            <Text style={estilos.textoMarcaCero}>No lleva</Text>
-          </View>
-        )}
-        {aspecto === 'contado' && <Palomita color={COLORES.capturadoHondo} />}
         <MarcaEnvio envio={envio} sobreMarca={aspecto === 'tecleando'} />
+        {aspecto === 'contado' && envio !== 'rechazado' && <Palomita color={COLORES.capturadoHondo} />}
       </View>
 
       <View style={estilos.captura}>
@@ -281,18 +304,37 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           {!(conPaquetes && conSueltas) && <View style={estilos.huecoCampo} />}
         </View>
 
-        <View style={estilos.total} accessible accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}>
-          <Text style={[estilos.numeroTotal, { color: colores.total }]} numberOfLines={1} adjustsFontSizeToFit>
+        <View
+          style={[
+            estilos.visor,
+            { backgroundColor: colores.visorFondo, borderColor: colores.visorBorde },
+            colores.visorPunteado && estilos.visorVacio,
+          ]}
+          accessible
+          accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}
+        >
+          <Text
+            style={[estilos.numeroTotal, { color: colores.total }, estado === 'sin-capturar' && estilos.numeroVacio]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
+          >
             {total === null ? '—' : total}
           </Text>
-          <Text style={[estilos.unidadTotal, { color: colores.unidad }]} numberOfLines={1} adjustsFontSizeToFit>
-            {unidadTotal}
+          <Text
+            style={[estilos.unidadTotal, { color: colores.unidad }, estado === 'sin-capturar' && estilos.unidadVacia]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
+          >
+            {estado === 'en-cero' && aspecto !== 'tecleando' ? 'No lleva' : unidadTotal}
           </Text>
         </View>
 
-        <Pressable
+        <Pulsable
           onPress={() => onCero(producto.code)}
           disabled={ceroBloqueado}
+          tacto="seleccion"
           accessibilityRole="button"
           accessibilityLabel={`${nombre}: no lleva, marcar en cero`}
           accessibilityState={{ disabled: ceroBloqueado, selected: estado === 'en-cero' }}
@@ -309,13 +351,15 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
             <Text
               style={[
                 estilos.textoCero,
-                (pressed || aspecto === 'tecleando' || estado === 'en-cero') && estilos.textoInvertido,
+                (pressed || aspecto === 'tecleando') && estilos.textoInvertido,
+                estado === 'en-cero' && aspecto !== 'tecleando' && !pressed && estilos.textoCeroMarcado,
               ]}
+              maxFontSizeMultiplier={ESCALA_TEXTO.control}
             >
               0
             </Text>
           )}
-        </Pressable>
+        </Pulsable>
       </View>
 
       {!producto.factorConfirmado && (
@@ -371,19 +415,13 @@ function useDestello(estado: EstadoFila) {
  */
 function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boolean }) {
   if (envio === null || envio === 'enviado') return null;
-  const texto = envio === 'por-enviar' ? '↑' : '!';
-  const accesible = envio === 'por-enviar' ? 'Guardado en el teléfono, por enviar' : 'Rechazado por el servidor';
+  const porEnviar = envio === 'por-enviar';
+  const accesible = porEnviar ? 'Guardado en el teléfono, por enviar' : 'Rechazado por el servidor';
+  const color = sobreMarca ? COLORES.textoSobreColor : porEnviar ? COLORES.textoSecundario : COLORES.error;
   return (
-    <Text
-      style={[
-        estilos.marcaEnvio,
-        sobreMarca && estilos.textoInvertido,
-        envio === 'rechazado' && !sobreMarca && estilos.marcaEnvioRechazada,
-      ]}
-      accessibilityLabel={accesible}
-    >
-      {texto}
-    </Text>
+    <View accessible accessibilityLabel={accesible}>
+      <Glifo nombre={porEnviar ? 'subir' : 'alerta'} color={color} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+    </View>
   );
 }
 
@@ -392,8 +430,10 @@ function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boole
  * fila. Es lo único ámbar de la lista de conteo, por eso destaca.
  */
 function Aviso({ texto, error = false }: { texto: string; error?: boolean }) {
+  const color = error ? COLORES.errorTexto : COLORES.discrepanciaTexto;
   return (
     <View style={[estilos.aviso, error && estilos.avisoError]}>
+      <Glifo nombre="alerta" color={color} tamano={ESPACIADO.lg} />
       <Text style={[estilos.textoAviso, error && estilos.textoAvisoError]}>{texto}</Text>
     </View>
   );
@@ -418,31 +458,39 @@ interface PropsCampo {
 function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProducto, aviso = false }: PropsCampo) {
   const color = activo ? COLORES.texto : colorTexto;
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
+      tacto={null}
+      repetible
       accessibilityRole="button"
       accessibilityLabel={`${nombreProducto}, ${etiqueta}: ${valor === null ? 'sin capturar' : valor}`}
       accessibilityState={{ selected: activo }}
       style={({ pressed }) => [
         estilos.campo,
         { backgroundColor: activo ? COLORES.superficie : fondo },
+        activo && estilos.campoActivo,
         aviso && estilos.campoConAviso,
         pressed && !activo && estilos.campoPresionado,
       ]}
     >
-      <Text style={[estilos.etiquetaCampo, { color }]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={[estilos.etiquetaCampo, { color }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={ESCALA_TEXTO.control}>
         {etiqueta}
       </Text>
-      <Text style={[estilos.valorCampo, { color }, valor === null && estilos.valorVacio]} numberOfLines={1} adjustsFontSizeToFit>
+      <Text
+        style={[estilos.valorCampo, { color }, valor === null && estilos.valorVacio]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={ESCALA_TEXTO.control}
+      >
         {valor === null ? '—' : valor}
       </Text>
-    </Pressable>
+    </Pulsable>
   );
 }
 
 const estilos = StyleSheet.create({
-  // El estado va en el fondo y el borde de toda la fila; todas miden lo mismo
-  // en cualquier estado. Poco aire dentro; entre filas lo pone la lista.
+  // El estado va en el fondo y el borde de toda la fila, y en el visor; todas
+  // miden lo mismo en cualquier estado. Poco aire dentro; entre filas lo pone la lista.
   fila: {
     flex: 1,
     gap: ESPACIADO.sm,
@@ -455,6 +503,7 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
+    minHeight: TIPOGRAFIA.subtitulo.lineHeight + ESPACIADO.xs,
   },
   // El nombre domina la cabecera: es lo que se busca con la mirada.
   nombre: {
@@ -483,45 +532,34 @@ const estilos = StyleSheet.create({
     fontFamily: FUENTE.negrita,
     ...CIFRAS,
   },
-  // Pastilla blanca sobre el gris de la fila.
-  marcaCero: {
-    paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: 2,
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.superficie,
-  },
-  textoMarcaCero: {
-    ...TIPOGRAFIA.rotulo,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORES.pendiente,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   captura: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: ESPACIADO.sm,
   },
-  // Campos y total separados por más aire que entre campos: el total no parece un tercer campo.
   campos: {
     flex: 1,
     flexDirection: 'row',
     gap: ESPACIADO.sm,
-    marginRight: ESPACIADO.lg - ESPACIADO.sm,
   },
-  // El número a la derecha, el rótulo encima: los campos forman columnas de
-  // números alineados (120 sobre 99), como en una hoja de conteo.
+  // El rótulo arriba y el número abajo, ambos a la derecha: los campos forman
+  // columnas de números alineados (120 sobre 99), como en una hoja de conteo.
   campo: {
     flex: 1,
-    height: ALTO_CONTROL,
+    minHeight: ALTO_CONTROL,
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
     borderRadius: RADIOS.medio,
   },
+  // El campo que se teclea: blanco sobre la fila azul, subrayado como el visor
+  // del teclado. Es el único así en la pantalla.
+  campoActivo: {
+    borderBottomWidth: BORDES.grueso,
+    borderBottomColor: COLORES.marca,
+  },
   campoConAviso: {
     borderWidth: BORDES.medio,
-    borderColor: COLORES.discrepancia,
+    borderColor: COLORES.discrepanciaHonda,
   },
   campoPresionado: {
     opacity: OPACIDAD.deshabilitado,
@@ -545,21 +583,39 @@ const estilos = StyleSheet.create({
   textoInvertido: {
     color: COLORES.textoSobreColor,
   },
-  // No es tocable y no debe parecerlo: sin caja ni borde.
-  total: {
-    width: ANCHO_TOTAL,
+  // La lectura de la báscula. No es tocable y no debe parecerlo: sin chevron ni
+  // relieve; es un bloque de dato, como el visor de una báscula de piso.
+  visor: {
+    width: ANCHO_VISOR,
+    minHeight: ALTO_CONTROL,
     alignItems: 'flex-end',
     justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.sm,
+    borderRadius: RADIOS.medio,
+    borderWidth: BORDES.medio,
+  },
+  visorVacio: {
+    borderStyle: 'dashed',
   },
   numeroTotal: {
     ...TIPOGRAFIA.total,
     textAlign: 'right',
     ...CIFRAS,
   },
-  unidadTotal: ROTULO,
+  numeroVacio: {
+    color: COLORES.textoTerciario,
+    fontFamily: FUENTE.regular,
+  },
+  unidadTotal: {
+    ...ROTULO,
+    textAlign: 'right',
+  },
+  unidadVacia: {
+    color: COLORES.textoSecundario,
+  },
   botonCero: {
     width: ANCHO_CERO,
-    height: ALTO_CONTROL,
+    minHeight: ALTO_CONTROL,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORES.superficie,
@@ -571,8 +627,9 @@ const estilos = StyleSheet.create({
     backgroundColor: 'transparent',
     borderColor: COLORES.marcaTenue,
   },
+  // Marcado: se hunde en el gris de la fila; el visor ya dice "No lleva".
   botonCeroMarcado: {
-    backgroundColor: COLORES.pendiente,
+    backgroundColor: COLORES.superficie,
     borderColor: COLORES.pendiente,
   },
   // Inversión completa: se nota aun con poca luz.
@@ -585,11 +642,16 @@ const estilos = StyleSheet.create({
   },
   textoCero: {
     ...TIPOGRAFIA.campo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
-  // Sin relleno vertical ni contorno: el bloque tintado se distingue solo y la fila no crece.
+  textoCeroMarcado: {
+    color: COLORES.pendiente,
+  },
+  // Glifo y texto: el aviso se reconoce por su forma aun sin distinguir el ámbar.
   aviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs,
     backgroundColor: COLORES.discrepanciaFondo,
@@ -598,17 +660,8 @@ const estilos = StyleSheet.create({
   avisoError: {
     backgroundColor: COLORES.errorFondo,
   },
-  marcaEnvio: {
-    minWidth: ESPACIADO.lg,
-    textAlign: 'center',
-    ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.textoSecundario,
-  },
-  marcaEnvioRechazada: {
-    color: COLORES.error,
-  },
   textoAviso: {
+    flex: 1,
     ...TIPOGRAFIA.etiqueta,
     fontFamily: FUENTE.medio,
     color: COLORES.discrepanciaTexto,

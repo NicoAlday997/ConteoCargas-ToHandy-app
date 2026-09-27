@@ -1,11 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { CODIGO_COLOR_INVALIDO } from '../../src/api/familias';
 import { useAsignarColorFamilia, useFamilias, type FamiliaConColor } from '../../src/api/hooks-familias';
-import { BloqueError, Esqueleto, EstadoVacio, NotaEncabezado, TarjetaEsqueleto } from '../../src/componentes/base';
+import {
+  BloqueError,
+  Esqueleto,
+  EstadoVacio,
+  NotaEncabezado,
+  TarjetaEsqueleto,
+  Pulsable,
+  Hoja,
+} from '../../src/componentes/base';
 import { formatearNombreFamilia } from '../../src/conteo/formato-nombre';
 import { textoProductos } from '../../src/factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
@@ -18,7 +26,6 @@ import {
   type ColorFamilia,
 } from '../../src/theme/colores-familia';
 import {
-  ANCHO_MODAL,
   BORDES,
   COLORES,
   ESPACIADO,
@@ -192,7 +199,7 @@ function Lista() {
 function RenglonFamilia({ familia, onPress }: { familia: FamiliaConColor; onPress: () => void }) {
   const nombre = formatearNombreFamilia(familia.familia);
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${nombre}, ${textoProductos(familia.productos)}. ${
@@ -208,7 +215,7 @@ function RenglonFamilia({ familia, onPress }: { familia: FamiliaConColor; onPres
         <Text style={estilos.detalle}>{textoProductos(familia.productos)}</Text>
       </View>
       <Muestra color={familia.color} lado={MUESTRA} />
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -232,20 +239,20 @@ function HojaColores({
   onElegir: (familia: FamiliaConColor, color: ColorFamilia | null) => void;
   onCerrar: () => void;
 }) {
-  const margenes = useSafeAreaInsets();
   // Se conserva la última mientras la hoja se cierra, para que no quede vacía al deslizar.
   const [mostrada, setMostrada] = useState<FamiliaConColor | null>(familia);
   if (familia && familia !== mostrada) setMostrada(familia);
 
   return (
-    <Modal visible={familia !== null} transparent animationType="slide" onRequestClose={onCerrar}>
-      <Pressable style={estilos.velo} onPress={onCerrar} accessibilityLabel="Cerrar sin cambiar" />
+    <Hoja
+      visible={familia !== null}
+      onCerrar={onCerrar}
+      cerrarAlTocarFondo
+      titulo={mostrada ? formatearNombreFamilia(mostrada.familia) : undefined}
+      detalle="El color solo pinta la banda de la familia al contar; no cambia el estado de ningún producto."
+    >
       {mostrada && (
-        <View style={[estilos.hoja, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}>
-          <View style={estilos.asa} />
-          <Text style={estilos.tituloHoja} accessibilityRole="header">
-            {formatearNombreFamilia(mostrada.familia)}
-          </Text>
+        <>
           <View style={estilos.rejilla}>
             {COLORES_FAMILIA.map((color) => (
               <OpcionColor
@@ -256,7 +263,7 @@ function HojaColores({
               />
             ))}
           </View>
-          <Pressable
+          <Pulsable
             onPress={() => onElegir(mostrada, null)}
             accessibilityRole="button"
             accessibilityState={{ selected: mostrada.color === null }}
@@ -266,16 +273,16 @@ function HojaColores({
               <Muestra color={null} lado={CIRCULO - ESPACIADO.sm} />
             </View>
             <Text style={estilos.textoSinColor}>Sin color</Text>
-          </Pressable>
-        </View>
+          </Pulsable>
+        </>
       )}
-    </Modal>
+    </Hoja>
   );
 }
 
 function OpcionColor({ color, seleccionado, onPress }: { color: ColorFamilia; seleccionado: boolean; onPress: () => void }) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={NOMBRES_COLOR_FAMILIA[color]}
@@ -285,7 +292,7 @@ function OpcionColor({ color, seleccionado, onPress }: { color: ColorFamilia; se
       <View style={[estilos.anillo, seleccionado && { borderColor: TONOS_COLOR_FAMILIA[color].solido }]}>
         <Muestra color={color} lado={CIRCULO} />
       </View>
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -333,28 +340,6 @@ const estilos = StyleSheet.create({
     borderWidth: BORDES.medio,
     borderStyle: 'dashed',
     borderColor: COLORES.borde,
-  },
-  velo: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  hoja: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.md,
-    backgroundColor: COLORES.superficie,
-    borderTopLeftRadius: RADIOS.encabezado,
-    borderTopRightRadius: RADIOS.encabezado,
-  },
-  asa: {
-    alignSelf: 'center',
-    width: ESPACIADO.xxl + ESPACIADO.sm,
-    height: ESPACIADO.xs,
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.divisor,
   },
   tituloHoja: {
     ...TIPOGRAFIA.tituloBarra,

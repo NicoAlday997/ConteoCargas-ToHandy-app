@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { useCambiarPin } from '../src/api/hooks-auth';
 import { cerrarSesion, obtenerPinTemporal, olvidarPinTemporal } from '../src/api/sesion';
-import { Chevron, Encabezado } from '../src/componentes/base';
+import {
+  Chevron,
+  Encabezado,
+  Pulsable,
+} from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
@@ -158,7 +162,7 @@ export default function PantallaCambiarPin() {
     <SafeAreaView style={estilos.pantalla}>
       <View style={[estilos.contenido, esTablet && estilos.contenidoTablet]}>
         <View>
-          <Pressable
+          <Pulsable
             onPress={cancelar}
             disabled={enviando}
             accessibilityRole="button"
@@ -171,7 +175,7 @@ export default function PantallaCambiarPin() {
                 <Text style={[estilos.textoBotonCancelar, pressed && estilos.textoInvertido]}>Cancelar</Text>
               </>
             )}
-          </Pressable>
+          </Pulsable>
           <View style={estilos.titulo}>
             <Encabezado
               titulo={etapa === 'nuevo' ? 'Crea tu PIN nuevo' : 'Confirma tu PIN nuevo'}

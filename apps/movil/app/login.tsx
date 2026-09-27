@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, FlatList, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInLeft, SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -13,10 +13,21 @@ import {
   type UsuarioElegible,
 } from '../src/api/hooks-auth';
 import { recordarPinTemporal } from '../src/api/sesion';
-import { BloqueError, Chevron, Esqueleto, EstadoVacio, LineaEsqueleto, SEPARACION_TARJETAS, Tarjeta } from '../src/componentes/base';
+import {
+  BloqueError,
+  Chevron,
+  Esqueleto,
+  EstadoVacio,
+  Glifo,
+  LineaEsqueleto,
+  Pulsable,
+  SEPARACION_TARJETAS,
+  Tarjeta,
+} from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
+import { sentir } from '../src/theme/tacto';
 import { COLORES, ELEVACION, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Corto: la transición orienta al usuario, no debe hacerlo esperar. */
@@ -73,12 +84,20 @@ export default function PantallaLogin() {
 // Paso 1: selección de usuario (RF-01)
 // ---------------------------------------------------------------------------
 
-/** Encabezado de la entrada, sobre el fondo de pantalla: lo primero que se ve al abrir la app. */
-function BandaMarca({ antetitulo, titulo }: { antetitulo: string; titulo: string }) {
+/**
+ * Encabezado de la entrada: la identidad de la app (el camión y su nombre, en
+ * tinta, como la placa de una báscula) y la instrucción grande.
+ */
+function BandaMarca({ titulo }: { titulo: string }) {
   return (
     <View style={estilos.bandaMarca}>
       <View style={estilos.columnaBanda}>
-        <Text style={estilos.antetitulo}>{antetitulo}</Text>
+        <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Conteo de Cargas">
+          <View style={estilos.placa}>
+            <Glifo nombre="camion" color={COLORES.textoSobreColor} tamano={ESPACIADO.xl} />
+          </View>
+          <Text style={estilos.nombreApp}>Conteo de Cargas</Text>
+        </View>
         <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
           {titulo}
         </Text>
@@ -93,7 +112,7 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
   const margenes = useSafeAreaInsets();
   const relleno = { paddingBottom: ESPACIADO.xxxl + margenes.bottom };
 
-  const encabezado = <BandaMarca antetitulo="Verificación de cargas" titulo="Selecciona tu nombre" />;
+  const encabezado = <BandaMarca titulo="Selecciona tu nombre" />;
 
   if (consulta.isPending) {
     return (
@@ -251,6 +270,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
       {
         onSuccess: (respuesta) => {
           limpiarPin();
+          sentir('exito');
           if (respuesta.debeCambiarPin === true) {
             recordarPinTemporal(pin);
             router.replace('/cambiar-pin');
@@ -262,7 +282,10 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
           limpiarPin();
           const clasificado = clasificarErrorLogin(error);
           // Solo un PIN rechazado sacude los indicadores; la red no es culpa del PIN.
-          if (clasificado.tipo === 'pin-incorrecto') setClaveError((c) => c + 1);
+          if (clasificado.tipo === 'pin-incorrecto') {
+            sentir('error');
+            setClaveError((c) => c + 1);
+          }
           setAviso(clasificado);
         },
       },
@@ -292,7 +315,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
     <View style={estilos.paso}>
       <View style={[estilos.bandaMarca, estilos.bandaPin]}>
         <View style={estilos.columnaBanda}>
-          <Pressable
+          <Pulsable
             onPress={onVolver}
             accessibilityRole="button"
             accessibilityLabel="Volver y elegir otro usuario"
@@ -300,7 +323,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
           >
             <Chevron direccion="izquierda" color={COLORES.texto} />
             <Text style={estilos.textoBotonVolver}>Elegir otro usuario</Text>
-          </Pressable>
+          </Pulsable>
           <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
             {nombre}
           </Text>
@@ -447,9 +470,25 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: ESPACIADO.xs,
   },
-  antetitulo: {
-    ...TIPOGRAFIA.etiqueta,
-    color: COLORES.marca,
+  identidad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+    marginBottom: ESPACIADO.lg,
+  },
+  // Placa en tinta: la app no tiene marca propia; su identidad es la herramienta.
+  placa: {
+    width: ESPACIADO.xxl + ESPACIADO.xs,
+    height: ESPACIADO.xxl + ESPACIADO.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.texto,
+  },
+  nombreApp: {
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.texto,
   },
   tituloBanda: {
     ...TIPOGRAFIA.display,
@@ -580,12 +619,16 @@ const estilos = StyleSheet.create({
     paddingHorizontal: RITMO.relacionado,
     backgroundColor: COLORES.discrepanciaFondo,
     borderRadius: RADIOS.medio,
+    borderWidth: 1,
+    borderColor: COLORES.discrepanciaHonda,
   },
   recuadroError: {
     paddingVertical: RITMO.interno,
     paddingHorizontal: RITMO.relacionado,
     backgroundColor: COLORES.errorFondo,
     borderRadius: RADIOS.medio,
+    borderWidth: 1,
+    borderColor: COLORES.error,
   },
   panelBloqueo: {
     gap: RITMO.interno,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -10,17 +10,22 @@ import {
   BarraAvance,
   BloqueError,
   Boton,
+  Datos,
   Encabezado,
   EstadoVacio,
   Esqueleto,
   Etiqueta,
   FilaDato,
+  Glifo,
+  Hoja,
   LineaEsqueleto,
   Personas,
+  Pulsable,
   Tarjeta,
   TarjetaEsqueleto,
   PanelEncabezado,
 } from '../../src/componentes/base';
+import { sentir } from '../../src/theme/tacto';
 import { IndicadoresPin, LONGITUD_PIN } from '../../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
 import {
@@ -51,10 +56,10 @@ import {
 } from '../../src/discrepancias/estado-discrepancia';
 import { useLayout } from '../../src/theme/breakpoints';
 import {
-  ANCHO_MODAL,
   BORDES,
   CIFRAS,
   COLORES,
+  ESCALA_TEXTO,
   ESPACIADO,
   ETIQUETA_DATO,
   FUENTE,
@@ -73,8 +78,6 @@ const ANCHO_TECLADO_LATERAL = 380;
 const ANCHO_MAXIMO_LISTA = 720;
 /** Tras abrir el teclado hay que esperar al layout para llevar la tarjeta a la vista. */
 const RETRASO_SCROLL_MS = 60;
-/** El modal del PIN es más angosto que los demás: el teclado se ve como el del login. */
-const ANCHO_MODAL_PIN = ANCHO_MODAL - ESPACIADO.xl - ESPACIADO.lg;
 
 interface Edicion {
   code: string;
@@ -147,10 +150,11 @@ function volver() {
 }
 
 function Resolucion({ eventoId }: { eventoId: string }) {
-  const { esTablet } = useLayout();
+  const { esTablet, tecladoLateral } = useLayout();
   const consulta = useDiscrepancias(eventoId);
   const capturar = useCapturarDiscrepancia(eventoId);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
+  const [usuarioNombre, setUsuarioNombre] = useState<string | null>(null);
   const [edicion, setEdicion] = useState<Edicion | null>(null);
   const edicionRef = useRef<Edicion | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -162,7 +166,9 @@ function Resolucion({ eventoId }: { eventoId: string }) {
   useEffect(() => {
     let vigente = true;
     void obtenerUsuarioSesion().then((sesion) => {
-      if (vigente) setUsuarioId(sesion?.id ?? null);
+      if (!vigente) return;
+      setUsuarioId(sesion?.id ?? null);
+      setUsuarioNombre(sesion?.nombreCompleto ?? null);
     });
     return () => {
       vigente = false;
@@ -374,7 +380,9 @@ function Resolucion({ eventoId }: { eventoId: string }) {
               : 'Guardar'
         }
         siguienteConChevron={edicion.campo === 'paquetes' && admiteSueltas(editada.producto)}
-        lateral={esTablet}
+        lateral={tecladoLateral}
+        teclasGrandes={esTablet}
+        areaSegura={!tecladoLateral}
         onDigito={alDigito}
         onBorrar={alBorrar}
         onSiguiente={alSiguiente}
@@ -383,7 +391,8 @@ function Resolucion({ eventoId }: { eventoId: string }) {
     ) : null;
 
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+    // Con el teclado abajo, él absorbe el área segura; si no, la pantalla.
+    <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['left', 'right'] : ['left', 'right', 'bottom']}>
       <Encabezado
         variante="marca"
         titulo="Diferencias por resolver"
@@ -411,18 +420,14 @@ function Resolucion({ eventoId }: { eventoId: string }) {
         />
       </View>
 
-      <View style={[estilos.cuerpo, esTablet && estilos.cuerpoTablet]}>
+      <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
         <ScrollView
           ref={lista}
           style={estilos.lista}
           contentContainerStyle={estilos.contenidoLista}
           keyboardShouldPersistTaps="handled"
         >
-          <Tarjeta elevacion={0} tintada="marca" compacta>
-            <Text style={estilos.instruccion}>
-              Una persona captura la cantidad final y otra distinta la confirma con su propio PIN.
-            </Text>
-          </Tarjeta>
+          <PasosCruzados />
           {discrepancias.map((d) => (
             <View key={d.code} onLayout={(e) => posiciones.current.set(d.code, e.nativeEvent.layout.y)}>
               <TarjetaDiscrepancia
@@ -445,10 +450,11 @@ function Resolucion({ eventoId }: { eventoId: string }) {
           ))}
         </ScrollView>
 
-        {esTablet ? (
+        {tecladoLateral ? (
           <View style={estilos.lateral}>
             {teclado ?? (
               <View style={estilos.lateralVacio}>
+                <Glifo nombre="caja" color={COLORES.textoSecundario} tamano={ESPACIADO.xxxl} />
                 <Text style={estilos.textoLateralVacio}>Toca «Capturar cantidad final» en una diferencia.</Text>
               </View>
             )}
@@ -461,6 +467,7 @@ function Resolucion({ eventoId }: { eventoId: string }) {
       <ModalConfirmar
         eventoId={eventoId}
         discrepancia={aConfirmar}
+        confirmaNombre={usuarioNombre}
         onCerrar={() => setAConfirmar(null)}
         onConfirmada={(ultima) => {
           setAConfirmar(null);
@@ -474,6 +481,39 @@ function Resolucion({ eventoId }: { eventoId: string }) {
 // ---------------------------------------------------------------------------
 // Tarjeta
 // ---------------------------------------------------------------------------
+
+/**
+ * La regla, como dos pasos con su número: la secuencia ES la regla (primero
+ * uno captura, después otro confirma). Neutra: no es un estado, es cómo se hace.
+ */
+function PasosCruzados() {
+  return (
+    <View
+      style={estilos.pasos}
+      accessible
+      accessibilityLabel="Cómo se resuelve: 1, una persona captura la cantidad final. 2, otra persona distinta la confirma desde su teléfono con su propio PIN."
+    >
+      <Paso numero="1" titulo="Una persona captura" detalle="la cantidad final, tras recontar." />
+      <Paso numero="2" titulo="Otra persona confirma" detalle="desde su teléfono, con su propio PIN. Nunca la misma." />
+    </View>
+  );
+}
+
+function Paso({ numero, titulo, detalle }: { numero: string; titulo: string; detalle: string }) {
+  return (
+    <View style={estilos.paso}>
+      <View style={estilos.numeroPaso}>
+        <Text style={estilos.textoNumeroPaso} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+          {numero}
+        </Text>
+      </View>
+      <Text style={estilos.textoPaso}>
+        <Text style={estilos.tituloPaso}>{titulo} </Text>
+        {detalle}
+      </Text>
+    </View>
+  );
+}
 
 interface PropsTarjeta {
   discrepancia: Discrepancia;
@@ -528,10 +568,10 @@ function TarjetaDiscrepancia({
         <FilaDato
           etiqueta="Diferencia"
           valor={enPaquetes(diferencia(d), d)}
-          detalle={totalSecundario(diferencia(d), d)}
+          detalle={[quienContoMas(d), totalSecundario(diferencia(d), d)].filter(Boolean).join(' · ')}
           tono="discrepancia"
           separado
-          accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}`}
+          accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}. ${quienContoMas(d) ?? ''}`}
         />
       </Tarjeta>
 
@@ -542,7 +582,7 @@ function TarjetaDiscrepancia({
       ) : (
         <View style={estilos.final}>
           {d.cantidadFinal !== null && (
-            <LineaFinal piezas={d.cantidadFinal} d={d} tono={estado === 'confirmada' ? 'capturado' : 'marca'} />
+            <LineaFinal piezas={d.cantidadFinal} d={d} confirmada={estado === 'confirmada'} />
           )}
           {esAtipica(d) && <Text style={estilos.notaAtipica}>No coincide con ninguno de los dos conteos.</Text>}
           {estado === 'confirmada' ? (
@@ -554,9 +594,24 @@ function TarjetaDiscrepancia({
             />
           ) : (
             <>
-              <Personas personas={[{ rol: 'Capturó', nombre: soyQuienCapturo ? 'Tú' : (d.capturadaPorNombre ?? 'otra persona') }]} />
+              <Datos
+                datos={[
+                  { rotulo: 'Capturó', valor: soyQuienCapturo ? 'Tú' : (d.capturadaPorNombre ?? 'otra persona') },
+                  {
+                    rotulo: 'Confirma',
+                    valor: puedeConfirmar(d, usuarioId) ? 'Tú, con tu PIN' : null,
+                    ausente: 'Otra persona',
+                  },
+                ]}
+              />
               {soyQuienCapturo && (
-                <Text style={estilos.aviso}>Otra persona debe confirmarla con su propio PIN.</Text>
+                <View style={estilos.avisoCruzado}>
+                  <Glifo nombre="personas" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl - ESPACIADO.xs} />
+                  <Text style={estilos.textoAvisoCruzado}>
+                    Tú la capturaste, así que no puedes confirmarla. Otra persona la confirma desde su teléfono, entrando a
+                    esta carga con su usuario y su PIN.
+                  </Text>
+                </View>
               )}
               <View style={estilos.botones}>
                 <Boton
@@ -581,6 +636,14 @@ function TarjetaDiscrepancia({
   );
 }
 
+/** "Vendedor contó más": el signo de la diferencia, dicho en palabras. */
+function quienContoMas(d: Discrepancia): string | null {
+  const { primerConteo: a, segundoConteo: b } = d;
+  if (a.piezas === b.piezas) return null;
+  const mayor = a.piezas > b.piezas ? etiquetaRol(a, 'Primer conteo') : etiquetaRol(b, 'Segundo conteo');
+  return `${mayor}: más`;
+}
+
 /** "Vendedor   5 paquetes y 2 piezas": en la unidad en que se contó, sin dividir de cabeza. */
 function RenglonConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLado; d: Discrepancia }) {
   return (
@@ -593,19 +656,26 @@ function RenglonConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLa
 }
 
 /**
- * "Cantidad final / 3 paquetes y 2 piezas / (20 piezas)" en un bloque tintado:
- * la cifra domina, es lo que se carga al camión. Azul mientras espera, verde confirmada.
+ * "Cantidad final / 3 paquetes y 2 piezas / (20 piezas)": la cifra domina, es
+ * lo que se carga al camión. Mientras espera confirmación va en un bloque neutro
+ * con contorno punteado (una lectura sin respaldo todavía); confirmada, sólida
+ * en verde con su palomita.
  */
-function LineaFinal({ piezas, d, tono }: { piezas: number; d: Discrepancia; tono: 'marca' | 'capturado' }) {
-  const colores = TONOS[tono];
+function LineaFinal({ piezas, d, confirmada }: { piezas: number; d: Discrepancia; confirmada: boolean }) {
+  const colores = confirmada ? TONOS.capturado : { fondo: COLORES.superficie, texto: COLORES.texto };
   const detalle = totalSecundario(piezas, d);
   return (
     <View
-      style={[estilos.bloqueFinal, { backgroundColor: colores.fondo }]}
+      style={[estilos.bloqueFinal, { backgroundColor: colores.fondo }, !confirmada && estilos.bloqueFinalPendiente]}
       accessible
-      accessibilityLabel={`Cantidad final: ${vozCantidad(piezas, d)}`}
+      accessibilityLabel={`Cantidad final${confirmada ? ' confirmada' : ', sin confirmar'}: ${vozCantidad(piezas, d)}`}
     >
-      <Text style={[estilos.etiquetaFinal, { color: colores.texto }]}>Cantidad final</Text>
+      <View style={estilos.cabeceraFinal}>
+        <Text style={[estilos.etiquetaFinal, { color: colores.texto }]}>
+          {confirmada ? 'Cantidad final confirmada' : 'Cantidad final, sin confirmar'}
+        </Text>
+        {confirmada && <Glifo nombre="listo" color={COLORES.capturadoHondo} tamano={ESPACIADO.xl - ESPACIADO.xs} />}
+      </View>
       <Text style={[estilos.valorFinal, { color: colores.texto }]}>{enPaquetes(piezas, d)}</Text>
       {detalle && <Text style={estilos.detalleFinal}>{detalle}</Text>}
     </View>
@@ -641,9 +711,11 @@ function EditorCantidad({
           const activo = edicion.tecladoAbierto && edicion.campo === campo;
           const valor = captura[campo];
           return (
-            <Pressable
+            <Pulsable
               key={campo}
               onPress={() => onAbrirCampo(campo)}
+              tacto={null}
+              repetible
               accessibilityRole="button"
               accessibilityLabel={`${nombreCampo(d.producto, campo)}: ${valor ?? 'sin capturar'}`}
               style={({ pressed }) => [estilos.campoEditor, (activo || pressed) && estilos.campoEditorActivo]}
@@ -656,7 +728,7 @@ function EditorCantidad({
                   <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
                 </>
               )}
-            </Pressable>
+            </Pulsable>
           );
         })}
         {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
@@ -692,6 +764,8 @@ type AvisoConfirmar =
 interface PropsModalConfirmar {
   eventoId: string;
   discrepancia: Discrepancia | null;
+  /** Quién está en sesión: confirma como esa persona. */
+  confirmaNombre: string | null;
   onCerrar: () => void;
   onConfirmada: (ultima: boolean) => void;
 }
@@ -701,7 +775,7 @@ interface PropsModalConfirmar {
  * cantidad y quién la capturó) y la manda junto con el PIN: si alguien la
  * recapturó mientras tanto, el servidor rechaza en vez de confirmar otra.
  */
-function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: PropsModalConfirmar) {
+function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, onConfirmada }: PropsModalConfirmar) {
   const confirmar = useConfirmarDiscrepancia(eventoId);
   const pinRef = useRef('');
   const [cantidad, setCantidad] = useState(0);
@@ -731,6 +805,7 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
         onSuccess: (respuesta) => {
           limpiarPin();
           setAviso(null);
+          sentir('exito');
           onConfirmada(respuesta?.enEsperaAutorizacion === true);
         },
         onError: (e) => {
@@ -746,6 +821,7 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
             }
             // El mensaje del servidor tal cual: dice exactamente qué pasó.
             if (e.cuerpo?.codigo === 'PIN_INCORRECTO') {
+              sentir('error');
               setClaveError((c) => c + 1);
               setAviso({ tipo: 'pin', mensaje: e.message });
               return;
@@ -773,63 +849,55 @@ function ModalConfirmar({ eventoId, discrepancia: d, onCerrar, onConfirmada }: P
   };
 
   return (
-    <Modal visible={d !== null} transparent animationType="none" onRequestClose={cerrar}>
-      <View style={estilos.fondoModal}>
-        <ScrollView contentContainerStyle={estilos.contenidoFondoModal} bounces={false}>
-          <View style={[estilos.modal, estilos.modalPin]}>
-            <Encabezado titulo="Confirma con tu PIN" variante="plano" />
-            {d && (
-              <Tarjeta elevacion={0} compacta>
-                <View style={estilos.lineaProducto}>
-                  <EtiquetaFactor producto={d.producto} />
-                  <Text style={estilos.nombreProductoModal} numberOfLines={2}>
-                    {formatearNombreProducto(d.producto.nombre)}
-                  </Text>
-                </View>
-                {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} tono="marca" />}
-                <Text style={estilos.detalleModal}>Capturó {d.capturadaPorNombre ?? 'otra persona'}. Al confirmar respaldas esta cantidad.</Text>
-              </Tarjeta>
-            )}
-
-            <View style={estilos.zonaIndicadores}>
-              <IndicadoresPin cantidad={cantidad} claveError={claveError} />
-              <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
-                {enviando ? (
-                  <Text style={estilos.textoVerificando}>Verificando…</Text>
-                ) : aviso?.tipo === 'pin' ? (
-                  <Text style={estilos.error} accessibilityRole="alert">
-                    {aviso.mensaje}
-                  </Text>
-                ) : aviso?.tipo === 'red' ? (
-                  <Text style={estilos.avisoRed} accessibilityRole="alert">
-                    Sin conexión con el servidor: tu PIN no se llegó a revisar. Vuelve a teclearlo cuando haya señal.
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            {definitivo ? (
-              // Ocupa el lugar del teclado: no hay nada que teclear.
-              <View style={estilos.panelDefinitivo} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-                <Text style={estilos.textoDefinitivo}>{aviso.mensaje}</Text>
-              </View>
-            ) : (
-              <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
-            )}
-
-            <View style={estilos.botones}>
-              <Boton
-                texto={definitivo ? 'Cerrar' : 'Cancelar'}
-                variante="secundario"
-                onPress={cerrar}
-                deshabilitado={enviando}
-                style={estilos.botonFila}
-              />
-            </View>
+    <Hoja
+      visible={d !== null}
+      onCerrar={cerrar}
+      bloqueada={enviando}
+      titulo="Confirma con tu PIN"
+      detalle={confirmaNombre ? `Confirmas como ${confirmaNombre}.` : null}
+      pie={<Boton texto={definitivo ? 'Cerrar' : 'Cancelar'} variante="secundario" onPress={cerrar} deshabilitado={enviando} />}
+    >
+      {d && (
+        <Tarjeta elevacion={0} compacta>
+          <View style={estilos.lineaProducto}>
+            <EtiquetaFactor producto={d.producto} />
+            <Text style={estilos.nombreProductoModal} numberOfLines={2}>
+              {formatearNombreProducto(d.producto.nombre)}
+            </Text>
           </View>
-        </ScrollView>
+          {d.cantidadFinal !== null && <LineaFinal piezas={d.cantidadFinal} d={d} confirmada={false} />}
+          <Text style={estilos.detalleModal}>
+            Capturó {d.capturadaPorNombre ?? 'otra persona'}. Al confirmar, respaldas esta cantidad con tu nombre.
+          </Text>
+        </Tarjeta>
+      )}
+
+      <View style={estilos.zonaIndicadores}>
+        <IndicadoresPin cantidad={cantidad} claveError={claveError} />
+        <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
+          {enviando ? (
+            <Text style={estilos.textoVerificando}>Verificando…</Text>
+          ) : aviso?.tipo === 'pin' ? (
+            <Text style={estilos.error} accessibilityRole="alert">
+              {aviso.mensaje}
+            </Text>
+          ) : aviso?.tipo === 'red' ? (
+            <Text style={estilos.avisoRed} accessibilityRole="alert">
+              Sin conexión con el servidor: tu PIN no se llegó a revisar. Vuelve a teclearlo cuando haya señal.
+            </Text>
+          ) : null}
+        </View>
       </View>
-    </Modal>
+
+      {definitivo ? (
+        // Ocupa el lugar del teclado: no hay nada que teclear.
+        <View style={estilos.panelDefinitivo} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+          <Text style={estilos.textoDefinitivo}>{aviso.mensaje}</Text>
+        </View>
+      ) : (
+        <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
+      )}
+    </Hoja>
   );
 }
 
@@ -885,20 +953,46 @@ const estilos = StyleSheet.create({
     padding: RITMO.margen,
     paddingBottom: ESPACIADO.xxxl,
   },
-  instruccion: {
+  pasos: {
+    gap: ESPACIADO.sm,
+  },
+  paso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ESPACIADO.md,
+  },
+  numeroPaso: {
+    width: ESPACIADO.xl + ESPACIADO.xs,
+    height: ESPACIADO.xl + ESPACIADO.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.texto,
+  },
+  textoNumeroPaso: {
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.textoSobreColor,
+  },
+  textoPaso: {
+    flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    fontFamily: FUENTE.semiNegrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.textoSecundario,
+  },
+  tituloPaso: {
+    fontFamily: FUENTE.negrita,
+    color: COLORES.texto,
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: BORDES.grueso,
-    borderLeftColor: COLORES.marca,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORES.contornoTarjeta,
   },
   lateralVacio: {
     flex: 1,
     justifyContent: 'center',
+    gap: ESPACIADO.md,
     padding: ESPACIADO.xl,
   },
   textoLateralVacio: {
@@ -928,6 +1022,18 @@ const estilos = StyleSheet.create({
   bloqueFinal: {
     padding: RITMO.margen,
     borderRadius: RADIOS.medio,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.capturadoHondo,
+  },
+  bloqueFinalPendiente: {
+    borderStyle: 'dashed',
+    borderColor: COLORES.borde,
+  },
+  cabeceraFinal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: ESPACIADO.sm,
   },
   etiquetaFinal: ETIQUETA_DATO,
   // El único número grande de la tarjeta: lo que se carga al camión.
@@ -947,9 +1053,18 @@ const estilos = StyleSheet.create({
     fontFamily: FUENTE.regular,
     color: COLORES.textoSecundario,
   },
-  aviso: {
+  avisoCruzado: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ESPACIADO.sm,
+    padding: ESPACIADO.md,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderRadius: RADIOS.medio,
+  },
+  textoAvisoCruzado: {
+    flex: 1,
     ...TIPOGRAFIA.cuerpo,
-    color: COLORES.texto,
+    color: COLORES.discrepanciaTexto,
   },
   // Bloque tintado, no texto de color: se lee de reojo.
   error: {
@@ -965,11 +1080,14 @@ const estilos = StyleSheet.create({
   },
 
   // Editor
+  // Lo que se edita lleva la marca (Regla del Azul Es la Mano).
   editor: {
     gap: RITMO.interno,
     padding: RITMO.relacionado,
     backgroundColor: COLORES.marcaTinte,
     borderRadius: RADIOS.medio,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.marca,
   },
   camposEditor: {
     flexDirection: 'row',
@@ -1023,27 +1141,6 @@ const estilos = StyleSheet.create({
   },
 
   // Modal de confirmación
-  fondoModal: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  contenidoFondoModal: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: RITMO.margen,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
-  modalPin: {
-    maxWidth: ANCHO_MODAL_PIN,
-  },
   detalleModal: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,

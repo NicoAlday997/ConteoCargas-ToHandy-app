@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 import { ETIQUETAS_TIPO_CARGA, type CargaPendienteApi, type TipoCarga } from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useAbrirSesion, useDesbloquearCarga, usePendientesVerificacion } from '../api/hooks-cargas';
 import {
+  AccionesHoja,
   BloqueError,
   Boton,
   Chevron,
+  Hoja,
+  Pulsable,
+  type TonoEtiqueta,
   EstadoVacio,
   Esqueleto,
   Datos,
@@ -22,8 +26,8 @@ import type { CargaAbierta } from '../conteo/almacen-conteo';
 import { estaConectado } from '../conteo/cola-sincronizacion';
 import { horaNegocio } from '../conteo/fecha-operativa';
 import {
-  ANCHO_MODAL,
   COLORES,
+  ESCALA_PRESIONADO,
   ESPACIADO,
   ETIQUETA_DATO,
   OPACIDAD,
@@ -32,7 +36,6 @@ import {
   RITMO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
-  type ColorTono,
 } from '../theme/tokens';
 
 const MENSAJE_SIN_RED =
@@ -109,7 +112,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
     }
     // Ya la había empezado (quizá en otro dispositivo): se continúa, no se abre otra.
     if (carga.estado === 'propia' && carga.miSesionId) {
-      onAbrir({ eventoId: carga.id, sesionId: carga.miSesionId, tipo: carga.tipo });
+      onAbrir({ eventoId: carga.id, sesionId: carga.miSesionId, tipo: carga.tipo, rutaNombre: carga.rutaNombre });
       return;
     }
     if (!estaConectado(await NetInfo.fetch())) {
@@ -121,7 +124,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       const sesion = await abrir.mutateAsync(carga.id);
       if (!sesion?.id) throw new Error('El servidor no devolvió la sesión de conteo.');
       setBloqueada(null);
-      onAbrir({ eventoId: carga.id, sesionId: sesion.id, tipo: carga.tipo });
+      onAbrir({ eventoId: carga.id, sesionId: sesion.id, tipo: carga.tipo, rutaNombre: carga.rutaNombre });
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 401) return onSesionVencida();
       if (e instanceof ErrorRed) return setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
@@ -199,7 +202,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
         />
       )}
 
-      <Grupo titulo="Listas para verificar" tono="capturado" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
+      <Grupo titulo="Listas para verificar" tono="fuerte" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
       <Grupo titulo="Bloqueadas por corte pendiente" tono="discrepancia" cargas={bloqueadas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
       <Grupo titulo="Las verifica otra persona" cargas={deOtros} abriendo={abriendo} />
 
@@ -221,8 +224,11 @@ function Grupo({
   onPress,
 }: {
   titulo: string;
-  /** Solo lo que es trabajo propio lleva su cifra en pastilla tintada; lo de otros, en texto. */
-  tono?: ColorTono;
+  /**
+   * Solo lo que es trabajo propio lleva su cifra en pastilla; lo de otros, en
+   * texto. Lo que está listo para ti va sólido en tinta (actúa ya); lo bloqueado, en aviso.
+   */
+  tono?: TonoEtiqueta;
   cargas: CargaEnCola[];
   abriendo: string | null;
   onPress?: (carga: CargaEnCola) => void;
@@ -230,7 +236,7 @@ function Grupo({
   if (cargas.length === 0) return null;
   const cifra = String(cargas.length);
   return (
-    <Seccion texto={titulo} contador={tono ? { texto: cifra, tono } : null} detalle={cifra} nivel="grupo">
+    <Seccion texto={titulo} contador={tono ? { texto: cifra, tono, relleno: tono === 'fuerte' ? 'solida' : 'tintada' } : null} detalle={cifra} nivel="grupo">
       {cargas.map((c) => (
         <FilaCarga key={c.id} carga={c} abriendo={abriendo === c.id} deshabilitada={abriendo !== null} onPress={onPress} />
       ))}
@@ -259,14 +265,14 @@ function FilaCarga({
     .join(' · ');
 
   let accion: string | null = null;
-  let estado: { texto: string; tono: ColorTono } | null = null;
+  let estado: { texto: string; tono: TonoEtiqueta } | null = null;
   switch (carga.estado) {
     case 'lista':
       accion = abriendo ? 'Abriendo…' : 'Verificar';
       break;
     case 'propia':
       accion = 'Continuar';
-      estado = { texto: 'Ya empezaste a verificarla', tono: 'marca' };
+      estado = { texto: 'Ya empezaste a verificarla', tono: 'neutro' };
       break;
     case 'bloqueada':
       accion = 'Ver';
@@ -325,16 +331,17 @@ function FilaCarga({
   }
 
   return (
-    <Pressable
+    <Pulsable
       onPress={() => onPress(carga)}
       disabled={deshabilitada}
+      onda="rgba(255, 255, 255, 0.2)"
       accessibilityRole="button"
       accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}
       style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada, deshabilitada && !abriendo && estilos.deshabilitado]}
     >
       {({ pressed }) => contenido(pressed)}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -388,69 +395,49 @@ function PanelBloqueada({
   const libre = resultado?.tipo === 'libre';
 
   return (
-    <Modal visible={carga !== null} transparent animationType="none" onRequestClose={cerrar}>
-      <View style={estilos.fondoModal}>
-        <View style={estilos.modal}>
-          <Text style={[estilos.tituloModal, libre && estilos.tituloLibre]} accessibilityRole="header">
-            {libre ? 'Ya se puede verificar' : 'No se puede verificar todavía'}
-          </Text>
-          {carga && (
-            <Text style={estilos.subtituloModal}>
-              {carga.rutaNombre} · {carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga'}
-            </Text>
-          )}
-          {libre ? (
-            <Text style={estilos.textoModal}>{vendedor} ya cerró su corte de venta. Puedes empezar tu conteo.</Text>
-          ) : (
-            <>
-              <Text style={estilos.textoModal}>
-                {vendedor} tiene un corte de venta pendiente en Handy: una ruta anterior que no ha cerrado. Hasta que lo cierre,
-                esta carga no se puede verificar.
-              </Text>
-              <Text style={estilos.textoModal}>Cuando te avise que ya lo cerró, toca Reintentar.</Text>
-            </>
-          )}
-          <View style={estilos.zonaResultado} accessibilityLiveRegion="polite">
-            {desbloquear.isPending && <Text style={estilos.textoModal}>Consultando a Handy…</Text>}
-            {resultado?.tipo === 'sigue' && (
-              <BloqueError titulo="Sigue pendiente" detalle={resultado.mensaje} tono="atencion" />
-            )}
-            {resultado?.tipo === 'error' && (
-              <BloqueError titulo="No se pudo consultar a Handy" detalle={resultado.mensaje} />
-            )}
-          </View>
-          <View style={estilos.botonesModal}>
+    <Hoja
+      visible={carga !== null}
+      onCerrar={cerrar}
+      bloqueada={desbloquear.isPending}
+      titulo={libre ? 'Ya se puede verificar' : 'No se puede verificar todavía'}
+      detalle={carga ? `${carga.rutaNombre} · ${carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga'}` : null}
+      pie={
+        <AccionesHoja>
+          <Boton texto="Cerrar" variante="secundario" onPress={cerrar} deshabilitado={desbloquear.isPending || abriendo} />
+          {libre && carga ? (
             <Boton
-              texto="Cerrar"
-              variante="secundario"
-              onPress={cerrar}
-              deshabilitado={desbloquear.isPending || abriendo}
-              style={estilos.botonModal}
+              texto="Verificar ahora"
+              cargando={abriendo}
+              textoCargando="Abriendo…"
+              tacto="exito"
+              onPress={() => {
+                setResultado(null);
+                onVerificar(carga);
+              }}
             />
-            {libre && carga ? (
-              <Boton
-                texto="Verificar ahora"
-                cargando={abriendo}
-                textoCargando="Abriendo…"
-                onPress={() => {
-                  setResultado(null);
-                  onVerificar(carga);
-                }}
-                style={estilos.botonModal}
-              />
-            ) : (
-              <Boton
-                texto="Reintentar"
-                cargando={desbloquear.isPending}
-                textoCargando="Consultando…"
-                onPress={reintentar}
-                style={estilos.botonModal}
-              />
-            )}
-          </View>
-        </View>
+          ) : (
+            <Boton texto="Reintentar" cargando={desbloquear.isPending} textoCargando="Consultando…" onPress={reintentar} />
+          )}
+        </AccionesHoja>
+      }
+    >
+      {libre ? (
+        <BloqueError tono="exito" titulo="Corte cerrado" detalle={`${vendedor} ya cerró su corte de venta. Puedes empezar tu conteo.`} />
+      ) : (
+        <>
+          <Text style={estilos.textoModal}>
+            {vendedor} tiene un corte de venta pendiente en Handy: una ruta anterior que no ha cerrado. Hasta que lo cierre,
+            esta carga no se puede verificar.
+          </Text>
+          <Text style={estilos.textoModal}>Cuando te avise que ya lo cerró, toca Reintentar.</Text>
+        </>
+      )}
+      <View style={estilos.zonaResultado} accessibilityLiveRegion="polite">
+        {desbloquear.isPending && <Text style={estilos.textoModal}>Consultando a Handy…</Text>}
+        {resultado?.tipo === 'sigue' && <BloqueError titulo="Sigue pendiente" detalle={resultado.mensaje} tono="atencion" />}
+        {resultado?.tipo === 'error' && <BloqueError titulo="No se pudo consultar a Handy" detalle={resultado.mensaje} />}
       </View>
-    </Modal>
+    </Hoja>
   );
 }
 
@@ -468,14 +455,19 @@ const estilos = StyleSheet.create({
     paddingHorizontal: RITMO.margen,
     backgroundColor: COLORES.superficie,
     borderRadius: RADIOS.grande,
+    borderWidth: 1,
+    borderColor: COLORES.contornoTarjeta,
     overflow: 'hidden',
   },
   filaInactiva: {
     backgroundColor: COLORES.pendienteFondo,
+    borderColor: COLORES.bordeNoLleva,
   },
   // Inversión completa: el toque se nota aun con poca luz.
   filaPresionada: {
     backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
   // Entre la ruta y sus datos, aire de grupo: se leen como dos bloques.
   cuerpoFila: {
@@ -507,32 +499,6 @@ const estilos = StyleSheet.create({
   deshabilitado: {
     opacity: OPACIDAD.deshabilitado,
   },
-  fondoModal: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-    backgroundColor: COLORES.velo,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
-  tituloModal: {
-    ...TIPOGRAFIA.titulo,
-    color: COLORES.texto,
-  },
-  tituloLibre: {
-    color: COLORES.capturadoTexto,
-  },
-  subtituloModal: {
-    ...TIPOGRAFIA.cuerpo,
-    color: COLORES.textoSecundario,
-  },
   textoModal: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
@@ -541,12 +507,5 @@ const estilos = StyleSheet.create({
   zonaResultado: {
     minHeight: ESPACIADO.xxxl,
     justifyContent: 'center',
-  },
-  botonesModal: {
-    flexDirection: 'row',
-    gap: RITMO.relacionado,
-  },
-  botonModal: {
-    flex: 1,
   },
 });

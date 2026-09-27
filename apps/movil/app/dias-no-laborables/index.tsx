@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { DiaNoLaborable } from '../../src/api/calendario';
@@ -10,6 +10,7 @@ import {
   useQuitarDiaNoLaborable,
 } from '../../src/api/hooks-calendario';
 import {
+  AccionesHoja,
   BloqueError,
   Boton,
   CampoTexto,
@@ -17,6 +18,9 @@ import {
   EstadoVacio,
   NotaEncabezado,
   TarjetaEsqueleto,
+  Pulsable,
+  Hoja,
+  Chevron,
 } from '../../src/componentes/base';
 import { DIAS_CABECERA, mesDe, moverMes, semanasDelMes, tituloMes, type Mes } from '../../src/calendario/modelo-calendario';
 import { diaNegocio, formatearDia } from '../../src/conteo/fecha-operativa';
@@ -25,7 +29,6 @@ import { avisoDeError, sesionVencida, type AvisoError } from '../../src/plantill
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import {
-  ANCHO_MODAL,
   BORDES,
   CIFRAS,
   COLORES,
@@ -219,14 +222,14 @@ function RenglonDia({ dia, primero, onQuitar }: { dia: DiaNoLaborable; primero: 
         <Text style={estilos.detalle}>{dia.motivo}</Text>
         {dia.creadoPorNombre && <Text style={estilos.quien}>Marcado por {dia.creadoPorNombre}</Text>}
       </View>
-      <Pressable
+      <Pulsable
         onPress={onQuitar}
         accessibilityRole="button"
         accessibilityLabel={`Quitar ${legible}`}
         style={({ pressed }) => [estilos.quitar, pressed && estilos.quitarPresionado]}
       >
         <Text style={estilos.textoQuitar}>Quitar</Text>
-      </Pressable>
+      </Pulsable>
     </View>
   );
 }
@@ -280,82 +283,82 @@ function ModalMarcar({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={cerrar}>
-      <View style={estilos.fondoModal}>
-        <ScrollView contentContainerStyle={estilos.centrado} bounces={false} keyboardShouldPersistTaps="handled">
-          <View style={estilos.modal}>
-            <Text style={estilos.tituloModal} accessibilityRole="header">
-              Marcar un día no laborable
-            </Text>
-            <View style={estilos.cabeceraMes}>
-              <BotonMes texto="‹" etiqueta="Mes anterior" deshabilitado={esMesActual} onPress={() => setMes(moverMes(mes, -1))} />
-              <Text style={estilos.tituloMes}>{tituloMes(mes)}</Text>
-              <BotonMes texto="›" etiqueta="Mes siguiente" onPress={() => setMes(moverMes(mes, 1))} />
-            </View>
-            <View style={estilos.semana}>
-              {DIAS_CABECERA.map((d, i) => (
-                <Text key={i} style={estilos.cabeceraDia}>
-                  {d}
-                </Text>
-              ))}
-            </View>
-            {semanasDelMes(mes).map((semana, i) => (
-              <View key={i} style={estilos.semana}>
-                {semana.map((celda, j) => {
-                  if (!celda) return <View key={j} style={estilos.celda} />;
-                  const inhabil = celda.dia < hoy || celda.esDomingo || marcados.includes(celda.dia);
-                  const elegido = celda.dia === dia;
-                  return (
-                    <Pressable
-                      key={j}
-                      onPress={() => setDia(celda.dia)}
-                      disabled={inhabil}
-                      accessibilityRole="button"
-                      accessibilityLabel={formatearDia(celda.dia)}
-                      accessibilityState={{ disabled: inhabil, selected: elegido }}
-                      style={[estilos.celda, elegido && estilos.celdaElegida, inhabil && estilos.celdaInhabil]}
-                    >
-                      <Text style={[estilos.numeroDia, elegido && estilos.numeroElegido]}>{celda.numero}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-            <Text style={[estilos.cuerpo, intento && dia === null && estilos.textoError]}>
-              {dia ? formatearDia(dia) : 'Toca el día que no se trabaja.'}
-            </Text>
-            <CampoTexto
-              etiqueta="Motivo"
-              valor={motivo}
-              onCambiar={setMotivo}
-              ejemplo="Ej. Día de la Revolución"
-              maxLength={200}
-              ayuda={`Obligatorio. Mínimo ${MOTIVO_MINIMO} caracteres.`}
-              error={intento && !motivoValido ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
-            />
-            {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono} />}
-            <Boton texto="Marcar día" cargando={marcar.isPending} textoCargando="Marcando…" onPress={guardar} />
-            <Boton texto="Cancelar" variante="secundario" deshabilitado={marcar.isPending} onPress={cerrar} />
-          </View>
-        </ScrollView>
+    <Hoja
+      visible={visible}
+      onCerrar={cerrar}
+      bloqueada={marcar.isPending}
+      titulo="Marcar un día no laborable"
+      pie={
+        <AccionesHoja>
+          <Boton texto="Cancelar" variante="secundario" deshabilitado={marcar.isPending} onPress={cerrar} />
+          <Boton texto="Marcar día" cargando={marcar.isPending} textoCargando="Marcando…" onPress={guardar} />
+        </AccionesHoja>
+      }
+    >
+      <View style={estilos.cabeceraMes}>
+        <BotonMes direccion="izquierda" etiqueta="Mes anterior" deshabilitado={esMesActual} onPress={() => setMes(moverMes(mes, -1))} />
+        <Text style={estilos.tituloMes}>{tituloMes(mes)}</Text>
+        <BotonMes direccion="derecha" etiqueta="Mes siguiente" onPress={() => setMes(moverMes(mes, 1))} />
       </View>
-    </Modal>
+      <View style={estilos.semana}>
+        {DIAS_CABECERA.map((d, i) => (
+          <Text key={i} style={estilos.cabeceraDia}>
+            {d}
+          </Text>
+        ))}
+      </View>
+      {semanasDelMes(mes).map((semana, i) => (
+        <View key={i} style={estilos.semana}>
+          {semana.map((celda, j) => {
+            if (!celda) return <View key={j} style={estilos.celda} />;
+            const inhabil = celda.dia < hoy || celda.esDomingo || marcados.includes(celda.dia);
+            const elegido = celda.dia === dia;
+            return (
+              <Pulsable
+                key={j}
+                onPress={() => setDia(celda.dia)}
+                disabled={inhabil}
+                accessibilityRole="button"
+                accessibilityLabel={formatearDia(celda.dia)}
+                accessibilityState={{ disabled: inhabil, selected: elegido }}
+                style={[estilos.celda, elegido && estilos.celdaElegida, inhabil && estilos.celdaInhabil]}
+              >
+                <Text style={[estilos.numeroDia, elegido && estilos.numeroElegido]}>{celda.numero}</Text>
+              </Pulsable>
+            );
+          })}
+        </View>
+      ))}
+      <Text style={[estilos.cuerpo, intento && dia === null && estilos.textoError]}>
+        {dia ? formatearDia(dia) : 'Toca el día que no se trabaja.'}
+      </Text>
+      <CampoTexto
+        etiqueta="Motivo"
+        valor={motivo}
+        onCambiar={setMotivo}
+        ejemplo="Ej. Día de la Revolución"
+        maxLength={200}
+        ayuda={`Obligatorio. Mínimo ${MOTIVO_MINIMO} caracteres.`}
+        error={intento && !motivoValido ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+      />
+      {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono} />}
+    </Hoja>
   );
 }
 
 function BotonMes({
-  texto,
+  direccion,
   etiqueta,
   deshabilitado = false,
   onPress,
 }: {
-  texto: string;
+  direccion: 'izquierda' | 'derecha';
   etiqueta: string;
   deshabilitado?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       disabled={deshabilitado}
       accessibilityRole="button"
@@ -363,8 +366,8 @@ function BotonMes({
       accessibilityState={{ disabled: deshabilitado }}
       style={({ pressed }) => [estilos.botonMes, pressed && estilos.quitarPresionado, deshabilitado && estilos.celdaInhabil]}
     >
-      <Text style={estilos.textoBotonMes}>{texto}</Text>
-    </Pressable>
+      <Chevron direccion={direccion} color={COLORES.texto} tamano={ESPACIADO.xxl} />
+    </Pulsable>
   );
 }
 
@@ -446,28 +449,6 @@ const estilos = StyleSheet.create({
   },
   textoError: {
     color: COLORES.error,
-  },
-  fondoModal: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  centrado: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
-  tituloModal: {
-    ...TIPOGRAFIA.titulo,
-    color: COLORES.texto,
   },
   cabeceraMes: {
     flexDirection: 'row',

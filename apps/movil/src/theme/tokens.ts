@@ -38,31 +38,41 @@ export const FUENTE = {
   medio: 'Archivo_500Medium',
   semiNegrita: 'Archivo_600SemiBold',
   negrita: 'Archivo_700Bold',
+  /** Solo las lecturas de la báscula: el total de una fila, la cifra que domina una pantalla. */
+  extraNegrita: 'Archivo_800ExtraBold',
 } as const;
 
 export type PesoFuente = keyof typeof FUENTE;
 
+/**
+ * Paleta de grado exterior. Se usa en bodega con poca luz, pero también en la
+ * calle, bajo sol directo y con reflejos: ningún texto baja de 4.5:1 sobre el
+ * fondo en que aparece, ningún contorno de control baja de 3:1, y lo blanco se
+ * separa del fondo por algo más que el tinte (contorno o forma).
+ */
 export const COLORES = {
-  /** Fondo de pantalla. */
-  fondo: '#EDF0F7',
+  /** Gris Andén: fondo de toda pantalla. Lo bastante hondo para que el blanco se lea como pieza. */
+  fondo: '#E3E7EF',
   /** Tarjetas, modales, filas. */
   superficie: '#FFFFFF',
   /** Campos en reposo, pastillas neutras, bloques planos dentro de una tarjeta. */
-  superficieHonda: '#E3E7F2',
-  texto: '#13172A',
-  textoSecundario: '#5A6076',
-  /** Rótulos de un dato ("Contó", "Productos"). Solo sobre `superficie`. */
-  textoTerciario: '#8B92A8',
+  superficieHonda: '#D8DDE8',
+  texto: '#0D1120',
+  textoSecundario: '#495068',
+  /** Rótulos de un dato ("Contó", "Productos"). Cumple AA sobre blanco y sobre el fondo. */
+  textoTerciario: '#5B6279',
   textoSobreColor: '#FFFFFF',
-  divisor: '#DDE2EE',
-  /** Contorno de controles que no son campos (opciones, botón de contorno): 3:1 sobre blanco. */
-  borde: '#8B92A8',
-  /** Borde de la fila SIN CONTAR: gris claro; la fila se distingue por su blanco sobre el fondo. */
-  bordeSinContar: '#D8DCE8',
+  divisor: '#D3D9E4',
+  /** Contorno de 1 px de una tarjeta blanca: la dibuja sobre el fondo aun con reflejo. */
+  contornoTarjeta: '#C9D0DC',
+  /** Contorno de controles (campos, teclas, opciones): 4:1 sobre blanco, 3.3:1 sobre el fondo. */
+  borde: '#767E94',
+  /** Borde de la fila SIN CONTAR: visible a pleno sol (2:1 sobre blanco) sin parecer un aviso. */
+  bordeSinContar: '#AEB6C7',
   /** Borde de la fila NO LLEVA: un gris apenas más hondo que su fondo. */
-  bordeNoLleva: '#D3D6E0',
+  bordeNoLleva: '#C3C8D4',
   /** Oscurece lo de atrás de un modal. */
-  velo: 'rgba(19, 23, 42, 0.6)',
+  velo: 'rgba(13, 17, 32, 0.62)',
 
   // MARCA: encabezado de trabajo y lo que se está tecleando.
   marca: '#1E4FE0',
@@ -70,17 +80,17 @@ export const COLORES = {
   marcaHonda: '#1638B0',
   /** Canal de la barra de progreso. */
   marcaProfunda: '#102A86',
-  /** Texto que se retira sobre azul. */
-  marcaTenue: '#C9D7FF',
+  /** Texto que se retira sobre azul (5:1 sobre marca, 7.5:1 sobre marcaHonda). */
+  marcaTenue: '#DCE5FF',
   marcaTinte: '#E7EDFF',
   /** Botón de volver sobre azul: un tono más claro que la marca, para que se vea como botón. */
   marcaClara: '#3A62EF',
 
   // CONTADO
   capturado: '#14B8A6',
-  capturadoHondo: '#0E7E72',
-  capturadoFondo: '#D6F5F0',
-  capturadoTexto: '#0B3B37',
+  capturadoHondo: '#0B6E64',
+  capturadoFondo: '#CFF0E9',
+  capturadoTexto: '#0A3A35',
 
   // AVISO (ámbar): solo lo que pide atención, nunca lo que falta contar
   discrepancia: '#F59E0B',
@@ -89,8 +99,8 @@ export const COLORES = {
   discrepanciaTexto: '#92400E',
 
   // NO LLEVA / inactivo
-  pendiente: '#6B7185',
-  pendienteFondo: '#E4E6EE',
+  pendiente: '#545B70',
+  pendienteFondo: '#DCDFE8',
 
   // ERROR
   error: '#DC2626',
@@ -122,9 +132,9 @@ export const TONOS: Record<ColorTono, { solido: string; fondo: string; texto: st
 };
 
 /**
- * Cada tipo de tarea tiene UN color, el mismo en toda la app: el cuadro del
- * ícono en el menú, el de su pantalla y el de sus avisos. En el menú el color
- * ubica la tarea; no es un estado.
+ * Las tareas del menú. Se reconocen por su ícono, NO por un color: el color es
+ * de los estados (Regla de Un Color, Un Estado). En el menú todos los íconos
+ * van en tinta sobre gris hundido.
  */
 export type Tarea =
   | 'autorizar'
@@ -134,16 +144,6 @@ export type Tarea =
   | 'personas'
   | 'diasNoLaborables'
   | 'coloresFamilia';
-
-export const COLOR_TAREA: Record<Tarea, ColorTono> = {
-  autorizar: 'marca',
-  empaques: 'discrepancia',
-  plantillas: 'capturado',
-  historial: 'pendiente',
-  personas: 'marca',
-  diasNoLaborables: 'discrepancia',
-  coloresFamilia: 'capturado',
-};
 
 export const ESPACIADO = {
   xs: 4,
@@ -187,7 +187,7 @@ interface EstiloTexto {
  * - numero: la cifra que domina la pantalla (total de piezas de una carga).
  * - display: el número que se busca con la mirada (dígitos del PIN).
  * - titulo: el nombre grande de login e inicio de rol, título de un modal.
- * - total: el total de una fila de conteo (33 px); no es tocable.
+ * - total: la lectura de una fila de conteo (32 px ExtraBold); no es tocable.
  * - avance: el "4" del avance en el encabezado de conteo.
  * - campo: el número dentro de un campo de captura.
  * - tituloBarra: título del encabezado azul.
@@ -196,24 +196,25 @@ interface EstiloTexto {
  * - cuerpo: texto corrido e instrucciones.
  * - familia: nombre de la familia en su encabezado de la lista de conteo.
  * - etiqueta: texto de pastillas y notas.
- * - micro: rótulos de un dato y líneas de contexto (12 px).
- * - rotulo: rótulo en mayúsculas de un campo de captura (9 px).
+ * - micro: rótulos de un dato y líneas de contexto (13 px, Medium: a pleno sol el Regular se deshace).
+ * - rotulo: rótulo en mayúsculas de un campo de captura (12 px negrita). Nunca más
+ *   chico: "PAQUETES" contra "SUELTAS" es la diferencia entre 12 y 144 piezas.
  */
 export const TIPOGRAFIA = {
-  numero: { fontFamily: FUENTE.negrita, fontSize: 48, lineHeight: 54 },
+  numero: { fontFamily: FUENTE.extraNegrita, fontSize: 48, lineHeight: 54 },
   display: { fontFamily: FUENTE.negrita, fontSize: 34, lineHeight: 40 },
-  total: { fontFamily: FUENTE.negrita, fontSize: 33, lineHeight: 38 },
+  total: { fontFamily: FUENTE.extraNegrita, fontSize: 32, lineHeight: 36 },
   titulo: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 32 },
-  avance: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 30 },
-  campo: { fontFamily: FUENTE.semiNegrita, fontSize: 21, lineHeight: 26 },
-  tituloBarra: { fontFamily: FUENTE.semiNegrita, fontSize: 19, lineHeight: 24 },
+  avance: { fontFamily: FUENTE.extraNegrita, fontSize: 28, lineHeight: 32 },
+  campo: { fontFamily: FUENTE.negrita, fontSize: 22, lineHeight: 26 },
+  tituloBarra: { fontFamily: FUENTE.negrita, fontSize: 20, lineHeight: 24 },
   tituloVacio: { fontFamily: FUENTE.semiNegrita, fontSize: 20, lineHeight: 26 },
   subtitulo: { fontFamily: FUENTE.semiNegrita, fontSize: 17, lineHeight: 22 },
   cuerpo: { fontFamily: FUENTE.regular, fontSize: 16, lineHeight: 22 },
-  familia: { fontFamily: FUENTE.semiNegrita, fontSize: 15, lineHeight: 20 },
-  etiqueta: { fontFamily: FUENTE.semiNegrita, fontSize: 13, lineHeight: 18 },
-  micro: { fontFamily: FUENTE.regular, fontSize: 12, lineHeight: 16 },
-  rotulo: { fontFamily: FUENTE.semiNegrita, fontSize: 9, lineHeight: 12 },
+  familia: { fontFamily: FUENTE.negrita, fontSize: 15, lineHeight: 20 },
+  etiqueta: { fontFamily: FUENTE.semiNegrita, fontSize: 14, lineHeight: 18 },
+  micro: { fontFamily: FUENTE.medio, fontSize: 13, lineHeight: 18 },
+  rotulo: { fontFamily: FUENTE.negrita, fontSize: 12, lineHeight: 14 },
 } as const satisfies Record<string, EstiloTexto>;
 
 export type NivelTipografia = keyof typeof TIPOGRAFIA;
@@ -226,12 +227,12 @@ export const ROTULO = {
   ...TIPOGRAFIA.rotulo,
   color: COLORES.textoSecundario,
   textTransform: 'uppercase',
-  letterSpacing: 0.8,
+  letterSpacing: 0.6,
 } as const satisfies TextStyle;
 
 /**
  * Rótulo de un dato ("Contó", "Verificó", "Productos"): mayúscula inicial,
- * 12 px, en terciario. Va sobre tarjeta blanca (ver contraste.spec.ts).
+ * 13 px, en terciario. Cumple AA sobre tarjeta y sobre el fondo.
  */
 export const ETIQUETA_DATO = {
   ...TIPOGRAFIA.micro,
@@ -292,9 +293,12 @@ export const ELEVACION = {
     backgroundColor: COLORES.superficieHonda,
     borderWidth: 0,
   },
+  // Contorno de 1: a pleno sol, blanco sobre gris claro se funde; el contorno
+  // dibuja la pieza. No es un divisor: rodea, no separa.
   1: {
     backgroundColor: COLORES.superficie,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: COLORES.contornoTarjeta,
   },
 } as const;
 
@@ -317,8 +321,46 @@ export const OPACIDAD = {
  */
 export const TOQUE_MINIMO = 56;
 
-/** Alto del botón principal y de los campos de captura. */
-export const ALTO_CONTROL = 54;
+/** Alto de botones y campos de captura: el mismo toque mínimo, una sola medida. */
+export const ALTO_CONTROL = TOQUE_MINIMO;
 
 /** Ancho máximo de un modal en tablet: una columna que se lee de un vistazo. */
 export const ANCHO_MODAL = 480;
+
+/**
+ * Movimiento. Todo es corto: la animación explica un cambio de estado y nunca
+ * hace esperar la siguiente captura. Sale ya visible y frena al final
+ * (ease-out exponencial); con "Reducir movimiento" se corta en seco.
+ */
+export const MOVIMIENTO = {
+  /** Respuesta al toque (escala, tinte). */
+  toque: 90,
+  /** Un cambio pequeño: una pastilla, un aviso que entra. */
+  rapido: 160,
+  /** Entrada de una hoja o un diálogo. */
+  hoja: 240,
+  /** Destello que confirma una captura en la fila. */
+  destello: 280,
+} as const;
+
+/** Curva ease-out exponencial (0.16, 1, 0.3, 1). */
+export const CURVA_SALIDA = [0.16, 1, 0.3, 1] as const;
+
+/** Escala al presionar algo grande (tarjeta, fila de menú): se hunde, no rebota. */
+export const ESCALA_PRESIONADO = 0.98;
+
+/**
+ * Tope de escalado del texto del sistema (Dynamic Type / tamaño de fuente de
+ * Android). El texto corrido crece libre; lo que vive en cajas de alto fijo
+ * (teclas, campos de captura, lecturas de la fila) crece hasta un tope para que
+ * la caja no reviente y el número siga leyéndose completo.
+ */
+export const ESCALA_TEXTO = {
+  /** Teclas de los teclados propios, campos y totales de la fila de conteo. */
+  control: 1.3,
+  /** Encabezados, pastillas y barras de una sola línea. */
+  compacto: 1.5,
+} as const;
+
+/** Teclas en tablet: sobra alto y el pulgar no alcanza a ver la tecla que toca. */
+export const ALTO_TECLA_GRANDE = TOQUE_MINIMO + ESPACIADO.lg;

@@ -1,11 +1,13 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORES, ESPACIADO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import { BORDES, COLORES, ESCALA_TEXTO, ESPACIADO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
 import { Chevron } from './Icono';
+import { Pulsable } from './Pulsable';
 
-const LADO_VOLVER = 36;
+/** 44: el mínimo de iOS; con el hitSlop llega a los 56 de la app sin comerse el título. */
+const LADO_VOLVER = 44;
 
 interface Props {
   titulo: string;
@@ -60,11 +62,11 @@ export function Encabezado({
       <View style={estiloContenedor}>
         <View style={estilos.fila}>
           {onVolver && (
-            <Pressable
+            <Pulsable
               onPress={onVolver}
               accessibilityRole="button"
               accessibilityLabel={etiquetaVolver}
-              hitSlop={ESPACIADO.md}
+              hitSlop={ESPACIADO.sm}
               style={({ pressed }) => [
                 estilos.botonVolver,
                 sobreMarca ? estilos.botonVolverMarca : estilos.botonVolverClaro,
@@ -76,13 +78,14 @@ export function Encabezado({
                 tamano={ESPACIADO.xl - ESPACIADO.xs}
                 color={sobreMarca ? COLORES.textoSobreColor : COLORES.texto}
               />
-            </Pressable>
+            </Pulsable>
           )}
           <View style={estilos.titulos}>
             <Text
               style={[variante === 'plano' ? estilos.tituloPlano : estilos.titulo, sobreMarca && estilos.textoInvertido]}
               accessibilityRole="header"
               numberOfLines={lineas}
+              maxFontSizeMultiplier={sobreMarca ? ESCALA_TEXTO.compacto : undefined}
             >
               {titulo}
             </Text>
@@ -176,6 +179,8 @@ const estilos = StyleSheet.create({
   },
   botonVolverClaro: {
     backgroundColor: COLORES.superficie,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.contornoTarjeta,
   },
   botonVolverPresionado: {
     backgroundColor: COLORES.superficieHonda,

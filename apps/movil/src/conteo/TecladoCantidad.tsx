@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { ALTO_TECLA_GRANDE, BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   factorEfectivo,
   sueltasExcedenPaquete,
@@ -8,13 +9,12 @@ import {
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
-import { Chevron } from '../componentes/base';
+import { Chevron, Glifo, Pulsable } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
+import { formatearNombreProducto } from './formato-nombre';
 
 /** Cabe una cantidad de 4 dígitos al tamaño de título. */
 const ANCHO_VISOR = ESPACIADO.xxxl + ESPACIADO.xxl + ESPACIADO.sm;
-/** En tablet sobra alto: teclas más grandes, igual que el teclado del PIN. */
-const ALTO_TECLA_LATERAL = TOQUE_MINIMO + ESPACIADO.lg;
 
 const FILAS: readonly (readonly string[])[] = [
   ['1', '2', '3'],
@@ -34,7 +34,12 @@ interface Props {
   etiquetaSiguiente: string;
   /** La tecla de avance lleva a otro campo (no termina): muestra un chevron. */
   siguienteConChevron?: boolean;
+  /** Panel lateral (tablet expandida): ocupa el alto de la pantalla. */
   lateral: boolean;
+  /** Tablet (media o expandida): teclas de 72 en vez de 56. */
+  teclasGrandes?: boolean;
+  /** Llega al borde de abajo y absorbe el área segura. `false` si la pantalla ya la aplica. */
+  areaSegura?: boolean;
   onDigito: (digito: string) => void;
   onBorrar: () => void;
   onSiguiente: () => void;
@@ -57,55 +62,71 @@ export function TecladoCantidad({
   etiquetaSiguiente,
   siguienteConChevron = false,
   lateral,
+  teclasGrandes = lateral,
+  areaSegura = true,
   onDigito,
   onBorrar,
   onSiguiente,
   onListo,
 }: Props) {
+  // El panel llega hasta el borde de abajo: su fondo absorbe el área segura.
+  const margenes = useSafeAreaInsets();
   const factor = factorEfectivo(producto);
   const avisoSueltas = campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
-  const altoTecla = lateral ? ALTO_TECLA_LATERAL : TOQUE_MINIMO;
+  const altoTecla = teclasGrandes ? ALTO_TECLA_GRANDE : TOQUE_MINIMO;
   const etiquetaCampo = nombreCampo(producto, campo);
 
   return (
-    <View style={[estilos.panel, lateral && estilos.panelLateral]}>
+    <View style={[estilos.panel, lateral && estilos.panelLateral, { paddingBottom: (lateral ? ESPACIADO.lg : ESPACIADO.md) + (areaSegura ? margenes.bottom : 0) }]}>
       <View style={estilos.encabezado}>
         <View style={estilos.contexto} accessibilityLiveRegion="polite">
           <View style={estilos.lineaProducto}>
             <EtiquetaFactor producto={producto} grande={lateral} />
-            <Text style={estilos.nombre} numberOfLines={2}>
-              {producto.nombre}
+            <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              {formatearNombreProducto(producto.nombre)}
             </Text>
           </View>
           <View style={estilos.lineaValor}>
-            <Text style={estilos.campo}>{etiquetaCampo}</Text>
+            <Text style={estilos.campo} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              {etiquetaCampo}
+            </Text>
             <View
               style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
               accessible
               accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
             >
-              <Text style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]} numberOfLines={1}>
+              <Text
+                style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={ESCALA_TEXTO.control}
+              >
                 {texto === '' ? '—' : texto}
               </Text>
             </View>
           </View>
         </View>
-        <Pressable
+        <Pulsable
           onPress={onListo}
+          onda="rgba(255, 255, 255, 0.24)"
           accessibilityRole="button"
           accessibilityLabel="Listo, cerrar teclado"
           style={({ pressed }) => [estilos.botonListo, pressed && estilos.botonListoPresionado]}
         >
-          <Text style={estilos.textoListo}>Listo</Text>
-        </Pressable>
+          <Text style={estilos.textoListo} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+            Listo
+          </Text>
+        </Pulsable>
       </View>
 
       {/* Avisa, no bloquea: a veces el paquete viene abierto. Altura reservada para que las teclas no se muevan. */}
       <View style={estilos.zonaAviso}>
         {avisoSueltas && factor !== null && (
-          <Text style={estilos.aviso} accessibilityRole="alert">
-            Eso ya es un paquete completo de {factor}. Si venía cerrado, cuéntalo en Paquetes.
-          </Text>
+          <View style={estilos.aviso} accessibilityRole="alert">
+            <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.lg} />
+            <Text style={estilos.textoAviso} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              Eso ya es un paquete completo de {factor}. Si venía cerrado, cuéntalo en Paquetes.
+            </Text>
+          </View>
         )}
       </View>
 
@@ -140,8 +161,10 @@ interface PropsTecla {
 
 function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, etiquetaAccesible, chevron = false }: PropsTecla) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
+      tacto="tecla"
+      repetible
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       style={({ pressed }) => [
@@ -161,6 +184,7 @@ function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, et
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {etiqueta}
           </Text>
@@ -173,7 +197,7 @@ function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, et
           </View>
         );
       }}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -276,12 +300,18 @@ const estilos = StyleSheet.create({
   },
   // El fondo ámbar lo separa: sin contorno ni relleno vertical, cabe en la zona reservada.
   aviso: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.sm,
+    paddingVertical: 2,
     backgroundColor: COLORES.discrepanciaFondo,
     borderRadius: RADIOS.chico,
+  },
+  textoAviso: {
+    flex: 1,
     ...TIPOGRAFIA.etiqueta,
     color: COLORES.discrepanciaTexto,
-    overflow: 'hidden',
   },
   teclado: {
     gap: ESPACIADO.sm,
@@ -299,8 +329,8 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.xs,
     backgroundColor: COLORES.superficie,
-    borderWidth: BORDES.fino,
-    borderColor: COLORES.borde,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.bordeSinContar,
     borderRadius: RADIOS.medio,
   },
   teclaAvance: {

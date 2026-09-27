@@ -60,6 +60,8 @@ export function CampoTexto({
         onChangeText={onCambiar}
         placeholder={ejemplo}
         placeholderTextColor={COLORES.textoSecundario}
+        selectionColor={COLORES.marca}
+        cursorColor={COLORES.marca}
         multiline={multilinea}
         maxLength={maxLength}
         autoFocus={autoFocus}

@@ -27,7 +27,7 @@ import { tomarAviso, type AvisoCola } from '../../src/supervisor/aviso-cola';
 import { bandaDeEspera, espera, useAhora } from '../../src/supervisor/ComponentesSupervisor';
 import type { CargaEnEspera } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLOR_TAREA, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
 
 /**
  * Cargas que esperan el visto bueno del supervisor. Ninguna llega a Handy sin
@@ -133,7 +133,7 @@ function Cola() {
         ) : (
           <Seccion
             texto="Esperan tu autorización"
-            contador={{ texto: cargas.length === 1 ? '1 carga' : `${cargas.length} cargas`, tono: COLOR_TAREA.autorizar }}
+            contador={{ texto: cargas.length === 1 ? '1 carga' : `${cargas.length} cargas`, tono: 'fuerte', relleno: 'solida' }}
           >
             {cargas.map((c) => (
               <TarjetaEnEspera key={c.id} carga={c} ahora={ahora} hoy={hoy} />
@@ -143,7 +143,7 @@ function Cola() {
         {enviables.length > 0 && (
           <Seccion
             texto="Autorizadas, sin enviar a Handy"
-            contador={{ texto: enviables.length === 1 ? '1 carga' : `${enviables.length} cargas`, tono: COLOR_TAREA.autorizar }}
+            contador={{ texto: enviables.length === 1 ? '1 carga' : `${enviables.length} cargas`, tono: 'fuerte', relleno: 'solida' }}
           >
             {enviables.map((c) => (
               <TarjetaPorEnviar key={c.id} fila={c} hoy={hoy} />

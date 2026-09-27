@@ -20,6 +20,8 @@ export interface CargaAbierta {
    * guardadas antes de existir y en las del contador: el conteo la pide al servidor.
    */
   fechaOperativa?: string | null;
+  /** Solo para mostrarla en el conteo (el contador cuenta rutas ajenas). Falta en las del vendedor. */
+  rutaNombre?: string | null;
 }
 
 const PREFIJO = 'conteo_cargas';

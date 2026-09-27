@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
@@ -17,6 +17,7 @@ import {
   Seccion,
   Tarjeta,
   TarjetaEsqueleto,
+  Pulsable,
 } from '../../src/componentes/base';
 import { textoProductos } from '../../src/factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA, volver } from '../../src/historial/ComponentesHistorial';
@@ -514,7 +515,7 @@ function PieEstado({ plantilla, onDesactivar }: { plantilla: DetallePlantilla; o
 /** Pastilla clara sobre el azul del encabezado: se ve tocable sin competir con el nombre. */
 function BotonEditar({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="Editar nombre y descripción"
@@ -522,7 +523,7 @@ function BotonEditar({ onPress }: { onPress: () => void }) {
       style={({ pressed }) => [estilos.botonEditar, pressed && estilos.botonEditarPresionado]}
     >
       {({ pressed }) => <Text style={[estilos.textoEditar, pressed && estilos.textoInvertido]}>Editar</Text>}
-    </Pressable>
+    </Pulsable>
   );
 }
 

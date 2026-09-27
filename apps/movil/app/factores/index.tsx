@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -32,6 +32,8 @@ import {
   Tarjeta,
   TarjetaEsqueleto,
   type Dato,
+  Hoja,
+  Pulsable,
 } from '../../src/componentes/base';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
 import { diaNegocio, formatearFechaCorta } from '../../src/conteo/fecha-operativa';
@@ -61,10 +63,8 @@ import {
 } from '../../src/factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import {
-  ANCHO_MODAL,
   BORDES,
   CIFRAS,
-  COLOR_TAREA,
   COLORES,
   ESPACIADO,
   ETIQUETA_DATO,
@@ -89,8 +89,6 @@ import {
  */
 
 const TITULO = 'Empaque de productos';
-/** El modal con teclado es tan angosto como el del PIN: el teclado se ve igual. */
-const ANCHO_MODAL_TECLADO = ANCHO_MODAL - ESPACIADO.xl - ESPACIADO.lg;
 /** El botón de acciones de familia no hace crecer su encabezado: mide lo que el título. */
 const ALTO_BOTON_ACCIONES = ESPACIADO.xxl;
 
@@ -287,7 +285,7 @@ function Pestanas({
         {opciones.map((o) => {
           const activa = pestana === o.valor;
           return (
-            <Pressable
+            <Pulsable
               key={o.valor}
               onPress={() => onCambiar(o.valor)}
               accessibilityRole="tab"
@@ -299,7 +297,7 @@ function Pestanas({
                 {o.texto}
                 {o.contador !== null && o.contador > 0 ? ` (${o.contador})` : ''}
               </Text>
-            </Pressable>
+            </Pulsable>
           );
         })}
       </View>
@@ -470,13 +468,13 @@ function EncabezadoFamilia({
           {formatearNombreFamilia(familia.titulo)}
         </Text>
         {porConfirmar ? (
-          <Etiqueta texto={cantidad} tono={COLOR_TAREA.empaques} />
+          <Etiqueta texto={cantidad} tono="discrepancia" />
         ) : (
           <Text style={estilos.cantidadFamilia}>{cantidad}</Text>
         )}
       </View>
       {conAcciones && (
-        <Pressable
+        <Pulsable
           onPress={onAcciones}
           accessibilityRole="button"
           accessibilityLabel={`Confirmar toda la familia ${familia.titulo}`}
@@ -490,7 +488,7 @@ function EncabezadoFamilia({
               Confirmar todos
             </Text>
           )}
-        </Pressable>
+        </Pulsable>
       )}
     </View>
   );
@@ -586,14 +584,10 @@ type Paso = 'modalidad' | 'piezas' | 'resumen';
 
 function ModalConfirmarProducto({ producto, onCerrar }: { producto: ProductoAConfirmar | null; onCerrar: () => void }) {
   return (
-    <Modal visible={producto !== null} transparent animationType="none" onRequestClose={onCerrar}>
-      <View style={estilos.fondoModal}>
-        <ScrollView contentContainerStyle={estilos.contenidoFondoModal} bounces={false}>
-          {/* La clave reinicia los pasos al abrir otro producto. */}
-          {producto && <FlujoConfirmacion key={producto.code} producto={producto} onCerrar={onCerrar} />}
-        </ScrollView>
-      </View>
-    </Modal>
+    <Hoja visible={producto !== null} onCerrar={onCerrar}>
+      {/* La clave reinicia los pasos al abrir otro producto. */}
+      {producto && <FlujoConfirmacion key={producto.code} producto={producto} onCerrar={onCerrar} />}
+    </Hoja>
   );
 }
 
@@ -656,7 +650,7 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
   };
 
   return (
-    <View style={[estilos.modal, paso === 'piezas' && estilos.modalTeclado]}>
+    <View style={[estilos.modal]}>
       <Text style={estilos.pasoIndicador}>
         {paso === 'modalidad' ? 'Paso 1' : paso === 'piezas' ? 'Paso 2' : 'Antes de guardar'}
       </Text>
@@ -840,7 +834,7 @@ interface PropsOpcion {
 /** Una opción grande: el contorno la marca como algo que se toca, igual que una tecla. */
 function OpcionModalidad({ titulo, descripcion, ejemplo, seleccionada, onPress }: PropsOpcion) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected: seleccionada }}
@@ -861,7 +855,7 @@ function OpcionModalidad({ titulo, descripcion, ejemplo, seleccionada, onPress }
           </Text>
         </>
       )}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -871,7 +865,7 @@ function ResumenModalidad({ modalidad, piezas, deVarios = false }: { modalidad: 
   if (modalidad === 'POR_PIEZA') datos.push({ rotulo: 'Piezas por paquete', valor: piezas !== null ? String(piezas) : null, cifra: true });
   const frase = resumenConfirmacion(modalidad, piezas, deVarios);
   return (
-    <Tarjeta tintada="marca" compacta accessible accessibilityLabel={`${datos.map((d) => `${d.rotulo}: ${d.valor}`).join('. ')}. ${frase}`}>
+    <Tarjeta elevacion={0} compacta accessible accessibilityLabel={`${datos.map((d) => `${d.rotulo}: ${d.valor}`).join('. ')}. ${frase}`}>
       <Datos datos={datos} />
       <Text style={estilos.fraseResumen}>{frase}</Text>
     </Tarjeta>
@@ -884,13 +878,9 @@ function ResumenModalidad({ modalidad, piezas, deVarios = false }: { modalidad: 
 
 function ModalFamilia({ familia, onCerrar }: { familia: FamiliaPendiente | null; onCerrar: () => void }) {
   return (
-    <Modal visible={familia !== null} transparent animationType="none" onRequestClose={onCerrar}>
-      <View style={estilos.fondoModal}>
-        <ScrollView contentContainerStyle={estilos.contenidoFondoModal} bounces={false}>
-          {familia && <FlujoFamilia key={familia.titulo} familia={familia} onCerrar={onCerrar} />}
-        </ScrollView>
-      </View>
-    </Modal>
+    <Hoja visible={familia !== null} onCerrar={onCerrar}>
+      {familia && <FlujoFamilia key={familia.titulo} familia={familia} onCerrar={onCerrar} />}
+    </Hoja>
   );
 }
 
@@ -1085,7 +1075,7 @@ function DetalleFamiliaPorPieza({
         uno con las piezas que dice su propio nombre.
       </Text>
       {ejemplo && ejemplo.sugerido !== null && (
-        <Tarjeta tintada="marca" compacta accessible>
+        <Tarjeta elevacion={0} compacta accessible>
           <Text style={estilos.fraseResumen}>{resumenPorPiezaDe(ejemplo.nombre, ejemplo.sugerido)}</Text>
         </Tarjeta>
       )}
@@ -1292,26 +1282,8 @@ const estilos = StyleSheet.create({
   },
 
   // Modales
-  fondoModal: {
-    flex: 1,
-    backgroundColor: COLORES.velo,
-  },
-  contenidoFondoModal: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-  },
   modal: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
     gap: RITMO.relacionado,
-    padding: RITMO.margen,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
-  modalTeclado: {
-    maxWidth: ANCHO_MODAL_TECLADO,
   },
   pasoIndicador: ETIQUETA_DATO,
   empaqueActual: {

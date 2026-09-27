@@ -9,6 +9,7 @@ import { Archivo_400Regular } from '@expo-google-fonts/archivo/400Regular';
 import { Archivo_500Medium } from '@expo-google-fonts/archivo/500Medium';
 import { Archivo_600SemiBold } from '@expo-google-fonts/archivo/600SemiBold';
 import { Archivo_700Bold } from '@expo-google-fonts/archivo/700Bold';
+import { Archivo_800ExtraBold } from '@expo-google-fonts/archivo/800ExtraBold';
 
 import { FUENTE } from '../src/theme/tokens';
 
@@ -26,6 +27,7 @@ export default function LayoutRaiz() {
     [FUENTE.medio]: Archivo_500Medium,
     [FUENTE.semiNegrita]: Archivo_600SemiBold,
     [FUENTE.negrita]: Archivo_700Bold,
+    [FUENTE.extraNegrita]: Archivo_800ExtraBold,
   });
   // Si fallan, se sigue con la del sistema: mejor eso que una splash eterna.
   const listo = fuentesListas || errorFuentes !== null;

@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { COLORES, ELEVACION, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type Tarea } from '../../theme/tokens';
 import { Chevron, IconoTarea } from './Icono';
+import { Pulsable } from './Pulsable';
 
 /**
  * Opciones de navegación agrupadas en un solo bloque blanco, sin líneas entre
@@ -17,8 +18,8 @@ interface Props {
   /** Lo que hay detrás, en una línea que se retira. */
   detalle?: string;
   /**
-   * La tarea a la que lleva: pone a la izquierda su ícono en su color (el
-   * mismo en toda la app, ver COLOR_TAREA). Toda fila de navegación lleva una.
+   * La tarea a la que lleva: pone a la izquierda su ícono, en tinta. El ícono
+   * ubica la tarea; el color queda para los estados.
    */
   tarea?: Tarea;
   onPress: () => void;
@@ -30,7 +31,7 @@ interface Props {
 
 export function FilaMenu({ texto, detalle, tarea, onPress, salida = false, cargando = false, accessibilityHint }: Props) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       disabled={cargando}
       accessibilityRole="button"
@@ -40,7 +41,7 @@ export function FilaMenu({ texto, detalle, tarea, onPress, salida = false, carga
     >
       {({ pressed }) => (
         <>
-          {tarea && <IconoTarea tarea={tarea} />}
+          {tarea && <IconoTarea tarea={tarea} invertido={pressed} />}
           <View style={estilos.textos}>
             <Text style={[estilos.texto, salida && estilos.textoSalida, pressed && estilos.invertido]}>
               {cargando ? 'Un momento…' : texto}
@@ -50,7 +51,7 @@ export function FilaMenu({ texto, detalle, tarea, onPress, salida = false, carga
           {!salida && <Chevron color={pressed ? COLORES.textoSobreColor : undefined} />}
         </>
       )}
-    </Pressable>
+    </Pulsable>
   );
 }
 

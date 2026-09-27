@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { ErrorRed } from '../api/cliente';
 import { useFechasOperativasDisponibles } from '../api/hooks-cargas';
-import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto } from '../componentes/base';
-import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto, Hoja, Pulsable } from '../componentes/base';
+import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   deLaSalida,
   diaNegocio,
@@ -82,12 +82,7 @@ const AVISO_SIN_VERIFICAR_CON_HANDY =
 export function SelectorFechaOperativa(props: Props) {
   const { ocupado, onCerrar } = props;
   return (
-    <Modal
-      visible={props.tipo !== null}
-      transparent
-      animationType="none"
-      onRequestClose={ocupado ? () => undefined : onCerrar}
-    >
+    <Hoja visible={props.tipo !== null} onCerrar={onCerrar} bloqueada={ocupado}>
       {/* Montado solo abierto: cada vez que se abre se vuelven a pedir las fechas. */}
       {props.tipo !== null &&
         (props.cambio ? (
@@ -95,7 +90,7 @@ export function SelectorFechaOperativa(props: Props) {
         ) : (
           <Contenido {...props} tipo={props.tipo} />
         ))}
-    </Modal>
+    </Hoja>
   );
 }
 
@@ -200,8 +195,7 @@ function Contenido({
   const tonoMensaje = aviso ? 'atencion' : 'error';
 
   return (
-    <View style={estilos.fondo}>
-      <View style={estilos.tarjeta}>
+    <>
         {conflicto ? (
           <>
             <Text style={estilos.titulo} accessibilityRole="header">
@@ -308,8 +302,7 @@ function Contenido({
             <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           </>
         )}
-      </View>
-    </View>
+    </>
   );
 }
 
@@ -354,8 +347,7 @@ function ContenidoCambio({
   if (elegido !== null) {
     const { titulo, cuerpo } = textoConfirmarCambioFecha(elegido, cambio.productosContados);
     return (
-      <View style={estilos.fondo}>
-        <View style={estilos.tarjeta}>
+      <>
           <Text style={estilos.titulo} accessibilityRole="header">
             {titulo}
           </Text>
@@ -384,14 +376,12 @@ function ContenidoCambio({
           ) : (
             <Boton texto="No, dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           )}
-        </View>
-      </View>
+      </>
     );
   }
 
   return (
-    <View style={estilos.fondo}>
-      <View style={estilos.tarjeta}>
+    <>
         <Text style={estilos.titulo} accessibilityRole="header">
           ¿Para qué día sale el camión?
         </Text>
@@ -418,8 +408,7 @@ function ContenidoCambio({
           )}
         />
         <Boton texto="Dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
-      </View>
-    </View>
+    </>
   );
 }
 
@@ -438,9 +427,11 @@ interface PropsOpcionDia {
 function OpcionDia({ titulo, subtitulo, marca, deshabilitado, onPress, onLayout }: PropsOpcionDia) {
   const propuesta = marca !== null;
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       disabled={deshabilitado}
+      tacto="seleccion"
+      onda="rgba(255, 255, 255, 0.2)"
       onLayout={onLayout ? (e) => onLayout(e.nativeEvent.layout.y) : undefined}
       accessibilityRole="button"
       accessibilityLabel={`${titulo}${subtitulo ? `, ${subtitulo}` : ''}${marca ? `. ${marca}` : ''}`}
@@ -468,26 +459,11 @@ function OpcionDia({ titulo, subtitulo, marca, deshabilitado, onPress, onLayout 
           </>
         );
       }}
-    </Pressable>
+    </Pulsable>
   );
 }
 
 const estilos = StyleSheet.create({
-  fondo: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: RITMO.margen,
-    backgroundColor: COLORES.velo,
-  },
-  tarjeta: {
-    width: '100%',
-    maxWidth: ANCHO_MODAL,
-    alignSelf: 'center',
-    gap: RITMO.relacionado,
-    padding: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-  },
   titulo: {
     ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
@@ -511,8 +487,9 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.texto,
   },
   opcionPresionada: {
-    backgroundColor: COLORES.textoSecundario,
-    borderColor: COLORES.textoSecundario,
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
   filaOpcion: {
     flexDirection: 'row',

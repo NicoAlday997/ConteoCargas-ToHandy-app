@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { Pulsable } from './base/Pulsable';
+
+import { BORDES, COLORES, ESCALA_TEXTO, ESPACIADO, OPACIDAD, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Por encima del mínimo de 56: el PIN se teclea de pie y con prisa. */
 const ALTO_TECLA = TOQUE_MINIMO + ESPACIADO.lg;
@@ -56,9 +58,11 @@ interface PropsTecla {
 
 function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaAccesible }: PropsTecla) {
   return (
-    <Pressable
+    <Pulsable
       onPress={onPress}
       disabled={deshabilitado}
+      tacto="tecla"
+      repetible
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       accessibilityState={{ disabled: deshabilitado }}
@@ -74,11 +78,12 @@ function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaA
             secundaria ? estilos.textoSecundario : estilos.textoDigito,
             pressed && estilos.textoPresionado,
           ]}
+          maxFontSizeMultiplier={ESCALA_TEXTO.control}
         >
           {etiqueta}
         </Text>
       )}
-    </Pressable>
+    </Pulsable>
   );
 }
 
@@ -97,8 +102,8 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     // Blanca: resalta sobre el fondo tintado de la pantalla, como una tarjeta.
     backgroundColor: COLORES.superficie,
-    borderWidth: BORDES.fino,
-    borderColor: COLORES.borde,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.bordeSinContar,
     borderRadius: RADIOS.medio,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
