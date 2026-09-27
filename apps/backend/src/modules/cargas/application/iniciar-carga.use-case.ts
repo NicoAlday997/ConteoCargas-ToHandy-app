@@ -1,10 +1,6 @@
 import type { TipoCarga } from '@prisma/client';
 
-import {
-  esHandyNoDisponible,
-  HandyGateway,
-  type RutaHandy,
-} from '../../sincronizacion/application/handy.gateway';
+import { HandyGateway } from '../../sincronizacion/application/handy.gateway';
 import {
   esFechaOperativaValida,
   normalizarFechaOperativa,
@@ -16,6 +12,7 @@ import {
   type EventoCarga,
   type SesionConteo,
 } from './carga.repository';
+import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
 
 /**
  * Caso de uso: el vendedor inicia una carga (inicial o recarga) de SU ruta
@@ -144,7 +141,8 @@ export class IniciarCargaUseCase {
       }
       // 3c. ...y que esa salida siga ABIERTA en Handy.
       if (
-        !(await this.sigueAbiertaEnHandy(
+        !(await sigueAbiertaEnHandy(
+          this.handy,
           entrada.usuarioHandyId,
           inicialDelDia.idHandy,
         ))
@@ -194,24 +192,5 @@ export class IniciarCargaUseCase {
     );
 
     return { exito: true, evento, sesion };
-  }
-
-  /**
-   * `true` si la ruta que Handy tiene abierta para el vendedor es la de la
-   * inicial (`idHandy`), o si Handy no se pudo consultar (no se bloquea por un
-   * tercero caido).
-   */
-  private async sigueAbiertaEnHandy(
-    usuarioHandyId: number,
-    idHandyInicial: string | null,
-  ): Promise<boolean> {
-    let rutaAbierta: RutaHandy | null;
-    try {
-      rutaAbierta = await this.handy.consultarRutaAbierta(usuarioHandyId);
-    } catch (error) {
-      if (esHandyNoDisponible(error)) return true;
-      throw error;
-    }
-    return rutaAbierta !== null && rutaAbierta.id === idHandyInicial;
   }
 }

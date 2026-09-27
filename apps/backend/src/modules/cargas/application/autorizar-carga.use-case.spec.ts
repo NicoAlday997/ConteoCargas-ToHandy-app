@@ -100,6 +100,9 @@ class FakeCargaRepository implements CargaRepository {
   async actualizarDiscrepancia(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async cambiarFechaOperativa(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async cancelarEvento(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }

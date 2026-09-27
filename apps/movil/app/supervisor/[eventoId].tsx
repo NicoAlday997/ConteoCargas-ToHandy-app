@@ -23,6 +23,7 @@ import {
   type SeccionFamilia,
 } from '../../src/historial/VistaCarga';
 import { dejarAviso } from '../../src/supervisor/aviso-cola';
+import { CambiarFechaSupervisor } from '../../src/supervisor/CambiarFechaSupervisor';
 import { CancelarCargaSupervisor } from '../../src/supervisor/CancelarCargaSupervisor';
 import { AvisoEnvio, ESTADOS_ENVIABLES, ModalEnviar, textoBotonEnvio, useEnvioHandy } from '../../src/supervisor/EnvioHandy';
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
@@ -30,6 +31,7 @@ import { ModalModificar } from '../../src/supervisor/ModalModificar';
 import {
   accionCancelacion,
   MOTIVO_MINIMO,
+  puedeCambiarFecha,
   motivoValido,
   rechazosParaEnviar,
 } from '../../src/supervisor/modelo-supervisor';
@@ -354,8 +356,12 @@ function Revision({ eventoId }: { eventoId: string }) {
             textoCargando="Enviando…"
           />
         )}
-        {modo === 'revisar' && accionCancelacion(estado) !== null && (
-          <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} />
+        {modo === 'revisar' && (accionCancelacion(estado) !== null || puedeCambiarFecha(estado)) && (
+          // Lado a lado: son las acciones de excepción, no deben comerse la lista.
+          <View style={estilos.filaBotones}>
+            <CambiarFechaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
+            <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
+          </View>
         )}
       </BarraAcciones>
 

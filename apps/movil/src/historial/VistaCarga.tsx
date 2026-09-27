@@ -21,7 +21,7 @@ import { diaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
 import { EtiquetaFactor } from '../conteo/FilaProducto';
 import { formatearCifra, formatearEnPaquetes, formatearTotalPiezas } from '../conteo/formato-cantidad';
 import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
-import { ANCHO_MAXIMO_LISTA, bandaDeEstado, DetalleCancelacion, volver } from './ComponentesHistorial';
+import { ANCHO_MAXIMO_LISTA, bandaDeEstado, DetalleCambiosFecha, DetalleCancelacion, volver } from './ComponentesHistorial';
 import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from './modelo-historial';
 
 /**
@@ -91,6 +91,11 @@ export function ResumenCarga({ carga }: { carga: CargaDetalle }) {
       <View style={estilos.grupo}>
         <Personas personas={personas} />
       </View>
+      {evento.cambiosFecha.length > 0 && (
+        <View style={estilos.grupo}>
+          <DetalleCambiosFecha cambios={evento.cambiosFecha} />
+        </View>
+      )}
       {evento.cancelacion && (
         <View style={estilos.grupo}>
           <DetalleCancelacion cancelacion={evento.cancelacion} />

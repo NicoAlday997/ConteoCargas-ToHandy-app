@@ -7,8 +7,9 @@ import { ErrorApi } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { cerrarSesion } from '../../src/api/sesion';
 import { EstadoVacio } from '../../src/componentes/base';
+import { CambiarFechaSupervisor } from '../../src/supervisor/CambiarFechaSupervisor';
 import { CancelarCargaSupervisor } from '../../src/supervisor/CancelarCargaSupervisor';
-import { accionCancelacion } from '../../src/supervisor/modelo-supervisor';
+import { accionCancelacion, puedeCambiarFecha } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import { BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import type { ProductoDetalle } from '../../src/historial/modelo-historial';
@@ -96,13 +97,12 @@ export default function PantallaDetalleHistorial() {
     void consulta.refetch().finally(() => setRefrescando(false));
   };
 
+  const irAlLogin = () => void cerrarSesion().then(() => router.replace('/login'));
   const cancelar =
-    esSupervisor && accionCancelacion(carga.evento.estado) !== null ? (
+    esSupervisor && (accionCancelacion(carga.evento.estado) !== null || puedeCambiarFecha(carga.evento.estado)) ? (
       <View style={estilos.pie}>
-        <CancelarCargaSupervisor
-          carga={carga}
-          onSesionVencida={() => void cerrarSesion().then(() => router.replace('/login'))}
-        />
+        <CambiarFechaSupervisor carga={carga} onSesionVencida={irAlLogin} />
+        <CancelarCargaSupervisor carga={carga} onSesionVencida={irAlLogin} />
       </View>
     ) : null;
 
@@ -165,6 +165,7 @@ const estilos = StyleSheet.create({
   },
   // Separada de los productos: es una decisión aparte, no parte de la lista.
   pie: {
+    gap: RITMO.relacionado,
     marginTop: RITMO.grupo,
     paddingBottom: ESPACIADO.xl,
   },

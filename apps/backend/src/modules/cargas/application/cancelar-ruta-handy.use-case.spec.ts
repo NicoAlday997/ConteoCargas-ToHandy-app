@@ -41,6 +41,9 @@ class FakeCargaRepository implements CargaRepository {
     return evento ? { ...evento } : null;
   }
 
+  async cambiarFechaOperativa(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async cancelarEvento(
     eventoId: string,
     usuarioAppId: string,

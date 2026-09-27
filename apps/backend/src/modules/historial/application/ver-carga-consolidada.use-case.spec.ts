@@ -36,6 +36,7 @@ const EVENTO_BASE: EventoConsolidado = {
   canceladaPorNombre: null,
   fechaCancelacion: null,
   motivoCancelacion: null,
+  cambiosFecha: [],
 };
 
 function producto(
@@ -104,6 +105,25 @@ describe('VerCargaConsolidadaUseCase', () => {
       'Cigarros',
       'Dulces',
     ]);
+  });
+
+  it('incluye los cambios de fecha operativa de la carga, con quien los hizo', async () => {
+    const cambio = {
+      fechaAnterior: new Date('2026-09-26T00:00:00-06:00'),
+      fechaNueva: new Date('2026-09-27T00:00:00-06:00'),
+      cambiadaPorNombre: 'Irvin Alday',
+      motivo: null,
+      creadoEn: new Date('2026-09-25T18:10:00-06:00'),
+    };
+    const evento = { ...EVENTO_BASE, cambiosFecha: [cambio] };
+    const useCase = new VerCargaConsolidadaUseCase(
+      new FakeHistorialRepository({ evento, vendedorUsuarioAppId: 'v1', productos: [] }),
+    );
+
+    const resultado = await useCase.ejecutar('ev-1', SUPERVISOR, AHORA);
+
+    if (!resultado.exito) throw new Error('se esperaba exito');
+    expect(resultado.evento.cambiosFecha).toEqual([cambio]);
   });
 
   it('dentro de cada familia ordena los productos por nombre', async () => {

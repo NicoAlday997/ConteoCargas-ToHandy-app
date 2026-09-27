@@ -14,6 +14,7 @@ import {
   CargaInicialDuplicadaError,
   CargaRepository,
   type DatosActualizarDiscrepancia,
+  type DatosCambiarFechaOperativa,
   type DatosCrearEvento,
   type DatosReabrirDiscrepancia,
   type Discrepancia,
@@ -185,6 +186,39 @@ export class PrismaCargaRepository extends CargaRepository {
       });
       return this.aEventoCarga(row);
     });
+  }
+
+  async cambiarFechaOperativa(
+    datos: DatosCambiarFechaOperativa,
+  ): Promise<EventoCarga> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const row = await tx.eventoCarga.update({
+          where: { id: datos.eventoId },
+          data: { fechaOperativa: datos.fechaNueva },
+        });
+        await tx.cambioFechaOperativa.create({
+          data: {
+            eventoCargaId: datos.eventoId,
+            fechaAnterior: datos.fechaAnterior,
+            fechaNueva: datos.fechaNueva,
+            cambiadaPorId: datos.cambiadaPorId,
+            motivo: datos.motivo,
+          },
+        });
+        // Sesiones e items no se tocan: cuelgan de la sesion, no de la fecha.
+        return this.aEventoCarga(row);
+      });
+    } catch (error) {
+      // Mismo indice parcial que en `crearEvento`: una INICIAL por ruta y fecha.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new CargaInicialDuplicadaError();
+      }
+      throw error;
+    }
   }
 
   async crearSesion(

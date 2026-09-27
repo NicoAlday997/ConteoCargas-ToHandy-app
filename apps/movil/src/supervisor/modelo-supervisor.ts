@@ -188,3 +188,16 @@ export function accionCancelacion(estado: EstadoCargaApi | null): AccionCancelac
   if (estado === null || estado === 'CANCELADA' || estado === 'ENVIO_INCIERTO') return null;
   return estado === 'ENVIADA' ? 'cancelar-en-handy' : 'cancelar';
 }
+
+// ---------------------------------------------------------------------------
+// Cambio de fecha operativa
+// ---------------------------------------------------------------------------
+
+/**
+ * `true` si el supervisor puede mover la carga a otro día. Mismo criterio que
+ * el servidor: nunca una ya ENVIADA (la ruta existe en Handy con esa fecha),
+ * una CANCELADA ni una con el envío sin confirmar.
+ */
+export function puedeCambiarFecha(estado: EstadoCargaApi | null): boolean {
+  return estado !== null && estado !== 'ENVIADA' && estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
+}

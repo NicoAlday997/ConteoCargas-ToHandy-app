@@ -75,3 +75,27 @@ export function fechaOperativaDesdeDia(dia: string): Date {
   }
   return inicioDelDiaNegocio(mediodiaUtc);
 }
+
+const MS_POR_DIA = 24 * MS_POR_HORA;
+
+/**
+ * Dias completos de `desde` a `hasta`, contados en dias de negocio
+ * (America/Mexico_City): positivo si `hasta` es posterior, 0 si caen el mismo
+ * dia, negativo si es anterior. La hora dentro del dia no importa: del 25 a
+ * las 23:59 al 26 a las 00:01 es 1 dia.
+ *
+ * Se redondea porque un dia con cambio de horario dura 23 o 25 horas; entre
+ * dos inicios de dia la diferencia siempre queda a menos de una hora de un
+ * multiplo de 24.
+ */
+export function diasEntreFechasOperativas(desde: Date, hasta: Date): number {
+  const ms =
+    inicioDelDiaNegocio(hasta).getTime() - inicioDelDiaNegocio(desde).getTime();
+  return Math.round(ms / MS_POR_DIA);
+}
+
+/**
+ * Dias de gracia entre que sale el camion y que liquida. Uno: sale hoy,
+ * liquida mañana (operacion confirmada con el dueño, sept 2026).
+ */
+export const TOLERANCIA_DIAS_LIQUIDACION = 1;

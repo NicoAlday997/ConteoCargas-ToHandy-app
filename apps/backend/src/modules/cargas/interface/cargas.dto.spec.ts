@@ -1,4 +1,9 @@
-import { CancelarCargaSchema, GuardarItemsSchema, IniciarCargaSchema } from './cargas.dto';
+import {
+  CambiarFechaOperativaSchema,
+  CancelarCargaSchema,
+  GuardarItemsSchema,
+  IniciarCargaSchema,
+} from './cargas.dto';
 
 /**
  * Pruebas del body de `PATCH /eventos-carga/:id/sesiones/:sesionId/items`:
@@ -141,5 +146,46 @@ describe('CancelarCargaSchema', () => {
 
   it('rechaza un motivo de mas de 500 caracteres', () => {
     expect(CancelarCargaSchema.safeParse({ motivo: 'x'.repeat(501) }).success).toBe(false);
+  });
+});
+
+describe('CambiarFechaOperativaSchema', () => {
+  it('convierte aaaa-mm-dd al inicio de ese dia en Mexico; motivo opcional', () => {
+    const resultado = CambiarFechaOperativaSchema.safeParse({
+      fechaOperativa: '2026-09-27',
+    });
+
+    expect(resultado.success).toBe(true);
+    expect(resultado.data).toEqual({
+      fechaOperativa: new Date('2026-09-27T00:00:00-06:00'),
+    });
+  });
+
+  it('acepta un motivo de texto', () => {
+    const resultado = CambiarFechaOperativaSchema.safeParse({
+      fechaOperativa: '2026-09-27',
+      motivo: 'El camion sale el domingo',
+    });
+
+    expect(resultado.success && resultado.data.motivo).toBe(
+      'El camion sale el domingo',
+    );
+  });
+
+  it('rechaza una fecha fuera de formato o inexistente', () => {
+    for (const fechaOperativa of ['27/09/2026', '2026-02-30', '', undefined]) {
+      expect(
+        CambiarFechaOperativaSchema.safeParse({ fechaOperativa }).success,
+      ).toBe(false);
+    }
+  });
+
+  it('rechaza un motivo de mas de 500 caracteres', () => {
+    expect(
+      CambiarFechaOperativaSchema.safeParse({
+        fechaOperativa: '2026-09-27',
+        motivo: 'x'.repeat(501),
+      }).success,
+    ).toBe(false);
   });
 });

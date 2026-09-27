@@ -160,3 +160,27 @@ export function permiteCancelacionDelSupervisor(estado: EstadoCarga): boolean {
     puedeTransicionar(estado, 'CANCELADA')
   );
 }
+
+/**
+ * `true` si el vendedor puede cambiar la fecha operativa de su propia carga.
+ * Solo en BORRADOR, por la misma razon que solo cancela en BORRADOR: si pudiera
+ * mover la fecha despues de que el contador conto, tendria una escapatoria
+ * cuando el conteo no le cuadra.
+ */
+export function permiteCambioFechaDelVendedor(estado: EstadoCarga): boolean {
+  return estado === 'BORRADOR';
+}
+
+/**
+ * `true` si el supervisor puede cambiar la fecha operativa. Todo salvo:
+ * - ENVIADA: la ruta ya existe en Handy con esa fecha.
+ * - CANCELADA: terminal; no hay salida que mover.
+ * - ENVIO_INCIERTO: no se sabe si llego a Handy; primero se resuelve.
+ */
+export function permiteCambioFechaDelSupervisor(estado: EstadoCarga): boolean {
+  return (
+    estado !== 'ENVIADA' &&
+    estado !== 'CANCELADA' &&
+    estado !== 'ENVIO_INCIERTO'
+  );
+}

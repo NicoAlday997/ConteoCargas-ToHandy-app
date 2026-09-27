@@ -5,7 +5,8 @@ import { router } from 'expo-router';
 import type { EstadoCargaApi } from '../api/historial';
 import { Encabezado, type BandaTarjeta } from '../componentes/base';
 import { BORDES, COLORES, FUENTE, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
-import { estadoDeCarga, type Cancelacion, type TonoEstado } from './modelo-historial';
+import { textoCambioFecha } from '../conteo/fecha-operativa';
+import { estadoDeCarga, type Cancelacion, type CambioFecha, type TonoEstado } from './modelo-historial';
 
 /** Ancho máximo de las listas en tablet: una columna legible, no una fila de 1000 px. */
 export const ANCHO_MAXIMO_LISTA = 720;
@@ -73,6 +74,23 @@ export function DetalleCancelacion({ cancelacion }: { cancelacion: Cancelacion }
   return (
     <View style={estilos.cancelacion}>
       <Text style={estilos.textoCancelacion}>{textoCancelacion(cancelacion)}</Text>
+    </View>
+  );
+}
+
+/**
+ * Cada vez que la carga se movió de día, con quién y (si lo dio) por qué. Mismo
+ * tono que la cancelación: es auditoría, no una alerta.
+ */
+export function DetalleCambiosFecha({ cambios }: { cambios: readonly CambioFecha[] }) {
+  return (
+    <View style={estilos.cancelacion}>
+      {cambios.map((c, i) => (
+        <Text key={i} style={estilos.textoCancelacion}>
+          {textoCambioFecha(c.anterior, c.nueva, c.porNombre)}
+          {c.motivo ? ` · “${c.motivo}”` : ''}
+        </Text>
+      ))}
     </View>
   );
 }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { CargaHistorialApi, ProductoConsolidadoApi } from '../api/historial.ts';
-import { agruparPorDia, normalizarDetalle } from './modelo-historial.ts';
+import { agruparPorDia, cambiosFechaDe, normalizarDetalle } from './modelo-historial.ts';
 
 function fila(id: string, fechaOperativa: string | null, extra: Partial<CargaHistorialApi> = {}): CargaHistorialApi {
   return {
@@ -182,5 +182,32 @@ describe('normalizarDetalle', () => {
   it('sin evento no hay detalle', () => {
     assert.equal(normalizarDetalle(null), null);
     assert.equal(normalizarDetalle({ evento: null, familias: [] }), null);
+  });
+});
+
+describe('cambiosFechaDe', () => {
+  it('convierte las fechas del servidor a días de México y conserva quién y por qué', () => {
+    assert.deepEqual(
+      cambiosFechaDe([
+        {
+          fechaAnterior: '2026-09-26T06:00:00.000Z',
+          fechaNueva: '2026-09-27T06:00:00.000Z',
+          cambiadaPorNombre: ' Irvin Alday ',
+          motivo: null,
+          creadoEn: '2026-09-25T23:00:00.000Z',
+        },
+      ]),
+      [{ anterior: '2026-09-26', nueva: '2026-09-27', porNombre: 'Irvin Alday', motivo: null }],
+    );
+  });
+
+  it('descarta un cambio con fechas ilegibles y tolera la ausencia del campo', () => {
+    assert.deepEqual(
+      cambiosFechaDe([
+        { fechaAnterior: null, fechaNueva: '2026-09-27T06:00:00.000Z', cambiadaPorNombre: 'X', motivo: null, creadoEn: null },
+      ]),
+      [],
+    );
+    assert.deepEqual(cambiosFechaDe(undefined), []);
   });
 });

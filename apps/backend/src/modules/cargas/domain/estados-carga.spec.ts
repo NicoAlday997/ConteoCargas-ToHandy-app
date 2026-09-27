@@ -10,6 +10,8 @@ import {
   requiereAutorizacion,
   permiteCancelacionDelVendedor,
   permiteCancelacionDelSupervisor,
+  permiteCambioFechaDelVendedor,
+  permiteCambioFechaDelSupervisor,
 } from './estados-carga';
 
 describe('TRANSICIONES_VALIDAS — cada transicion declarada del mapa es valida', () => {
@@ -284,6 +286,26 @@ describe('permiteCancelacionDelSupervisor', () => {
     for (const estado of TODOS_LOS_ESTADOS.filter((e) => !EXCLUIDOS.includes(e))) {
       expect(permiteCancelacionDelSupervisor(estado)).toBe(true);
       expect(puedeTransicionar(estado, 'CANCELADA')).toBe(true);
+    }
+  });
+});
+
+describe('permiteCambioFechaDelVendedor', () => {
+  it('solo en BORRADOR', () => {
+    for (const estado of TODOS_LOS_ESTADOS) {
+      expect(permiteCambioFechaDelVendedor(estado)).toBe(estado === 'BORRADOR');
+    }
+  });
+});
+
+describe('permiteCambioFechaDelSupervisor', () => {
+  const EXCLUIDOS: EstadoCarga[] = ['ENVIADA', 'CANCELADA', 'ENVIO_INCIERTO'];
+
+  it('false en ENVIADA, CANCELADA y ENVIO_INCIERTO; true en los demas', () => {
+    for (const estado of TODOS_LOS_ESTADOS) {
+      expect(permiteCambioFechaDelSupervisor(estado)).toBe(
+        !EXCLUIDOS.includes(estado),
+      );
     }
   });
 });

@@ -150,3 +150,63 @@ export function deLaSalida(dia: string, hoy: string): string {
   if (texto.startsWith('Sale mañana')) return 'de mañana';
   return `del ${texto.slice('Sale el '.length)}`;
 }
+
+/** Cuántos días hacia adelante se ofrecen al mover una carga ya iniciada. */
+const DIAS_CAMBIO_FECHA = 7;
+
+/**
+ * Días a los que se puede mover una carga ya iniciada: de hoy a una semana, en
+ * orden. Nunca un día pasado (el servidor lo rechaza). El día actual de la
+ * carga siempre aparece para que el selector abra marcándolo, aunque caiga
+ * fuera de la semana.
+ */
+export function opcionesCambioFecha(hoy: string, diaActual: string): string[] {
+  const dias = Array.from({ length: DIAS_CAMBIO_FECHA }, (_, i) => sumarDias(hoy, i));
+  if (esDia(diaActual) && diaActual >= hoy && !dias.includes(diaActual)) dias.push(diaActual);
+  return dias.sort();
+}
+
+/** "sábado 27 de septiembre": el día en medio de una frase. */
+function diaEnFrase(dia: string): string {
+  const legible = formatearDia(dia);
+  return legible.charAt(0).toLowerCase() + legible.slice(1);
+}
+
+/**
+ * Lo que se confirma antes de mover la carga de día. Tiene que decir que lo
+ * contado NO se pierde (la alternativa que el vendedor conocía era cancelar y
+ * empezar de cero). Sin nada contado, esa frase sobra.
+ */
+export function textoConfirmarCambioFecha(dia: string, productosContados: number): { titulo: string; cuerpo: string } {
+  const conservado =
+    productosContados <= 0
+      ? null
+      : productosContados === 1
+        ? 'Lo que llevas contado se conserva: el producto sigue ahí.'
+        : `Lo que llevas contado se conserva: los ${productosContados} productos siguen ahí.`;
+  return {
+    titulo: `¿Cambiar la salida al ${diaEnFrase(dia)}?`,
+    cuerpo: [conservado, 'Solo cambia el día para el que sale el camión.'].filter(Boolean).join(' '),
+  };
+}
+
+/**
+ * "Fecha cambiada del 26 al 27 de septiembre por Irvin Alday". Si cruza de
+ * mes o de año, cada fecha lleva lo suyo.
+ */
+export function textoCambioFecha(anterior: string, nueva: string, porNombre: string | null): string {
+  const a = desdeTexto(anterior);
+  const n = desdeTexto(nueva);
+  const quien = porNombre ? ` por ${porNombre}` : '';
+  if (!a || !n) return `Fecha cambiada${quien}`;
+  const conMes = (f: Date) => `${f.getUTCDate()} de ${MESES[f.getUTCMonth()]}`;
+  const conAnio = (f: Date) => `${conMes(f)} de ${f.getUTCFullYear()}`;
+  const desde =
+    a.getUTCFullYear() !== n.getUTCFullYear()
+      ? conAnio(a)
+      : a.getUTCMonth() !== n.getUTCMonth()
+        ? conMes(a)
+        : String(a.getUTCDate());
+  const hasta = a.getUTCFullYear() !== n.getUTCFullYear() ? conAnio(n) : conMes(n);
+  return `Fecha cambiada del ${desde} al ${hasta}${quien}`;
+}

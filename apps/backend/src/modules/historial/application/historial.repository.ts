@@ -115,6 +115,15 @@ export interface ProductoConsolidado {
   confirmadaPorNombre: string | null;
 }
 
+/** Un cambio de fecha operativa de la carga, tal como quedo en la bitacora. */
+export interface CambioFechaHistorial {
+  fechaAnterior: Date;
+  fechaNueva: Date;
+  cambiadaPorNombre: string;
+  motivo: string | null;
+  creadoEn: Date;
+}
+
 export interface EventoConsolidado {
   id: string;
   rutaNombre: string;
@@ -130,6 +139,8 @@ export interface EventoConsolidado {
   canceladaPorNombre: string | null;
   fechaCancelacion: Date | null;
   motivoCancelacion: string | null;
+  /** Cambios de fecha operativa, del mas antiguo al mas reciente; vacio si no hubo. */
+  cambiosFecha: CambioFechaHistorial[];
 }
 
 /**

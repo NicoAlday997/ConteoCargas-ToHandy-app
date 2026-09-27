@@ -49,6 +49,16 @@ const includeConsolidada = {
   ruta: { select: { nombre: true } },
   autorizadaPor: { select: { nombreCompleto: true } },
   canceladaPor: { select: { nombreCompleto: true } },
+  cambiosFechaOperativa: {
+    orderBy: { creadoEn: 'asc' },
+    select: {
+      fechaAnterior: true,
+      fechaNueva: true,
+      motivo: true,
+      creadoEn: true,
+      cambiadaPor: { select: { nombreCompleto: true } },
+    },
+  },
   sesiones: {
     where: { tipo: { in: [...TIPOS_SESION_COMPARABLE] } },
     select: {
@@ -287,6 +297,13 @@ export class PrismaHistorialRepository extends HistorialRepository {
       canceladaPorNombre: row.canceladaPor?.nombreCompleto ?? null,
       fechaCancelacion: row.fechaCancelacion,
       motivoCancelacion: row.motivoCancelacion,
+      cambiosFecha: row.cambiosFechaOperativa.map((c) => ({
+        fechaAnterior: c.fechaAnterior,
+        fechaNueva: c.fechaNueva,
+        cambiadaPorNombre: c.cambiadaPor.nombreCompleto,
+        motivo: c.motivo,
+        creadoEn: c.creadoEn,
+      })),
     };
   }
 }

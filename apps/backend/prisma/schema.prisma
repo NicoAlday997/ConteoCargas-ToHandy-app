@@ -172,6 +172,7 @@ model UsuarioApp {
   cargasCanceladas            EventoCarga[]                  @relation("EventoCargaCanceladaPor")
   factoresConfirmados         Producto[]                     @relation("FactorConfirmadoPor")
   cambiosFactor               CambioFactorEmpaque[]
+  cambiosFechaOperativa       CambioFechaOperativa[]         @relation("CambioFechaOperativaPor")
   coloresFamiliaAsignados     ColorFamilia[]                 @relation("ColorFamiliaAsignadoPor")
 
   @@index([usuarioHandyId])
@@ -403,9 +404,10 @@ model EventoCarga {
   autorizadaPor UsuarioApp?     @relation("EventoCargaAutorizadaPor", fields: [autorizadaPorId], references: [id])
   canceladaPor  UsuarioApp?     @relation("EventoCargaCanceladaPor", fields: [canceladaPorId], references: [id])
 
-  sesiones      SesionConteo[]
-  discrepancias DiscrepanciaResuelta[]
-  comparacion   ComparacionCarga?
+  sesiones              SesionConteo[]
+  discrepancias         DiscrepanciaResuelta[]
+  comparacion           ComparacionCarga?
+  cambiosFechaOperativa CambioFechaOperativa[]
 
   @@index([rutaId])
   @@index([rutaId, fechaOperativa])
@@ -415,6 +417,28 @@ model EventoCarga {
   @@index([autorizadaPorId])
   @@index([canceladaPorId])
   @@map("eventos_carga")
+}
+
+// Bitacora de cada cambio de fecha operativa de una carga (el vendedor se
+// equivoco de dia, o el supervisor la movio). Cambiar la fecha no toca sesiones
+// ni items: el conteo cuelga de la sesion, no del dia. Solo se inserta, mismo
+// patron que CambioFactorEmpaque.
+model CambioFechaOperativa {
+  id            String   @id @default(cuid())
+  eventoCargaId String
+  fechaAnterior DateTime
+  fechaNueva    DateTime
+  cambiadaPorId String
+  // Obligatorio (minimo 5 caracteres) si cambia un supervisor; opcional si es
+  // el vendedor. Lo exige el caso de uso, no el esquema.
+  motivo        String?
+  creadoEn      DateTime @default(now())
+
+  evento      EventoCarga @relation(fields: [eventoCargaId], references: [id])
+  cambiadaPor UsuarioApp  @relation("CambioFechaOperativaPor", fields: [cambiadaPorId], references: [id])
+
+  @@index([eventoCargaId])
+  @@map("cambios_fecha_operativa")
 }
 
 model SesionConteo {

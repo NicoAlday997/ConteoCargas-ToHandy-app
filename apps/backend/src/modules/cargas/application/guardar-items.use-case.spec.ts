@@ -146,6 +146,9 @@ class FakeCargaRepository implements CargaRepository {
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
+  async cambiarFechaOperativa(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async cancelarEvento(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }

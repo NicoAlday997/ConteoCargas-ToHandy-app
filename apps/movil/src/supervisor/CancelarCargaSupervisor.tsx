@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useCancelarCargaSupervisor } from '../api/hooks-supervisor';
@@ -47,10 +47,12 @@ export function CancelarCargaSupervisor({
   carga,
   onSesionVencida,
   onCancelada,
+  style,
 }: {
   carga: CargaDetalle;
   onSesionVencida: () => void;
   onCancelada?: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   const cancelar = useCancelarCargaSupervisor(carga.evento.id);
   const [abierto, setAbierto] = useState(false);
@@ -90,7 +92,7 @@ export function CancelarCargaSupervisor({
 
   return (
     <>
-      <Boton texto={enHandy ? 'Cancelar en Handy' : 'Cancelar carga'} variante="peligro" onPress={abrir} />
+      <Boton texto={enHandy ? 'Cancelar en Handy' : 'Cancelar carga'} variante="peligro" onPress={abrir} style={style} />
       <ModalConfirmacion
         visible={abierto}
         titulo={enHandy ? '¿Cancelar esta carga en Handy?' : '¿Cancelar esta carga?'}

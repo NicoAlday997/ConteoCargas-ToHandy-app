@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
-import { obtenerUsuarioSesion } from '../../src/api/sesion';
+import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
   BarraAvance,
   BloqueError,
@@ -25,11 +25,13 @@ import {
   Encabezado as EncabezadoBase,
   EstadoVacio,
   Esqueleto,
+  Lapiz,
   LineaEsqueleto,
   Palomita,
   PanelEncabezado,
 } from '../../src/componentes/base';
-import { olvidarCarga } from '../../src/conteo/almacen-conteo';
+import { actualizarFechaCargaAbierta, olvidarCarga } from '../../src/conteo/almacen-conteo';
+import { ModalCambiarFecha } from '../../src/conteo/CambiarFechaCarga';
 import { avisarCargaNoDisponible, descartarCargaNoDisponible } from '../../src/conteo/carga-no-disponible';
 import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
 import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
@@ -182,14 +184,19 @@ interface PropsConteo {
   eventoId: string;
   sesionId: string;
   tituloCarga: string;
-  /** `aaaa-mm-dd`; si no vino en la navegación (el contador entra desde la cola), se pide al servidor. */
+  /**
+   * `aaaa-mm-dd` de la navegación, para mostrarla sin esperar al servidor. La
+   * del servidor manda en cuanto llega: la fecha se puede cambiar.
+   */
   fechaOperativa: string | null;
 }
 
 function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion }: PropsConteo) {
   const { esTablet, ancho } = useLayout();
-  const evento = useEventoCarga(eventoId, fechaNavegacion === null);
-  const fechaOperativa = fechaNavegacion ?? diaDesdeApi(evento.data?.evento?.fechaOperativa);
+  // Siempre: además de la fecha trae el estado, que decide si se puede cambiar el día.
+  const evento = useEventoCarga(eventoId, true);
+  const fechaOperativa = diaDesdeApi(evento.data?.evento?.fechaOperativa) ?? fechaNavegacion;
+  const tipoEvento = evento.data?.evento?.tipo ?? null;
   const consulta = useProductosCarga(eventoId);
   const productos = useMemo(() => consulta.data?.productos ?? [], [consulta.data]);
   const familias = useMemo(() => consulta.data?.familias ?? [], [consulta.data]);
@@ -227,13 +234,14 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const [edicion, setEdicion] = useState<Edicion | null>(null);
   const edicionRef = useRef<Edicion | null>(null);
-  const [usuario, setUsuario] = useState<{ id: string; nombre: string | null } | null>(null);
+  const [usuario, setUsuario] = useState<{ id: string; nombre: string | null; rol: string | null } | null>(null);
+  const [cambiandoFecha, setCambiandoFecha] = useState(false);
   const [panel, setPanel] = useState<'ninguno' | 'pendientes' | 'bloqueo' | 'confirmar'>('ninguno');
 
   useEffect(() => {
     let vigente = true;
     void obtenerUsuarioSesion().then((sesion) => {
-      if (vigente && sesion) setUsuario({ id: sesion.id, nombre: sesion.nombreCompleto });
+      if (vigente && sesion) setUsuario({ id: sesion.id, nombre: sesion.nombreCompleto, rol: sesion.rolApp });
     });
     return () => {
       vigente = false;
@@ -467,6 +475,11 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const rechazados = productos.filter((p) => estadoCola.items[p.code]?.error);
 
+  // Solo el vendedor y solo mientras cuenta (BORRADOR): después, el contador
+  // puede haber contado y mover la fecha sería una escapatoria si no cuadra.
+  const puedeCambiarFecha =
+    usuario?.rol === 'VENDEDOR' && evento.data?.evento?.estado === 'BORRADOR' && fechaOperativa !== null;
+
   const intentarFinalizar = () => {
     cerrarTeclado();
     setPanel(pendientes.length > 0 ? 'pendientes' : bloqueo ? 'bloqueo' : 'confirmar');
@@ -507,6 +520,14 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         bloqueo={bloqueo}
         onReintentar={() => cola.sincronizarAhora()}
         faltan={pendientes.length}
+        onCambiarFecha={
+          puedeCambiarFecha
+            ? () => {
+                cerrarTeclado();
+                setCambiandoFecha(true);
+              }
+            : undefined
+        }
         onFinalizar={intentarFinalizar}
         onVolver={() => {
           cerrarTeclado();
@@ -579,6 +600,26 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         onContinuar={() => setPanel('confirmar')}
         onCerrar={() => setPanel('ninguno')}
       />
+      {fechaOperativa !== null && (
+        <ModalCambiarFecha
+          visible={cambiandoFecha}
+          eventoId={eventoId}
+          tipo={tipoEvento}
+          diaActual={fechaOperativa}
+          productosContados={capturados}
+          motivoMinimo={null}
+          onCambiada={(dia) => {
+            setCambiandoFecha(false);
+            // La navegación y "Continuar carga" del inicio también traían la fecha vieja.
+            router.setParams({ fechaOperativa: dia });
+            if (usuario) void actualizarFechaCargaAbierta(usuario.id, eventoId, dia).catch(() => undefined);
+          }}
+          onCerrar={() => setCambiandoFecha(false)}
+          onSesionVencida={() => {
+            void cerrarSesion().then(() => router.replace('/login'));
+          }}
+        />
+      )}
       <PanelConfirmar
         visible={panel === 'confirmar'}
         eventoId={eventoId}
@@ -606,6 +647,8 @@ interface PropsEncabezado {
   bloqueo: BloqueoFinalizar;
   onReintentar: () => void;
   faltan: number;
+  /** Solo si se puede mover la carga de día: la línea de la fecha se vuelve tocable. */
+  onCambiarFecha?: () => void;
   onFinalizar: () => void;
   onVolver: () => void;
 }
@@ -647,6 +690,7 @@ function Encabezado({
   bloqueo,
   onReintentar,
   faltan,
+  onCambiarFecha,
   onFinalizar,
   onVolver,
 }: PropsEncabezado) {
@@ -660,7 +704,7 @@ function Encabezado({
       <EncabezadoBase
         variante="marca"
         titulo={titulo}
-        subtitulo={salida}
+        subtitulo={onCambiarFecha ? null : salida}
         onVolver={onVolver}
         etiquetaVolver="Volver al inicio. Lo contado queda guardado."
         accion={
@@ -695,7 +739,24 @@ function Encabezado({
             <BarraAvance actual={capturados} total={total} />
           </PanelEncabezado>
         }
-      />
+      >
+        {onCambiarFecha && salida && (
+          // Subrayada y con lápiz: se ve que se toca. Mismo lugar que el subtítulo normal.
+          <Pressable
+            onPress={onCambiarFecha}
+            hitSlop={{ top: ESPACIADO.md, bottom: ESPACIADO.md, left: ESPACIADO.sm, right: ESPACIADO.sm }}
+            accessibilityRole="button"
+            accessibilityLabel={`${salida}. Cambiar la fecha`}
+            accessibilityHint="Lo contado se conserva"
+            style={({ pressed }) => [estilos.fechaTocable, pressed && estilos.fechaTocablePresionada]}
+          >
+            <Text style={estilos.textoFechaTocable} numberOfLines={1}>
+              {salida}
+            </Text>
+            <Lapiz color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
+          </Pressable>
+        )}
+      </EncabezadoBase>
       {razon && <Text style={estilos.razonFinalizar}>{razon}</Text>}
     </View>
   );
@@ -1182,6 +1243,21 @@ const estilos = StyleSheet.create({
   },
   textoFinalizarBloqueado: {
     color: COLORES.marcaTenue,
+  },
+  fechaTocable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: ESPACIADO.xs,
+  },
+  fechaTocablePresionada: {
+    opacity: 0.7,
+  },
+  textoFechaTocable: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.marcaTenue,
+    textDecorationLine: 'underline',
+    flexShrink: 1,
   },
   filaProgreso: {
     flexDirection: 'row',

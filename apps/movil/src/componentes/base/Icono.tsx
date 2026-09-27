@@ -7,7 +7,8 @@ import { BORDES, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, type Col
  * Iconos dibujados con vistas, sin librerías: pocos, simples y del mismo trazo.
  * Solo acompañan a un estado vacío o a un error; nunca decoran un botón o una
  * fila. Las excepciones son `Chevron` ("esto lleva a otra pantalla" o
- * "volver") y `Palomita` ("contado"), que no decoran: comunican.
+ * "volver"), `Palomita` ("contado") y `Lapiz` ("esto se puede cambiar"), que
+ * no decoran: comunican.
  * - lista: un historial o registro (aquí aparecerán las cargas).
  * - listo: nada pendiente (la cola está al día, todo resuelto).
  * - reloj: algo con vigencia o en espera.
@@ -78,6 +79,23 @@ export function Palomita({ color, tamano = ESPACIADO.lg + ESPACIADO.xs }: { colo
     <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
         <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    </View>
+  );
+}
+
+/** Lápiz en SVG: junto a un dato que se toca para cambiarlo (la fecha de la carga). */
+export function Lapiz({ color, tamano = ESPACIADO.lg }: { color: string; tamano?: number }) {
+  return (
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"
+          stroke={color}
+          strokeWidth={2.25}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </Svg>
     </View>
   );

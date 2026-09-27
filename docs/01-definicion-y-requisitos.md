@@ -119,12 +119,21 @@ Construir una aplicación propia que:
 ## 6. Reglas de negocio clave
 
 1. El doble conteo (vendedor + contador) es obligatorio tanto en carga inicial como en recarga.
-2. El vendedor puede contar sin restricción, incluso si tiene un corte de venta anterior pendiente; el bloqueo aplica únicamente a la verificación del contador.
+2. No puede salir un camión nuevo con el anterior sin cerrar. El vendedor puede contar sin restricción, incluso si tiene un corte de venta anterior pendiente; el bloqueo aplica únicamente a la verificación del contador, y solo cuando la ruta abierta en Handy **impide la salida nueva**. Lo que importa es de qué día es esa ruta: la carga de mañana se cuenta hoy en la tarde, con el camión de hoy todavía en la calle sin liquidar, y eso es el ciclo normal, no un corte pendiente. Por eso:
+   - Ruta abierta de un día anterior a la carga, dentro de la tolerancia de liquidación (un día: sale hoy, liquida mañana; confirmado con el dueño, sept 2026): **no bloquea**; se avisa al supervisor con una alerta de urgencia baja.
+   - Ruta abierta del mismo día (o posterior) que la carga: bloquea; sería una segunda salida con la primera sin cerrar.
+   - Ruta abierta de más días atrás que la tolerancia: bloquea; el vendedor no está liquidando.
+   - Ruta abierta que no salió de esta app: bloquea; no se puede saber de qué día es.
+   - Una recarga nunca se bloquea: la ruta abierta es la que se recarga.
 3. Ningún producto puede quedar marcado como resuelto en una discrepancia sin la confirmación cruzada de una segunda persona.
 4. Las cargas sin discrepancia deben ser igual de auditables que las que sí la tuvieron (no debe existir una restricción de acceso basada en si "cuadró" o no).
 5. La verificación de supervisor es completamente discrecional; el sistema no debe forzar ni sugerir automáticamente cuáles cargas revisar (queda para una fase futura como mejora, no como regla del MVP).
 6. Solo puede haber una carga inicial por ruta y día operativo (cancelarla libera el día); las recargas pueden ser varias.
 7. Una recarga solo se puede iniciar sobre una salida que ya está en Handy: debe existir la carga inicial de la misma ruta y el mismo día operativo en estado `ENVIADA`. La ruta en Handy nace cuando la inicial se envía, y la recarga le suma producto a esa ruta abierta; una inicial en borrador, esperando al contador o a autorización, con error de envío o cancelada todavía no puso nada en Handy. **Pero `ENVIADA` NO implica ruta abierta:** solo dice que esa carga salió hacia Handy alguna vez. Cuando el vendedor liquida (o se cancela la ruta en Handy), Handy la cierra y no nos avisa: el evento sigue `ENVIADA` para siempre. Por eso, además, se le pregunta a Handy (`GET /user/{id}/route/current`) si el vendedor tiene una ruta abierta **ahora**, y esa ruta debe ser justo la de la inicial (`idHandy`); si no hay ruta abierta o la abierta es otra, no se puede recargar: hay que iniciar una carga inicial nueva. Si Handy no se puede consultar (token, error de servidor, sin respuesta), no se bloquea al vendedor por la caída de un tercero: se aplica solo la regla local y la app advierte que no se pudo confirmar. Se valida al **iniciar** la recarga, no al enviarla, para no contar una recarga completa que Handy rechazaría al final con el camión esperando. Por lo mismo, la app no ofrece un calendario libre para la recarga: solo el día de la ruta que el vendedor tiene abierta en Handy (o, si Handy no responde, los días de hoy en adelante con una salida enviada de su ruta).
+8. Una carga se puede mover a otro día operativo **sin perder lo contado** (los conteos cuelgan de la sesión, no de la fecha); queda registrado cada cambio con fecha anterior, fecha nueva, quién y por qué. El día nuevo sigue las mismas reglas que al iniciar: nunca un día pasado, una sola inicial por ruta y día, y una recarga solo sobre una salida enviada y abierta en Handy.
+   - **Vendedor:** solo su propia carga y solo mientras él cuenta (`BORRADOR`); motivo opcional. Si pudiera mover la fecha después de que el contador contó, tendría una escapatoria cuando el conteo no le cuadra (lo muevo, empiezo otra y ahora sí coincidimos): es la misma razón por la que solo puede cancelar en `BORRADOR`.
+   - **Supervisor:** cualquier carga salvo `ENVIADA` (la ruta ya existe en Handy con esa fecha), `CANCELADA` y `ENVIO_INCIERTO`; motivo obligatorio (mínimo 5 caracteres), porque mueve trabajo de otros.
+   - **Contador:** nunca.
 
 ## 7. Glosario
 

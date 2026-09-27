@@ -7,6 +7,7 @@ import type { CargaHistorialApi } from '../api/historial.ts';
 import type { EventoConTiemposApi } from '../api/supervisor.ts';
 import {
   accionCancelacion,
+  puedeCambiarFecha,
   armarCola,
   armarPorEnviar,
   codigosDeDetalle,
@@ -186,5 +187,28 @@ describe('motivoCancelacionValido', () => {
     assert.equal(motivoCancelacionValido('abcde'), true);
     assert.equal(motivoCancelacionValido('  abcd  '), false);
     assert.equal(motivoCancelacionValido(''), false);
+  });
+});
+
+describe('puedeCambiarFecha', () => {
+  it('nunca en ENVIADA, CANCELADA, ENVIO_INCIERTO ni sin estado', () => {
+    for (const estado of ['ENVIADA', 'CANCELADA', 'ENVIO_INCIERTO', null] as const) {
+      assert.equal(puedeCambiarFecha(estado), false, String(estado));
+    }
+  });
+
+  it('en cualquier otro estado, sí', () => {
+    for (const estado of [
+      'BORRADOR',
+      'EN_ESPERA_CONTADOR',
+      'BLOQUEADA_CORTE_PENDIENTE',
+      'EN_COMPARACION',
+      'CONFLICTOS_PENDIENTES',
+      'EN_ESPERA_AUTORIZACION',
+      'LISTA_PARA_ENVIAR',
+      'ERROR_ENVIO',
+    ] as const) {
+      assert.equal(puedeCambiarFecha(estado), true, estado);
+    }
   });
 });

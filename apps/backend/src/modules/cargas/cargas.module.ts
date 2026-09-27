@@ -8,6 +8,7 @@ import { SincronizacionModule } from '../sincronizacion/sincronizacion.module';
 import { AbrirSesionUseCase } from './application/abrir-sesion.use-case';
 import { AsignacionRepository } from './application/asignacion.repository';
 import { AutorizarCargaUseCase } from './application/autorizar-carga.use-case';
+import { CambiarFechaOperativaUseCase } from './application/cambiar-fecha-operativa.use-case';
 import { CancelarCargaUseCase } from './application/cancelar-carga.use-case';
 import { CancelarRutaHandyUseCase } from './application/cancelar-ruta-handy.use-case';
 import { CapturarCantidadFinalUseCase } from './application/capturar-cantidad-final.use-case';
@@ -167,14 +168,23 @@ import { CargasController } from './interface/cargas.controller';
     },
     {
       provide: VerificarCortePendienteUseCase,
-      useFactory: (cargas: CargaRepository, handy: HandyGateway) =>
-        new VerificarCortePendienteUseCase(cargas, handy),
-      inject: [CargaRepository, HandyGateway],
+      useFactory: (
+        cargas: CargaRepository,
+        consultas: ConsultasCargaRepository,
+        handy: HandyGateway,
+      ) => new VerificarCortePendienteUseCase(cargas, consultas, handy),
+      inject: [CargaRepository, ConsultasCargaRepository, HandyGateway],
     },
     {
       provide: CancelarCargaUseCase,
       useFactory: (cargas: CargaRepository) => new CancelarCargaUseCase(cargas),
       inject: [CargaRepository],
+    },
+    {
+      provide: CambiarFechaOperativaUseCase,
+      useFactory: (cargas: CargaRepository, handy: HandyGateway) =>
+        new CambiarFechaOperativaUseCase(cargas, handy),
+      inject: [CargaRepository, HandyGateway],
     },
     {
       provide: CancelarRutaHandyUseCase,

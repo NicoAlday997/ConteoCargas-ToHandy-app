@@ -85,6 +85,16 @@ export interface EventoConsolidadoApi {
   canceladaPorNombre?: string | null;
   fechaCancelacion?: string | null;
   motivoCancelacion?: string | null;
+  /** Cambios de fecha operativa, del más antiguo al más reciente. */
+  cambiosFecha?: CambioFechaApi[] | null;
+}
+
+export interface CambioFechaApi {
+  fechaAnterior: string | null;
+  fechaNueva: string | null;
+  cambiadaPorNombre: string | null;
+  motivo: string | null;
+  creadoEn: string | null;
 }
 
 export interface FamiliaConsolidadaApi {

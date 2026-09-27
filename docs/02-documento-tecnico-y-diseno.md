@@ -229,7 +229,14 @@ GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 | 5xx | Reintento con backoff. |
 
 ### 4.5 Validación de corte de venta pendiente
-- Se detecta mediante `GET /route/current`; si regresa una ruta abierta de un ciclo anterior, la carga nueva pasa a `BLOQUEADA_CORTE_PENDIENTE` (bloqueando solo la verificación del contador, no el conteo del vendedor).
+- La regla es **que no salga un camión nuevo con el anterior sin cerrar**, no "que no haya ninguna ruta abierta". La carga de mañana se cuenta HOY en la tarde, con el camión de hoy todavía en la calle sin liquidar: bloquear por cualquier ruta abierta disparaba la regla todos los días, en el caso más común del negocio. Por eso importa **de qué día** es la ruta abierta.
+- Se consulta `GET /user/{id}/route/current`. Si no hay ruta abierta (404), no se bloquea. Si la hay (id X), se busca **nuestra** carga `INICIAL` en `ENVIADA` de la misma ruta con `idHandy = X` y se compara su fecha operativa (Dr) contra la de la carga que se verifica (Dn), en días completos de `America/Mexico_City` (`diasEntreFechasOperativas`, función pura del dominio):
+  - **Dr < Dn y Dn − Dr ≤ `TOLERANCIA_DIAS_LIQUIDACION` (1):** ciclo normal (salió antes, aún no liquida). **No bloquea**; el resultado trae `liquidacionRezagada: { rutaHandyId, diasDeRetraso }` para que el disparador levante una alerta de urgencia **baja** al supervisor. Informar, no frenar.
+  - **Dr ≥ Dn:** la ruta abierta es del mismo día (o posterior) que la carga nueva: sería una segunda salida con la primera sin cerrar. Bloquea (`causa: MISMA_SALIDA`).
+  - **Dn − Dr > tolerancia:** ya no es tiempo de ciclo, el vendedor no está liquidando. Bloquea (`causa: LIQUIDACION_VENCIDA`).
+  - **X no salió de esta app** (no hay inicial enviada con ese `idHandy`): no se puede saber de qué día es, y suponer que está bien es justo lo que la regla previene. Bloquea (`causa: RUTA_NO_RECONOCIDA`).
+- Al bloquear, la carga pasa a `BLOQUEADA_CORTE_PENDIENTE` (bloqueando solo la verificación del contador, no el conteo del vendedor).
+- La tolerancia (un día: sale hoy, liquida mañana) se confirmó con el dueño en septiembre de 2026 y vive como constante exportada del dominio (`domain/fecha-operativa.ts`).
 - **Solo aplica a cargas `INICIAL`.** Una `RECARGA` ocurre, por definición, con la ruta abierta en Handy: es la ruta a la que se le suma producto (se envía a `/route/recharge`). La ruta abierta que detectaría la consulta ES la que se recarga, no un corte anterior sin liquidar, así que para una recarga no se consulta Handy y nunca se bloquea. La regla existe para que no salga un camión nuevo con el anterior sin cerrar; una recarga no es un camión nuevo.
 - Verificación híbrida: on-demand al abrir la cola del contador, más un job en background cada 15-30 minutos.
 - Escalamiento: si el bloqueo persiste más de 3-4 horas, la alerta sube de urgencia media a alta.
@@ -254,6 +261,7 @@ GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 | Discrepancia en revisión de supervisor | Alta | Push + centro de alertas |
 | Inventario insuficiente | Media | Centro de alertas |
 | Corte de venta pendiente (escalable a alta) | Media → Alta | Centro de alertas / Push |
+| Liquidación rezagada (ruta del ciclo anterior aún abierta, dentro de la tolerancia) | Baja | Centro de alertas |
 | Validación de inventario forzada en recarga | Media | Centro de alertas |
 | Fallo de sincronización | Baja | Centro de alertas |
 

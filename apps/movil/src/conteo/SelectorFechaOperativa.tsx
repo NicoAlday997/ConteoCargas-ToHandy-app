@@ -1,10 +1,29 @@
-import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
-import { BloqueError, Boton } from '../componentes/base';
+import { BloqueError, Boton, CampoTexto } from '../componentes/base';
 import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
-import { deLaSalida, diaNegocio, diaRelativo, formatearDia, opcionesFechaOperativa, textoSalida } from './fecha-operativa';
+import {
+  deLaSalida,
+  diaNegocio,
+  diaRelativo,
+  formatearDia,
+  opcionesCambioFecha,
+  opcionesFechaOperativa,
+  textoConfirmarCambioFecha,
+  textoSalida,
+} from './fecha-operativa';
+
+/** Mover de día una carga ya iniciada, en vez de elegir el día de una nueva. */
+export interface CambioFechaSelector {
+  /** `aaaa-mm-dd`: el día que tiene hoy la carga. El selector abre marcándolo. */
+  diaActual: string;
+  /** Lo que ya se contó: la confirmación dice que se conserva. */
+  productosContados: number;
+  /** Supervisor: el motivo es obligatorio (mínimo `motivoMinimo` caracteres). */
+  motivoMinimo: number | null;
+}
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
 export interface ConflictoFecha {
@@ -27,10 +46,16 @@ interface Props {
    * advierte antes de confirmar (atención, no bloqueo).
    */
   sinVerificarConHandy?: boolean;
+  /**
+   * Mover una carga ya iniciada: ofrece de hoy a una semana con el día actual
+   * marcado y, al elegir otro, pregunta antes (lo contado se conserva) y solo
+   * entonces llama a `onElegir`, con el motivo si se pidió.
+   */
+  cambio?: CambioFechaSelector | null;
   /** Creando la carga o abriendo la existente: botones bloqueados. */
   ocupado: boolean;
   error: string | null;
-  onElegir: (dia: string) => void;
+  onElegir: (dia: string, motivo?: string) => void;
   onContinuarExistente: (conflicto: ConflictoFecha) => void;
   onElegirOtra: () => void;
   onCerrar: () => void;
@@ -59,7 +84,12 @@ export function SelectorFechaOperativa(props: Props) {
       onRequestClose={ocupado ? () => undefined : onCerrar}
     >
       {/* Montado solo abierto: cada vez que se abre, "hoy" se vuelve a calcular. */}
-      {props.tipo !== null && <Contenido {...props} tipo={props.tipo} />}
+      {props.tipo !== null &&
+        (props.cambio ? (
+          <ContenidoCambio {...props} cambio={props.cambio} />
+        ) : (
+          <Contenido {...props} tipo={props.tipo} />
+        ))}
     </Modal>
   );
 }
@@ -169,7 +199,7 @@ function Contenido({
                   key={dia}
                   titulo={relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale'}
                   dia={dia}
-                  propuesta={false}
+                  marca={null}
                   deshabilitado={ocupado}
                   onPress={() => elegir(dia)}
                 />
@@ -194,14 +224,14 @@ function Contenido({
             <OpcionDia
               titulo="Sale hoy"
               dia={opciones.hoy}
-              propuesta={opciones.propuesta === 'hoy'}
+              marca={opciones.propuesta === 'hoy' ? 'Sugerida' : null}
               deshabilitado={ocupado}
               onPress={() => elegir(opciones.hoy)}
             />
             <OpcionDia
               titulo="Sale mañana"
               dia={opciones.manana}
-              propuesta={opciones.propuesta === 'manana'}
+              marca={opciones.propuesta === 'manana' ? 'Sugerida' : null}
               deshabilitado={ocupado}
               onPress={() => elegir(opciones.manana)}
             />
@@ -221,23 +251,139 @@ function Contenido({
   );
 }
 
+/**
+ * Mover de día una carga ya iniciada. Dos pasos en el mismo modal (apilar dos
+ * modales falla en iOS): elegir el día, con el actual marcado y a la vista, y
+ * confirmar diciendo exactamente qué pasa con lo contado.
+ */
+function ContenidoCambio({
+  cambio,
+  ocupado,
+  error,
+  onElegir,
+  onCerrar,
+}: Props & { cambio: CambioFechaSelector }) {
+  const [ahora, setAhora] = useState(() => new Date());
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [elegido, setElegido] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [intento, setIntento] = useState(false);
+  const lista = useRef<ScrollView>(null);
+
+  const hoy = diaNegocio(ahora);
+  const dias = opcionesCambioFecha(hoy, cambio.diaActual);
+  const { motivoMinimo } = cambio;
+  const motivoValido = motivoMinimo === null || motivo.trim().length >= motivoMinimo;
+
+  const elegir = (dia: string) => {
+    if (dia === cambio.diaActual) {
+      onCerrar();
+      return;
+    }
+    // Si pasó la medianoche con el selector abierto, "hoy" ya es ayer.
+    if (dia < diaNegocio(new Date())) {
+      setAhora(new Date());
+      setElegido(null);
+      setAviso(AVISO_CAMBIO_DE_DIA);
+      return;
+    }
+    setAviso(null);
+    setElegido(dia);
+  };
+
+  const confirmar = () => {
+    if (elegido === null) return;
+    setIntento(true);
+    if (!motivoValido) return;
+    if (elegido < diaNegocio(new Date())) {
+      elegir(elegido);
+      return;
+    }
+    onElegir(elegido, motivoMinimo === null ? undefined : motivo.trim());
+  };
+
+  if (elegido !== null) {
+    const { titulo, cuerpo } = textoConfirmarCambioFecha(elegido, cambio.productosContados);
+    return (
+      <View style={estilos.fondo}>
+        <View style={estilos.tarjeta}>
+          <Text style={estilos.titulo} accessibilityRole="header">
+            {titulo}
+          </Text>
+          <Text style={estilos.detalle}>{cuerpo}</Text>
+          {motivoMinimo !== null && (
+            <CampoTexto
+              etiqueta="Motivo"
+              valor={motivo}
+              onCambiar={setMotivo}
+              ejemplo="Ej. el camión sale hasta el lunes"
+              multilinea
+              maxLength={200}
+              ayuda={`Obligatorio. Mínimo ${motivoMinimo} caracteres.`}
+              error={intento && !motivoValido ? `Escribe por qué cambias la fecha (mínimo ${motivoMinimo} caracteres).` : null}
+            />
+          )}
+          {error && <BloqueError titulo="No se pudo cambiar la fecha" detalle={error} />}
+          <Boton texto="Sí, cambiar la fecha" cargando={ocupado} textoCargando="Cambiando…" onPress={confirmar} />
+          <Boton texto="No, dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={estilos.fondo}>
+      <View style={estilos.tarjeta}>
+        <Text style={estilos.titulo} accessibilityRole="header">
+          ¿Para qué día sale el camión?
+        </Text>
+        <Text style={estilos.detalle}>Ahora: {textoSalida(cambio.diaActual, hoy).toLowerCase()}.</Text>
+        {aviso && <BloqueError titulo="Cambió el día" detalle={aviso} tono="atencion" />}
+        <ScrollView ref={lista} style={estilos.listaDias} contentContainerStyle={estilos.contenidoDias}>
+          {dias.map((dia) => {
+            const relativo = diaRelativo(dia, hoy);
+            const actual = dia === cambio.diaActual;
+            return (
+              <OpcionDia
+                key={dia}
+                titulo={relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale'}
+                dia={dia}
+                marca={actual ? 'Actual' : null}
+                deshabilitado={ocupado}
+                onPress={() => elegir(dia)}
+                // Abre con el día actual a la vista, aunque esté al fondo de la lista.
+                onLayout={actual ? (y) => lista.current?.scrollTo({ y, animated: false }) : undefined}
+              />
+            );
+          })}
+        </ScrollView>
+        <Boton texto="Dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
+      </View>
+    </View>
+  );
+}
+
 interface PropsOpcionDia {
   titulo: string;
   dia: string;
-  propuesta: boolean;
+  /** "Sugerida" (la propuesta) o "Actual" (el día que ya tiene la carga): va rellena y con esa etiqueta. */
+  marca: string | null;
   deshabilitado: boolean;
   onPress: () => void;
+  onLayout?: (y: number) => void;
 }
 
-/** Mismo tamaño para ambas: la propuesta se distingue por el relleno y la etiqueta, no por ser más fácil de tocar. */
-function OpcionDia({ titulo, dia, propuesta, deshabilitado, onPress }: PropsOpcionDia) {
+/** Mismo tamaño para todas: la marcada se distingue por el relleno y la etiqueta, no por ser más fácil de tocar. */
+function OpcionDia({ titulo, dia, marca, deshabilitado, onPress, onLayout }: PropsOpcionDia) {
   const legible = formatearDia(dia);
+  const propuesta = marca !== null;
   return (
     <Pressable
       onPress={onPress}
       disabled={deshabilitado}
+      onLayout={onLayout ? (e) => onLayout(e.nativeEvent.layout.y) : undefined}
       accessibilityRole="button"
-      accessibilityLabel={`${titulo}, ${legible}${propuesta ? '. Sugerida' : ''}`}
+      accessibilityLabel={`${titulo}, ${legible}${marca ? `. ${marca}` : ''}`}
       accessibilityState={{ disabled: deshabilitado }}
       style={({ pressed }) => [
         estilos.opcion,
@@ -254,7 +400,7 @@ function OpcionDia({ titulo, dia, propuesta, deshabilitado, onPress }: PropsOpci
               <Text style={[estilos.tituloOpcion, invertido && estilos.textoInvertido]}>{titulo}</Text>
               {propuesta && (
                 <View style={estilos.etiqueta}>
-                  <Text style={estilos.textoEtiqueta}>Sugerida</Text>
+                  <Text style={estilos.textoEtiqueta}>{marca}</Text>
                 </View>
               )}
             </View>
@@ -339,5 +485,13 @@ const estilos = StyleSheet.create({
   },
   deshabilitado: {
     opacity: OPACIDAD.deshabilitado,
+  },
+  // Caben unas tres opciones: el resto se desliza, y el modal no se sale de la pantalla.
+  listaDias: {
+    maxHeight: TOQUE_MINIMO * 7,
+    flexGrow: 0,
+  },
+  contenidoDias: {
+    gap: RITMO.relacionado,
   },
 });

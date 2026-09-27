@@ -156,6 +156,18 @@ export const CancelarCargaSchema = z.object({
   motivo: z.string().max(500, 'El motivo no puede pasar de 500 caracteres').optional(),
 });
 
+/**
+ * Body de `PATCH /eventos-carga/:id/fecha-operativa`. Mismo formato de fecha
+ * que al iniciar (`aaaa-mm-dd`). El motivo es opcional en el esquema porque
+ * para el vendedor lo es; que el supervisor lo de lo decide el caso de uso.
+ */
+export const CambiarFechaOperativaSchema = z.object({
+  fechaOperativa: z.iso
+    .date('fechaOperativa debe ser un dia con formato aaaa-mm-dd')
+    .transform((dia) => fechaOperativaDesdeDia(dia)),
+  motivo: z.string().max(500, 'El motivo no puede pasar de 500 caracteres').optional(),
+});
+
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
@@ -164,3 +176,4 @@ export type ConfirmarCantidadDto = z.infer<typeof ConfirmarCantidadSchema>;
 export type RechazarProductosDto = z.infer<typeof RechazarProductosSchema>;
 export type ModificarCantidadDto = z.infer<typeof ModificarCantidadSchema>;
 export type CancelarCargaDto = z.infer<typeof CancelarCargaSchema>;
+export type CambiarFechaOperativaDto = z.infer<typeof CambiarFechaOperativaSchema>;

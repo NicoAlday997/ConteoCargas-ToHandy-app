@@ -33,6 +33,7 @@ import {
   Seccion,
 } from '../src/componentes/base';
 import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
+import { ModalCambiarFecha } from '../src/conteo/CambiarFechaCarga';
 import {
   descartarCargaNoDisponible,
   tomarAvisoCargaNoDisponible,
@@ -532,6 +533,17 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
             .join(' · ')}
           onPress={() => irAConteo(cargaAbierta)}
         />
+        {puedeCancelar && cargaAbierta.fechaOperativa && (
+          <BotonCambiarFecha
+            carga={cargaAbierta}
+            diaActual={cargaAbierta.fechaOperativa}
+            onCambiada={async (dia) => {
+              const actualizada = { ...cargaAbierta, fechaOperativa: dia };
+              await guardarCargaAbierta(usuario.id, actualizada);
+              setCargaAbierta(actualizada);
+            }}
+          />
+        )}
         {puedeCancelar && (
           <BotonCancelarCarga
             carga={cargaAbierta}
@@ -680,6 +692,50 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
           maxLength={200}
         />
       </ModalConfirmacion>
+    </>
+  );
+}
+
+/**
+ * El vendedor se equivocó de día: mueve la carga sin perder lo contado. Solo
+ * mientras él cuenta, igual que cancelar. La confirmación dice cuántos
+ * productos se conservan: se leen del teléfono, que es donde está el conteo.
+ */
+function BotonCambiarFecha({
+  carga,
+  diaActual,
+  onCambiada,
+}: {
+  carga: CargaAbierta;
+  diaActual: string;
+  onCambiada: (dia: string) => Promise<void>;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [contados, setContados] = useState(0);
+
+  const abrir = async () => {
+    const local = await obtenerConteoLocal(carga.eventoId, carga.sesionId).catch(() => null);
+    setContados(Object.values(local?.items ?? {}).filter((i) => !esBorrado(i)).length);
+    setAbierto(true);
+  };
+
+  return (
+    <>
+      <Boton texto="Cambiar la fecha de salida" variante="secundario" onPress={() => void abrir()} />
+      <ModalCambiarFecha
+        visible={abierto}
+        eventoId={carga.eventoId}
+        tipo={carga.tipo}
+        diaActual={diaActual}
+        productosContados={contados}
+        motivoMinimo={null}
+        onCambiada={(dia) => {
+          setAbierto(false);
+          void onCambiada(dia);
+        }}
+        onCerrar={() => setAbierto(false)}
+        onSesionVencida={sesionVencida}
+      />
     </>
   );
 }

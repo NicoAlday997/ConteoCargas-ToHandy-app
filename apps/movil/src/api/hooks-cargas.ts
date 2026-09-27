@@ -6,6 +6,7 @@ import { modalidadDesdeApi, type FamiliaConteo, type ProductoConteo } from '../c
 import { estadoDe, type ConteoLado, type Discrepancia } from '../discrepancias/estado-discrepancia';
 import {
   abrirSesion,
+  cambiarFechaOperativa,
   capturarDiscrepancia,
   confirmarDiscrepancia,
   desbloquearCarga,
@@ -131,8 +132,8 @@ export function useIniciarCarga() {
 }
 
 /**
- * Solo para leer la fecha operativa y cómo arrancó la carga cuando no vinieron
- * en la navegación (el contador entra desde la cola). No cambian mientras se cuenta.
+ * Fecha operativa y estado de la carga. La fecha solo cambia con
+ * `useCambiarFechaOperativa`, que invalida esta consulta.
  */
 export function useEventoCarga(eventoId: string, habilitada: boolean) {
   return useQuery({
@@ -141,6 +142,31 @@ export function useEventoCarga(eventoId: string, habilitada: boolean) {
     enabled: habilitada && eventoId.length > 0,
     staleTime: STALE_TIME_PRODUCTOS_MS,
     retry: false,
+  });
+}
+
+interface VariablesCambiarFecha {
+  /** `aaaa-mm-dd`. */
+  fechaOperativa: string;
+  motivo?: string;
+}
+
+/**
+ * Mueve la carga de día. Al terminar se releen el evento (el encabezado del
+ * conteo), el historial y las vistas del supervisor; la carga abierta del
+ * inicio vive en el teléfono y la actualiza quien llama.
+ */
+export function useCambiarFechaOperativa(eventoId: string) {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fechaOperativa, motivo }: VariablesCambiarFecha) =>
+      cambiarFechaOperativa(eventoId, fechaOperativa, motivo),
+    onSettled: () => {
+      void cliente.invalidateQueries({ queryKey: clavesCargas.evento(eventoId) });
+      void cliente.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
+      void cliente.invalidateQueries({ queryKey: ['historial'] });
+      void cliente.invalidateQueries({ queryKey: ['supervisor'] });
+    },
   });
 }
 

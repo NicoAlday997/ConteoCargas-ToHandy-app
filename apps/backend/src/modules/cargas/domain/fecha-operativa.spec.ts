@@ -1,4 +1,5 @@
 import {
+  diasEntreFechasOperativas,
   esFechaOperativaValida,
   fechaOperativaDesdeDia,
   fechaOperativaPropuesta,
@@ -110,5 +111,55 @@ describe('fechaOperativaDesdeDia', () => {
 
   it('rechaza dias inexistentes', () => {
     expect(() => fechaOperativaDesdeDia('2026-02-30')).toThrow(TypeError);
+  });
+});
+
+describe('diasEntreFechasOperativas', () => {
+  it('mismo dia: 0, sin importar la hora', () => {
+    expect(
+      diasEntreFechasOperativas(
+        new Date('2026-09-24T00:00:00-06:00'),
+        new Date('2026-09-24T23:59:59-06:00'),
+      ),
+    ).toBe(0);
+  });
+
+  it('del 23 al 24: 1; del 24 al 23: -1', () => {
+    expect(diasEntreFechasOperativas(INICIO_23, INICIO_24)).toBe(1);
+    expect(diasEntreFechasOperativas(INICIO_24, INICIO_23)).toBe(-1);
+  });
+
+  it('cuenta dias calendario, no bloques de 24 horas', () => {
+    expect(
+      diasEntreFechasOperativas(
+        new Date('2026-09-23T23:59:00-06:00'),
+        new Date('2026-09-24T00:01:00-06:00'),
+      ),
+    ).toBe(1);
+  });
+
+  it('usa el dia de Mexico, no el de UTC: 23 a las 20:00 (24 en UTC) sigue siendo el 23', () => {
+    expect(
+      diasEntreFechasOperativas(new Date('2026-09-24T02:00:00Z'), INICIO_23),
+    ).toBe(0);
+  });
+
+  it('cruza fin de mes', () => {
+    expect(
+      diasEntreFechasOperativas(
+        new Date('2026-09-29T00:00:00-06:00'),
+        new Date('2026-10-01T00:00:00-06:00'),
+      ),
+    ).toBe(2);
+  });
+
+  it('no se descuadra en fechas historicas con horario de verano', () => {
+    // 2021-04-04: Mexico adelanto el reloj (dia de 23 horas).
+    expect(
+      diasEntreFechasOperativas(
+        new Date('2021-04-03T12:00:00-06:00'),
+        new Date('2021-04-05T12:00:00-05:00'),
+      ),
+    ).toBe(2);
   });
 });

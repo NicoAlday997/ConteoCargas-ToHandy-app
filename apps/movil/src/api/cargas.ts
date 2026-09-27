@@ -56,6 +56,9 @@ export const CODIGO_SIN_SALIDA_ENVIADA = 'SIN_SALIDA_ENVIADA';
 /** 409 de `POST /eventos-carga`: recarga cuando Handy no tiene abierta la ruta de esa inicial. */
 export const CODIGO_SIN_RUTA_ABIERTA_EN_HANDY = 'SIN_RUTA_ABIERTA_EN_HANDY';
 
+/** 400 de `PATCH .../fecha-operativa`: la carga ya es para ese día. */
+export const CODIGO_MISMA_FECHA = 'MISMA_FECHA';
+
 /** Una salida ya enviada a Handy sobre la que se puede recargar. */
 export interface DiaRecargableApi {
   /** Inicio del día en hora de México (ISO 8601), como `EventoCargaApi.fechaOperativa`. */
@@ -336,5 +339,22 @@ export function cancelarCarga(eventoId: string, motivo?: string): Promise<unknow
   return peticion<unknown>(`${rutaEvento(eventoId)}/cancelar`, {
     method: 'POST',
     cuerpo: limpio ? { motivo: limpio } : {},
+  });
+}
+
+/**
+ * `PATCH /eventos-carga/:id/fecha-operativa`. Mueve la carga a otro día sin
+ * tocar lo contado. El vendedor solo con la suya y mientras cuenta (motivo
+ * opcional); el supervisor, con motivo.
+ */
+export function cambiarFechaOperativa(
+  eventoId: string,
+  fechaOperativa: string,
+  motivo?: string,
+): Promise<{ evento: EventoCargaApi | null } | null> {
+  const limpio = motivo?.trim();
+  return peticion<{ evento: EventoCargaApi | null } | null>(`${rutaEvento(eventoId)}/fecha-operativa`, {
+    method: 'PATCH',
+    cuerpo: limpio ? { fechaOperativa, motivo: limpio } : { fechaOperativa },
   });
 }

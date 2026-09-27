@@ -126,6 +126,19 @@ export class CargaInicialDuplicadaError extends Error {
 }
 
 /**
+ * Cambio de fecha operativa de un evento, con su renglon de bitacora. Solo
+ * toca el evento y la bitacora: sesiones e items quedan como estan.
+ */
+export interface DatosCambiarFechaOperativa {
+  eventoId: string;
+  fechaAnterior: Date;
+  /** Ya normalizada (`normalizarFechaOperativa`). */
+  fechaNueva: Date;
+  cambiadaPorId: string;
+  motivo: string | null;
+}
+
+/**
  * Item nuevo o actualizado dentro de una sesion. `cantidad` es el total en
  * piezas ya calculado por el caso de uso (`aPiezas` del dominio) a partir de
  * `paquetes` y `sueltas`; nunca viene del cliente.
@@ -291,6 +304,19 @@ export abstract class CargaRepository {
     usuarioAppId: string,
     motivo: string | null,
     ahora: Date,
+  ): Promise<EventoCarga>;
+
+  /**
+   * Mueve la carga a otra fecha operativa, en una sola transaccion: actualiza
+   * `fechaOperativa` del evento e inserta el renglon en la bitacora de cambios
+   * de fecha. NO toca sesiones ni items. Lanza `CargaInicialDuplicadaError` si
+   * el indice parcial rechaza una segunda INICIAL de la ruta en esa fecha.
+   *
+   * El caso de uso ya valido permisos, estado y reglas de fecha antes de
+   * llamar aca.
+   */
+  abstract cambiarFechaOperativa(
+    datos: DatosCambiarFechaOperativa,
   ): Promise<EventoCarga>;
 
   /**

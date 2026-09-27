@@ -166,6 +166,9 @@ class FakeCargaRepository implements CargaRepository {
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
+  async cambiarFechaOperativa(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async cancelarEvento(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -192,12 +195,21 @@ class FakeVerificarCorte implements Pick<
   'ejecutar'
 > {
   rutaSinLiquidar = false;
+  /** Ruta del ciclo anterior aun sin liquidar, dentro de la tolerancia. */
+  liquidacionRezagada = false;
   readonly llamadas: string[] = [];
 
   async ejecutar(entrada: {
     eventoId: string;
   }): Promise<ResultadoVerificarCortePendiente> {
     this.llamadas.push(entrada.eventoId);
+    if (this.liquidacionRezagada) {
+      return {
+        exito: true,
+        bloqueado: false,
+        liquidacionRezagada: { rutaHandyId: 'handy-ruta-98', diasDeRetraso: 1 },
+      };
+    }
     if (!this.rutaSinLiquidar) {
       return { exito: true, bloqueado: false };
     }
@@ -206,6 +218,7 @@ class FakeVerificarCorte implements Pick<
       bloqueado: true,
       evento: eventoDePrueba({ estado: 'BLOQUEADA_CORTE_PENDIENTE' }),
       rutaHandyId: 'handy-ruta-99',
+      causa: 'MISMA_SALIDA',
       generarAlertaMedia: true,
     };
   }
@@ -402,6 +415,20 @@ describe('AbrirSesionUseCase', () => {
 
       expect(resultado).toEqual({ exito: false, motivo: 'CORTE_PENDIENTE' });
       expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it('el CONTADOR abre su sesion si la ruta abierta es del ciclo anterior (liquidacion rezagada, no bloquea)', async () => {
+      verificarCorte.liquidacionRezagada = true;
+
+      const resultado = exigirExito(
+        await useCase.ejecutar(
+          { eventoId: 'ev-1', usuarioAppId: 'c1', tipo: 'CONTADOR' },
+          AHORA,
+        ),
+      );
+
+      expect(verificarCorte.llamadas).toEqual(['ev-1']);
+      expect(resultado.sesion.tipo).toBe('CONTADOR');
     });
 
     it('el CONTADOR tampoco abre sesion sobre una carga que ya estaba bloqueada', async () => {

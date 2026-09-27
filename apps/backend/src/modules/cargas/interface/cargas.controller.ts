@@ -24,6 +24,7 @@ import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AbrirSesionUseCase } from '../application/abrir-sesion.use-case';
 import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
+import { CambiarFechaOperativaUseCase } from '../application/cambiar-fecha-operativa.use-case';
 import {
   CancelarCargaUseCase,
   MOTIVO_MINIMO_SUPERVISOR,
@@ -46,6 +47,7 @@ import { ModificarCantidadSupervisorUseCase } from '../application/modificar-can
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
 import {
+  CambiarFechaOperativaSchema,
   CancelarCargaSchema,
   CapturarCantidadSchema,
   ConfirmarCantidadSchema,
@@ -55,6 +57,7 @@ import {
   IniciarCargaSchema,
   ModificarCantidadSchema,
   RechazarProductosSchema,
+  type CambiarFechaOperativaDto,
   type CancelarCargaDto,
   type CapturarCantidadDto,
   type ConfirmarCantidadDto,
@@ -105,6 +108,7 @@ export class CargasController {
     private readonly cancelarCargaUseCase: CancelarCargaUseCase,
     private readonly cancelarRutaHandyUseCase: CancelarRutaHandyUseCase,
     private readonly listarDiasRecargablesUseCase: ListarDiasRecargablesUseCase,
+    private readonly cambiarFechaOperativaUseCase: CambiarFechaOperativaUseCase,
   ) {}
 
   /**
@@ -849,6 +853,100 @@ export class CargasController {
             statusCode: 400,
             codigo: 'MOTIVO_REQUERIDO',
             mensaje: `Escribe por que cancelas la carga (minimo ${MOTIVO_MINIMO_SUPERVISOR} caracteres).`,
+          });
+      }
+    }
+
+    return { evento: resultado.evento };
+  }
+
+  /**
+   * Mueve la carga a otra fecha operativa sin perder lo contado: solo cambia
+   * el dia y deja el cambio en la bitacora; sesiones e items no se tocan. El
+   * vendedor solo mueve la suya y solo en BORRADOR; el supervisor cualquiera
+   * no enviada, con motivo obligatorio. El contador nunca.
+   */
+  @Patch(':id/fecha-operativa')
+  @Roles(RolApp.VENDEDOR, RolApp.SUPERVISOR)
+  async cambiarFechaOperativa(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Body(new ZodValidationPipe(CambiarFechaOperativaSchema))
+    dto: CambiarFechaOperativaDto,
+  ) {
+    const resultado = await this.cambiarFechaOperativaUseCase.ejecutar(
+      {
+        eventoId,
+        usuarioAppId: usuario.usuarioAppId,
+        rolApp: usuario.rolApp,
+        usuarioHandyId: usuario.usuarioHandyId,
+        fechaOperativa: dto.fechaOperativa,
+        motivo: dto.motivo,
+      },
+      new Date(),
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'NO_ENCONTRADA':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: 'El evento de carga no existe.',
+          });
+        case 'NO_PERMITIDO':
+          throw new ForbiddenException({
+            statusCode: 403,
+            mensaje: 'Solo puedes cambiar la fecha de tus propias cargas.',
+          });
+        case 'ESTADO_INVALIDO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'ESTADO_INVALIDO',
+            mensaje:
+              usuario.rolApp === RolApp.VENDEDOR
+                ? 'Ya no puedes cambiar la fecha: ya terminaste tu conteo. Si hay que moverla, pideselo a tu supervisor.'
+                : 'Esta carga ya no se puede mover de fecha: ya esta cancelada, ya se envio a Handy o su envio esta sin confirmar.',
+          });
+        case 'FECHA_OPERATIVA_INVALIDA':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'FECHA_OPERATIVA_INVALIDA',
+            mensaje:
+              'No se puede mover una carga a un dia pasado. Elige hoy o una fecha posterior.',
+          });
+        case 'MISMA_FECHA':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'MISMA_FECHA',
+            mensaje: 'La carga ya es para ese dia.',
+          });
+        case 'MOTIVO_REQUERIDO':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: 'MOTIVO_REQUERIDO',
+            mensaje: `Escribe por que cambias la fecha (minimo ${MOTIVO_MINIMO_SUPERVISOR} caracteres).`,
+          });
+        case 'YA_TIENE_CARGA_ABIERTA':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'YA_TIENE_CARGA_ABIERTA',
+            mensaje:
+              'La ruta ya tiene una carga inicial para ese dia. No puede haber dos salidas el mismo dia.',
+            eventoId: resultado.eventoId,
+          });
+        case 'SIN_SALIDA_ENVIADA':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'SIN_SALIDA_ENVIADA',
+            mensaje:
+              'No hay una salida enviada de la ruta para ese dia. Una recarga solo puede ir en un dia cuya carga inicial ya salio a Handy.',
+          });
+        case 'SIN_RUTA_ABIERTA_EN_HANDY':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'SIN_RUTA_ABIERTA_EN_HANDY',
+            mensaje:
+              'La salida de ese dia ya no esta abierta en Handy, asi que no se le puede sumar una recarga.',
           });
       }
     }

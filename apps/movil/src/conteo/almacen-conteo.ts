@@ -51,6 +51,16 @@ export async function obtenerCargaAbierta(usuarioId: string): Promise<CargaAbier
   };
 }
 
+/**
+ * La carga se movió de día: el inicio debe mostrar la fecha nueva en
+ * "Continuar carga". Solo si la guardada es esa misma carga.
+ */
+export async function actualizarFechaCargaAbierta(usuarioId: string, eventoId: string, dia: string): Promise<void> {
+  const carga = await obtenerCargaAbierta(usuarioId);
+  if (carga?.eventoId !== eventoId) return;
+  await guardarCargaAbierta(usuarioId, { ...carga, fechaOperativa: dia });
+}
+
 /** Al finalizar: la sesión ya quedó cerrada en el servidor. */
 export async function olvidarCarga(usuarioId: string, carga: Pick<CargaAbierta, 'eventoId' | 'sesionId'>): Promise<void> {
   await Promise.all([AsyncStorage.removeItem(claveCarga(usuarioId)), limpiarConteoLocal(carga.eventoId, carga.sesionId)]);

@@ -1,5 +1,6 @@
 import type { TipoCarga } from '../api/cargas';
 import type {
+  CambioFechaApi,
   CargaHistorialApi,
   DetalleHistorialApi,
   EstadoCargaApi,
@@ -163,6 +164,28 @@ export interface EventoDetalle {
   contadorNombre: string | null;
   autorizadaPorNombre: string | null;
   cancelacion: Cancelacion | null;
+  /** Cada vez que se movió de día, en orden. Vacío si nunca. */
+  cambiosFecha: CambioFecha[];
+}
+
+/** Un cambio de fecha operativa: de qué día a cuál, quién y por qué. */
+export interface CambioFecha {
+  anterior: string;
+  nueva: string;
+  porNombre: string | null;
+  motivo: string | null;
+}
+
+/** Descarta los cambios cuyas fechas no se pueden leer: sin ellas no dicen nada. */
+export function cambiosFechaDe(api: readonly CambioFechaApi[] | null | undefined): CambioFecha[] {
+  const cambios: CambioFecha[] = [];
+  for (const c of api ?? []) {
+    const anterior = diaDesdeApi(c.fechaAnterior);
+    const nueva = diaDesdeApi(c.fechaNueva);
+    if (!anterior || !nueva) continue;
+    cambios.push({ anterior, nueva, porNombre: texto(c.cambiadaPorNombre), motivo: texto(c.motivo) });
+  }
+  return cambios;
 }
 
 export interface CargaDetalle {
@@ -235,6 +258,7 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
       contadorNombre: texto(evento.contadorNombre),
       autorizadaPorNombre: texto(evento.autorizadaPorNombre),
       cancelacion: cancelacionDe(evento),
+      cambiosFecha: cambiosFechaDe(evento.cambiosFecha),
     },
     familias,
     totalProductos,
