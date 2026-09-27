@@ -1,6 +1,7 @@
 import type { RolApp } from '@prisma/client';
 
 import { HandyGateway } from '../../sincronizacion/application/handy.gateway';
+import { esFechaPermitidaPorCalendario } from '../domain/calendario-laboral';
 import {
   permiteCambioFechaDelSupervisor,
   permiteCambioFechaDelVendedor,
@@ -13,11 +14,13 @@ import {
   MOTIVO_MINIMO_SUPERVISOR,
   normalizarMotivo,
 } from './cancelar-carga.use-case';
+import { diasNoLaborablesDesde } from './calendario';
 import {
   CargaInicialDuplicadaError,
   type CargaRepository,
   type EventoCarga,
 } from './carga.repository';
+import type { DiaNoLaborableRepository } from './dia-no-laborable.repository';
 import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
 
 /**
@@ -40,6 +43,10 @@ import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
  *
  * Reglas de la fecha nueva (las mismas que al iniciar la carga):
  * - Nunca un dia pasado (`esFechaOperativaValida`), y distinta de la actual.
+ * - Calendario laboral (`esFechaPermitidaPorCalendario`): el VENDEDOR solo a
+ *   hoy (si se trabaja) o a la siguiente salida; el SUPERVISOR a cualquier dia
+ *   HABIL, para recorrer cargas cuando no se trabajo un dia. Nunca a un
+ *   domingo ni a un dia marcado como no laborable.
  * - INICIAL: no puede haber otra INICIAL no cancelada de la ruta ese dia. El
  *   indice parcial lo impediria de todos modos; se revisa antes para responder
  *   con un motivo claro (y la carrera se atrapa igual que en
@@ -72,6 +79,7 @@ export interface EntradaCambiarFechaOperativa {
  * - `ESTADO_INVALIDO`: el estado no admite cambio de fecha para ese rol.
  * - `MOTIVO_REQUERIDO`: supervisor sin motivo o con uno demasiado corto.
  * - `FECHA_OPERATIVA_INVALIDA`: la fecha nueva es un dia pasado.
+ * - `FECHA_NO_DISPONIBLE`: el calendario laboral no la permite para ese rol.
  * - `MISMA_FECHA`: la fecha nueva es la que ya tiene.
  * - `YA_TIENE_CARGA_ABIERTA`: es INICIAL y la ruta ya tiene otra INICIAL ese
  *   dia; trae su `eventoId`.
@@ -88,6 +96,7 @@ export type ResultadoCambiarFechaOperativa =
         | 'ESTADO_INVALIDO'
         | 'MOTIVO_REQUERIDO'
         | 'FECHA_OPERATIVA_INVALIDA'
+        | 'FECHA_NO_DISPONIBLE'
         | 'MISMA_FECHA'
         | 'SIN_SALIDA_ENVIADA'
         | 'SIN_RUTA_ABIERTA_EN_HANDY';
@@ -98,6 +107,7 @@ export class CambiarFechaOperativaUseCase {
   constructor(
     private readonly cargas: CargaRepository,
     private readonly handy: HandyGateway,
+    private readonly diasNoLaborables: DiaNoLaborableRepository,
   ) {}
 
   async ejecutar(
@@ -147,6 +157,23 @@ export class CambiarFechaOperativaUseCase {
       normalizarFechaOperativa(evento.fechaOperativa).getTime()
     ) {
       return { exito: false, motivo: 'MISMA_FECHA' };
+    }
+
+    // 2b. Calendario laboral: hasta aqui solo llegan VENDEDOR y SUPERVISOR.
+    const noLaborables = await diasNoLaborablesDesde(
+      this.diasNoLaborables,
+      ahora,
+      fechaNueva,
+    );
+    if (
+      !esFechaPermitidaPorCalendario(
+        fechaNueva,
+        entrada.rolApp === 'SUPERVISOR' ? 'SUPERVISOR' : 'VENDEDOR',
+        ahora,
+        noLaborables,
+      )
+    ) {
+      return { exito: false, motivo: 'FECHA_NO_DISPONIBLE' };
     }
 
     // 3. Las reglas del dia nuevo segun el tipo, las mismas que al iniciar.

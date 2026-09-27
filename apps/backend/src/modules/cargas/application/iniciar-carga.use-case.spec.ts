@@ -26,6 +26,10 @@ import {
   type ItemCapturado,
   type SesionConteo,
 } from './carga.repository';
+import type {
+  DiaNoLaborable,
+  DiaNoLaborableRepository,
+} from './dia-no-laborable.repository';
 import {
   IniciarCargaUseCase,
   type ResultadoIniciarCarga,
@@ -41,6 +45,7 @@ import {
 /** `idHandy` de la inicial ENVIADA sembrada; el doble de Handy la da por abierta. */
 const ID_HANDY_INICIAL = 'ruta-handy-9001';
 
+// Martes 8 de septiembre de 2026: hoy y mañana (miercoles) son las opciones.
 const AHORA = new Date('2026-09-08T07:30:00-06:00');
 const HOY = new Date('2026-09-08T00:00:00-06:00');
 const MANANA = new Date('2026-09-09T00:00:00-06:00');
@@ -231,6 +236,29 @@ function inicialExistente(
   };
 }
 
+/** Dias no laborables en memoria; `listarEntre` respeta el rango. */
+class FakeDiasNoLaborables implements DiaNoLaborableRepository {
+  dias: Date[] = [];
+
+  async listarEntre(desde: Date, hasta: Date): Promise<DiaNoLaborable[]> {
+    return this.dias
+      .filter((d) => d >= desde && d <= hasta)
+      .map((fecha) => ({
+        fecha,
+        motivo: 'festivo',
+        creadoPorId: null,
+        creadoPorNombre: null,
+        creadoEn: fecha,
+      }));
+  }
+  marcar(): Promise<DiaNoLaborable> {
+    throw new Error('no usado en esta prueba');
+  }
+  quitar(): Promise<boolean> {
+    throw new Error('no usado en esta prueba');
+  }
+}
+
 /** Doble de la asignacion: se le fija a mano lo que devuelve. */
 class FakeAsignacionRepository implements AsignacionRepository {
   vigente: AsignacionVigente | null = null;
@@ -292,13 +320,15 @@ describe('IniciarCargaUseCase', () => {
   let cargas: FakeCargaRepository;
   let asignaciones: FakeAsignacionRepository;
   let handy: FakeHandyGateway;
+  let noLaborables: FakeDiasNoLaborables;
   let useCase: IniciarCargaUseCase;
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
     asignaciones = new FakeAsignacionRepository();
     handy = new FakeHandyGateway();
-    useCase = new IniciarCargaUseCase(cargas, asignaciones, handy);
+    noLaborables = new FakeDiasNoLaborables();
+    useCase = new IniciarCargaUseCase(cargas, asignaciones, handy, noLaborables);
   });
 
   it('sin asignacion vigente: devuelve SIN_RUTA_ASIGNADA y no crea nada', async () => {
@@ -446,6 +476,82 @@ describe('IniciarCargaUseCase', () => {
       );
 
       expect(resultado).toEqual({ exito: false, motivo: 'FECHA_OPERATIVA_INVALIDA' });
+    });
+  });
+
+  describe('calendario laboral: hoy (si se trabaja) o la siguiente salida', () => {
+    const entrada = (fechaOperativa: Date) => ({
+      usuarioAppId: 'v1',
+      tipo: 'INICIAL' as const,
+      usuarioHandyId: 42,
+      fechaOperativa,
+    });
+    const SABADO = new Date('2026-09-12T17:00:00-06:00');
+    const DOMINGO = new Date('2026-09-13T10:00:00-06:00');
+    const INICIO_SABADO = new Date('2026-09-12T00:00:00-06:00');
+    const INICIO_DOMINGO = new Date('2026-09-13T00:00:00-06:00');
+    const INICIO_LUNES = new Date('2026-09-14T00:00:00-06:00');
+
+    beforeEach(() => {
+      asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
+    });
+
+    it('rechaza una carga para dentro de 6 dias con FECHA_NO_DISPONIBLE y no crea nada', async () => {
+      const resultado = await useCase.ejecutar(
+        entrada(new Date('2026-09-14T00:00:00-06:00')),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+      expect(cargas.eventosCreados).toHaveLength(0);
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it('rechaza un domingo', async () => {
+      const resultado = await useCase.ejecutar(entrada(INICIO_DOMINGO), SABADO);
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+    });
+
+    it('el sabado acepta el sabado y el lunes', async () => {
+      exigirExito(await useCase.ejecutar(entrada(INICIO_SABADO), SABADO));
+      exigirExito(await useCase.ejecutar(entrada(INICIO_LUNES), SABADO));
+    });
+
+    it('el domingo no acepta hoy, pero si el lunes', async () => {
+      expect(await useCase.ejecutar(entrada(INICIO_DOMINGO), DOMINGO)).toEqual({
+        exito: false,
+        motivo: 'FECHA_NO_DISPONIBLE',
+      });
+      exigirExito(await useCase.ejecutar(entrada(INICIO_LUNES), DOMINGO));
+    });
+
+    it('un dia marcado como no laborable no se puede elegir y recorre la siguiente salida', async () => {
+      noLaborables.dias = [MANANA];
+
+      expect(await useCase.ejecutar(entrada(MANANA), AHORA)).toEqual({
+        exito: false,
+        motivo: 'FECHA_NO_DISPONIBLE',
+      });
+      exigirExito(
+        await useCase.ejecutar(entrada(new Date('2026-09-10T00:00:00-06:00')), AHORA),
+      );
+    });
+
+    it('tambien aplica a la RECARGA', async () => {
+      const resultado = await useCase.ejecutar(
+        { ...entrada(INICIO_DOMINGO), tipo: 'RECARGA' },
+        SABADO,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+    });
+
+    it('un dia pasado sigue siendo FECHA_OPERATIVA_INVALIDA', async () => {
+      expect(await useCase.ejecutar(entrada(AYER), AHORA)).toEqual({
+        exito: false,
+        motivo: 'FECHA_OPERATIVA_INVALIDA',
+      });
     });
   });
 

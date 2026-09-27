@@ -168,6 +168,37 @@ export const CambiarFechaOperativaSchema = z.object({
   motivo: z.string().max(500, 'El motivo no puede pasar de 500 caracteres').optional(),
 });
 
+/** Un dia `aaaa-mm-dd`, convertido al inicio de ese dia en la zona del negocio. */
+const DiaSchema = z.iso
+  .date('La fecha debe ser un dia con formato aaaa-mm-dd')
+  .transform((dia) => fechaOperativaDesdeDia(dia));
+
+/** `:fecha` de `DELETE /admin/dias-no-laborables/:fecha`. */
+export const DiaParamSchema = DiaSchema;
+
+/**
+ * Query de `GET /admin/dias-no-laborables`. Sin `desde`, desde hoy; sin
+ * `hasta`, un año despues de `desde` (lo decide el controlador).
+ */
+export const ListarDiasNoLaborablesQuerySchema = z
+  .object({ desde: DiaSchema.optional(), hasta: DiaSchema.optional() })
+  .refine((q) => !q.desde || !q.hasta || q.desde <= q.hasta, {
+    message: '`desde` no puede ser posterior a `hasta`',
+  });
+
+/**
+ * Body de `POST /admin/dias-no-laborables`. Que no sea un dia pasado ni un
+ * domingo lo decide el caso de uso; el motivo se exige aqui y alla.
+ */
+export const MarcarDiaNoLaborableSchema = z.object({
+  fecha: DiaSchema,
+  motivo: z
+    .string()
+    .trim()
+    .min(3, 'Escribe el motivo (minimo 3 caracteres)')
+    .max(200, 'El motivo no puede pasar de 200 caracteres'),
+});
+
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
@@ -177,3 +208,5 @@ export type RechazarProductosDto = z.infer<typeof RechazarProductosSchema>;
 export type ModificarCantidadDto = z.infer<typeof ModificarCantidadSchema>;
 export type CancelarCargaDto = z.infer<typeof CancelarCargaSchema>;
 export type CambiarFechaOperativaDto = z.infer<typeof CambiarFechaOperativaSchema>;
+export type ListarDiasNoLaborablesQueryDto = z.infer<typeof ListarDiasNoLaborablesQuerySchema>;
+export type MarcarDiaNoLaborableDto = z.infer<typeof MarcarDiaNoLaborableSchema>;

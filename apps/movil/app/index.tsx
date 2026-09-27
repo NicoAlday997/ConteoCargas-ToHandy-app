@@ -134,6 +134,13 @@ export default function PantallaInicio() {
               onPress={() => router.push('/familias')}
             />
           )}
+          {usuario?.rolApp === 'SUPERVISOR' && (
+            <FilaMenu
+              texto="Días no laborables"
+              detalle="Festivos, paros o cierres en que no sale ningún camión"
+              onPress={() => router.push('/dias-no-laborables')}
+            />
+          )}
           {usuario && <FilaMenu texto="Historial de cargas" onPress={() => router.push('/historial')} />}
         </GrupoMenu>
         <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
@@ -283,9 +290,11 @@ function mensajeDeError(e: unknown, porDefecto: string): string | null {
   }
   if (e instanceof ErrorRed) return MENSAJE_SIN_RED_INICIAR;
   if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_FECHA_INVALIDA) {
-    // Solo pasa si el reloj del teléfono va atrasado: la app nunca ofrece días pasados.
-    return 'Ese día ya pasó según el servidor. Revisa la fecha y hora de tu teléfono y elige de nuevo.';
+    // Pasó la medianoche con el selector abierto: el selector vuelve a pedir los días.
+    return 'Ese día ya pasó. Elige de nuevo entre los días disponibles.';
   }
+  // FECHA_NO_DISPONIBLE (p. ej. un supervisor acaba de marcar el día como no
+  // laborable) trae su propio mensaje; el selector vuelve a pedir los días.
   return e instanceof Error && e.message ? e.message : porDefecto;
 }
 

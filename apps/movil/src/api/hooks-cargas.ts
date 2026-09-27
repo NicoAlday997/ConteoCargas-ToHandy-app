@@ -13,6 +13,7 @@ import {
   finalizarSesion,
   iniciarCarga,
   listarConflictosPendientes,
+  listarFechasOperativasDisponibles,
   listarPendientesVerificacion,
   obtenerDiscrepancias,
   obtenerEvento,
@@ -39,6 +40,7 @@ export const clavesCargas = {
   pendientesVerificacion: ['cargas', 'pendientes-verificacion'] as const,
   conflictosPendientes: ['cargas', 'conflictos-pendientes'] as const,
   discrepancias: (eventoId: string) => ['cargas', eventoId, 'discrepancias'] as const,
+  fechasDisponibles: ['cargas', 'fechas-disponibles'] as const,
 };
 
 /**
@@ -123,6 +125,22 @@ export function useProductosCarga(eventoId: string) {
 interface VariablesIniciarCarga {
   tipo: TipoCarga;
   fechaOperativa: string;
+}
+
+/**
+ * Los días que se pueden elegir al iniciar o mover una carga. Se piden cada
+ * vez que se abre el selector (dependen de la hora y de los días que marque el
+ * supervisor) y nunca se adivinan: sin respuesta no hay opciones.
+ */
+export function useFechasOperativasDisponibles(habilitada: boolean) {
+  return useQuery({
+    queryKey: clavesCargas.fechasDisponibles,
+    queryFn: listarFechasOperativasDisponibles,
+    enabled: habilitada,
+    staleTime: 0,
+    gcTime: 0,
+    retry: reintentarSiTransitorio,
+  });
 }
 
 export function useIniciarCarga() {

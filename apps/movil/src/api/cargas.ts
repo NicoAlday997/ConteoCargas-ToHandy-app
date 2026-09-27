@@ -1,4 +1,4 @@
-import { diaDesdeApi } from '../conteo/fecha-operativa';
+import { diaDesdeApi, normalizarFechasDisponibles, type FechaDisponible } from '../conteo/fecha-operativa';
 import { peticion } from './cliente';
 
 export type TipoCarga = 'INICIAL' | 'RECARGA';
@@ -49,7 +49,7 @@ export interface RespuestaEvento {
 
 /** 409 de `POST /eventos-carga`: la ruta ya tiene carga inicial para ese día. */
 export const CODIGO_YA_TIENE_CARGA = 'YA_TIENE_CARGA_ABIERTA';
-/** 400 de `POST /eventos-carga`: la fecha es un día pasado (reloj del teléfono atrasado). */
+/** 400 de `POST /eventos-carga`: la fecha es un día pasado (pasó la medianoche con el selector abierto). */
 export const CODIGO_FECHA_INVALIDA = 'FECHA_OPERATIVA_INVALIDA';
 /** 409 de `POST /eventos-carga`: recarga sin carga inicial ENVIADA de la ruta ese día. */
 export const CODIGO_SIN_SALIDA_ENVIADA = 'SIN_SALIDA_ENVIADA';
@@ -58,6 +58,25 @@ export const CODIGO_SIN_RUTA_ABIERTA_EN_HANDY = 'SIN_RUTA_ABIERTA_EN_HANDY';
 
 /** 400 de `PATCH .../fecha-operativa`: la carga ya es para ese día. */
 export const CODIGO_MISMA_FECHA = 'MISMA_FECHA';
+/**
+ * 409 de `POST /eventos-carga` y `PATCH .../fecha-operativa`: el calendario
+ * laboral no permite ese día (domingo, día no laborable, o para el vendedor
+ * algo que no es hoy ni la siguiente salida).
+ */
+export const CODIGO_FECHA_NO_DISPONIBLE = 'FECHA_NO_DISPONIBLE';
+
+/**
+ * `GET /eventos-carga/fechas-operativas-disponibles`: los únicos días que se
+ * pueden elegir, con la etiqueta que arma el servidor. Al vendedor, hoy (si
+ * se trabaja) y la siguiente salida; al supervisor, los días hábiles de hoy
+ * en adelante.
+ */
+export async function listarFechasOperativasDisponibles(): Promise<FechaDisponible[]> {
+  const respuesta = await peticion<{
+    opciones: { fecha?: unknown; etiqueta?: unknown; esHoy?: unknown }[] | null;
+  } | null>('/eventos-carga/fechas-operativas-disponibles');
+  return normalizarFechasDisponibles(respuesta?.opciones);
+}
 
 /** Una salida ya enviada a Handy sobre la que se puede recargar. */
 export interface DiaRecargableApi {

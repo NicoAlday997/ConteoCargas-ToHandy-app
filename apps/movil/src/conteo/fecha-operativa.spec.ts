@@ -11,8 +11,7 @@ import {
   esDia,
   formatearDia,
   formatearFechaCorta,
-  opcionesCambioFecha,
-  opcionesFechaOperativa,
+  normalizarFechasDisponibles,
   sumarDias,
   textoCambioFecha,
   textoConfirmarCambioFecha,
@@ -25,22 +24,6 @@ describe('diaNegocio', () => {
     // 23 de septiembre, 22:30 en México = 24, 04:30 UTC.
     assert.equal(diaNegocio(new Date('2026-09-24T04:30:00Z')), '2026-09-23');
     assert.equal(diaNegocio(new Date('2026-09-24T06:00:00Z')), '2026-09-24');
-  });
-});
-
-describe('opcionesFechaOperativa', () => {
-  it('en la mañana también propone mañana: hoy se ofrece pero no se sugiere', () => {
-    const opciones = opcionesFechaOperativa(new Date('2026-09-24T08:00:00-06:00'));
-    assert.deepEqual(opciones, { hoy: '2026-09-24', manana: '2026-09-25', propuesta: 'manana' });
-  });
-
-  it('por la tarde propone mañana', () => {
-    const opciones = opcionesFechaOperativa(new Date('2026-09-23T18:00:00-06:00'));
-    assert.deepEqual(opciones, { hoy: '2026-09-23', manana: '2026-09-24', propuesta: 'manana' });
-  });
-
-  it('cruza fin de mes y de año', () => {
-    assert.equal(opcionesFechaOperativa(new Date('2026-12-31T18:00:00-06:00')).manana, '2027-01-01');
   });
 });
 
@@ -116,32 +99,6 @@ describe('formatos cortos', () => {
   });
 });
 
-describe('opcionesCambioFecha', () => {
-  it('de hoy a una semana, en orden, con el día actual incluido', () => {
-    assert.deepEqual(opcionesCambioFecha('2026-09-25', '2026-09-26'), [
-      '2026-09-25',
-      '2026-09-26',
-      '2026-09-27',
-      '2026-09-28',
-      '2026-09-29',
-      '2026-09-30',
-      '2026-10-01',
-    ]);
-  });
-
-  it('agrega el día actual si cae después de la semana, para poder marcarlo', () => {
-    const dias = opcionesCambioFecha('2026-09-25', '2026-10-10');
-    assert.equal(dias.length, 8);
-    assert.equal(dias.at(-1), '2026-10-10');
-  });
-
-  it('nunca ofrece un día pasado, aunque la carga esté en uno', () => {
-    const dias = opcionesCambioFecha('2026-09-25', '2026-09-24');
-    assert.equal(dias[0], '2026-09-25');
-    assert.ok(!dias.includes('2026-09-24'));
-  });
-});
-
 describe('textoConfirmarCambioFecha', () => {
   it('dice el día nuevo y cuántos productos se conservan', () => {
     assert.deepEqual(textoConfirmarCambioFecha('2026-09-27', 30), {
@@ -187,5 +144,43 @@ describe('textoCambioFecha', () => {
 
   it('sin nombre, no inventa uno', () => {
     assert.equal(textoCambioFecha('2026-09-26', '2026-09-27', null), 'Fecha cambiada del 26 al 27 de septiembre');
+  });
+});
+
+describe('normalizarFechasDisponibles', () => {
+  it('conserva la etiqueta del servidor y ordena por día', () => {
+    assert.deepEqual(
+      normalizarFechasDisponibles([
+        { fecha: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
+        { fecha: '2026-09-26', etiqueta: 'Hoy, sábado 26 de septiembre', esHoy: true },
+      ]),
+      [
+        { dia: '2026-09-26', etiqueta: 'Hoy, sábado 26 de septiembre', esHoy: true },
+        { dia: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
+      ],
+    );
+  });
+
+  it('descarta días inválidos y repetidos', () => {
+    const fechas = normalizarFechasDisponibles([
+      { fecha: '28/09/2026', etiqueta: 'x', esHoy: false },
+      { fecha: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
+      { fecha: '2026-09-28', etiqueta: 'otra', esHoy: false },
+      { fecha: null, etiqueta: 'x', esHoy: true },
+    ]);
+    assert.deepEqual(
+      fechas.map((f) => f.dia),
+      ['2026-09-28'],
+    );
+  });
+
+  it('sin etiqueta nombra el día sin relativos (nunca inventa "mañana")', () => {
+    const [fecha] = normalizarFechasDisponibles([{ fecha: '2026-09-28' }]);
+    assert.equal(fecha.etiqueta, 'Lunes 28 de septiembre');
+    assert.equal(fecha.esHoy, false);
+  });
+
+  it('sin respuesta: lista vacía', () => {
+    assert.deepEqual(normalizarFechasDisponibles(null), []);
   });
 });

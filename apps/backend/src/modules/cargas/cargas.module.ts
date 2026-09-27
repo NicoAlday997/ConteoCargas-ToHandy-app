@@ -15,17 +15,21 @@ import { CapturarCantidadFinalUseCase } from './application/capturar-cantidad-fi
 import { CargaRepository } from './application/carga.repository';
 import { ConfirmarCantidadFinalUseCase } from './application/confirmar-cantidad-final.use-case';
 import { ConsultasCargaRepository } from './application/consultas-carga.repository';
+import { DiaNoLaborableRepository } from './application/dia-no-laborable.repository';
 import { DesbloquearCargaUseCase } from './application/desbloquear-carga.use-case';
 import { EnviarCargaUseCase } from './application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from './application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from './application/guardar-items.use-case';
 import { IniciarCargaUseCase } from './application/iniciar-carga.use-case';
 import { ListarDiasRecargablesUseCase } from './application/listar-dias-recargables.use-case';
+import { ListarFechasOperativasDisponiblesUseCase } from './application/listar-fechas-operativas-disponibles.use-case';
 import { ListarItemsDeSesionUseCase } from './application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from './application/listar-pendientes-verificacion.use-case';
 import { ListarProductosDePlantillaUseCase } from './application/listar-productos-de-plantilla.use-case';
+import { MarcarDiaNoLaborableUseCase } from './application/marcar-dia-no-laborable.use-case';
 import { ModificarCantidadSupervisorUseCase } from './application/modificar-cantidad-supervisor.use-case';
 import { ProductoConteoRepository } from './application/producto-conteo.repository';
+import { QuitarDiaNoLaborableUseCase } from './application/quitar-dia-no-laborable.use-case';
 import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
 import { VerificadorPin } from './application/verificador-pin.port';
 import { VerificarCortePendienteUseCase } from './application/verificar-corte-pendiente.use-case';
@@ -33,8 +37,10 @@ import { LoginVerificadorPinAdapter } from './infrastructure/login-verificador-p
 import { PrismaAsignacionRepository } from './infrastructure/prisma-asignacion.repository';
 import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository';
 import { PrismaConsultasCargaRepository } from './infrastructure/prisma-consultas-carga.repository';
+import { PrismaDiaNoLaborableRepository } from './infrastructure/prisma-dia-no-laborable.repository';
 import { PrismaProductoConteoRepository } from './infrastructure/prisma-producto-conteo.repository';
 import { CargasController } from './interface/cargas.controller';
+import { DiasNoLaborablesController } from './interface/dias-no-laborables.controller';
 
 @Module({
   imports: [
@@ -48,12 +54,16 @@ import { CargasController } from './interface/cargas.controller';
     // PIN con la misma politica de intentos y bloqueo que el login.
     AuthModule,
   ],
-  controllers: [CargasController],
+  controllers: [CargasController, DiasNoLaborablesController],
   providers: [
     // Binding de puertos a adaptadores de infraestructura. El dominio y la
     // aplicacion solo conocen los puertos abstractos.
     { provide: CargaRepository, useClass: PrismaCargaRepository },
     { provide: AsignacionRepository, useClass: PrismaAsignacionRepository },
+    {
+      provide: DiaNoLaborableRepository,
+      useClass: PrismaDiaNoLaborableRepository,
+    },
     {
       provide: ConsultasCargaRepository,
       useClass: PrismaConsultasCargaRepository,
@@ -76,8 +86,33 @@ import { CargasController } from './interface/cargas.controller';
         cargas: CargaRepository,
         asignaciones: AsignacionRepository,
         handy: HandyGateway,
-      ) => new IniciarCargaUseCase(cargas, asignaciones, handy),
-      inject: [CargaRepository, AsignacionRepository, HandyGateway],
+        diasNoLaborables: DiaNoLaborableRepository,
+      ) =>
+        new IniciarCargaUseCase(cargas, asignaciones, handy, diasNoLaborables),
+      inject: [
+        CargaRepository,
+        AsignacionRepository,
+        HandyGateway,
+        DiaNoLaborableRepository,
+      ],
+    },
+    {
+      provide: ListarFechasOperativasDisponiblesUseCase,
+      useFactory: (diasNoLaborables: DiaNoLaborableRepository) =>
+        new ListarFechasOperativasDisponiblesUseCase(diasNoLaborables),
+      inject: [DiaNoLaborableRepository],
+    },
+    {
+      provide: MarcarDiaNoLaborableUseCase,
+      useFactory: (diasNoLaborables: DiaNoLaborableRepository) =>
+        new MarcarDiaNoLaborableUseCase(diasNoLaborables),
+      inject: [DiaNoLaborableRepository],
+    },
+    {
+      provide: QuitarDiaNoLaborableUseCase,
+      useFactory: (diasNoLaborables: DiaNoLaborableRepository) =>
+        new QuitarDiaNoLaborableUseCase(diasNoLaborables),
+      inject: [DiaNoLaborableRepository],
     },
     {
       provide: AbrirSesionUseCase,
@@ -182,9 +217,12 @@ import { CargasController } from './interface/cargas.controller';
     },
     {
       provide: CambiarFechaOperativaUseCase,
-      useFactory: (cargas: CargaRepository, handy: HandyGateway) =>
-        new CambiarFechaOperativaUseCase(cargas, handy),
-      inject: [CargaRepository, HandyGateway],
+      useFactory: (
+        cargas: CargaRepository,
+        handy: HandyGateway,
+        diasNoLaborables: DiaNoLaborableRepository,
+      ) => new CambiarFechaOperativaUseCase(cargas, handy, diasNoLaborables),
+      inject: [CargaRepository, HandyGateway, DiaNoLaborableRepository],
     },
     {
       provide: CancelarRutaHandyUseCase,

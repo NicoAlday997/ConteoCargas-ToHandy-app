@@ -1,8 +1,12 @@
 /**
  * Fecha operativa: el DÍA para el que sale el camión, no cuándo se contó. Lo
- * normal es contar por la tarde para salir mañana; si el camión se descompuso,
- * se cuenta en la mañana para salir hoy. Lo decide quien cuenta: la app solo
- * propone, con la misma regla que el backend (`domain/fecha-operativa`).
+ * normal es contar por la tarde para la siguiente salida; si el camión se
+ * descompuso, se cuenta en la mañana para salir hoy.
+ *
+ * Qué días se pueden elegir NO se calcula aquí: depende del calendario laboral
+ * (lunes a sábado, menos festivos y cierres que marca el supervisor), y lo
+ * responde el servidor con su etiqueta (`GET fechas-operativas-disponibles`).
+ * Este módulo solo lee y nombra días.
  *
  * Los días viajan como texto `aaaa-mm-dd` (así los pide `POST /eventos-carga`)
  * y se calculan en la hora del negocio, no en la del teléfono. Sin Intl: Hermes
@@ -65,23 +69,6 @@ export function sumarDias(dia: string, dias: number): string {
   const fecha = desdeTexto(dia);
   if (!fecha) throw new TypeError(`sumarDias: se esperaba aaaa-mm-dd: ${dia}`);
   return aTexto(new Date(fecha.getTime() + dias * MS_POR_DIA));
-}
-
-export interface OpcionesFechaOperativa {
-  hoy: string;
-  manana: string;
-  /** Siempre mañana: contar para hoy es la excepción (camión descompuesto) y se elige a mano. */
-  propuesta: 'hoy' | 'manana';
-}
-
-/** Las únicas dos fechas que se ofrecen. Nunca un día pasado. */
-export function opcionesFechaOperativa(ahora: Date): OpcionesFechaOperativa {
-  const hoy = diaNegocio(ahora);
-  return {
-    hoy,
-    manana: sumarDias(hoy, 1),
-    propuesta: 'manana',
-  };
 }
 
 /**
@@ -151,21 +138,6 @@ export function deLaSalida(dia: string, hoy: string): string {
   return `del ${texto.slice('Sale el '.length)}`;
 }
 
-/** Cuántos días hacia adelante se ofrecen al mover una carga ya iniciada. */
-const DIAS_CAMBIO_FECHA = 7;
-
-/**
- * Días a los que se puede mover una carga ya iniciada: de hoy a una semana, en
- * orden. Nunca un día pasado (el servidor lo rechaza). El día actual de la
- * carga siempre aparece para que el selector abra marcándolo, aunque caiga
- * fuera de la semana.
- */
-export function opcionesCambioFecha(hoy: string, diaActual: string): string[] {
-  const dias = Array.from({ length: DIAS_CAMBIO_FECHA }, (_, i) => sumarDias(hoy, i));
-  if (esDia(diaActual) && diaActual >= hoy && !dias.includes(diaActual)) dias.push(diaActual);
-  return dias.sort();
-}
-
 /** "sábado 27 de septiembre": el día en medio de una frase. */
 function diaEnFrase(dia: string): string {
   const legible = formatearDia(dia);
@@ -209,4 +181,33 @@ export function textoCambioFecha(anterior: string, nueva: string, porNombre: str
         : String(a.getUTCDate());
   const hasta = a.getUTCFullYear() !== n.getUTCFullYear() ? conAnio(n) : conMes(n);
   return `Fecha cambiada del ${desde} al ${hasta}${quien}`;
+}
+
+/** Una fecha que se puede elegir, tal como la manda el servidor. */
+export interface FechaDisponible {
+  /** `aaaa-mm-dd`. */
+  dia: string;
+  /** Armada por el servidor según el calendario: "Hoy, sábado 26…" / "El lunes 28…". */
+  etiqueta: string;
+  esHoy: boolean;
+}
+
+/**
+ * Lee las opciones de `GET fechas-operativas-disponibles`. Descarta lo que no
+ * sea un día válido y los repetidos, y las deja en orden. Sin etiqueta se
+ * nombra el día sin relativo ("Lunes 28 de septiembre"): nunca se inventa un
+ * "mañana".
+ */
+export function normalizarFechasDisponibles(
+  opciones: readonly { fecha?: unknown; etiqueta?: unknown; esHoy?: unknown }[] | null | undefined,
+): FechaDisponible[] {
+  const vistas = new Set<string>();
+  const fechas: FechaDisponible[] = [];
+  for (const opcion of opciones ?? []) {
+    if (!esDia(opcion.fecha) || vistas.has(opcion.fecha)) continue;
+    vistas.add(opcion.fecha);
+    const etiqueta = typeof opcion.etiqueta === 'string' && opcion.etiqueta.trim() ? opcion.etiqueta.trim() : null;
+    fechas.push({ dia: opcion.fecha, etiqueta: etiqueta ?? formatearDia(opcion.fecha), esHoy: opcion.esHoy === true });
+  }
+  return fechas.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0));
 }

@@ -1,17 +1,20 @@
 import type { TipoCarga } from '@prisma/client';
 
 import { HandyGateway } from '../../sincronizacion/application/handy.gateway';
+import { esFechaPermitidaPorCalendario } from '../domain/calendario-laboral';
 import {
   esFechaOperativaValida,
   normalizarFechaOperativa,
 } from '../domain/fecha-operativa';
 import type { AsignacionRepository } from './asignacion.repository';
+import { diasNoLaborablesDesde } from './calendario';
 import {
   CargaInicialDuplicadaError,
   type CargaRepository,
   type EventoCarga,
   type SesionConteo,
 } from './carga.repository';
+import type { DiaNoLaborableRepository } from './dia-no-laborable.repository';
 import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
 
 /**
@@ -42,6 +45,14 @@ import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
  * esa inicial (`idHandy`). Si Handy no se puede consultar no se bloquea al
  * vendedor por la caida de un tercero: pasa con la regla local, y el envio
  * dira la ultima palabra.
+ *
+ * La fecha operativa sigue el calendario laboral (`domain/calendario-laboral`):
+ * el vendedor solo carga para hoy (si hoy se trabaja) o para la siguiente
+ * salida, nunca para un domingo, un dia marcado como no laborable ni para
+ * dentro de varios dias. Aplica a INICIAL y RECARGA por igual. Este caso de uso
+ * es siempre del vendedor (crea SU sesion y parte de SU asignacion), por eso
+ * no recibe rol: la regla del supervisor solo existe al mover una carga
+ * (`CambiarFechaOperativaUseCase`).
  *
  * La liquidacion de la ruta anterior en Handy NO se revisa aqui: el conteo del
  * vendedor es trabajo fisico que no compromete nada, y a veces hay que cargar
@@ -74,6 +85,8 @@ export interface EntradaIniciarCarga {
  *   puede contar; el evento no se crea.
  * - `FECHA_OPERATIVA_INVALIDA`: la fecha es un dia pasado. Nunca se registra
  *   una carga para un dia anterior a hoy.
+ * - `FECHA_NO_DISPONIBLE`: no es hoy-habil ni la siguiente salida segun el
+ *   calendario laboral (domingo, dia no laborable o demasiado adelante).
  * - `YA_TIENE_CARGA_ABIERTA`: ya existe una carga INICIAL de la ruta para esa
  *   fecha operativa (en cualquier estado). Trae su `eventoId` para que la app
  *   ofrezca continuarla en vez de crear otra.
@@ -90,6 +103,7 @@ export type ResultadoIniciarCarga =
       motivo:
         | 'SIN_RUTA_ASIGNADA'
         | 'FECHA_OPERATIVA_INVALIDA'
+        | 'FECHA_NO_DISPONIBLE'
         | 'SIN_SALIDA_ENVIADA'
         | 'SIN_RUTA_ABIERTA_EN_HANDY';
     }
@@ -100,6 +114,7 @@ export class IniciarCargaUseCase {
     private readonly cargas: CargaRepository,
     private readonly asignaciones: AsignacionRepository,
     private readonly handy: HandyGateway,
+    private readonly diasNoLaborables: DiaNoLaborableRepository,
   ) {}
 
   async ejecutar(
@@ -111,6 +126,14 @@ export class IniciarCargaUseCase {
       return { exito: false, motivo: 'FECHA_OPERATIVA_INVALIDA' };
     }
     const fechaOperativa = normalizarFechaOperativa(entrada.fechaOperativa);
+
+    // 1b. Y solo hoy (si se trabaja) o la siguiente salida.
+    const noLaborables = await diasNoLaborablesDesde(this.diasNoLaborables, ahora);
+    if (
+      !esFechaPermitidaPorCalendario(fechaOperativa, 'VENDEDOR', ahora, noLaborables)
+    ) {
+      return { exito: false, motivo: 'FECHA_NO_DISPONIBLE' };
+    }
 
     // 2. La asignacion vigente define ruta y plantilla. Sin ella no hay carga.
     const asignacion = await this.asignaciones.buscarAsignacionVigente(

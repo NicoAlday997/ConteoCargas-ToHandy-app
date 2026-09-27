@@ -1,23 +1,24 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
-import { BloqueError, Boton, CampoTexto } from '../componentes/base';
+import { ErrorRed } from '../api/cliente';
+import { useFechasOperativasDisponibles } from '../api/hooks-cargas';
+import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto } from '../componentes/base';
 import { ANCHO_MODAL, BORDES, COLORES, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   deLaSalida,
   diaNegocio,
   diaRelativo,
   formatearDia,
-  opcionesCambioFecha,
-  opcionesFechaOperativa,
   textoConfirmarCambioFecha,
   textoSalida,
+  type FechaDisponible,
 } from './fecha-operativa';
 
 /** Mover de día una carga ya iniciada, en vez de elegir el día de una nueva. */
 export interface CambioFechaSelector {
-  /** `aaaa-mm-dd`: el día que tiene hoy la carga. El selector abre marcándolo. */
+  /** `aaaa-mm-dd`: el día que tiene hoy la carga. Si está entre las opciones, se marca. */
   diaActual: string;
   /** Lo que ya se contó: la confirmación dice que se conserva. */
   productosContados: number;
@@ -38,7 +39,8 @@ interface Props {
   /**
    * Los únicos días que se pueden elegir (`aaaa-mm-dd`, en orden). Solo la
    * recarga los trae: el de su ruta abierta en Handy (`GET dias-recargables`).
-   * Con uno solo no se pregunta el día, se confirma. Sin esto: hoy o mañana.
+   * Con uno solo no se pregunta el día, se confirma. Sin esto, los días salen
+   * del calendario laboral del servidor (`GET fechas-operativas-disponibles`).
    */
   dias?: readonly string[] | null;
   /**
@@ -47,9 +49,10 @@ interface Props {
    */
   sinVerificarConHandy?: boolean;
   /**
-   * Mover una carga ya iniciada: ofrece de hoy a una semana con el día actual
-   * marcado y, al elegir otro, pregunta antes (lo contado se conserva) y solo
-   * entonces llama a `onElegir`, con el motivo si se pidió.
+   * Mover una carga ya iniciada: ofrece los días que da el servidor, con el
+   * actual marcado si está entre ellos, y al elegir otro pregunta antes (lo
+   * contado se conserva) y solo entonces llama a `onElegir`, con el motivo si
+   * se pidió.
    */
   cambio?: CambioFechaSelector | null;
   /** Creando la carga o abriendo la existente: botones bloqueados. */
@@ -66,10 +69,12 @@ const AVISO_SIN_VERIFICAR_CON_HANDY =
   'No pude confirmar con Handy que tu ruta siga abierta. Puedes contar, pero si la ruta ya se cerró la recarga no se va a poder enviar.';
 
 /**
- * Para qué día sale el camión. Lo normal es contar por la tarde para mañana;
- * si el camión se descompuso, se cuenta en la mañana para hoy. No se adivina:
- * las dos opciones tienen el mismo tamaño y lugar, y la propuesta (siempre
- * mañana) solo se marca. Nunca se ofrece un día pasado.
+ * Para qué día sale el camión. La app NO genera fechas: las pide al servidor,
+ * que conoce el calendario laboral (lunes a sábado, menos festivos y cierres),
+ * y muestra solo esas con la etiqueta que vino. Al vendedor le llegan una o
+ * dos: hoy (si se trabaja; el camión se descompuso) y la siguiente salida, que
+ * es la sugerida. Mientras llegan, esqueleto; sin red, error con reintentar,
+ * nunca fechas adivinadas.
  *
  * La recarga no elige libremente: se suma a una salida que ya está en Handy,
  * así que solo ofrece esos días (`dias`), sin propuesta.
@@ -83,7 +88,7 @@ export function SelectorFechaOperativa(props: Props) {
       animationType="none"
       onRequestClose={ocupado ? () => undefined : onCerrar}
     >
-      {/* Montado solo abierto: cada vez que se abre, "hoy" se vuelve a calcular. */}
+      {/* Montado solo abierto: cada vez que se abre se vuelven a pedir las fechas. */}
       {props.tipo !== null &&
         (props.cambio ? (
           <ContenidoCambio {...props} cambio={props.cambio} />
@@ -92,6 +97,68 @@ export function SelectorFechaOperativa(props: Props) {
         ))}
     </Modal>
   );
+}
+
+/**
+ * Las fechas del servidor. Cuando el servidor rechaza una (pasó la medianoche
+ * con el selector abierto, o un supervisor marcó el día como no laborable) se
+ * vuelven a pedir: lo que se ve siempre es lo vigente.
+ */
+function useFechasDelServidor(habilitada: boolean, error: string | null) {
+  const fechas = useFechasOperativasDisponibles(habilitada);
+  const { refetch } = fechas;
+  useEffect(() => {
+    if (habilitada && error) void refetch();
+  }, [habilitada, error, refetch]);
+  return fechas;
+}
+
+type ConsultaFechas = ReturnType<typeof useFechasOperativasDisponibles>;
+
+/**
+ * Esqueleto mientras llegan, error con reintentar si fallan, o las tarjetas.
+ * Nunca un calendario ni fechas calculadas en el teléfono.
+ */
+function OpcionesDelServidor({
+  fechas,
+  render,
+}: {
+  fechas: ConsultaFechas;
+  render: (opciones: FechaDisponible[]) => ReactNode;
+}) {
+  if (fechas.isPending) {
+    return (
+      <Esqueleto etiqueta="Buscando los días disponibles" style={estilos.esqueleto}>
+        <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
+        <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
+      </Esqueleto>
+    );
+  }
+  if (fechas.isError) {
+    const sinRed = fechas.error instanceof ErrorRed;
+    return (
+      <BloqueError
+        titulo={sinRed ? 'Sin conexión' : 'No se pudieron consultar los días'}
+        detalle={
+          sinRed
+            ? 'Los días en que se puede cargar los da el servidor. Revisa tu señal y reintenta.'
+            : (fechas.error instanceof Error && fechas.error.message) || 'Intenta de nuevo en un momento.'
+        }
+        tono={sinRed ? 'atencion' : 'error'}
+        onReintentar={() => void fechas.refetch()}
+        reintentando={fechas.isFetching}
+      />
+    );
+  }
+  if (fechas.data.length === 0) {
+    return (
+      <BloqueError
+        titulo="No hay días disponibles"
+        detalle="El calendario no tiene días hábiles próximos. Pide a un supervisor que revise los días no laborables."
+      />
+    );
+  }
+  return <>{render(fechas.data)}</>;
 }
 
 function Contenido({
@@ -108,14 +175,14 @@ function Contenido({
 }: Props & { tipo: TipoCarga }) {
   const [ahora, setAhora] = useState(() => new Date());
   const [aviso, setAviso] = useState<string | null>(null);
+  const fechas = useFechasDelServidor(!dias && !conflicto, error);
 
-  const opciones = opcionesFechaOperativa(ahora);
-  const hoy = opciones.hoy;
+  const hoy = diaNegocio(ahora);
   // Si pasa la medianoche con el modal abierto, la salida de ayer ya no se recarga.
   const diasFijos = dias ? dias.filter((d) => d >= hoy) : null;
 
-  const elegir = (dia: string) => {
-    // Si pasó la medianoche con el selector abierto, "hoy" ya es ayer.
+  /** Solo para los días de la recarga, que vienen de otra consulta. */
+  const elegirFijo = (dia: string) => {
     if (dia < diaNegocio(new Date())) {
       setAhora(new Date());
       setAviso(AVISO_CAMBIO_DE_DIA);
@@ -181,7 +248,7 @@ function Contenido({
               texto={tipo === 'RECARGA' ? 'Iniciar recarga' : 'Iniciar carga'}
               cargando={ocupado}
               textoCargando="Iniciando…"
-              onPress={() => elegir(diasFijos[0])}
+              onPress={() => elegirFijo(diasFijos[0])}
             />
             <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           </>
@@ -198,10 +265,10 @@ function Contenido({
                 <OpcionDia
                   key={dia}
                   titulo={relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale'}
-                  dia={dia}
+                  subtitulo={formatearDia(dia)}
                   marca={null}
                   deshabilitado={ocupado}
-                  onPress={() => elegir(dia)}
+                  onPress={() => elegirFijo(dia)}
                 />
               );
             })}
@@ -221,28 +288,23 @@ function Contenido({
               ¿Para qué día es esta {tipo === 'RECARGA' ? 'recarga' : 'carga'}?
             </Text>
             <Text style={estilos.detalle}>{ETIQUETAS_TIPO_CARGA[tipo]}: elige el día en que sale el camión.</Text>
-            <OpcionDia
-              titulo="Sale hoy"
-              dia={opciones.hoy}
-              marca={opciones.propuesta === 'hoy' ? 'Sugerida' : null}
-              deshabilitado={ocupado}
-              onPress={() => elegir(opciones.hoy)}
-            />
-            <OpcionDia
-              titulo="Sale mañana"
-              dia={opciones.manana}
-              marca={opciones.propuesta === 'manana' ? 'Sugerida' : null}
-              deshabilitado={ocupado}
-              onPress={() => elegir(opciones.manana)}
+            <OpcionesDelServidor
+              fechas={fechas}
+              render={(opciones) =>
+                opciones.map((opcion) => (
+                  <OpcionDia
+                    key={opcion.dia}
+                    titulo={opcion.etiqueta}
+                    // Lo normal es la siguiente salida; hoy es la excepción (camión descompuesto).
+                    marca={opciones.length > 1 && !opcion.esHoy ? 'Sugerida' : null}
+                    deshabilitado={ocupado || fechas.isFetching}
+                    onPress={() => onElegir(opcion.dia)}
+                  />
+                ))
+              }
             />
             {ocupado && <ActivityIndicator color={COLORES.texto} />}
-            {mensaje && (
-              <BloqueError
-                titulo={aviso ? 'Cambió el día' : 'No se pudo iniciar la carga'}
-                detalle={mensaje}
-                tono={tonoMensaje}
-              />
-            )}
+            {mensaje && <BloqueError titulo="No se pudo iniciar la carga" detalle={mensaje} tono={tonoMensaje} />}
             <Boton texto="Cancelar" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
           </>
         )}
@@ -253,8 +315,9 @@ function Contenido({
 
 /**
  * Mover de día una carga ya iniciada. Dos pasos en el mismo modal (apilar dos
- * modales falla en iOS): elegir el día, con el actual marcado y a la vista, y
- * confirmar diciendo exactamente qué pasa con lo contado.
+ * modales falla en iOS): elegir el día entre los que da el servidor, con el
+ * actual marcado si está entre ellos, y confirmar diciendo exactamente qué
+ * pasa con lo contado.
  */
 function ContenidoCambio({
   cambio,
@@ -263,15 +326,13 @@ function ContenidoCambio({
   onElegir,
   onCerrar,
 }: Props & { cambio: CambioFechaSelector }) {
-  const [ahora, setAhora] = useState(() => new Date());
-  const [aviso, setAviso] = useState<string | null>(null);
   const [elegido, setElegido] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
   const [intento, setIntento] = useState(false);
   const lista = useRef<ScrollView>(null);
+  const fechas = useFechasDelServidor(true, error);
 
-  const hoy = diaNegocio(ahora);
-  const dias = opcionesCambioFecha(hoy, cambio.diaActual);
+  const hoy = diaNegocio(new Date());
   const { motivoMinimo } = cambio;
   const motivoValido = motivoMinimo === null || motivo.trim().length >= motivoMinimo;
 
@@ -280,14 +341,6 @@ function ContenidoCambio({
       onCerrar();
       return;
     }
-    // Si pasó la medianoche con el selector abierto, "hoy" ya es ayer.
-    if (dia < diaNegocio(new Date())) {
-      setAhora(new Date());
-      setElegido(null);
-      setAviso(AVISO_CAMBIO_DE_DIA);
-      return;
-    }
-    setAviso(null);
     setElegido(dia);
   };
 
@@ -295,10 +348,6 @@ function ContenidoCambio({
     if (elegido === null) return;
     setIntento(true);
     if (!motivoValido) return;
-    if (elegido < diaNegocio(new Date())) {
-      elegir(elegido);
-      return;
-    }
     onElegir(elegido, motivoMinimo === null ? undefined : motivo.trim());
   };
 
@@ -325,7 +374,16 @@ function ContenidoCambio({
           )}
           {error && <BloqueError titulo="No se pudo cambiar la fecha" detalle={error} />}
           <Boton texto="Sí, cambiar la fecha" cargando={ocupado} textoCargando="Cambiando…" onPress={confirmar} />
-          <Boton texto="No, dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
+          {error ? (
+            <Boton
+              texto="Elegir otro día"
+              variante="secundario"
+              deshabilitado={ocupado}
+              onPress={() => setElegido(null)}
+            />
+          ) : (
+            <Boton texto="No, dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
+          )}
         </View>
       </View>
     );
@@ -338,25 +396,27 @@ function ContenidoCambio({
           ¿Para qué día sale el camión?
         </Text>
         <Text style={estilos.detalle}>Ahora: {textoSalida(cambio.diaActual, hoy).toLowerCase()}.</Text>
-        {aviso && <BloqueError titulo="Cambió el día" detalle={aviso} tono="atencion" />}
-        <ScrollView ref={lista} style={estilos.listaDias} contentContainerStyle={estilos.contenidoDias}>
-          {dias.map((dia) => {
-            const relativo = diaRelativo(dia, hoy);
-            const actual = dia === cambio.diaActual;
-            return (
-              <OpcionDia
-                key={dia}
-                titulo={relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale'}
-                dia={dia}
-                marca={actual ? 'Actual' : null}
-                deshabilitado={ocupado}
-                onPress={() => elegir(dia)}
-                // Abre con el día actual a la vista, aunque esté al fondo de la lista.
-                onLayout={actual ? (y) => lista.current?.scrollTo({ y, animated: false }) : undefined}
-              />
-            );
-          })}
-        </ScrollView>
+        <OpcionesDelServidor
+          fechas={fechas}
+          render={(opciones) => (
+            <ScrollView ref={lista} style={estilos.listaDias} contentContainerStyle={estilos.contenidoDias}>
+              {opciones.map((opcion) => {
+                const actual = opcion.dia === cambio.diaActual;
+                return (
+                  <OpcionDia
+                    key={opcion.dia}
+                    titulo={opcion.etiqueta}
+                    marca={actual ? 'Actual' : null}
+                    deshabilitado={ocupado || fechas.isFetching}
+                    onPress={() => elegir(opcion.dia)}
+                    // Abre con el día actual a la vista, aunque esté al fondo de la lista.
+                    onLayout={actual ? (y) => lista.current?.scrollTo({ y, animated: false }) : undefined}
+                  />
+                );
+              })}
+            </ScrollView>
+          )}
+        />
         <Boton texto="Dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
       </View>
     </View>
@@ -365,17 +425,17 @@ function ContenidoCambio({
 
 interface PropsOpcionDia {
   titulo: string;
-  dia: string;
-  /** "Sugerida" (la propuesta) o "Actual" (el día que ya tiene la carga): va rellena y con esa etiqueta. */
+  /** Segundo renglón (el día completo) cuando el título no lo dice. */
+  subtitulo?: string | null;
+  /** "Sugerida" (la siguiente salida) o "Actual" (el día que ya tiene la carga): va rellena y con esa etiqueta. */
   marca: string | null;
   deshabilitado: boolean;
   onPress: () => void;
   onLayout?: (y: number) => void;
 }
 
-/** Mismo tamaño para todas: la marcada se distingue por el relleno y la etiqueta, no por ser más fácil de tocar. */
-function OpcionDia({ titulo, dia, marca, deshabilitado, onPress, onLayout }: PropsOpcionDia) {
-  const legible = formatearDia(dia);
+/** Tarjeta grande, todas del mismo tamaño: la marcada se distingue por el relleno y la etiqueta, no por ser más fácil de tocar. */
+function OpcionDia({ titulo, subtitulo, marca, deshabilitado, onPress, onLayout }: PropsOpcionDia) {
   const propuesta = marca !== null;
   return (
     <Pressable
@@ -383,7 +443,7 @@ function OpcionDia({ titulo, dia, marca, deshabilitado, onPress, onLayout }: Pro
       disabled={deshabilitado}
       onLayout={onLayout ? (e) => onLayout(e.nativeEvent.layout.y) : undefined}
       accessibilityRole="button"
-      accessibilityLabel={`${titulo}, ${legible}${marca ? `. ${marca}` : ''}`}
+      accessibilityLabel={`${titulo}${subtitulo ? `, ${subtitulo}` : ''}${marca ? `. ${marca}` : ''}`}
       accessibilityState={{ disabled: deshabilitado }}
       style={({ pressed }) => [
         estilos.opcion,
@@ -404,7 +464,7 @@ function OpcionDia({ titulo, dia, marca, deshabilitado, onPress, onLayout }: Pro
                 </View>
               )}
             </View>
-            <Text style={[estilos.diaOpcion, invertido && estilos.textoInvertido]}>{legible}</Text>
+            {subtitulo && <Text style={[estilos.diaOpcion, invertido && estilos.textoInvertido]}>{subtitulo}</Text>}
           </>
         );
       }}
@@ -462,6 +522,7 @@ const estilos = StyleSheet.create({
   },
   tituloOpcion: {
     ...TIPOGRAFIA.titulo,
+    flexShrink: 1,
     color: COLORES.texto,
   },
   diaOpcion: {
@@ -492,6 +553,9 @@ const estilos = StyleSheet.create({
     flexGrow: 0,
   },
   contenidoDias: {
+    gap: RITMO.relacionado,
+  },
+  esqueleto: {
     gap: RITMO.relacionado,
   },
 });

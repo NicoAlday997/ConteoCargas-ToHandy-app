@@ -134,11 +134,20 @@ Construir una aplicación propia que:
    - **Vendedor:** solo su propia carga y solo mientras él cuenta (`BORRADOR`); motivo opcional. Si pudiera mover la fecha después de que el contador contó, tendría una escapatoria cuando el conteo no le cuadra (lo muevo, empiezo otra y ahora sí coincidimos): es la misma razón por la que solo puede cancelar en `BORRADOR`.
    - **Supervisor:** cualquier carga salvo `ENVIADA` (la ruta ya existe en Handy con esa fecha), `CANCELADA` y `ENVIO_INCIERTO`; motivo obligatorio (mínimo 5 caracteres), porque mueve trabajo de otros.
    - **Contador:** nunca.
+9. **Calendario laboral.** El negocio trabaja de **lunes a sábado**; el domingo no se trabaja. Además hay días sueltos que no se trabajan (festivos, paros, clima) y periodos completos (Navidad y Año Nuevo, a veces una semana), que un supervisor marca como **días no laborables**. El domingo **no** se marca: ya está fuera de la semana laboral (`DIAS_HABILES_SEMANA` en `domain/calendario-laboral`); la lista de días no laborables es solo para los días sueltos y los cierres. Un día es **hábil** si es de lunes a sábado y no está marcado.
+   - **Vendedor:** al iniciar una carga (inicial o recarga) o al moverla de día, la fecha operativa solo puede ser **hoy, si hoy es hábil** (el camión se descompuso y se carga hoy para salir hoy), o **el siguiente día hábil** (lo normal: se cuenta por la tarde para la siguiente salida). A lo mucho dos opciones. Ejemplos: sábado → sábado o lunes; domingo → solo lunes; viernes → viernes o sábado; 24 de diciembre con el 25 de diciembre al 1 de enero marcados → 24 de diciembre o 2 de enero. Nunca un domingo, un día marcado, ni una carga para dentro de varios días.
+   - **Supervisor:** al mover una carga puede elegir **cualquier día hábil de hoy en adelante** (lo necesita para recorrer cargas cuando no se trabajó un día), pero nunca un día no hábil.
+   - Estas reglas se **suman** a la de nunca un día pasado; no la reemplazan.
+   - La app **no calcula** qué días ofrecer: se los pide al servidor, que conoce el calendario, junto con la etiqueta del día ("Hoy, sábado 26 de septiembre" / "El lunes 28 de septiembre"). Nunca dice "mañana" si la siguiente salida no es mañana (el sábado, la siguiente salida es el lunes). Sin respuesta del servidor no se ofrecen fechas adivinadas.
+   - Si los días marcados no dejan ningún día hábil en los siguientes 30 días, es un error de configuración: el servidor lo dice explícitamente en vez de inventar una fecha.
+   - Solo un supervisor marca o quita días no laborables, y solo de hoy en adelante (los pasados se quedan como registro de por qué no hubo salida).
 
 ## 7. Glosario
 
 - **Carga inicial:** inventario con el que un vendedor sale a vender al inicio de su jornada.
 - **Recarga:** inventario adicional asignado a una ruta durante el día, tras la carga inicial.
+- **Día hábil:** lunes a sábado que no está marcado como día no laborable. Solo en días hábiles sale un camión.
+- **Día no laborable:** día suelto o parte de un periodo (festivo, paro, clima, cierre) que un supervisor marca para que ninguna carga salga ese día. El domingo no se marca: nunca es hábil.
 - **Corte de venta:** cierre de la ruta en Handy, donde se liquida el inventario y dinero de la jornada.
 - **Colusión:** acuerdo entre dos partes (en este caso, vendedor y contador) para reportar información falsa de común acuerdo.
 - **`usuario_handy_id`:** identificador del usuario vendedor dentro de la plataforma Handy, requerido para asignar cargas vía API.

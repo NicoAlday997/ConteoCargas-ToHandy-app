@@ -39,6 +39,7 @@ import { EnviarCargaUseCase } from '../application/enviar-carga.use-case';
 import { FinalizarSesionUseCase } from '../application/finalizar-sesion.use-case';
 import { GuardarItemsUseCase } from '../application/guardar-items.use-case';
 import { IniciarCargaUseCase } from '../application/iniciar-carga.use-case';
+import { ListarFechasOperativasDisponiblesUseCase } from '../application/listar-fechas-operativas-disponibles.use-case';
 import { ListarDiasRecargablesUseCase } from '../application/listar-dias-recargables.use-case';
 import { ListarItemsDeSesionUseCase } from '../application/listar-items-de-sesion.use-case';
 import { ListarPendientesVerificacionUseCase } from '../application/listar-pendientes-verificacion.use-case';
@@ -46,6 +47,7 @@ import { ListarProductosDePlantillaUseCase } from '../application/listar-product
 import { ModificarCantidadSupervisorUseCase } from '../application/modificar-cantidad-supervisor.use-case';
 import { RechazarProductosUseCase } from '../application/rechazar-productos.use-case';
 import { VerificarCortePendienteUseCase } from '../application/verificar-corte-pendiente.use-case';
+import { SinDiasHabilesError } from '../domain/calendario-laboral';
 import {
   CambiarFechaOperativaSchema,
   CancelarCargaSchema,
@@ -67,6 +69,30 @@ import {
   type ModificarCantidadDto,
   type RechazarProductosDto,
 } from './cargas.dto';
+
+const MENSAJE_FECHA_NO_DISPONIBLE_VENDEDOR =
+  'Solo puedes cargar para hoy o para la siguiente salida.';
+
+/**
+ * Corre algo que consulta el calendario laboral. Si los dias no laborables no
+ * dejan ningun dia habil en el tope de busqueda es un error de configuracion:
+ * se responde 409 con un mensaje que diga que hacer, en vez de un 500 mudo.
+ */
+async function conCalendario<T>(accion: () => Promise<T>): Promise<T> {
+  try {
+    return await accion();
+  } catch (error) {
+    if (error instanceof SinDiasHabilesError) {
+      throw new ConflictException({
+        statusCode: 409,
+        codigo: 'SIN_DIAS_HABILES',
+        mensaje:
+          'No hay ningún día hábil en el próximo mes. Pide a un supervisor que revise los días no laborables.',
+      });
+    }
+    throw error;
+  }
+}
 
 /**
  * Capa HTTP del modulo de cargas (docs/04-api-interna.md §1.4; RF-12 .. RF-16).
@@ -109,6 +135,7 @@ export class CargasController {
     private readonly cancelarRutaHandyUseCase: CancelarRutaHandyUseCase,
     private readonly listarDiasRecargablesUseCase: ListarDiasRecargablesUseCase,
     private readonly cambiarFechaOperativaUseCase: CambiarFechaOperativaUseCase,
+    private readonly listarFechasOperativasDisponiblesUseCase: ListarFechasOperativasDisponiblesUseCase,
   ) {}
 
   /**
@@ -132,14 +159,18 @@ export class CargasController {
       });
     }
 
-    const resultado = await this.iniciarCargaUseCase.ejecutar(
-      {
-        usuarioAppId: usuario.usuarioAppId,
-        tipo: dto.tipo,
-        usuarioHandyId: usuario.usuarioHandyId,
-        fechaOperativa: dto.fechaOperativa,
-      },
-      new Date(),
+    // Constante: el `!== null` de arriba no se conserva dentro de la clausura.
+    const usuarioHandyId = usuario.usuarioHandyId;
+    const resultado = await conCalendario(() =>
+      this.iniciarCargaUseCase.ejecutar(
+        {
+          usuarioAppId: usuario.usuarioAppId,
+          tipo: dto.tipo,
+          usuarioHandyId,
+          fechaOperativa: dto.fechaOperativa,
+        },
+        new Date(),
+      ),
     );
 
     if (!resultado.exito) {
@@ -156,6 +187,12 @@ export class CargasController {
             codigo: 'FECHA_OPERATIVA_INVALIDA',
             mensaje:
               'No se puede registrar una carga para un dia pasado. Elige hoy o una fecha posterior.',
+          });
+        case 'FECHA_NO_DISPONIBLE':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'FECHA_NO_DISPONIBLE',
+            mensaje: MENSAJE_FECHA_NO_DISPONIBLE_VENDEDOR,
           });
         case 'YA_TIENE_CARGA_ABIERTA':
           // `eventoId` permite a la app ofrecer continuar la carga existente.
@@ -184,6 +221,34 @@ export class CargasController {
     }
 
     return { evento: resultado.evento, sesion: resultado.sesion };
+  }
+
+  /**
+   * Las fechas operativas que se pueden elegir, con la etiqueta ya armada
+   * ("Hoy, sábado 26 de septiembre" / "El lunes 28 de septiembre"): depende
+   * del calendario laboral, asi que la arma el servidor y la app no genera
+   * fechas por su cuenta. VENDEDOR: hoy (si se trabaja) y la siguiente salida.
+   * SUPERVISOR: los dias habiles de hoy en adelante, para mover cargas.
+   * Declarado antes de `GET :id`.
+   */
+  @Get('fechas-operativas-disponibles')
+  @Roles(RolApp.VENDEDOR, RolApp.SUPERVISOR)
+  async fechasOperativasDisponibles(
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    const opciones = await conCalendario(() =>
+      this.listarFechasOperativasDisponiblesUseCase.ejecutar(
+        usuario.rolApp === RolApp.SUPERVISOR ? 'SUPERVISOR' : 'VENDEDOR',
+        new Date(),
+      ),
+    );
+    return {
+      opciones: opciones.map((o) => ({
+        fecha: o.dia,
+        etiqueta: o.etiqueta,
+        esHoy: o.esHoy,
+      })),
+    };
   }
 
   /**
@@ -874,16 +939,18 @@ export class CargasController {
     @Body(new ZodValidationPipe(CambiarFechaOperativaSchema))
     dto: CambiarFechaOperativaDto,
   ) {
-    const resultado = await this.cambiarFechaOperativaUseCase.ejecutar(
-      {
-        eventoId,
-        usuarioAppId: usuario.usuarioAppId,
-        rolApp: usuario.rolApp,
-        usuarioHandyId: usuario.usuarioHandyId,
-        fechaOperativa: dto.fechaOperativa,
-        motivo: dto.motivo,
-      },
-      new Date(),
+    const resultado = await conCalendario(() =>
+      this.cambiarFechaOperativaUseCase.ejecutar(
+        {
+          eventoId,
+          usuarioAppId: usuario.usuarioAppId,
+          rolApp: usuario.rolApp,
+          usuarioHandyId: usuario.usuarioHandyId,
+          fechaOperativa: dto.fechaOperativa,
+          motivo: dto.motivo,
+        },
+        new Date(),
+      ),
     );
 
     if (!resultado.exito) {
@@ -913,6 +980,15 @@ export class CargasController {
             codigo: 'FECHA_OPERATIVA_INVALIDA',
             mensaje:
               'No se puede mover una carga a un dia pasado. Elige hoy o una fecha posterior.',
+          });
+        case 'FECHA_NO_DISPONIBLE':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'FECHA_NO_DISPONIBLE',
+            mensaje:
+              usuario.rolApp === RolApp.VENDEDOR
+                ? MENSAJE_FECHA_NO_DISPONIBLE_VENDEDOR
+                : 'Ese día no se trabaja.',
           });
         case 'MISMA_FECHA':
           throw new BadRequestException({

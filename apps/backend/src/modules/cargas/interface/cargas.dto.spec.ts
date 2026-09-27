@@ -3,6 +3,8 @@ import {
   CancelarCargaSchema,
   GuardarItemsSchema,
   IniciarCargaSchema,
+  ListarDiasNoLaborablesQuerySchema,
+  MarcarDiaNoLaborableSchema,
 } from './cargas.dto';
 
 /**
@@ -185,6 +187,49 @@ describe('CambiarFechaOperativaSchema', () => {
       CambiarFechaOperativaSchema.safeParse({
         fechaOperativa: '2026-09-27',
         motivo: 'x'.repeat(501),
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('MarcarDiaNoLaborableSchema', () => {
+  it('convierte la fecha al inicio del dia en Mexico y recorta el motivo', () => {
+    const resultado = MarcarDiaNoLaborableSchema.safeParse({
+      fecha: '2026-11-16',
+      motivo: '  Revolucion  ',
+    });
+
+    expect(resultado.data).toEqual({
+      fecha: new Date('2026-11-16T00:00:00-06:00'),
+      motivo: 'Revolucion',
+    });
+  });
+
+  it('rechaza un motivo de menos de 3 caracteres (sin contar espacios)', () => {
+    expect(
+      MarcarDiaNoLaborableSchema.safeParse({ fecha: '2026-11-16', motivo: ' ab ' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rechaza una fecha que no es aaaa-mm-dd', () => {
+    expect(
+      MarcarDiaNoLaborableSchema.safeParse({ fecha: '16/11/2026', motivo: 'Festivo' })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe('ListarDiasNoLaborablesQuerySchema', () => {
+  it('acepta sin filtros', () => {
+    expect(ListarDiasNoLaborablesQuerySchema.safeParse({}).success).toBe(true);
+  });
+
+  it('rechaza desde posterior a hasta', () => {
+    expect(
+      ListarDiasNoLaborablesQuerySchema.safeParse({
+        desde: '2026-12-31',
+        hasta: '2026-12-01',
       }).success,
     ).toBe(false);
   });

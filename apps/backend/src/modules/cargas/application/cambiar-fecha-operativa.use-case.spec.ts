@@ -16,6 +16,10 @@ import {
   type DatosCambiarFechaOperativa,
   type EventoCarga,
 } from './carga.repository';
+import type {
+  DiaNoLaborable,
+  DiaNoLaborableRepository,
+} from './dia-no-laborable.repository';
 
 /**
  * Pruebas del caso de uso "cambiar fecha operativa". Sin base de datos ni red:
@@ -26,12 +30,16 @@ import {
  * Cubre: permisos por rol (vendedor solo lo suyo y en BORRADOR; supervisor con
  * motivo salvo ENVIADA/CANCELADA/ENVIO_INCIERTO; contador nunca), la fecha
  * nueva (no pasada, distinta), la unicidad de la INICIAL, la regla de recargas
- * contra Handy, y que un rechazo no persiste nada.
+ * contra Handy, el calendario laboral por rol, y que un rechazo no persiste
+ * nada.
+ *
+ * Septiembre de 2026: AHORA es el viernes 25; el 26 es sabado, el 27 domingo y
+ * el 28 lunes.
  */
 
 const AHORA = new Date('2026-09-25T18:00:00-06:00');
 const DIA_26 = new Date('2026-09-26T00:00:00-06:00');
-const DIA_27 = new Date('2026-09-27T00:00:00-06:00');
+const DIA_25 = new Date('2026-09-25T00:00:00-06:00');
 const EVENTO_ID = 'ev-1';
 const RUTA_ID = 'ruta-1';
 const VENDEDOR_APP_ID = 'u-vendedor';
@@ -86,6 +94,23 @@ class FakeCargaRepository {
   }
 }
 
+/** Dias no laborables en memoria; `listarEntre` respeta el rango. */
+class FakeDiasNoLaborables {
+  dias: Date[] = [];
+
+  async listarEntre(desde: Date, hasta: Date): Promise<DiaNoLaborable[]> {
+    return this.dias
+      .filter((d) => d >= desde && d <= hasta)
+      .map((fecha) => ({
+        fecha,
+        motivo: 'festivo',
+        creadoPorId: null,
+        creadoPorNombre: null,
+        creadoEn: fecha,
+      }));
+  }
+}
+
 class FakeHandy implements Pick<HandyGateway, 'consultarRutaAbierta'> {
   rutaAbierta: RutaHandy | null = null;
   error: Error | null = null;
@@ -130,7 +155,7 @@ function entradaVendedor(
     usuarioAppId: VENDEDOR_APP_ID,
     rolApp: 'VENDEDOR',
     usuarioHandyId: VENDEDOR_HANDY_ID,
-    fechaOperativa: DIA_27,
+    fechaOperativa: DIA_25,
     ...parcial,
   };
 }
@@ -143,8 +168,8 @@ function entradaSupervisor(
     usuarioAppId: SUPERVISOR_APP_ID,
     rolApp: 'SUPERVISOR',
     usuarioHandyId: null,
-    fechaOperativa: DIA_27,
-    motivo: 'El camion sale el domingo',
+    fechaOperativa: DIA_25,
+    motivo: 'El camion sale hoy mismo',
     ...parcial,
   };
 }
@@ -152,14 +177,17 @@ function entradaSupervisor(
 describe('CambiarFechaOperativaUseCase', () => {
   let cargas: FakeCargaRepository;
   let handy: FakeHandy;
+  let noLaborables: FakeDiasNoLaborables;
   let useCase: CambiarFechaOperativaUseCase;
 
   beforeEach(() => {
     cargas = new FakeCargaRepository();
     handy = new FakeHandy();
+    noLaborables = new FakeDiasNoLaborables();
     useCase = new CambiarFechaOperativaUseCase(
       cargas as unknown as CargaRepository,
       handy as unknown as HandyGateway,
+      noLaborables as unknown as DiaNoLaborableRepository,
     );
   });
 
@@ -171,13 +199,13 @@ describe('CambiarFechaOperativaUseCase', () => {
 
       expect(resultado).toEqual({
         exito: true,
-        evento: expect.objectContaining({ id: EVENTO_ID, fechaOperativa: DIA_27 }),
+        evento: expect.objectContaining({ id: EVENTO_ID, fechaOperativa: DIA_25 }),
       });
       expect(cargas.cambios).toEqual([
         {
           eventoId: EVENTO_ID,
           fechaAnterior: DIA_26,
-          fechaNueva: DIA_27,
+          fechaNueva: DIA_25,
           cambiadaPorId: VENDEDOR_APP_ID,
           motivo: null,
         },
@@ -200,12 +228,12 @@ describe('CambiarFechaOperativaUseCase', () => {
 
       await useCase.ejecutar(
         entradaVendedor({
-          fechaOperativa: new Date('2026-09-27T15:30:00-06:00'),
+          fechaOperativa: new Date('2026-09-25T15:30:00-06:00'),
         }),
         AHORA,
       );
 
-      expect(cargas.cambios[0].fechaNueva).toEqual(DIA_27);
+      expect(cargas.cambios[0].fechaNueva).toEqual(DIA_25);
     });
 
     it('NO_PERMITIDO sobre la carga de otro vendedor', async () => {
@@ -256,9 +284,9 @@ describe('CambiarFechaOperativaUseCase', () => {
           {
             eventoId: EVENTO_ID,
             fechaAnterior: DIA_26,
-            fechaNueva: DIA_27,
+            fechaNueva: DIA_25,
             cambiadaPorId: SUPERVISOR_APP_ID,
-            motivo: 'El camion sale el domingo',
+            motivo: 'El camion sale hoy mismo',
           },
         ]);
       },
@@ -365,7 +393,7 @@ describe('CambiarFechaOperativaUseCase', () => {
     it('YA_TIENE_CARGA_ABIERTA si la ruta ya tiene otra INICIAL ese dia', async () => {
       cargas.sembrarEvento(nuevoEvento());
       cargas.sembrarEvento(
-        nuevoEvento({ id: 'ev-otra', fechaOperativa: DIA_27, estado: 'ENVIADA' }),
+        nuevoEvento({ id: 'ev-otra', fechaOperativa: DIA_25, estado: 'ENVIADA' }),
       );
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
@@ -383,7 +411,7 @@ describe('CambiarFechaOperativaUseCase', () => {
       cargas.sembrarEvento(
         nuevoEvento({
           id: 'ev-cancelada',
-          fechaOperativa: DIA_27,
+          fechaOperativa: DIA_25,
           estado: 'CANCELADA',
         }),
       );
@@ -396,7 +424,7 @@ describe('CambiarFechaOperativaUseCase', () => {
     it('una RECARGA de la ruta ese dia no estorba a la INICIAL', async () => {
       cargas.sembrarEvento(nuevoEvento());
       cargas.sembrarEvento(
-        nuevoEvento({ id: 'ev-recarga', tipo: 'RECARGA', fechaOperativa: DIA_27 }),
+        nuevoEvento({ id: 'ev-recarga', tipo: 'RECARGA', fechaOperativa: DIA_25 }),
       );
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
@@ -411,7 +439,7 @@ describe('CambiarFechaOperativaUseCase', () => {
       const original = cargas.cambiarFechaOperativa.bind(cargas);
       cargas.cambiarFechaOperativa = async (datos) => {
         cargas.sembrarEvento(
-          nuevoEvento({ id: 'ev-carrera', fechaOperativa: DIA_27 }),
+          nuevoEvento({ id: 'ev-carrera', fechaOperativa: DIA_25 }),
         );
         return original(datos);
       };
@@ -435,21 +463,21 @@ describe('CambiarFechaOperativaUseCase', () => {
   });
 
   describe('RECARGA', () => {
-    function sembrarRecargaEInicialDel27(estadoInicial: EstadoCarga): void {
+    function sembrarRecargaEInicialDel25(estadoInicial: EstadoCarga): void {
       cargas.sembrarEvento(nuevoEvento({ tipo: 'RECARGA' }));
       cargas.sembrarEvento(
         nuevoEvento({
-          id: 'ev-inicial-27',
-          fechaOperativa: DIA_27,
+          id: 'ev-inicial-25',
+          fechaOperativa: DIA_25,
           estado: estadoInicial,
-          idHandy: estadoInicial === 'ENVIADA' ? 'handy-27' : null,
+          idHandy: estadoInicial === 'ENVIADA' ? 'handy-25' : null,
         }),
       );
     }
 
     it('se mueve si el dia nuevo tiene INICIAL ENVIADA y es la ruta abierta en Handy', async () => {
-      sembrarRecargaEInicialDel27('ENVIADA');
-      handy.rutaAbierta = { id: 'handy-27' };
+      sembrarRecargaEInicialDel25('ENVIADA');
+      handy.rutaAbierta = { id: 'handy-25' };
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
 
@@ -467,7 +495,7 @@ describe('CambiarFechaOperativaUseCase', () => {
     });
 
     it('SIN_SALIDA_ENVIADA si la INICIAL del dia nuevo aun no se envia', async () => {
-      sembrarRecargaEInicialDel27('EN_ESPERA_CONTADOR');
+      sembrarRecargaEInicialDel25('EN_ESPERA_CONTADOR');
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
 
@@ -476,7 +504,7 @@ describe('CambiarFechaOperativaUseCase', () => {
     });
 
     it('SIN_RUTA_ABIERTA_EN_HANDY si Handy no tiene ruta abierta', async () => {
-      sembrarRecargaEInicialDel27('ENVIADA');
+      sembrarRecargaEInicialDel25('ENVIADA');
       handy.rutaAbierta = null;
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
@@ -489,7 +517,7 @@ describe('CambiarFechaOperativaUseCase', () => {
     });
 
     it('SIN_RUTA_ABIERTA_EN_HANDY si la ruta abierta en Handy es otra', async () => {
-      sembrarRecargaEInicialDel27('ENVIADA');
+      sembrarRecargaEInicialDel25('ENVIADA');
       handy.rutaAbierta = { id: 'handy-otra' };
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
@@ -501,12 +529,114 @@ describe('CambiarFechaOperativaUseCase', () => {
     });
 
     it('si Handy no responde, pasa con la regla local (no se bloquea por un tercero caido)', async () => {
-      sembrarRecargaEInicialDel27('ENVIADA');
+      sembrarRecargaEInicialDel25('ENVIADA');
       handy.error = new HandySinRespuestaError('/route/current', new Error('timeout'));
 
       const resultado = await useCase.ejecutar(entradaVendedor(), AHORA);
 
       expect(resultado.exito).toBe(true);
+    });
+  });
+
+  describe('calendario laboral', () => {
+    const DOMINGO_27 = new Date('2026-09-27T00:00:00-06:00');
+    const LUNES_28 = new Date('2026-09-28T00:00:00-06:00');
+    const MARTES_29 = new Date('2026-09-29T00:00:00-06:00');
+    const JUEVES_1 = new Date('2026-10-01T00:00:00-06:00');
+    const SABADO = new Date('2026-09-26T17:00:00-06:00');
+
+    it('vendedor: FECHA_NO_DISPONIBLE si elige un domingo', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaVendedor({ fechaOperativa: DOMINGO_27 }),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+      expect(cargas.cambios).toEqual([]);
+    });
+
+    it('vendedor: FECHA_NO_DISPONIBLE si elige un dia habil pero mas alla de la siguiente salida', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaVendedor({ fechaOperativa: JUEVES_1 }),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+    });
+
+    it('vendedor en sabado: puede mover al lunes (la siguiente salida)', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaVendedor({ fechaOperativa: LUNES_28 }),
+        SABADO,
+      );
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('vendedor en sabado con el lunes festivo: el lunes no, el martes si', async () => {
+      noLaborables.dias = [LUNES_28];
+      cargas.sembrarEvento(nuevoEvento());
+
+      expect(
+        await useCase.ejecutar(entradaVendedor({ fechaOperativa: LUNES_28 }), SABADO),
+      ).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+      expect(
+        (await useCase.ejecutar(entradaVendedor({ fechaOperativa: MARTES_29 }), SABADO))
+          .exito,
+      ).toBe(true);
+    });
+
+    it('supervisor: puede mover a cualquier dia habil futuro', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaSupervisor({ fechaOperativa: JUEVES_1 }),
+        AHORA,
+      );
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('supervisor: FECHA_NO_DISPONIBLE en domingo', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaSupervisor({ fechaOperativa: DOMINGO_27 }),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+      expect(cargas.cambios).toEqual([]);
+    });
+
+    it('supervisor: FECHA_NO_DISPONIBLE en un dia marcado, aunque este lejos', async () => {
+      const lejano = new Date('2026-12-25T00:00:00-06:00');
+      noLaborables.dias = [lejano];
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaSupervisor({ fechaOperativa: lejano }),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_NO_DISPONIBLE' });
+    });
+
+    it('un dia pasado sigue siendo FECHA_OPERATIVA_INVALIDA, no FECHA_NO_DISPONIBLE', async () => {
+      cargas.sembrarEvento(nuevoEvento());
+
+      const resultado = await useCase.ejecutar(
+        entradaSupervisor({ fechaOperativa: new Date('2026-09-20T00:00:00-06:00') }),
+        AHORA,
+      );
+
+      expect(resultado).toEqual({ exito: false, motivo: 'FECHA_OPERATIVA_INVALIDA' });
     });
   });
 });
