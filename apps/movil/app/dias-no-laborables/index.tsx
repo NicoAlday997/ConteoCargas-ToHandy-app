@@ -11,6 +11,7 @@ import {
 } from '../../src/api/hooks-calendario';
 import {
   AccionesHoja,
+  BarraAccion,
   BloqueError,
   Boton,
   CampoTexto,
@@ -32,6 +33,7 @@ import {
   BORDES,
   CIFRAS,
   COLORES,
+  ESCALA_PRESIONADO,
   ESPACIADO,
   FUENTE,
   OPACIDAD,
@@ -80,8 +82,9 @@ export default function PantallaDiasNoLaborables() {
 }
 
 function Pantalla({ children }: { children: ReactNode }) {
+  // Sin margen inferior: lo absorbe la barra de acción, que llega al borde.
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
       <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>{AYUDA}</NotaEncabezado>
       </BarraSuperior>
@@ -166,10 +169,9 @@ function Lista() {
           />
         }
       >
-        <Boton texto="Marcar un día" onPress={() => setMarcando(true)} />
         {dias.length === 0 ? (
           <EstadoVacio
-            icono="reloj"
+            icono="calendario"
             titulo="No hay días marcados"
             detalle="De hoy en adelante se trabaja de lunes a sábado. Marca aquí un festivo, un paro o un cierre."
             enLinea
@@ -182,6 +184,10 @@ function Lista() {
           </View>
         )}
       </ScrollView>
+      {/* Abajo, al alcance del pulgar: la acción de la pantalla. */}
+      <BarraAccion>
+        <Boton texto="Marcar un día" onPress={() => setMarcando(true)} style={estilos.botonBarra} />
+      </BarraAccion>
       <ModalMarcar
         visible={marcando}
         marcados={dias.map((d) => d.fecha)}
@@ -307,28 +313,41 @@ function ModalMarcar({
           </Text>
         ))}
       </View>
-      {semanasDelMes(mes).map((semana, i) => (
-        <View key={i} style={estilos.semana}>
-          {semana.map((celda, j) => {
-            if (!celda) return <View key={j} style={estilos.celda} />;
-            const inhabil = celda.dia < hoy || celda.esDomingo || marcados.includes(celda.dia);
-            const elegido = celda.dia === dia;
-            return (
-              <Pulsable
-                key={j}
-                onPress={() => setDia(celda.dia)}
-                disabled={inhabil}
-                accessibilityRole="button"
-                accessibilityLabel={formatearDia(celda.dia)}
-                accessibilityState={{ disabled: inhabil, selected: elegido }}
-                style={[estilos.celda, elegido && estilos.celdaElegida, inhabil && estilos.celdaInhabil]}
-              >
-                <Text style={[estilos.numeroDia, elegido && estilos.numeroElegido]}>{celda.numero}</Text>
-              </Pulsable>
-            );
-          })}
-        </View>
-      ))}
+      {/* Las semanas juntas: el hueco entre renglones de la hoja las separaría de más. */}
+      <View style={estilos.mes}>
+        {semanasDelMes(mes).map((semana, i) => (
+          <View key={i} style={estilos.semana}>
+            {semana.map((celda, j) => {
+              if (!celda) return <View key={j} style={estilos.celda} />;
+              const inhabil = celda.dia < hoy || celda.esDomingo || marcados.includes(celda.dia);
+              const elegido = celda.dia === dia;
+              const esHoy = celda.dia === hoy;
+              return (
+                <Pulsable
+                  key={j}
+                  onPress={() => setDia(celda.dia)}
+                  disabled={inhabil}
+                  tacto="seleccion"
+                  accessibilityRole="button"
+                  accessibilityLabel={`${formatearDia(celda.dia)}${esHoy ? ', hoy' : ''}`}
+                  accessibilityState={{ disabled: inhabil, selected: elegido }}
+                  // Lo que se puede tocar tiene forma de tecla; lo inhábil es solo el número apagado.
+                  style={({ pressed }) => [
+                    estilos.celda,
+                    !inhabil && estilos.celdaTocable,
+                    esHoy && estilos.celdaHoy,
+                    pressed && estilos.celdaPresionada,
+                    elegido && estilos.celdaElegida,
+                    inhabil && estilos.celdaInhabil,
+                  ]}
+                >
+                  <Text style={[estilos.numeroDia, elegido && estilos.numeroElegido]}>{celda.numero}</Text>
+                </Pulsable>
+              );
+            })}
+          </View>
+        ))}
+      </View>
       <Text style={[estilos.cuerpo, intento && dia === null && estilos.textoError]}>
         {dia ? formatearDia(dia) : 'Toca el día que no se trabaja.'}
       </Text>
@@ -387,6 +406,9 @@ const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondo,
+  },
+  botonBarra: {
+    flex: 1,
   },
   contenido: {
     width: '100%',
@@ -470,8 +492,12 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.titulo,
     color: COLORES.texto,
   },
+  mes: {
+    gap: ESPACIADO.xs,
+  },
   semana: {
     flexDirection: 'row',
+    gap: ESPACIADO.xs,
   },
   cabeceraDia: {
     flex: 1,
@@ -479,15 +505,30 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.etiqueta,
     color: COLORES.textoSecundario,
   },
+  // Todas con el mismo contorno (transparente): la de hoy no crece al pintarlo.
   celda: {
     flex: 1,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.medio,
+    borderWidth: BORDES.medio,
+    borderColor: 'transparent',
+  },
+  celdaTocable: {
+    backgroundColor: COLORES.superficieHonda,
+  },
+  // Hoy se reconoce por el contorno, no por un color: no es un estado.
+  celdaHoy: {
+    borderColor: COLORES.texto,
+  },
+  celdaPresionada: {
+    backgroundColor: COLORES.divisor,
+    transform: [{ scale: ESCALA_PRESIONADO }],
   },
   celdaElegida: {
     backgroundColor: COLORES.texto,
+    borderColor: COLORES.texto,
   },
   celdaInhabil: {
     opacity: OPACIDAD.bloqueado,

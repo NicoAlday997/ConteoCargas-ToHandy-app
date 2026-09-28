@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { formatearNombreFamilia } from '../conteo/formato-nombre';
+import { formatearNombreFamilia, formatearNombreProducto } from '../conteo/formato-nombre';
 import { router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
@@ -116,7 +116,7 @@ export function FilaProducto({
   const datos = (
     <View style={estilos.cuerpoFila}>
       <Text style={[estilos.nombre, modo.tipo === 'incluido' && estilos.nombreIncluido]} numberOfLines={2}>
-        {nombre}
+        {formatearNombreProducto(nombre)}
       </Text>
       <View style={estilos.etiquetas}>
         {modo.tipo === 'incluido' ? (

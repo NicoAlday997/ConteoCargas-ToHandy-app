@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, ETIQUETA_DATO, FUENTE, TIPOGRAFIA, type ColorEstado } from '../../theme/tokens';
+import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, ETIQUETA_DATO, FUENTE, TIPOGRAFIA, TONOS, type ColorEstado } from '../../theme/tokens';
 
 interface Props {
   /** Qué es: rótulo pequeño, con mayúscula inicial, se retira, a la izquierda. */
@@ -34,7 +34,8 @@ export function FilaDato({
   separado = false,
   accessibilityLabel,
 }: Props) {
-  const color = tono ? { color: COLORES[tono] } : null;
+  // El tono de texto del estado, no su sólido: el ámbar sólido sobre gris no llega a 2:1.
+  const color = tono ? { color: TONOS[tono].texto } : null;
   const texto = valor ?? ausente;
   const estiloValor = valor === null ? estilos.valorAusente : principal ? estilos.valorPrincipal : estilos.valor;
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORES, ESCALA_TEXTO, ESPACIADO, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import { ANCHO_MAXIMO_LISTA, COLORES, ESCALA_TEXTO, ESPACIADO, RITMO, TIPOGRAFIA } from '../../theme/tokens';
 
 /**
  * La acción de la pantalla, fija abajo: donde llega el pulgar con el teléfono
@@ -24,24 +24,32 @@ export function BarraAccion({
   const margenes = useSafeAreaInsets();
   return (
     <View style={[estilos.barra, { paddingBottom: (sinAreaSegura ? 0 : margenes.bottom) + ESPACIADO.md }]}>
-      {nota ? (
-        <Text style={estilos.nota} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto} accessibilityLiveRegion="polite">
-          {nota}
-        </Text>
-      ) : null}
-      <View style={estilos.acciones}>{children}</View>
+      <View style={estilos.columna}>
+        {nota ? (
+          <Text style={estilos.nota} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto} accessibilityLiveRegion="polite">
+            {nota}
+          </Text>
+        ) : null}
+        <View style={estilos.acciones}>{children}</View>
+      </View>
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
   barra: {
-    gap: ESPACIADO.sm,
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.md,
     backgroundColor: COLORES.superficie,
     borderTopWidth: 1,
     borderTopColor: COLORES.contornoTarjeta,
+  },
+  // En tablet, la barra va a todo el ancho pero el botón no: la misma columna que la lista.
+  columna: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
+    gap: ESPACIADO.sm,
   },
   nota: {
     ...TIPOGRAFIA.micro,

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 
 import type { EstadoCargaApi } from '../api/historial';
 import { Encabezado, type BandaTarjeta } from '../componentes/base';
-import { BORDES, COLORES, FUENTE, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
+import { COLORES, FUENTE, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
 import { textoCambioFecha } from '../conteo/fecha-operativa';
 import { estadoDeCarga, type Cancelacion, type CambioFecha, type TonoEstado } from './modelo-historial';
 
@@ -96,10 +96,9 @@ export function DetalleCambiosFecha({ cambios }: { cambios: readonly CambioFecha
 }
 
 const estilos = StyleSheet.create({
+  // Sin línea arriba: el aire de grupo de la tarjeta ya la separa (Regla de Aire, No Divisores).
   cancelacion: {
-    paddingTop: RITMO.relacionado,
-    borderTopWidth: BORDES.fino,
-    borderTopColor: COLORES.divisor,
+    gap: RITMO.interno,
   },
   textoCancelacion: {
     ...TIPOGRAFIA.etiqueta,

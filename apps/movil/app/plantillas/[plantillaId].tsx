@@ -19,6 +19,7 @@ import {
   TarjetaEsqueleto,
   Pulsable,
 } from '../../src/componentes/base';
+import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { textoProductos } from '../../src/factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA, volver } from '../../src/historial/ComponentesHistorial';
 import {
@@ -400,7 +401,7 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         <Tarjeta elevacion={0} compacta>
           {seleccionados.slice(0, MAXIMO_LISTADOS).map((p) => (
             <Text key={p.code} style={estilos.productoListado} numberOfLines={2}>
-              {p.nombre}
+              {formatearNombreProducto(p.nombre)}
             </Text>
           ))}
           {seleccionados.length > MAXIMO_LISTADOS && (

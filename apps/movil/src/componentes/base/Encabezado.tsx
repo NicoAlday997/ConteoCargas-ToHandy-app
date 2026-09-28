@@ -80,7 +80,7 @@ export function Encabezado({
               />
             </Pulsable>
           )}
-          <View style={estilos.titulos}>
+          <View style={[estilos.titulos, onVolver && (variante === 'plano' ? estilos.titulosConVolverPlano : estilos.titulosConVolver)]}>
             <Text
               style={[variante === 'plano' ? estilos.tituloPlano : estilos.titulo, sobreMarca && estilos.textoInvertido]}
               accessibilityRole="header"
@@ -162,9 +162,11 @@ const estilos = StyleSheet.create({
   plano: {
     gap: ESPACIADO.sm,
   },
+  // Arriba, no al centro: con notas de contexto el volver se quedaba flotando a
+  // media altura. El título se centra ópticamente con el botón (ver titulosConVolver).
   fila: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: ESPACIADO.md,
   },
   botonVolver: {
@@ -194,6 +196,13 @@ const estilos = StyleSheet.create({
   // Sin hueco: el interlineado ya separa título, subtítulo y notas.
   titulos: {
     flex: 1,
+  },
+  // La primera línea del título, centrada con el botón de volver.
+  titulosConVolver: {
+    paddingTop: (LADO_VOLVER - TIPOGRAFIA.tituloBarra.lineHeight) / 2,
+  },
+  titulosConVolverPlano: {
+    paddingTop: (LADO_VOLVER - TIPOGRAFIA.titulo.lineHeight) / 2,
   },
   titulo: {
     ...TIPOGRAFIA.tituloBarra,

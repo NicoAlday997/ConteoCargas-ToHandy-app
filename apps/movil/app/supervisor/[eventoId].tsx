@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
@@ -37,6 +37,7 @@ import {
 } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import { formatearCifra } from '../../src/conteo/formato-cantidad';
+import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { sentir } from '../../src/theme/tacto';
 import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
@@ -515,7 +516,7 @@ function nombresMarcados(carga: CargaDetalle, seleccion: Readonly<Record<string,
   const productos = carga.familias.flatMap((f) => f.productos);
   return Object.entries(seleccion).map(([code, motivo]) => ({
     code,
-    nombre: productos.find((p) => p.code === code)?.nombre ?? code,
+    nombre: formatearNombreProducto(productos.find((p) => p.code === code)?.nombre ?? code),
     motivo,
   }));
 }
@@ -684,11 +685,13 @@ function ControlRechazo({
 }
 
 function BarraAcciones({ children }: { children: ReactNode }) {
+  const margenes = useSafeAreaInsets();
   // Sin nada que hacer (enviada, en otro estado) no ocupa lugar.
   const hijos = Array.isArray(children) ? children.filter(Boolean) : children ? [children] : [];
   if (hijos.length === 0) return null;
+  // Llega al borde de abajo y absorbe el área segura, como la barra del conteo.
   return (
-    <View style={estilos.barra}>
+    <View style={[estilos.barra, { paddingBottom: margenes.bottom + ESPACIADO.md }]}>
       <View style={estilos.columnaBarra}>{children}</View>
     </View>
   );
@@ -696,7 +699,7 @@ function BarraAcciones({ children }: { children: ReactNode }) {
 
 function Pantalla({ titulo, subtitulo, children }: { titulo: string; subtitulo?: string; children: ReactNode }) {
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <BarraSuperior titulo={titulo} subtitulo={subtitulo} />
       {children}
     </SafeAreaView>

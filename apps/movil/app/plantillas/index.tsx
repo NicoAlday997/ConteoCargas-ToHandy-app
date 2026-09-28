@@ -6,6 +6,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useCrearPlantilla, usePlantillas } from '../../src/api/hooks-plantillas';
 import {
+  BarraAccion,
   BloqueError,
   Boton,
   Chevron,
@@ -64,8 +65,9 @@ export default function PantallaPlantillas() {
 }
 
 function Pantalla({ children }: { children: ReactNode }) {
+  // Sin margen inferior: lo absorbe la barra de acción, que llega al borde.
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
       <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>Qué productos ve cada ruta al contar.</NotaEncabezado>
       </BarraSuperior>
@@ -126,7 +128,6 @@ function Lista() {
     const { activas, inactivas } = consulta.data ?? { activas: [], inactivas: [] };
     contenido = (
       <>
-        <Boton texto="Crear plantilla" onPress={abrirCreacion} />
         {activas.length === 0 ? (
           <EstadoVacio
             icono="caja"
@@ -161,6 +162,12 @@ function Lista() {
       >
         {contenido}
       </ScrollView>
+      {/* Abajo, al alcance del pulgar: la acción de la pantalla. */}
+      {!consulta.isPending && !(consulta.isError && !consulta.data) && (
+        <BarraAccion>
+          <Boton texto="Crear plantilla" onPress={abrirCreacion} style={estilos.botonBarra} />
+        </BarraAccion>
+      )}
       <ModalDatosPlantilla
         visible={creando}
         titulo="Nueva plantilla"
@@ -236,6 +243,9 @@ const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondo,
+  },
+  botonBarra: {
+    flex: 1,
   },
   cuerpo: {
     flex: 1,

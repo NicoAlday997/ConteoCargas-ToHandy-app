@@ -288,7 +288,7 @@ function Contenido({
                 opciones.map((opcion) => (
                   <OpcionDia
                     key={opcion.dia}
-                    titulo={opcion.etiqueta}
+                    {...partirEtiqueta(opcion.etiqueta)}
                     // Lo normal es la siguiente salida; hoy es la excepción (camión descompuesto).
                     marca={opciones.length > 1 && !opcion.esHoy ? 'Sugerida' : null}
                     deshabilitado={ocupado || fechas.isFetching}
@@ -395,7 +395,7 @@ function ContenidoCambio({
                 return (
                   <OpcionDia
                     key={opcion.dia}
-                    titulo={opcion.etiqueta}
+                    {...partirEtiqueta(opcion.etiqueta)}
                     marca={actual ? 'Actual' : null}
                     deshabilitado={ocupado || fechas.isFetching}
                     onPress={() => elegir(opcion.dia)}
@@ -410,6 +410,17 @@ function ContenidoCambio({
         <Boton texto="Dejarla como está" variante="secundario" deshabilitado={ocupado} onPress={onCerrar} />
     </>
   );
+}
+
+/**
+ * "Hoy, lunes 28 de septiembre" → "Hoy" grande y el día completo debajo: lo que
+ * se decide es hoy o mañana, y así cada opción cabe en un renglón.
+ */
+function partirEtiqueta(etiqueta: string): { titulo: string; subtitulo: string | null } {
+  const coma = etiqueta.indexOf(', ');
+  if (coma <= 0) return { titulo: etiqueta, subtitulo: null };
+  const resto = etiqueta.slice(coma + 2);
+  return { titulo: etiqueta.slice(0, coma), subtitulo: resto.charAt(0).toUpperCase() + resto.slice(1) };
 }
 
 interface PropsOpcionDia {

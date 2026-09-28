@@ -179,7 +179,7 @@ function EsqueletoInicio() {
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <View style={estilos.cuerpo}>
         <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.lg }]}>
-          <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad]}>
+          <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad, estilos.margenLateral]}>
             <LineaEsqueleto nivel="display" ancho="70%" />
             <LineaEsqueleto nivel="cuerpo" ancho="30%" />
           </Esqueleto>
@@ -872,8 +872,9 @@ const estilos = StyleSheet.create({
   },
   // A todo el ancho, blanca con contorno abajo: quién está en sesión, como la
   // etiqueta de un turno. Sin azul: el azul es donde está la mano.
+  // El margen lateral lo pone la columna de adentro, igual que en el contenido:
+  // en tablet el avatar queda alineado con las tarjetas de abajo.
   bandaIdentidad: {
-    paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.lg,
     paddingBottom: ESPACIADO.xl,
     backgroundColor: COLORES.superficie,
@@ -886,7 +887,11 @@ const estilos = StyleSheet.create({
     maxWidth: ANCHO_CONTENIDO,
     alignSelf: 'center',
   },
+  margenLateral: {
+    paddingHorizontal: RITMO.margen,
+  },
   identidad: {
+    paddingHorizontal: RITMO.margen,
     flexDirection: 'row',
     alignItems: 'center',
     gap: RITMO.relacionado + ESPACIADO.xs,

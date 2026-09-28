@@ -314,7 +314,8 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
   return (
     <View style={estilos.paso}>
       <View style={[estilos.bandaMarca, estilos.bandaPin]}>
-        <View style={estilos.columnaBanda}>
+        {/* En tablet, la misma columna que el teclado: nombre y teclas alineados. */}
+        <View style={[estilos.columnaBanda, esTablet && estilos.columnaPin]}>
           <Pulsable
             onPress={onVolver}
             accessibilityRole="button"
@@ -470,6 +471,10 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     gap: ESPACIADO.xs,
   },
+  // El teclado mide ANCHO_MAXIMO_PIN con su relleno adentro; la banda lo pone afuera.
+  columnaPin: {
+    maxWidth: ANCHO_MAXIMO_PIN - RITMO.margen * 2,
+  },
   identidad: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -557,13 +562,17 @@ const estilos = StyleSheet.create({
   },
 
   // Paso 2
+  // Indicadores, aviso y teclado juntos abajo, donde está el pulgar: el ojo no
+  // viaja de los puntos a las teclas, y el aviso aparece junto al dedo.
   contenidoPin: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     padding: RITMO.margen,
     gap: RITMO.margen,
   },
+  // En tablet sobra alto: el bloque va al centro, no pegado al borde.
   contenidoPinTablet: {
+    justifyContent: 'center',
     width: '100%',
     maxWidth: ANCHO_MAXIMO_PIN,
     alignSelf: 'center',

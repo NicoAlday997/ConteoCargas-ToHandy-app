@@ -25,6 +25,7 @@ import {
 } from '../conteo/estado-conteo';
 import { EtiquetaFactor, nombreCampo } from '../conteo/FilaProducto';
 import { formatearPiezas } from '../conteo/formato-cantidad';
+import { formatearNombreProducto } from '../conteo/formato-nombre';
 import { TecladoCantidad } from '../conteo/TecladoCantidad';
 import { desglose } from '../discrepancias/estado-discrepancia';
 import type { ProductoDetalle } from '../historial/modelo-historial';
@@ -235,7 +236,7 @@ function Editor({
             <Tarjeta compacta>
               <View style={estilos.lineaProducto}>
                 <EtiquetaFactor producto={producto} />
-                <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
+                <Text style={estilos.nombreProducto}>{formatearNombreProducto(producto.nombre)}</Text>
               </View>
               <FilaDato etiqueta="Cantidad actual" valor={actual === null ? null : cantidadEnUnidad(actual, producto)} ausente="Sin resolver" />
             </Tarjeta>

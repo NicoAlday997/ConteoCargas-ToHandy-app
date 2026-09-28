@@ -651,12 +651,9 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
 
   return (
     <View style={[estilos.modal]}>
-      <Text style={estilos.pasoIndicador}>
-        {paso === 'modalidad' ? 'Paso 1' : paso === 'piezas' ? 'Paso 2' : 'Antes de guardar'}
-      </Text>
       <Tarjeta elevacion={0} compacta>
         <Text style={estilos.nombreModal} numberOfLines={3}>
-          {producto.nombre}
+          {formatearNombreProducto(producto.nombre)}
         </Text>
         {producto.familia && <Text style={estilos.rotulo}>{producto.familia}</Text>}
         {producto.actual && (
@@ -918,7 +915,6 @@ function MenuFamilia({
   const { aConfirmar, sinNumero } = planFamilia(productos, 'POR_PIEZA');
   return (
     <View style={estilos.modal}>
-      <Text style={estilos.pasoIndicador}>Toda la familia</Text>
       <Encabezado titulo={titulo} variante="plano" lineasTitulo={3} />
       <Text style={estilos.detalleModal}>
         {textoProductos(total)} por confirmar. Elige cómo se venden; antes de guardar se pide confirmar.
@@ -1048,7 +1044,7 @@ function DetalleFamiliaCompleta({ titulo, productos }: { titulo: string; product
         <Text style={estilos.rotulo}>Productos que se confirman</Text>
         {productos.map((p) => (
           <Text key={p.code} style={estilos.productoFamilia} numberOfLines={2}>
-            {p.nombre}
+            {formatearNombreProducto(p.nombre)}
           </Text>
         ))}
       </Tarjeta>
@@ -1076,7 +1072,7 @@ function DetalleFamiliaPorPieza({
       </Text>
       {ejemplo && ejemplo.sugerido !== null && (
         <Tarjeta elevacion={0} compacta accessible>
-          <Text style={estilos.fraseResumen}>{resumenPorPiezaDe(ejemplo.nombre, ejemplo.sugerido)}</Text>
+          <Text style={estilos.fraseResumen}>{resumenPorPiezaDe(formatearNombreProducto(ejemplo.nombre), ejemplo.sugerido)}</Text>
         </Tarjeta>
       )}
       <Tarjeta elevacion={0} compacta>
@@ -1089,7 +1085,7 @@ function DetalleFamiliaPorPieza({
             accessibilityLabel={`${p.nombre}: ${p.sugerido} piezas por paquete`}
           >
             <Text style={[estilos.productoFamilia, estilos.nombreProductoFamilia]} numberOfLines={2}>
-              {p.nombre}
+              {formatearNombreProducto(p.nombre)}
             </Text>
             <Text style={estilos.piezasProductoFamilia}>{p.sugerido} por paquete</Text>
           </View>
@@ -1110,7 +1106,7 @@ function DetalleFamiliaPorPieza({
           </Text>
           {sinNumero.map((p) => (
             <Text key={p.code} style={estilos.productoFamilia} numberOfLines={2}>
-              {p.nombre}
+              {formatearNombreProducto(p.nombre)}
             </Text>
           ))}
         </Tarjeta>
@@ -1285,7 +1281,6 @@ const estilos = StyleSheet.create({
   modal: {
     gap: RITMO.relacionado,
   },
-  pasoIndicador: ETIQUETA_DATO,
   empaqueActual: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
@@ -1338,7 +1333,7 @@ const estilos = StyleSheet.create({
   },
   tituloOpcion: {
     ...TIPOGRAFIA.titulo,
-    color: COLORES.marcaHonda,
+    color: COLORES.texto,
   },
   descripcionOpcion: {
     ...TIPOGRAFIA.cuerpo,
@@ -1396,7 +1391,7 @@ const estilos = StyleSheet.create({
   fraseResumen: {
     ...TIPOGRAFIA.titulo,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.texto,
   },
   lineaProductoFamilia: {
     flexDirection: 'row',
@@ -1409,7 +1404,7 @@ const estilos = StyleSheet.create({
   piezasProductoFamilia: {
     ...TIPOGRAFIA.cuerpo,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.texto,
     ...CIFRAS,
   },
   productoFamilia: {

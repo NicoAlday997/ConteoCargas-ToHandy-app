@@ -95,8 +95,10 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     gap: ESPACIADO.md,
   },
+  // Base 0: todas miden lo mismo aunque "Borrar" sea más ancho que un dígito.
   tecla: {
     flex: 1,
+    flexBasis: 0,
     minHeight: ALTO_TECLA,
     alignItems: 'center',
     justifyContent: 'center',
@@ -114,8 +116,12 @@ const estilos = StyleSheet.create({
   teclaDeshabilitada: {
     opacity: OPACIDAD.deshabilitado,
   },
+  // Con el mismo contorno (invisible) que una tecla: si no, las teclas de su fila se corren.
   huecoVacio: {
     flex: 1,
+    flexBasis: 0,
+    borderWidth: BORDES.medio,
+    borderColor: 'transparent',
   },
   textoDigito: {
     ...TIPOGRAFIA.display,

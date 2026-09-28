@@ -1,5 +1,6 @@
 import { Children, type ReactNode } from 'react';
 import {
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -7,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -76,6 +78,11 @@ export function Hoja({
 }: Props) {
   const { esTablet } = useLayout();
   const margenes = useSafeAreaInsets();
+  // Android: con barras translúcidas, el Modal dibuja desde arriba pero mide la
+  // pantalla sin las barras, y la hoja quedaba flotando sobre una franja de velo.
+  // Se le da el alto completo de la pantalla para que llegue al borde.
+  const { height: altoPantalla } = useWindowDimensions();
+  const altoAndroid = Platform.OS === 'android' ? { flex: 0, height: Dimensions.get('screen').height || altoPantalla } : null;
   const cerrar = () => {
     if (!bloqueada) onCerrar();
   };
@@ -119,7 +126,7 @@ export function Hoja({
       onRequestClose={cerrar}
     >
       {visible && (
-        <KeyboardAvoidingView style={estilos.raiz} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={[estilos.raiz, altoAndroid]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Animated.View entering={ENTRADA_VELO} style={StyleSheet.absoluteFill}>
             <Pressable
               style={estilos.velo}
