@@ -58,7 +58,7 @@ export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): stri
  *   dentro de la fila (empaque sin confirmar, sueltas, rechazo).
  * - contado: con cantidad.
  * - no-lleva: marcado en cero; se retira.
- * - tecleando: la fila entera en marca; imposible perder dónde vas.
+ * - tecleando: la fila entera en asfalto; imposible perder dónde vas.
  */
 export type AspectoFila = 'sin-contar' | 'contado' | 'no-lleva' | 'tecleando';
 
@@ -453,7 +453,7 @@ function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boole
   const color = sobreMarca ? COLORES.textoSobreColor : porEnviar ? COLORES.textoSecundario : COLORES.error;
   return (
     <View accessible accessibilityLabel={accesible}>
-      <Glifo nombre={porEnviar ? 'subir' : 'alerta'} color={color} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+      <Glifo nombre={porEnviar ? 'subir' : 'alto'} color={color} tamano={ESPACIADO.lg + ESPACIADO.xs} />
     </View>
   );
 }
@@ -466,7 +466,7 @@ function Aviso({ texto, error = false }: { texto: string; error?: boolean }) {
   const color = error ? COLORES.errorTexto : COLORES.discrepanciaTexto;
   return (
     <View style={[estilos.aviso, error && estilos.avisoError]}>
-      <Glifo nombre="alerta" color={color} tamano={ESPACIADO.lg} />
+      <Glifo nombre={error ? 'alto' : 'alerta'} color={color} tamano={ESPACIADO.lg + 2} />
       <Text style={[estilos.textoAviso, error && estilos.textoAvisoError]}>{texto}</Text>
     </View>
   );
@@ -486,7 +486,7 @@ interface PropsCampo {
 
 /**
  * Sin borde: el fondo propio lo separa de la fila. El campo que se teclea va
- * en blanco con el número oscuro sobre la fila azul.
+ * en blanco con el número oscuro sobre la fila de asfalto, subrayado en verde.
  */
 function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProducto, aviso = false }: PropsCampo) {
   const color = activo ? COLORES.texto : colorTexto;
@@ -543,13 +543,14 @@ const estilos = StyleSheet.create({
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
   },
+  // Placa del empaque: esquina corta, como la placa de un letrero.
   factor: {
     minWidth: ANCHO_FACTOR,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: 2,
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
   },
   factorGrande: {
     minWidth: ANCHO_FACTOR + ESPACIADO.xl,
@@ -557,12 +558,15 @@ const estilos = StyleSheet.create({
   },
   textoFactor: {
     ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 15,
+    letterSpacing: 0.4,
     ...CIFRAS,
   },
   textoFactorGrande: {
     ...TIPOGRAFIA.tituloBarra,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.extraNegrita,
+    letterSpacing: 0.4,
     ...CIFRAS,
   },
   captura: {
@@ -584,15 +588,15 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.sm,
     borderRadius: RADIOS.medio,
   },
-  // El campo que se teclea: blanco sobre la fila azul, subrayado como el visor
-  // del teclado. Es el único así en la pantalla.
+  // El campo que se teclea: blanco sobre la fila de asfalto, subrayado en
+  // verde como el visor del teclado. Es el único así en la pantalla.
   campoActivo: {
-    borderBottomWidth: BORDES.grueso,
-    borderBottomColor: COLORES.marca,
+    borderBottomWidth: BORDES.grueso + 1,
+    borderBottomColor: COLORES.accionViva,
   },
   campoConAviso: {
     borderWidth: BORDES.medio,
-    borderColor: COLORES.discrepanciaHonda,
+    borderColor: COLORES.discrepancia,
   },
   campoPresionado: {
     opacity: OPACIDAD.deshabilitado,
@@ -680,18 +684,21 @@ const estilos = StyleSheet.create({
   textoCeroMarcado: {
     color: COLORES.pendiente,
   },
-  // Glifo y texto: el aviso se reconoce por su forma aun sin distinguir el ámbar.
+  // Rombo y texto: el aviso se reconoce por su forma aun sin distinguir el amarillo.
   aviso: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.xs,
+    paddingVertical: ESPACIADO.xs + 2,
     backgroundColor: COLORES.discrepanciaFondo,
     borderRadius: RADIOS.chico,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.discrepanciaHonda,
   },
   avisoError: {
     backgroundColor: COLORES.errorFondo,
+    borderColor: COLORES.error,
   },
   textoAviso: {
     flex: 1,

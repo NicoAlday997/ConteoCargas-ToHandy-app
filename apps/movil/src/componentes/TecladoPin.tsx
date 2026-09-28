@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Pulsable } from './base/Pulsable';
 
-import { BORDES, COLORES, ESCALA_TEXTO, ESPACIADO, OPACIDAD, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, OPACIDAD, FUENTE, ONDA, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Por encima del mínimo de 56: el PIN se teclea de pie y con prisa. */
 const ALTO_TECLA = TOQUE_MINIMO + ESPACIADO.lg;
@@ -17,29 +17,32 @@ interface Props {
   onDigito: (digito: string) => void;
   onBorrar: () => void;
   deshabilitado?: boolean;
+  /** Sobre asfalto (la entrada): teclas en relieve tonal con dígitos blancos. */
+  oscuro?: boolean;
 }
 
 /**
  * Teclado numérico propio: nunca el teclado del sistema, que cambia de
  * tamaño y distribución según el dispositivo.
  */
-export function TecladoPin({ onDigito, onBorrar, deshabilitado = false }: Props) {
+export function TecladoPin({ onDigito, onBorrar, deshabilitado = false, oscuro = false }: Props) {
   return (
     <View style={estilos.teclado}>
       {FILAS.map((fila) => (
         <View key={fila.join('')} style={estilos.fila}>
           {fila.map((digito) => (
-            <Tecla key={digito} etiqueta={digito} onPress={() => onDigito(digito)} deshabilitado={deshabilitado} />
+            <Tecla key={digito} etiqueta={digito} onPress={() => onDigito(digito)} deshabilitado={deshabilitado} oscuro={oscuro} />
           ))}
         </View>
       ))}
       <View style={estilos.fila}>
         <View style={estilos.huecoVacio} />
-        <Tecla etiqueta="0" onPress={() => onDigito('0')} deshabilitado={deshabilitado} />
+        <Tecla etiqueta="0" onPress={() => onDigito('0')} deshabilitado={deshabilitado} oscuro={oscuro} />
         <Tecla
           etiqueta="Borrar"
           onPress={onBorrar}
           deshabilitado={deshabilitado}
+          oscuro={oscuro}
           secundaria
           etiquetaAccesible="Borrar último dígito"
         />
@@ -54,9 +57,10 @@ interface PropsTecla {
   deshabilitado: boolean;
   secundaria?: boolean;
   etiquetaAccesible?: string;
+  oscuro: boolean;
 }
 
-function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaAccesible }: PropsTecla) {
+function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaAccesible, oscuro }: PropsTecla) {
   return (
     <Pulsable
       onPress={onPress}
@@ -66,9 +70,11 @@ function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaA
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       accessibilityState={{ disabled: deshabilitado }}
+      onda={oscuro ? ONDA.sobreColor : ONDA.sobreClaro}
       style={({ pressed }) => [
         estilos.tecla,
-        pressed && estilos.teclaPresionada,
+        oscuro && estilos.teclaOscura,
+        pressed && (oscuro ? estilos.teclaPresionadaOscura : estilos.teclaPresionada),
         deshabilitado && estilos.teclaDeshabilitada,
       ]}
     >
@@ -76,7 +82,8 @@ function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaA
         <Text
           style={[
             secundaria ? estilos.textoSecundario : estilos.textoDigito,
-            pressed && estilos.textoPresionado,
+            oscuro && estilos.textoOscuro,
+            pressed && (oscuro ? estilos.textoPresionadoOscuro : estilos.textoPresionado),
           ]}
           maxFontSizeMultiplier={ESCALA_TEXTO.control}
         >
@@ -113,6 +120,16 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.marca,
     borderColor: COLORES.marca,
   },
+  // Sobre asfalto: relieve tonal, y al presionar se enciende en blanco.
+  teclaOscura: {
+    backgroundColor: COLORES.marcaHonda,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.marcaClara,
+  },
+  teclaPresionadaOscura: {
+    backgroundColor: COLORES.superficie,
+    borderColor: COLORES.superficie,
+  },
   teclaDeshabilitada: {
     opacity: OPACIDAD.deshabilitado,
   },
@@ -125,14 +142,23 @@ const estilos = StyleSheet.create({
   },
   textoDigito: {
     ...TIPOGRAFIA.display,
-    fontFamily: FUENTE.semiNegrita,
+    fontFamily: FUENTE.titular,
     color: COLORES.texto,
+    ...CIFRAS,
   },
   textoSecundario: {
-    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.titular,
+    fontSize: 19,
+    lineHeight: 23,
     color: COLORES.texto,
   },
   textoPresionado: {
     color: COLORES.textoSobreColor,
+  },
+  textoOscuro: {
+    color: COLORES.textoSobreColor,
+  },
+  textoPresionadoOscuro: {
+    color: COLORES.texto,
   },
 });

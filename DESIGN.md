@@ -1,108 +1,145 @@
 ---
 name: Conteo de Cargas
-description: Instrumento de bodega para contar, verificar y autorizar la carga de cada ruta antes de que llegue a Handy.
+description: Señalamiento de ruta para contar, verificar y autorizar la carga de cada camión antes de que llegue a Handy.
 colors:
-  fondo: "#E3E7EF"
+  fondo: "#E7E8E3"
   superficie: "#FFFFFF"
-  superficie-honda: "#D8DDE8"
-  texto: "#0D1120"
-  texto-secundario: "#495068"
-  texto-terciario: "#5B6279"
+  superficie-honda: "#DBDDD6"
+  texto: "#14181B"
+  texto-secundario: "#474D51"
+  texto-terciario: "#585E62"
   texto-sobre-color: "#FFFFFF"
-  divisor: "#D3D9E4"
-  contorno-tarjeta: "#C9D0DC"
-  borde: "#767E94"
-  borde-sin-contar: "#AEB6C7"
-  borde-no-lleva: "#C3C8D4"
-  velo: "rgba(13, 17, 32, 0.62)"
-  marca: "#1E4FE0"
-  marca-honda: "#1638B0"
-  marca-profunda: "#102A86"
-  marca-tenue: "#DCE5FF"
-  marca-tinte: "#E7EDFF"
-  marca-clara: "#3A62EF"
-  capturado: "#14B8A6"
-  capturado-hondo: "#0B6E64"
-  capturado-fondo: "#CFF0E9"
-  capturado-texto: "#0A3A35"
-  discrepancia: "#F59E0B"
-  discrepancia-honda: "#D97706"
-  discrepancia-fondo: "#FEF3C7"
-  discrepancia-texto: "#92400E"
-  pendiente: "#545B70"
-  pendiente-fondo: "#DCDFE8"
-  error: "#DC2626"
-  error-fondo: "#FEE7E7"
-  error-texto: "#911B1B"
+  divisor: "#D0D3CB"
+  contorno-tarjeta: "#C4C8C0"
+  borde: "#747A74"
+  borde-sin-contar: "#A9ADA5"
+  borde-no-lleva: "#C2C5BD"
+  velo: "rgba(12, 15, 18, 0.66)"
+  asfalto: "#171B1F"
+  asfalto-alto: "#262C32"
+  asfalto-profundo: "#0C0F12"
+  asfalto-tenue: "#B8C0C6"
+  asfalto-tinte: "#E2E5E1"
+  asfalto-claro: "#394148"
+  carril: "#6A737B"
+  verde-ruta: "#0A6B4E"
+  verde-ruta-hondo: "#07523C"
+  verde-vivo: "#35C77E"
+  capturado: "#2E9A69"
+  capturado-fondo: "#DCEFE5"
+  capturado-texto: "#063E2D"
+  preventivo: "#FFC21A"
+  preventivo-hondo: "#C98F00"
+  preventivo-fondo: "#FFF1C4"
+  preventivo-texto: "#6A4700"
+  pendiente: "#555B5F"
+  pendiente-fondo: "#DDDFDA"
+  error: "#C4132C"
+  error-fondo: "#FCE4E6"
+  error-texto: "#8C0D20"
 typography:
   numero:
-    fontFamily: "Archivo_800ExtraBold"
-    fontSize: "48px"
-    lineHeight: "54px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "60px"
+    fontWeight: 800
+    lineHeight: "62px"
     fontFeature: "tnum"
   display:
-    fontFamily: "Archivo_700Bold"
-    fontSize: "34px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "36px"
+    fontWeight: 700
     lineHeight: "40px"
+  avance:
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "40px"
+    fontWeight: 800
+    lineHeight: "42px"
+    fontFeature: "tnum"
   total:
-    fontFamily: "Archivo_800ExtraBold"
-    fontSize: "32px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "34px"
+    fontWeight: 800
     lineHeight: "36px"
     fontFeature: "tnum"
+  tecla:
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "30px"
+    fontWeight: 700
+    lineHeight: "34px"
+    fontFeature: "tnum"
   titulo:
-    fontFamily: "Archivo_700Bold"
-    fontSize: "26px"
-    lineHeight: "32px"
-  avance:
-    fontFamily: "Archivo_800ExtraBold"
+    fontFamily: "Barlow Semi Condensed"
     fontSize: "28px"
+    fontWeight: 700
     lineHeight: "32px"
-    fontFeature: "tnum"
   campo:
-    fontFamily: "Archivo_700Bold"
-    fontSize: "22px"
-    lineHeight: "26px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "24px"
+    fontWeight: 700
+    lineHeight: "28px"
     fontFeature: "tnum"
-  titulo-vacio:
-    fontFamily: "Archivo_600SemiBold"
-    fontSize: "20px"
-    lineHeight: "26px"
   titulo-barra:
-    fontFamily: "Archivo_700Bold"
-    fontSize: "20px"
-    lineHeight: "24px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "22px"
+    fontWeight: 700
+    lineHeight: "26px"
+  boton:
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "19px"
+    fontWeight: 700
+    lineHeight: "23px"
+    letterSpacing: "0.2px"
   subtitulo:
-    fontFamily: "Archivo_600SemiBold"
+    fontFamily: "Barlow"
     fontSize: "17px"
+    fontWeight: 600
     lineHeight: "22px"
   cuerpo:
-    fontFamily: "Archivo_400Regular"
+    fontFamily: "Barlow"
     fontSize: "16px"
-    lineHeight: "22px"
+    fontWeight: 400
+    lineHeight: "23px"
   familia:
-    fontFamily: "Archivo_700Bold"
-    fontSize: "15px"
+    fontFamily: "Barlow Semi Condensed"
+    fontSize: "16px"
+    fontWeight: 700
     lineHeight: "20px"
-  etiqueta:
-    fontFamily: "Archivo_600SemiBold"
+    letterSpacing: "1px"
+  placa:
+    fontFamily: "Barlow Semi Condensed"
     fontSize: "14px"
+    fontWeight: 700
     lineHeight: "18px"
-  micro:
-    fontFamily: "Archivo_500Medium"
+    letterSpacing: "0.8px"
+  etiqueta:
+    fontFamily: "Barlow"
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: "19px"
+  etiqueta-dato:
+    fontFamily: "Barlow Semi Condensed"
     fontSize: "13px"
+    fontWeight: 600
+    lineHeight: "17px"
+    letterSpacing: "0.8px"
+  micro:
+    fontFamily: "Barlow"
+    fontSize: "13px"
+    fontWeight: 500
     lineHeight: "18px"
   rotulo:
-    fontFamily: "Archivo_700Bold"
+    fontFamily: "Barlow Semi Condensed"
     fontSize: "12px"
+    fontWeight: 600
     lineHeight: "14px"
-    letterSpacing: "0.6px"
+    letterSpacing: "1px"
 rounded:
-  chico: "6px"
-  icono: "11px"
-  medio: "12px"
-  panel: "14px"
-  grande: "18px"
-  encabezado: "22px"
+  chico: "4px"
+  medio: "8px"
+  icono: "8px"
+  panel: "10px"
+  grande: "12px"
+  hoja: "16px"
   completo: "999px"
 spacing:
   xs: "4px"
@@ -114,35 +151,42 @@ spacing:
   xxxl: "48px"
 components:
   boton-primario:
-    backgroundColor: "{colors.marca}"
+    backgroundColor: "{colors.verde-ruta}"
     textColor: "{colors.texto-sobre-color}"
-    typography: "{typography.subtitulo}"
+    typography: "{typography.boton}"
     rounded: "{rounded.medio}"
     padding: "8px 16px"
     height: "56px"
   boton-primario-presionado:
-    backgroundColor: "{colors.marca-honda}"
+    backgroundColor: "{colors.verde-ruta-hondo}"
     textColor: "{colors.texto-sobre-color}"
+  boton-letrero:
+    backgroundColor: "{colors.verde-ruta}"
+    textColor: "{colors.texto-sobre-color}"
+    typography: "{typography.titulo}"
+    rounded: "{rounded.grande}"
+    padding: "16px 24px"
+    height: "112px"
   boton-secundario:
-    backgroundColor: "{colors.superficie-honda}"
+    backgroundColor: "{colors.superficie}"
     textColor: "{colors.texto}"
-    typography: "{typography.subtitulo}"
+    typography: "{typography.boton}"
     rounded: "{rounded.medio}"
     padding: "8px 16px"
     height: "56px"
   boton-secundario-presionado:
-    backgroundColor: "{colors.divisor}"
+    backgroundColor: "{colors.asfalto-tinte}"
     textColor: "{colors.texto}"
   boton-peligro:
     backgroundColor: "{colors.superficie}"
-    textColor: "{colors.error}"
-    typography: "{typography.subtitulo}"
+    textColor: "{colors.error-texto}"
+    typography: "{typography.boton}"
     rounded: "{rounded.medio}"
     padding: "8px 16px"
     height: "56px"
   boton-peligro-presionado:
     backgroundColor: "{colors.error-fondo}"
-    textColor: "{colors.error}"
+    textColor: "{colors.error-texto}"
   tarjeta:
     backgroundColor: "{colors.superficie}"
     textColor: "{colors.texto}"
@@ -153,11 +197,36 @@ components:
     textColor: "{colors.texto}"
     rounded: "{rounded.grande}"
     padding: "16px"
-  bloque-plano:
-    backgroundColor: "{colors.superficie-honda}"
+  placa-contado:
+    backgroundColor: "{colors.capturado-fondo}"
+    textColor: "{colors.capturado-texto}"
+    typography: "{typography.placa}"
+    rounded: "{rounded.chico}"
+    padding: "3px 10px"
+  placa-aviso:
+    backgroundColor: "{colors.preventivo-fondo}"
+    textColor: "{colors.preventivo-texto}"
+    typography: "{typography.placa}"
+    rounded: "{rounded.chico}"
+    padding: "3px 10px"
+  placa-aviso-solida:
+    backgroundColor: "{colors.preventivo}"
     textColor: "{colors.texto}"
-    rounded: "{rounded.grande}"
-    padding: "24px"
+    typography: "{typography.placa}"
+    rounded: "{rounded.chico}"
+    padding: "3px 10px"
+  placa-error:
+    backgroundColor: "{colors.error-fondo}"
+    textColor: "{colors.error-texto}"
+    typography: "{typography.placa}"
+    rounded: "{rounded.chico}"
+    padding: "3px 10px"
+  placa-fuerte:
+    backgroundColor: "{colors.texto}"
+    textColor: "{colors.texto-sobre-color}"
+    typography: "{typography.placa}"
+    rounded: "{rounded.chico}"
+    padding: "3px 10px"
   campo-texto:
     backgroundColor: "{colors.superficie}"
     textColor: "{colors.texto}"
@@ -165,30 +234,16 @@ components:
     rounded: "{rounded.medio}"
     padding: "8px 12px"
     height: "56px"
-  etiqueta-contado:
-    backgroundColor: "{colors.capturado-fondo}"
-    textColor: "{colors.capturado-texto}"
-    typography: "{typography.etiqueta}"
-    rounded: "{rounded.completo}"
-    padding: "4px 12px"
-  etiqueta-aviso:
-    backgroundColor: "{colors.discrepancia-fondo}"
-    textColor: "{colors.discrepancia-texto}"
-    typography: "{typography.etiqueta}"
-    rounded: "{rounded.completo}"
-    padding: "4px 12px"
-  etiqueta-error:
-    backgroundColor: "{colors.error-fondo}"
-    textColor: "{colors.error-texto}"
-    typography: "{typography.etiqueta}"
-    rounded: "{rounded.completo}"
-    padding: "4px 12px"
-  etiqueta-neutra:
-    backgroundColor: "{colors.superficie-honda}"
-    textColor: "{colors.texto}"
-    typography: "{typography.etiqueta}"
-    rounded: "{rounded.completo}"
-    padding: "4px 12px"
+  encabezado-asfalto:
+    backgroundColor: "{colors.asfalto}"
+    textColor: "{colors.texto-sobre-color}"
+    typography: "{typography.titulo-barra}"
+    padding: "12px 16px 16px"
+  panel-encabezado:
+    backgroundColor: "{colors.asfalto-alto}"
+    textColor: "{colors.texto-sobre-color}"
+    rounded: "{rounded.panel}"
+    padding: "12px"
   fila-sin-contar:
     backgroundColor: "{colors.superficie}"
     textColor: "{colors.texto}"
@@ -205,38 +260,12 @@ components:
     rounded: "{rounded.grande}"
     padding: "12px"
   fila-tecleando:
-    backgroundColor: "{colors.marca}"
+    backgroundColor: "{colors.asfalto}"
     textColor: "{colors.texto-sobre-color}"
     rounded: "{rounded.grande}"
     padding: "12px"
-  encabezado-marca:
-    backgroundColor: "{colors.marca}"
-    textColor: "{colors.texto-sobre-color}"
-    typography: "{typography.titulo-barra}"
-    rounded: "{rounded.encabezado}"
-    padding: "12px 16px 16px"
-  panel-encabezado:
-    backgroundColor: "{colors.marca-honda}"
-    textColor: "{colors.texto-sobre-color}"
-    rounded: "{rounded.panel}"
-    padding: "12px"
-  tecla:
-    backgroundColor: "{colors.superficie}"
-    textColor: "{colors.texto}"
-    typography: "{typography.display}"
-    rounded: "{rounded.medio}"
-    height: "56px"
-  tecla-presionada:
-    backgroundColor: "{colors.marca}"
-    textColor: "{colors.texto-sobre-color}"
-  visor-vacio:
-    backgroundColor: "{colors.superficie}"
-    textColor: "{colors.texto-terciario}"
-    typography: "{typography.total}"
-    rounded: "{rounded.medio}"
-    height: "56px"
   visor-contado:
-    backgroundColor: "{colors.capturado-hondo}"
+    backgroundColor: "{colors.verde-ruta}"
     textColor: "{colors.texto-sobre-color}"
     typography: "{typography.total}"
     rounded: "{rounded.medio}"
@@ -247,11 +276,33 @@ components:
     typography: "{typography.total}"
     rounded: "{rounded.medio}"
     height: "56px"
+  tablero-teclado:
+    backgroundColor: "{colors.asfalto}"
+    textColor: "{colors.texto-sobre-color}"
+    rounded: "{rounded.hoja}"
+    padding: "12px"
+  tecla:
+    backgroundColor: "{colors.asfalto-alto}"
+    textColor: "{colors.texto-sobre-color}"
+    typography: "{typography.tecla}"
+    rounded: "{rounded.medio}"
+    height: "56px"
+  tecla-presionada:
+    backgroundColor: "{colors.superficie}"
+    textColor: "{colors.texto}"
+  tecla-avance:
+    backgroundColor: "{colors.verde-vivo}"
+    textColor: "{colors.texto}"
+    typography: "{typography.titulo-barra}"
+    rounded: "{rounded.medio}"
+  tecla-avance-presionada:
+    backgroundColor: "{colors.verde-ruta}"
+    textColor: "{colors.texto-sobre-color}"
   hoja:
     backgroundColor: "{colors.superficie}"
     textColor: "{colors.texto}"
     typography: "{typography.titulo}"
-    rounded: "{rounded.encabezado}"
+    rounded: "{rounded.hoja}"
     padding: "24px"
   barra-accion:
     backgroundColor: "{colors.superficie}"
@@ -264,233 +315,209 @@ components:
 
 ## Overview
 
-**Creative North Star: "La Báscula de Bodega"**
+**Creative North Star: "Señalamiento de Ruta"**
 
-La app es un instrumento de medición, no una aplicación de oficina. En reposo, la pantalla es neutra: gris azulado de fondo, tarjetas blancas y texto casi negro. El color aparece solo como una lectura, igual que la aguja de una báscula: turquesa cuando algo ya se contó, ámbar cuando algo pide atención, rojo cuando algo falló y azul donde está la mano en este momento. Si no cambió nada y no hay nada que hacer, no hay color.
+La app se lee como un letrero de carretera: de un vistazo, con prisa y bajo cualquier luz. El cromo es asfalto casi negro; el suelo de trabajo es concreto claro; las piezas son blancas como la lámina reflectiva de un letrero; y el color es señal, nunca adorno. El verde ruta dice "avanza" y "ya quedó", el amarillo preventivo dice "atención" (siempre con su rombo), el rojo dice "alto" (siempre con su octágono) y el gris dice "no lleva". Nada más lleva color.
 
-El carácter es directo, rápido y táctil. Se usa de pie, con poca luz y las manos ocupadas contando cajas, pero también en la camioneta y en la calle, a pleno sol, con reflejos y con una sola mano, así que todo se toca con el pulgar y responde al instante. Los controles son gruesos (56 de alto como mínimo), las cifras son grandes y de ancho fijo, y un destello corto confirma cada captura sin hacer esperar la siguiente. La densidad es media: en una lista de 73 productos, cada fila muestra su estado de reojo, y el aire entre grupos agrupa sin necesidad de líneas divisorias.
+La báscula de bodega sigue viva adentro de la fila de conteo: cada producto tiene su visor, hueco y punteado cuando falta la lectura, sólido cuando ya la tiene. Lo que cambió es el mundo alrededor: encabezados de asfalto a escuadra como un pórtico, un carril de avance cuyas marcas discontinuas se cubren de verde conforme se cuenta, placas de estado de esquina corta en mayúsculas condensadas, un escudo de ruta que identifica la ruta como identifica una carretera, y un teclado que es un tablero de asfalto acoplado abajo, con la tecla de avance en verde vivo.
 
-Se rechazan dos mundos de forma explícita. El dashboard SaaS genérico (tarjetas con sombra, degradados, KPIs decorativos) porque aquí cada píxel de color es un dato. Y el ERP gris tipo Handy (tablas densas, controles diminutos, teclado del sistema) porque es justo lo que la app viene a sustituir en la bodega.
+Se usa de pie en bodega con poca luz, en la camioneta y en la calle a pleno sol, con una mano. Por eso todo toque mide 56 como mínimo, las cifras son grandes, condensadas y tabulares, y cada captura responde al instante con un destello corto y háptica. Se rechazan el dashboard SaaS (tarjetas con sombra, degradados, KPIs decorativos, acento azul genérico) y el ERP gris tipo Handy (tablas densas, controles diminutos, teclado del sistema).
 
 **Key Characteristics:**
-- Grado exterior: ningún texto baja de 4.5:1 ni de 12 px, ningún contorno de control baja de 3:1, y ningún estado depende solo del tinte (forma, glifo o texto lo acompañan).
-- La lectura de cada fila es un visor: hueco punteado cuando falta, bloque sólido cuando ya hay lectura. Se distingue por forma aun cuando el sol lava los colores.
-- Neutro en reposo; el color siempre es un estado, nunca decoración.
-- Dos sistemas de color que no se mezclan: el estado tiñe la fila completa y el color de familia solo identifica la banda de su encabezado.
-- Una sola acción azul por pantalla; el azul también marca lo que se está tecleando.
-- Plano: sin sombras. La profundidad se logra con el cambio de fondo y con el espacio.
-- Cifras tabulares en toda cantidad que se compara con otra.
-- Teclado numérico propio y objetivos de toque de 56 en vez de 44 (72 en tablet).
-- La acción principal vive abajo, al alcance del pulgar; las decisiones que interrumpen suben como hoja inferior en celular y aparecen como diálogo en tablet.
-- Cada toque se siente: háptica con el lenguaje de cada plataforma (constantes del sistema en Android, generadores de impacto en iOS).
-- Solo modo claro (`userInterfaceStyle: light`).
+- Tres capas de color con un solo trabajo cada una: asfalto (cromo y mano), verde ruta (avanzar y ya quedó), señales de estado (preventivo, alto, no lleva).
+- Una sola familia tipográfica de señalamiento en dos cortes: Barlow para leer, Barlow Semi Condensed para títulos, placas y cifras.
+- Estado por forma además de color: visor hueco o sólido, rombo para aviso, octágono para error.
+- Esquinas cortas de letrero (4 a 12); las píldoras quedan solo donde un círculo es la forma natural.
+- Plano: sin sombras. La profundidad es tonal (asfalto contra concreto, blanco con contorno contra concreto).
+- Teclados propios en asfalto, objetivos de 56 (72 en tablet), acción principal abajo al alcance del pulgar.
+- Grado exterior: ningún texto baja de 4.5:1 ni de 12 px; ningún contorno de control baja de 3:1.
+- Solo modo claro para las pantallas de trabajo; el asfalto aporta los momentos oscuros (entrada, encabezados, teclados).
 
 ## Colors
 
-Paleta fría y contenida: una base gris azulada, un azul de trabajo y cuatro familias de estado, cada una con tres o cuatro tonos (sólido, hondo, fondo y texto) calibrados para cumplir 4.5:1.
+Paleta de carretera: neutros de concreto y asfalto, un verde de guía y tres señales de estado calibradas para sol directo y penumbra.
+
+En `tokens.ts` los nombres conservan el código existente: `marca*` es el asfalto, `accion*` y `capturado*` son el verde ruta y `discrepancia*` es el preventivo.
 
 ### Primary
-- **Azul de Trabajo** (`marca`): el encabezado de las pantallas de trabajo, el único botón primario de la pantalla, la fila que se está tecleando, el campo con foco y la tecla presionada. Nunca comunica un estado.
-- **Azul Hondo** (`marca-honda`): presionado del azul, paneles dentro del encabezado, campos inactivos de la fila que se teclea y el rótulo del campo en el teclado.
-- **Azul Profundo** (`marca-profunda`): canal de la barra de avance sobre azul.
-- **Azul Neblina** (`marca-tenue`): texto que se retira sobre azul (subtítulos, notas y unidades).
-- **Azul Claro** (`marca-clara`): botón de volver sobre el encabezado azul, un tono más claro para que se lea como botón.
-- **Tinte Azul** (`marca-tinte`): presionado de una tarjeta tocable; fondo de la pastilla de marca.
+- **Asfalto** (`asfalto`): el cromo y la mano. Encabezados de trabajo, el letrero de inicio y de entrada, el tablero del teclado, la fila que se está tecleando, lo seleccionado (una opción marcada, un día elegido) y la placa de los pictogramas del menú. Nunca comunica un estado.
+- **Asfalto Alto** (`asfalto-alto`): piezas sobre asfalto: el panel del encabezado, las teclas y los campos inactivos de la fila que se teclea.
+- **Asfalto Profundo** (`asfalto-profundo`): el canal del carril de avance y del selector Paquetes | Sueltas.
+- **Gris Neblina** (`asfalto-tenue`): texto que se retira sobre asfalto (subtítulos, "de 14 productos", la marca en mayúsculas).
+- **Tinte Frío** (`asfalto-tinte`): presionado de una tarjeta tocable o de un botón secundario; fondo de lo seleccionado sobre claro.
+- **Asfalto Claro** (`asfalto-claro`) y **Marca de Carril** (`carril`): el contorno de las teclas y del botón de volver sobre asfalto, y las marcas discontinuas de lo que falta en el carril.
 
 ### Secondary
-- **Turquesa Contado** (`capturado`): borde de una fila ya contada y relleno de la barra de avance.
-- **Turquesa Hondo** (`capturado-hondo`): el visor sólido de una fila contada (lectura en blanco), la palomita y la pastilla del factor; relleno sólido con texto blanco.
-- **Agua Contada** (`capturado-fondo`): fondo de la fila contada y de las etiquetas "contado".
-- **Turquesa Tinta** (`capturado-texto`): texto sobre el fondo turquesa.
+- **Verde Ruta** (`verde-ruta`): avanzar. El botón primario (uno por pantalla), el botón letrero del inicio, el visor sólido de una fila contada y el texto verde sobre claro.
+- **Verde Ruta Hondo** (`verde-ruta-hondo`): presionado del verde.
+- **Verde Vivo** (`verde-vivo`): el verde sobre asfalto: relleno del carril, subrayado del visor del teclado, tecla de avance (con tinta asfalto encima), casillas llenas del PIN, el rol en el letrero de inicio y la palomita de "Al día".
+- **Contado** (`capturado`, `capturado-fondo`, `capturado-texto`): borde, fondo y texto de una fila contada y de la placa "contado".
 
 ### Tertiary
-- **Ámbar de Aviso** (`discrepancia`): borde del visor cuando la captura tiene un aviso. Es solo para lo que pide atención real: un empaque sin confirmar, sueltas que completan un paquete o una diferencia entre conteos.
-- **Ámbar Hondo** (`discrepancia-honda`), **Crema Ámbar** (`discrepancia-fondo`), **Ámbar Tinta** (`discrepancia-texto`): los bloques de aviso siempre combinan el fondo crema con el texto tinta.
-- **Rojo Falla** (`error`), **Rosa Falla** (`error-fondo`), **Rojo Tinta** (`error-texto`): errores de envío, rechazos del servidor, campos inválidos y el contorno del botón de peligro.
+- **Amarillo Preventivo** (`preventivo`): el letrero de aviso. Sólido con tinta asfalto sobre el teclado y en la placa sólida de aviso; borde de un campo con aviso. Siempre va con el rombo.
+- **Preventivo Hondo, Crema y Tinta** (`preventivo-hondo`, `preventivo-fondo`, `preventivo-texto`): el aviso dentro de la fila y las placas tintadas: fondo crema, contorno hondo y texto tinta.
+- **Rojo Alto** (`error`, `error-fondo`, `error-texto`): errores de envío, rechazos, campos inválidos y el contorno del botón de peligro. Siempre con el octágono o con su texto.
+- **No Lleva** (`pendiente`, `pendiente-fondo`): una fila marcada en cero y la tecla "No lleva"; se retira.
 
 ### Neutral
-- **Gris Andén** (`fondo`): el fondo de toda pantalla; sobre él, lo blanco se lee como tarjeta.
-- **Blanco Tarjeta** (`superficie`): tarjetas, filas sin contar, modales, campos y teclas.
-- **Gris Hundido** (`superficie-honda`): bloques planos dentro de una tarjeta, campos en reposo, pastillas neutras y el botón secundario.
-- **Tinta Noche** (`texto`): texto principal.
-- **Pizarra** (`texto-secundario`): texto de apoyo, ayudas y placeholder.
-- **Gris Rótulo** (`texto-terciario`): rótulos de un dato ("Contó", "Productos"). Cumple AA sobre blanco y sobre el fondo. También es el "—" del visor vacío.
-- **Contorno de Tarjeta** (`contorno-tarjeta`): 1 px alrededor de toda pieza blanca. A pleno sol el blanco sobre gris claro se funde; el contorno la dibuja. Rodea, no separa: no es un divisor.
-- **Borde de Control** (`borde`): contorno de campos, teclas del PIN y opciones, a 3:1 sobre blanco.
-- **Divisor** (`divisor`), **Borde Sin Contar** (`borde-sin-contar`) y **Borde No Lleva** (`borde-no-lleva`): contornos muy suaves que no compiten con el estado.
-- **Gris No Lleva** (`pendiente`) y **Fondo No Lleva** (`pendiente-fondo`): una fila marcada en cero; se retira visualmente.
-- **Velo** (`velo`): oscurece lo que queda detrás de un modal.
-
-**Las tareas del menú no tienen color.** Se reconocen por su ícono, en tinta sobre gris hundido. El trabajo pendiente de un grupo ("3 cargas") va en pastilla sólida de tinta: exige actuar, pero no es un estado.
+- **Concreto** (`fondo`): el fondo de toda pantalla clara. Gris cálido y mate.
+- **Blanco Reflectivo** (`superficie`): tarjetas, filas sin contar, hojas, campos y el botón secundario.
+- **Concreto Hundido** (`superficie-honda`): bloques planos dentro de una tarjeta, campos en reposo de una fila y placas neutras.
+- **Tinta Asfalto** (`texto`), **Pizarra** (`texto-secundario`), **Gris Rótulo** (`texto-terciario`): texto principal, de apoyo y rótulos de un dato.
+- **Contorno de Tarjeta** (`contorno-tarjeta`), **Borde de Control** (`borde`), **Borde Sin Contar** (`borde-sin-contar`), **Borde No Lleva** (`borde-no-lleva`), **Divisor** (`divisor`): contornos de pieza, de control (≥ 3:1) y de estado suave.
+- **Velo** (`velo`): lo que queda detrás de una hoja.
 
 ### Paleta de familia (cerrada)
-El supervisor asigna a cada familia de producto uno de diez colores (rojo, naranja, ámbar, verde, turquesa, azul, índigo, violeta, rosa y café), definidos en `apps/movil/src/theme/colores-familia.ts` y reflejados en el backend. Cada uno tiene tres tonos: un sólido para la línea de 3 px bajo la banda (3:1 sobre el fondo), un tinte para el fondo de la banda (el sólido al 15 % sobre el fondo) y un tono de texto para el nombre de la familia (4.5:1 sobre el tinte). Por omisión, una familia no tiene color y se ve neutra.
+El supervisor asigna a cada familia uno de diez colores (`apps/movil/src/theme/colores-familia.ts`, espejo en el backend). Cada uno trae un sólido para la línea de 3 px bajo la banda, un tinte (el sólido al 15 % sobre el concreto) para el fondo de la banda y un tono de texto para el nombre en mayúsculas. Sin color, la banda es concreto hundido.
 
 ### Named Rules
-**La Regla de Un Color, Un Estado.** Cada color de estado significa una sola cosa en toda la app. El turquesa es "contado", el ámbar es "aviso", el rojo es "error" y el gris es "no lleva". Ninguno se usa para decorar.
+**The Tres Capas Rule.** Asfalto es cromo y mano, verde es avanzar y ya quedó, las señales son estado. Un color que no cabe en una de esas tres capas no entra.
 
-**La Regla de Lo Que Falta Va Neutro.** Una fila sin contar es el estado normal al abrir una carga: blanca con borde gris claro, nunca ámbar. Si lo que falta fuera ámbar, la pantalla entera sería una alarma y el ámbar dejaría de significar algo.
+**The Lo Que Falta Va en Blanco Rule.** Una fila sin contar es el estado normal al abrir una carga: blanca, con visor hueco. Nunca amarilla; si lo que falta fuera aviso, la pantalla entera sería alarma.
 
-**La Regla del Azul Es la Mano.** El azul marca dónde se está trabajando: el encabezado de trabajo, la acción primaria (una por pantalla) y lo que se teclea. Nunca es una etiqueta de estado.
+**The Señal Con Forma Rule.** El amarillo nunca va sin rombo y el rojo nunca va sin octágono o texto. A pleno sol el color se lava; la forma no.
 
-**La Regla de Familia Identifica, Estado Comunica.** El color de familia solo tiñe la banda del encabezado de su familia. Nunca entra en una fila, porque el estado de la fila manda sobre ella entera.
+**The Familia Identifica Rule.** El color de familia solo tiñe la banda de su familia. Nunca entra en una fila.
 
 ## Typography
 
-**Display Font:** Archivo (Bold 700)
-**Body Font:** Archivo (Regular 400, Medium 500 y SemiBold 600)
+**Display Font:** Barlow Semi Condensed (600, 700 y 800)
+**Body Font:** Barlow (400, 500, 600 y 700)
 
-**Character:** Una sola familia grotesca, compacta y de trazo firme, que aguanta cifras grandes en negrita sin perder claridad y texto corrido a 16 sin cansar. La jerarquía se construye con tamaño y peso, nunca con otra familia.
+**Character:** Una grotesca nacida del señalamiento vial, de trazo firme y terminales suaves. El corte normal se lee corrido sin cansar; el semicondensado da títulos con presencia y cifras grandes que caben en el visor sin encogerse. Las dos traen cifras tabulares (`tnum`).
 
-Con una fuente propia, React Native no aplica `fontWeight`. El peso se elige con la variante (`FUENTE.regular`, `FUENTE.medio`, `FUENTE.semiNegrita`, `FUENTE.negrita` o `FUENTE.extraNegrita`, esta última solo para lecturas) y el cambio de fuente se hace solo en `tokens.ts` y `app/_layout.tsx`.
+Con fuente propia React Native no aplica `fontWeight`: el corte se elige con `FUENTE` (`regular`, `medio`, `semiNegrita`, `negrita` en Barlow; `rotulo`, `titular`, `extraNegrita` en la condensada). El cambio de fuente se hace solo en `tokens.ts` y `app/_layout.tsx`.
 
 ### Hierarchy
-- **Número** (ExtraBold, 48/54, tabular): la cifra que domina la pantalla, por ejemplo lo que falta por resolver.
-- **Display** (Bold, 34/40): los dígitos del PIN, el número que se busca con la mirada.
-- **Total** (ExtraBold, 32/36, tabular): la lectura del visor de una fila de conteo; no es tocable.
-- **Título** (Bold, 26/32): el nombre grande en login y en el inicio de cada rol, el título de un modal y el texto de un botón grande.
-- **Avance** (ExtraBold, 28/32, tabular): el "4" del avance en el encabezado de conteo.
-- **Campo** (Bold, 22/26, tabular): el número dentro de un campo de captura.
-- **Título de estado vacío** (SemiBold, 20/26).
-- **Título de barra** (Bold, 20/24): el título del encabezado.
-- **Subtítulo** (SemiBold, 17/22): el nombre de un producto, el texto de un botón y el dato bajo su rótulo (este último sube a Bold).
-- **Cuerpo** (Regular, 16/22): instrucciones y texto corrido.
-- **Familia** (Bold, 15/20): el nombre de la familia en su banda.
-- **Etiqueta** (SemiBold, 14/18): el texto de pastillas, avisos y notas; en las pastillas sube a Bold.
-- **Micro** (Medium, 13/18): rótulos de un dato y líneas de contexto. Medium y no Regular: a pleno sol el trazo fino se deshace.
-- **Rótulo** (Bold, 12/14, MAYÚSCULAS, +0.6): solo los campos de captura ("PAQUETES", "SUELTAS") y la unidad del visor ("PIEZAS", "NO LLEVA"). Nunca más chico: es la diferencia entre 12 y 144 piezas.
+- **Número** (condensada 800, 60/62, tabular): la cifra que domina una pantalla.
+- **Avance** (condensada 800, 40/42, tabular): el "6" del panel del encabezado de conteo.
+- **Display** (condensada 700, 36/40): el nombre de quien está en sesión y los dígitos del PIN; 40 en el letrero de entrada.
+- **Total** (condensada 800, 34/36, tabular): la lectura del visor de una fila.
+- **Tecla** (condensada 700, 30/34, tabular): los dígitos del teclado de cantidad.
+- **Título** (condensada 700, 28/32): títulos de hoja, de pantalla clara, de tarjeta de carga y del botón letrero.
+- **Campo** (condensada 700, 24/28, tabular): el número dentro de un campo de captura.
+- **Título de barra** (condensada 700, 22/26): título del encabezado de asfalto, títulos de sección y renglones del menú (20).
+- **Botón** (condensada 700, 19/23): el texto de todo botón; minúsculas, como un destino.
+- **Subtítulo** (Barlow 600, 17/22): el nombre de un producto y el dato bajo su rótulo (sube a 700).
+- **Cuerpo** (Barlow 400, 16/23): instrucciones y texto corrido.
+- **Familia** (condensada 700, 16/20, MAYÚSCULAS, +1): el nombre de la familia en su banda.
+- **Placa** (condensada 700, 14/18, MAYÚSCULAS, +0.8): la leyenda de una placa de estado.
+- **Etiqueta** (Barlow 600, 14/19): texto de avisos y notas.
+- **Rótulo de dato** (condensada 600, 13/17, MAYÚSCULAS, +0.8): "CONTÓ", "VERIFICA", el rótulo de un campo de texto.
+- **Micro** (Barlow 500, 13/18): líneas de contexto.
+- **Rótulo** (condensada 600, 12/14, MAYÚSCULAS, +1): "PAQUETES", "SUELTAS", "PIEZAS". Nunca más chico.
 
 ### Named Rules
-**La Regla de Cifras en Columna.** Toda cantidad que se compara con otra (cantidades, totales, factores y avance) usa dígitos tabulares (`tabular-nums`). Así, al recorrer la lista las cifras quedan alineadas.
+**The Leyenda en Mayúsculas Rule.** Las mayúsculas condensadas con aire entre letras son la leyenda de un letrero: placas, rótulos de dato, campos de captura y bandas de familia. Títulos, botones y texto corrido van en minúsculas.
 
-**La Regla del Rótulo en Mayúsculas.** Las mayúsculas se reservan para los campos de captura y la unidad de un total. Cualquier otro rótulo va con mayúscula inicial, en 13 px (Micro) y en gris rótulo.
+**The Cifras en Columna Rule.** Toda cantidad que se compara con otra usa dígitos tabulares.
 
-**La Regla del Texto que Crece.** El texto sigue el tamaño que la persona eligió en su teléfono (Dynamic Type, escala de fuente de Android). Lo que vive en cajas de alto fijo (teclas, campos, visor) crece hasta 1.3× (`ESCALA_TEXTO.control`); encabezados y pastillas, hasta 1.5×. Las cajas usan alto mínimo, no alto fijo.
-
-**La Regla del Dato Presente o Ausente.** Un dato que existe va en Subtítulo Bold con tinta noche. Un dato que todavía no existe ("Pendiente") usa el mismo tamaño en Regular y pizarra: el hueco se nota sin necesidad de un color de alarma.
+**The Texto que Crece Rule.** El texto sigue el tamaño del sistema; lo que vive en cajas de alto fijo (teclas, campos, visor) crece hasta 1.3× y los encabezados y placas hasta 1.5×.
 
 ## Layout
 
-Tres clases de ventana, las de Material 3 (`useLayout` en `theme/breakpoints.ts`, con `useWindowDimensions` para responder a la rotación y a la pantalla dividida):
-- **Compacto** (< 600): celular. Una columna, teclado abajo, decisiones en hoja inferior.
-- **Medio** (600–839): tablet de 8" en vertical. Una columna de 720 como máximo, teclas de 72 y diálogos centrados. El teclado sigue abajo: al lado dejaría la lista demasiado angosta para leer nombres.
-- **Expandido** (≥ 840): tablet grande o en horizontal. Lista en dos columnas y teclado en un panel lateral.
+Tres clases de ventana de Material 3 (`useLayout`): compacto (< 600, una columna, teclado abajo, decisiones en hoja inferior), medio (600–839, columna de 720, teclas de 72, diálogos centrados) y expandido (≥ 840, lista en dos columnas y teclado en panel lateral de asfalto). Diálogos de 480 como máximo. Orientación vertical.
 
-Los diálogos no pasan de 480 de ancho: una columna que se lee de un vistazo. La orientación sigue fija en vertical.
+Margen lateral de 16. Todo espacio es múltiplo de 4 y sale de la escala (4, 8, 12, 16, 24, 32, 48): 4 dentro de un grupo, 12 entre hermanos, 24 entre grupos, 48 entre secciones.
 
-El margen lateral de la pantalla es de 16. Todo valor de espacio es múltiplo de 4 y sale de la escala (4, 8, 12, 16, 24, 32, 48). El ritmo agrupa por proporción, no con líneas: 4 dentro de un grupo, 12 entre elementos hermanos (tarjetas de una lista, botones de un grupo), 24 entre grupos de datos dentro de una tarjeta y 48 entre secciones de una pantalla.
+Los letreros de asfalto (entrada, inicio, encabezado de trabajo) van a todo el ancho, a escuadra, y absorben el área segura superior. La barra de estado se ajusta al enfocar cada pantalla (`useBarraEstado`): clara sobre asfalto, oscura sobre concreto.
 
-El encabezado de marca sube bajo la barra de estado y absorbe el área segura superior. La pantalla que lo usa no vuelve a aplicar ese margen.
-
-**La Regla de Aire, No Divisores.** Poco aire dentro de un grupo y mucho entre grupos. Si hace falta una línea para separar dos bloques, lo que está mal es el espaciado.
+**The Aire, No Divisores Rule.** Poco aire dentro de un grupo y mucho entre grupos. Si hace falta una línea, lo que está mal es el espaciado.
 
 ## Elevation & Depth
 
-El sistema es plano, sin ninguna sombra. La profundidad tiene dos niveles, ambos logrados con el cambio de fondo: el nivel 1 es una tarjeta blanca con contorno de 1 px sobre el gris andén, y el nivel 0 es un bloque gris hundido dentro de una tarjeta (resúmenes, tablas). Los modales se separan con el velo, no con sombra. Con lector de pantalla, la fila de conteo es una sola parada con acciones (capturar paquetes, sueltas, no lleva) en vez de seis elementos. La respuesta al toque también es tonal: al presionar, una tarjeta se tiñe de azul claro y se escala a 0.98, y un botón pasa a su tono hondo y se hunde a 0.98. En Android se suma la onda del sistema.
+Sin sombras. La profundidad es tonal y tiene tres niveles: el asfalto (cromo, teclados) contra el concreto; la pieza blanca con contorno de 1 px sobre el concreto; y el bloque de concreto hundido dentro de una pieza. Sobre asfalto, las piezas suben un tono (asfalto alto) con contorno de asfalto claro. Las hojas se separan con el velo. Al presionar, una tarjeta toma el tinte frío con contorno en asfalto y se hunde a 0.98; un botón pasa a su tono hondo; una tecla se enciende en blanco. En Android se suma la onda del sistema.
 
-**La Regla de Plano por Defecto.** Nada lleva `shadow` ni `elevation`. Si algo necesita destacar, cambia de fondo o gana espacio alrededor.
+**The Plano Por Defecto Rule.** Nada lleva `shadow` ni `elevation`. Si algo necesita destacar, cambia de fondo o gana espacio.
 
 ## Shapes
 
-Las esquinas son redondeadas en todos los niveles y su radio crece con el tamaño del bloque. Los avisos internos usan 6. El cuadro del ícono de una fila de menú, 11. Campos, teclas y botones, 12. Los paneles dentro del encabezado azul, 14. Tarjetas, filas de conteo y modales, 18. Las esquinas inferiores del encabezado azul, 22. Todo lo que es dato (pastillas de estado, factor de empaque, barra de avance) es una píldora completa (999), para que se reconozca como dato y no como texto suelto.
+Esquinas de letrero: cortas y firmes. Placas y avisos internos, 4. Campos, teclas, botones y cuadros de ícono, 8. Paneles sobre asfalto, 10. Tarjetas, filas de conteo, estados vacíos y diálogos, 12. Esquinas superiores de una hoja y del tablero del teclado, 16. El círculo completo solo donde el círculo es la forma natural del objeto; nunca para una placa de estado.
 
-Los bordes tienen tres grosores (1, 2 y 3). El borde de 2 es el contorno de campos, del botón de peligro y de la fila de conteo en cualquier estado. El de 3 se reserva para la línea de la banda de familia, el borde superior del teclado y el subrayado del visor.
+Bordes de 1, 2 y 3: el de 1 contornea piezas y teclas sobre asfalto; el de 2 es el de controles, filas de conteo y botones secundarios; el de 3 (4 en el subrayado activo) es la línea de la banda de familia y el subrayado verde de lo que se teclea. El botón letrero lleva un filete interior de 2 a 4 del canto, como el marco de un letrero.
+
+Formas propias: el **escudo de ruta** (44×50, contorno de tinta, número condensado 800) y la **marca** (el mismo escudo con la palomita de dos trazos, en verde).
 
 ## Components
 
 ### Buttons
-Gruesos y sin adornos: se leen como una tecla, no como un enlace.
-- **Shape:** esquinas medias (12), al menos 56 de alto, relleno 8/16.
-- **Primario:** relleno azul de trabajo con texto blanco en Subtítulo. Uno por pantalla o por modal. Al presionarlo pasa a azul hondo.
-- **Secundario:** gris hundido con texto en tinta y contorno fino (1) en borde sin contar, para que a pleno sol no se funda con el fondo. Sirve para volver, cancelar y alternativas. Al presionarlo pasa al tono divisor.
-- **Peligro:** fondo blanco con contorno de 2 y texto en rojo falla. Nunca es el botón dominante: en su modal, el botón sólido es la salida segura ("No, volver"). Al presionarlo pasa a rosa falla.
-- **Grande:** alineado a la izquierda, con el texto en Título, una segunda línea en Cuerpo Medium y una flecha a la derecha: se lee como un renglón ("Continuar carga · sale mañana") que lleva a otra pantalla.
-- **Cargando / deshabilitado:** opacidad al 0.5; al cargar muestra un indicador junto al texto ("Guardando…").
-- **Doble toque:** cada control ignora un segundo toque dentro de 320 ms. Las teclas de los teclados no tienen ese freno.
+Gruesos, condensados y sin adornos.
+- **Shape:** esquinas de 8, al menos 56 de alto, relleno 8/16.
+- **Primario:** verde ruta con texto blanco. Uno por pantalla o por hoja. Presionado: verde hondo y se hunde a 0.98.
+- **Letrero (grande):** verde ruta, 112 de alto, esquinas de 12, filete interior blanco al 55 %, título a 28, una línea de detalle y una flecha gruesa de destino a la derecha. Es la acción principal del inicio.
+- **Secundario:** placa blanca con contorno de 2 en borde sin contar; presionado, tinte frío con contorno de control.
+- **Peligro:** blanco con contorno de 2 y texto en rojo. Nunca es el dominante: en su hoja, la salida segura va sólida.
+- **Cargando / deshabilitado:** opacidad 0.5; al cargar, indicador junto al texto. Doble toque frenado a 320 ms (las teclas no).
 
-### Chips (Etiqueta)
-- **Style:** píldora con relleno de 4/12 y texto en Etiqueta Bold.
-- **Tintada (por omisión):** fondo del estado con texto oscuro del mismo tono. Así se muestra un estado: se lee de reojo sin gritar.
-- **Sólida:** fondo del color con texto blanco, solo para lo que exige actuar ya.
+### Chips (Placas)
+- **Style:** esquina de 4, relleno 3/10, leyenda condensada en mayúsculas.
+- **Tintada (por omisión):** fondo del estado con tinta del mismo tono.
+- **Sólida:** para lo que exige actuar ya; la de aviso es amarillo preventivo con tinta asfalto y la fuerte es asfalto con blanco.
 - **Contorno:** borde de 2 y texto en el color, para algo sin confirmar.
-- **Neutra / referencia / fuerte:** gris hundido con texto en tinta, pizarra o, en la variante fuerte, fondo tinta.
-- **Tamaños:** normal junto a texto de cuerpo; destacada (Subtítulo Bold) junto al nombre de un producto; grande (Título) cuando es lo que distingue un renglón de otro (c/60 contra c/70). El ancho fijo alinea las pastillas en columna.
+- **Destacada y grande:** cifras condensadas 800 (18 y 28) para factores como c/60 contra c/70.
 
-### Cards / Containers (Tarjeta)
-- **Corner Style:** grande (18), con el contenido recortado.
-- **Background:** blanco tarjeta (nivel 1) o gris hundido (nivel 0). Puede ir tintada con el fondo de un estado cuando el bloque entero es ese estado.
-- **Shadow Strategy:** ninguna (ver Elevation & Depth).
-- **Border:** ninguno.
-- **Internal Padding:** 24 en la normal y 16 en la compacta; hueco interno de 12 (normal) o 4 (compacta). Entre tarjetas de una lista, 12.
-- **Banda de estado:** la primera línea puede ser una píldora tintada con el nombre del estado y un detalle en micro a la derecha ("3 de 5"). La tarjeta sigue siendo blanca y el estado es lo único con color.
+### Cards / Containers
+- **Corner Style:** 12, contenido recortado.
+- **Background:** blanco reflectivo con contorno de 1 (nivel 1) o concreto hundido (nivel 0); tintada con el fondo de un estado cuando el bloque entero es ese estado.
+- **Shadow Strategy:** ninguna.
+- **Internal Padding:** 24 (normal) o 16 (compacta).
+- **Banda de estado:** primera línea con la placa del estado y un detalle en rótulo de dato a la derecha ("3 DE 5").
 
-### Inputs / Fields (CampoTexto)
-- **Style:** fondo blanco con contorno de 2 en borde de control, esquinas medias (12), al menos 56 de alto y texto en Cuerpo. El rótulo va arriba en micro gris y la ayuda debajo en Etiqueta Regular pizarra.
-- **Focus:** el contorno pasa a azul de trabajo, igual que el campo activo del conteo.
-- **Error / Disabled:** en error, el contorno y el texto de ayuda pasan a rojo falla. El error nunca se comunica solo con el color: siempre va con su texto. Deshabilitado, el campo toma fondo gris hundido.
+### Inputs / Fields
+- **Style:** blanco, contorno de 2 en borde de control, esquinas de 8, al menos 56 de alto, rótulo arriba en mayúsculas condensadas.
+- **Focus:** contorno en asfalto y el rótulo sube a tinta; selección en verde ruta.
+- **Error / Disabled:** contorno y ayuda en rojo, siempre con texto; deshabilitado en concreto hundido.
 
-### Navigation (Encabezado)
-- **Marca:** bloque azul a todo el ancho con las esquinas inferiores de 22. Solo en las pantallas de trabajo con contexto propio (conteo, discrepancias, historial, autorizaciones y empaques). Lleva el título en Título de barra blanco y subtítulo y notas en azul neblina. El botón de volver es un cuadro de 44 en azul claro con chevron blanco, arriba a la izquierda; la primera línea del título se centra con él aunque debajo haya notas de contexto. Debajo va un panel azul hondo (radio 14) que agrupa el avance, la barra de progreso y el estado de envío.
-- **Barra:** sobre el gris andén, sin bloque, con el título en tinta y el botón de volver blanco. Para pantallas de administración (plantillas, familias).
-- **Plano:** dentro del contenido (un modal o un paso de un flujo), con el título a tamaño Título.
-- **Barra de avance:** canal azul profundo de 8 de alto con relleno turquesa contado, en forma de píldora.
+### Navigation
+- **Encabezado de asfalto (marca):** a todo el ancho y a escuadra, título condensado blanco, subtítulo en gris neblina, volver en un cuadro de 44 de asfalto claro, escudo de ruta a la derecha cuando la ruta trae número. Debajo, el panel de asfalto alto con la lectura del avance, el estado de envío y el carril. Solo pantallas de trabajo con contexto propio.
+- **Barra clara:** sobre el concreto, título condensado a 28, volver blanco con contorno. Administración.
+- **Plano:** dentro de una hoja o un paso.
+- **Menú:** un bloque blanco; cada renglón con su pictograma blanco sobre placa de asfalto de 40, leyenda condensada a 20 y chevron. Presionado, el renglón entero se vuelve asfalto.
+
+### Carril de avance (componente distintivo)
+Canal de asfalto profundo de 10 de alto con marcas de carril discontinuas (10/8, trazo de 2) que representan lo que falta; lo contado lo cubre una línea continua en verde vivo que se traza hasta su nuevo largo en 360 ms con frenado exponencial. Con "Reducir movimiento" salta sin animar.
 
 ### Fila de conteo (componente distintivo)
-El corazón de la app. Cada fila es un bloque de radio 18, borde de 2 y relleno de 12. Mide lo mismo en cualquier estado y su estado la tiñe completa (fondo, borde, visor y pastilla del factor). A la derecha, junto al botón 0, va el **visor**: la lectura de la báscula, de 96 de ancho y 56 de alto.
-- **Sin contar:** blanca con borde gris claro. Visor hueco, con contorno punteado y "—".
-- **Contado:** fondo agua con borde turquesa y palomita. Visor sólido en turquesa hondo con la lectura en blanco ExtraBold.
-- **No lleva:** fondo y nombre en gris no lleva. Visor sólido gris con "0" y "NO LLEVA": la pastilla aparte desaparece.
-- **Tecleando:** la fila entera en azul de trabajo con texto blanco, campos inactivos en azul hondo y el campo activo en blanco subrayado de azul, para que sea imposible perder dónde vas.
-
-Al cambiar de estado (nunca al montarse), un destello de 280 ms a opacidad 0.3 confirma el toque. La marca de envío es discreta a propósito y está dibujada, nunca es un carácter: flecha hacia arriba si falta enviar y triángulo de alerta si el servidor rechazó; lo ya enviado no lleva marca. Los avisos llevan su glifo de alerta además del fondo ámbar. Los avisos ámbar dentro de la fila (bloque crema con texto tinta) son lo único ámbar de la lista.
+Pieza de esquinas 12, borde de 2 y relleno de 12, del mismo tamaño en cualquier estado; el estado la tiñe completa. A la derecha, el **visor** de 96×56 y el botón 0.
+- **Sin contar:** blanca con borde gris claro; visor hueco punteado con "—".
+- **Contado:** fondo verde agua, borde verde, palomita; visor sólido verde ruta con la lectura condensada 800 en blanco.
+- **No lleva:** gris; visor sólido gris con "0 · NO LLEVA".
+- **Tecleando:** la fila entera en asfalto, campos inactivos en asfalto alto y el campo activo blanco con subrayado verde vivo de 4.
+- La placa del factor (C/12) toma los colores del estado. Los avisos dentro de la fila son bloques crema con contorno hondo y rombo; el rechazo del servidor, rosa con octágono. Un destello de 280 ms confirma cada cambio de estado.
 
 ### Teclado de cantidad y teclado de PIN
-Teclados propios, nunca el del sistema, que cambia de tamaño y tapa la lista. El teclado de cantidad va en un panel gris andén con borde superior azul de 3. Arriba repite el producto y el campo que se captura (rótulo en Etiqueta Bold mayúsculas, azul hondo). El visor, subrayado de 3 en azul, se vuelve ámbar cuando hay aviso, y la cifra va a 30 Bold tabular. La zona de aviso reserva dos líneas de alto para que las teclas nunca se muevan. Es un numpad: tres columnas de dígitos (el 0 a todo el ancho abajo) y, del lado del pulgar, una columna de acciones un poco más ancha con **Borrar**, **No lleva** (en el gris de la fila no lleva: marca 0 y pasa al siguiente) y la **tecla de avance**, azul sólido y de doble alto: es la acción del panel. Arriba, un selector **Paquetes | Sueltas** (el campo activo va relleno de azul) dice por forma qué se captura. "Listo" solo cierra y es lo más callado del panel: gris hundido, 40 de alto con holgura hasta 56. Con paquetes tecleados, el avance salta al siguiente producto; con Paquetes vacío, va a Sueltas. En el teclado de PIN, las teclas son blancas con borde de 2 y se vuelven azules al presionarlas. Indicadores, aviso y teclado van juntos abajo, al alcance del pulgar (en tablet, centrados en una columna de 440 con el nombre alineado a ella). Un PIN incorrecto sacude los indicadores (cinco tramos de 50 ms).
+El teclado de cantidad es un **tablero de asfalto** acoplado abajo, con esquinas superiores de 16 (panel lateral a escuadra en tablet expandida). Arriba repite el producto y el campo; el selector Paquetes | Sueltas es un canal de asfalto profundo donde la opción activa es una placa blanca; la lectura va a 32 condensada 800 en blanco con subrayado verde vivo (amarillo con aviso). El aviso es un letrero preventivo amarillo con rombo. Las teclas son de asfalto alto con dígitos blancos y se encienden en blanco al presionar; "No lleva" va en gris; la tecla de avance es verde vivo con tinta asfalto y mide dos filas. El teclado de PIN comparte las teclas: oscuro en la entrada, claro (blanco con contorno, asfalto al presionar) dentro de hojas y formularios. Las casillas del PIN son cuatro marcas de carril de 36×12 que se llenan de verde vivo (asfalto sobre claro) y se sacuden ante un PIN incorrecto.
 
 ### Hoja y diálogo (`Hoja`)
-Toda decisión que interrumpe usa la misma primitiva. En celular es una hoja inferior (esquinas superiores de 22) que sube desde el pulgar; en tablet es un diálogo centrado de 480. Título en Título, detalle en Cuerpo secundario, contenido desplazable y **pie fijo** con los botones (`AccionesHoja`): la salida a la izquierda y lo esperado a la derecha. Con una acción destructiva se apilan: el contorno rojo arriba y la salida segura, sólida, hasta abajo. Mientras guarda, ni atrás ni el velo la cierran. Tocar el velo solo cierra lo que no pierde nada (una lista para ir a un producto).
+Hoja inferior de esquinas superiores de 16 en celular, diálogo de 480 con esquinas de 12 en tablet. Título condensado a 28, detalle en cuerpo, pie fijo con la salida a la izquierda y lo esperado a la derecha; con peligro se apilan con la salida segura abajo. Entra en 240 ms con frenado exponencial, sin rebote.
 
-### Barra de acción (`BarraAccion`)
-La acción de la pantalla, fija abajo sobre blanco con contorno arriba: Finalizar en el conteo, Autorizar en la revisión, Crear plantilla y Marcar un día en las listas de administración. En tablet, el botón se queda en la columna de la lista (720) aunque la barra vaya a todo el ancho. Sobre el botón, en una línea, por qué todavía no procede ("Faltan 3 productos por contar."). Absorbe el área segura inferior. En la revisión del supervisor, las acciones de excepción (rechazar, modificar, cambiar fecha, cancelar) se guardan tras "Más acciones".
+### Estados vacíos y bloques de aviso
+El estado vacío lo encabeza una placa de 72 (asfalto con pictograma blanco si es informativo; tinte del estado si es buena noticia o un problema), título condensado a 22 y detalle. Los bloques de error, atención y éxito llevan contorno de 1.5, su glifo (octágono, reloj, palomita) y título condensado a 20.
 
-### Cierre
-Terminar algo se confirma: al finalizar un conteo, el inicio muestra un bloque verde con palomita, cuántos productos llegaron y qué sigue ("Sigue el contador: hace su conteo sin ver el tuyo."), junto con un toque háptico de éxito.
-
-### Confirmación cruzada
-La regla se muestra como dos pasos numerados (1 una persona captura, 2 otra persona confirma desde su teléfono con su PIN). Cada diferencia dice quién capturó y quién confirma; a quien capturó se le explica por qué no puede confirmar. La cantidad final sin confirmar va en un marco punteado; confirmada, sólida en verde con palomita. El diálogo de PIN dice "Confirmas como {nombre}".
-
-### Plataforma (`Pulsable`)
-Todo lo tocable pasa por `Pulsable`: háptica por plataforma, onda del sistema en Android, respuesta tonal en iOS y freno al doble toque. Los íconos son SVG propios de trazo 2 en una cuadrícula de 24 (incluido un camión para la identidad de la app). El volver de iOS por borde y el atrás de Android siguen activos.
-
-### Estados de espera
-El esqueleto pulsa entre 0.35 y 0.5 de opacidad cada 800 ms y se queda quieto si el sistema pide reducir movimiento. En login, los pasos entran deslizándose de lado. Las hojas entran en 240 ms con frenado exponencial y nunca rebotan (`MOVIMIENTO` y `CURVA_SALIDA` en `tokens.ts`).
+### Entrada e inicio
+La entrada abre con un letrero de asfalto: la marca y "CONTEO DE CARGAS" en mayúsculas, y la instrucción a 40. Cada usuario es una tarjeta con su placa de iniciales en asfalto. El paso del PIN es todo asfalto. El inicio abre con el letrero de asfalto de quien está en sesión: placa blanca con iniciales, nombre en display blanco y rol en verde vivo; debajo, sobre concreto, las acciones.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** usar un solo botón primario azul por pantalla o modal; lo demás va en secundario o peligro.
-- **Do** teñir la fila entera con su estado (fondo, borde, total y factor) y dejar el color de familia solo en la banda de su encabezado.
-- **Do** mostrar lo que falta contar en blanco con borde gris claro; el color aparece conforme se avanza.
-- **Do** usar dígitos tabulares en toda cifra que se compare con otra.
-- **Do** mantener 56 como alto mínimo de toque, de botones y de campos de captura (72 en las teclas de tablet).
-- **Do** mostrar el estado de una lectura por forma (visor hueco o sólido, glifo) además del color.
-- **Do** poner la acción principal abajo y las decisiones que interrumpen en `Hoja`.
-- **Do** separar con espacio de la escala (4 / 12 / 24 / 48) en vez de líneas divisorias.
-- **Do** acompañar todo error o estado con texto; el color nunca va solo.
-- **Do** verificar cada par nuevo de texto sobre fondo en `contraste.spec.ts` (4.5:1 para texto, 3:1 para gráficos).
-- **Do** elegir el peso con la variante de `FUENTE`, nunca con `fontWeight`.
+- **Do** usar un solo botón verde por pantalla u hoja; lo demás va en secundario o peligro.
+- **Do** dibujar en asfalto el cromo y la mano: encabezados de trabajo, teclados, la fila que se teclea y lo seleccionado.
+- **Do** acompañar el amarillo con rombo y el rojo con octágono o texto.
+- **Do** dejar lo que falta en blanco con visor hueco; el verde aparece conforme se avanza.
+- **Do** escribir las leyendas de placa, rótulo y familia en mayúsculas condensadas con aire entre letras, y todo lo demás en minúsculas.
+- **Do** usar cifras tabulares condensadas en toda cantidad que se compara.
+- **Do** mantener 56 como toque mínimo (72 en teclas de tablet).
+- **Do** verificar cada par nuevo de texto sobre fondo en `contraste.spec.ts`.
+- **Do** elegir el corte con `FUENTE`, nunca con `fontWeight`.
+- **Do** ajustar la barra de estado con `useBarraEstado` en toda pantalla que no use `Encabezado`.
 
 ### Don't:
-- **Don't** usar sombras, degradados ni tarjetas "flotantes" de dashboard SaaS genérico; la profundidad es tonal.
-- **Don't** imitar el ERP gris tipo Handy: nada de tablas densas, controles pequeños ni teclado del sistema para capturar cantidades.
-- **Don't** usar ámbar para lo que simplemente falta contar; el ámbar es solo para avisos reales.
-- **Don't** usar el azul de trabajo como etiqueta de estado.
+- **Don't** usar sombras, degradados, brillos ni vidrio; la profundidad es tonal.
+- **Don't** usar el verde como decoración ni el asfalto como estado.
+- **Don't** hacer píldoras de las placas de estado ni redondear de más: esquinas de 4 a 16.
 - **Don't** meter el color de familia dentro de una fila de conteo.
-- **Don't** hacer del botón de peligro el botón dominante de un modal.
-- **Don't** escribir rótulos en mayúsculas fuera de los campos de captura y la unidad de un total.
-- **Don't** usar un carácter (↑, !, ‹, ›) como ícono; se dibuja.
-- **Don't** usar `Pressable` o `Modal` directo en una pantalla: `Pulsable`, `Hoja` (decisiones que interrumpen) y `PantallaModal` (una tarea completa encima, como modificar una cantidad) dan la respuesta de la plataforma.
-- **Don't** escribir el color de la onda de Android a mano: sale de `ONDA` en `tokens.ts`.
-- **Don't** poner más de una acción azul en una lista de tarjetas: solo la primera que requiere acción; las demás van en secundario.
-- **Don't** poner texto por debajo de 12 px ni usar el azul o el color de una tarea como adorno de menú.
-- **Don't** inventar valores de espacio, radio o color caso por caso; todo sale de `tokens.ts` o `colores-familia.ts`.
+- **Don't** usar ámbar o amarillo para lo que simplemente falta contar.
+- **Don't** hacer del botón de peligro el dominante de una hoja.
+- **Don't** usar un carácter (↑, !, ‹, ›) como ícono; se dibuja en SVG de trazo 2 sobre cuadrícula de 24.
+- **Don't** usar `Pressable` o `Modal` directo: `Pulsable`, `Hoja` y `PantallaModal`.
+- **Don't** escribir colores, radios ni espacios caso por caso; todo sale de `tokens.ts` o `colores-familia.ts`.

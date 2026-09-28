@@ -358,7 +358,7 @@ const estilos = StyleSheet.create({
     height: TOQUE_MINIMO + ESPACIADO.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.medio,
   },
   opcionPresionada: {
     backgroundColor: COLORES.superficieHonda,
@@ -368,7 +368,7 @@ const estilos = StyleSheet.create({
     padding: ANILLO,
     borderWidth: ANILLO,
     borderColor: 'transparent',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.grande,
   },
   anilloActivo: {
     borderColor: COLORES.texto,

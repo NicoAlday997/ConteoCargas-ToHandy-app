@@ -327,7 +327,6 @@ const estilos = StyleSheet.create({
   // El punto focal de la tarjeta: nada más en ella tiene este tamaño ni peso.
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   salida: {

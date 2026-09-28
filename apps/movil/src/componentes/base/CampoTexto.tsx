@@ -53,14 +53,14 @@ export function CampoTexto({
 
   return (
     <View style={[estilos.contenedor, style]}>
-      <Text style={estilos.etiqueta}>{etiqueta}</Text>
+      <Text style={[estilos.etiqueta, enfocado && estilos.etiquetaEnfocada]}>{etiqueta}</Text>
       <TextInput
         ref={ref}
         value={valor}
         onChangeText={onCambiar}
         placeholder={ejemplo}
         placeholderTextColor={COLORES.textoSecundario}
-        selectionColor={COLORES.marca}
+        selectionColor={COLORES.accion}
         cursorColor={COLORES.marca}
         multiline={multilinea}
         maxLength={maxLength}
@@ -97,6 +97,11 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.xs,
   },
   etiqueta: ETIQUETA_DATO,
+  // Con foco, el rótulo sube a tinta: dice qué se está escribiendo.
+  etiquetaEnfocada: {
+    fontFamily: FUENTE.semiNegrita,
+    color: COLORES.texto,
+  },
   campo: {
     minHeight: TOQUE_MINIMO,
     paddingHorizontal: ESPACIADO.md,
@@ -112,9 +117,10 @@ const estilos = StyleSheet.create({
     minHeight: TOQUE_MINIMO + ESPACIADO.xl,
     textAlignVertical: 'top',
   },
-  // Lo que se está editando lleva la marca, igual que el campo activo del conteo.
+  // Lo que se está editando se dibuja en asfalto, igual que la fila que se teclea.
   enfocado: {
     borderColor: COLORES.marca,
+    backgroundColor: COLORES.superficie,
   },
   conError: {
     borderColor: COLORES.error,

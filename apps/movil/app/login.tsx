@@ -18,8 +18,8 @@ import {
   Chevron,
   Esqueleto,
   EstadoVacio,
-  Glifo,
   LineaEsqueleto,
+  MarcaApp,
   Pulsable,
   SEPARACION_TARJETAS,
   Tarjeta,
@@ -27,6 +27,7 @@ import {
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
+import { useBarraEstado } from '../src/theme/barra-estado';
 import { sentir } from '../src/theme/tacto';
 import { COLORES, ELEVACION, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
@@ -45,6 +46,7 @@ type Direccion = 'inicial' | 'adelante' | 'atras';
 export default function PantallaLogin() {
   const [usuario, setUsuario] = useState<UsuarioElegible | null>(null);
   const [direccion, setDireccion] = useState<Direccion>('inicial');
+  useBarraEstado('light');
 
   const elegir = (u: UsuarioElegible) => {
     setDireccion('adelante');
@@ -58,7 +60,7 @@ export default function PantallaLogin() {
 
   // Sin bloque azul: la entrada va sobre el fondo de pantalla, con el título grande.
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       {usuario ? (
         <Animated.View
           key={`pin-${usuario.id}`}
@@ -89,13 +91,12 @@ export default function PantallaLogin() {
  * tinta, como la placa de una báscula) y la instrucción grande.
  */
 function BandaMarca({ titulo }: { titulo: string }) {
+  const margenes = useSafeAreaInsets();
   return (
-    <View style={estilos.bandaMarca}>
+    <View style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.lg }]}>
       <View style={estilos.columnaBanda}>
         <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Conteo de Cargas">
-          <View style={estilos.placa}>
-            <Glifo nombre="camion" color={COLORES.textoSobreColor} tamano={ESPACIADO.xl} />
-          </View>
+          <MarcaApp invertida tamano={ESPACIADO.xxl + ESPACIADO.xs} />
           <Text style={estilos.nombreApp}>Conteo de Cargas</Text>
         </View>
         <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
@@ -312,8 +313,8 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
   const nombre = usuario.nombreCompleto?.trim() || 'Usuario sin nombre';
 
   return (
-    <View style={estilos.paso}>
-      <View style={[estilos.bandaMarca, estilos.bandaPin]}>
+    <View style={[estilos.paso, estilos.pasoPin]}>
+      <View style={[estilos.bandaMarca, estilos.bandaPin, { paddingTop: margenes.top + ESPACIADO.sm }]}>
         {/* En tablet, la misma columna que el teclado: nombre y teclas alineados. */}
         <View style={[estilos.columnaBanda, esTablet && estilos.columnaPin]}>
           <Pulsable
@@ -322,7 +323,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
             accessibilityLabel="Volver y elegir otro usuario"
             style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
           >
-            <Chevron direccion="izquierda" color={COLORES.texto} />
+            <Chevron direccion="izquierda" color={COLORES.textoSobreColor} />
             <Text style={estilos.textoBotonVolver}>Elegir otro usuario</Text>
           </Pulsable>
           <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
@@ -335,7 +336,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
         style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.lg + margenes.bottom }]}
       >
         <View style={estilos.zonaIndicadores}>
-          <IndicadoresPin cantidad={cantidad} claveError={claveError} />
+          <IndicadoresPin cantidad={cantidad} claveError={claveError} oscuro />
           <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
             {enviando ? (
               <Text style={estilos.textoVerificando}>Verificando…</Text>
@@ -349,7 +350,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
           // El panel ocupa el lugar del teclado: no hay nada que teclear hasta resolverlo.
           <PanelBloqueo aviso={aviso} minutos={minutosBloqueo} />
         ) : (
-          <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
+          <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} oscuro />
         )}
       </View>
     </View>
@@ -457,13 +458,19 @@ const estilos = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
+  // El letrero de la entrada: asfalto a todo el ancho y a escuadra.
   bandaMarca: {
     paddingHorizontal: RITMO.margen,
     paddingTop: ESPACIADO.xl,
-    paddingBottom: ESPACIADO.sm,
+    paddingBottom: ESPACIADO.xl,
+    backgroundColor: COLORES.marca,
   },
   bandaPin: {
-    paddingTop: ESPACIADO.sm,
+    paddingBottom: ESPACIADO.sm,
+  },
+  // El paso del PIN es todo asfalto: la entrada se siente como un tablero.
+  pasoPin: {
+    backgroundColor: COLORES.marca,
   },
   columnaBanda: {
     width: '100%',
@@ -479,30 +486,26 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
-    marginBottom: ESPACIADO.lg,
-  },
-  // Placa en tinta: la app no tiene marca propia; su identidad es la herramienta.
-  placa: {
-    width: ESPACIADO.xxl + ESPACIADO.xs,
-    height: ESPACIADO.xxl + ESPACIADO.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.medio,
-    backgroundColor: COLORES.texto,
+    marginBottom: ESPACIADO.xl,
   },
   nombreApp: {
-    ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.texto,
+    fontFamily: FUENTE.titular,
+    fontSize: 18,
+    lineHeight: 22,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: COLORES.textoSobreColor,
   },
   tituloBanda: {
     ...TIPOGRAFIA.display,
-    color: COLORES.texto,
+    fontSize: 40,
+    lineHeight: 44,
+    color: COLORES.textoSobreColor,
   },
   subtituloBanda: {
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.medio,
-    color: COLORES.textoSecundario,
+    color: COLORES.marcaTenue,
   },
 
   // Paso 1
@@ -527,19 +530,21 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: RITMO.margen,
   },
+  // Placa de iniciales: asfalto con letra blanca, como el gafete de un turno.
   avatar: {
     width: TAMANO_AVATAR,
     height: TAMANO_AVATAR,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.marca,
+    borderRadius: RADIOS.medio,
   },
-  // Neutro: las iniciales identifican, no son una acción (ver la regla del azul).
   textoAvatar: {
-    ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.textoSecundario,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 22,
+    lineHeight: 26,
+    letterSpacing: 0.5,
+    color: COLORES.textoSobreColor,
   },
   datosUsuario: {
     flex: 1,
@@ -547,7 +552,6 @@ const estilos = StyleSheet.create({
   // El nombre es lo que se busca: domina la fila.
   nombreUsuario: {
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // El rol es su rótulo, arriba y pegado: se retira.
@@ -588,11 +592,11 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   botonVolverPresionado: {
-    backgroundColor: COLORES.superficieHonda,
+    backgroundColor: COLORES.marcaHonda,
   },
   textoBotonVolver: {
     ...TIPOGRAFIA.subtitulo,
-    color: COLORES.texto,
+    color: COLORES.textoSobreColor,
   },
   zonaIndicadores: {
     alignItems: 'center',
@@ -608,7 +612,7 @@ const estilos = StyleSheet.create({
   textoVerificando: {
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.medio,
-    color: COLORES.textoSecundario,
+    color: COLORES.marcaTenue,
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,

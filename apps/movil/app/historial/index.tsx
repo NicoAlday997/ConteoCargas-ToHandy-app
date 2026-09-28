@@ -337,7 +337,6 @@ const estilos = StyleSheet.create({
   ruta: {
     flex: 1,
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // Aire de grupo sobre los datos: la ruta y quién la contó son dos bloques.

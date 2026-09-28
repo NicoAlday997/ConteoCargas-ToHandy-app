@@ -31,7 +31,6 @@ import {
   ESPACIADO,
   ETIQUETA_DATO,
   OPACIDAD,
-  FUENTE,
   RADIOS,
   RITMO,
   TIPOGRAFIA,
@@ -479,7 +478,6 @@ const estilos = StyleSheet.create({
   tipo: ETIQUETA_DATO,
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   filaEstado: {

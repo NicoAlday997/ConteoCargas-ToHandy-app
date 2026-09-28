@@ -40,7 +40,7 @@ export function BloqueError({
 }: Props) {
   const colores = tono === 'error' ? TONOS.error : tono === 'exito' ? TONOS.capturado : TONOS.discrepancia;
   const borde = tono === 'error' ? COLORES.error : tono === 'exito' ? COLORES.capturadoHondo : COLORES.discrepanciaHonda;
-  const glifo = tono === 'error' ? 'alerta' : tono === 'exito' ? 'listo' : 'reloj';
+  const glifo = tono === 'error' ? 'alto' : tono === 'exito' ? 'listo' : 'reloj';
   return (
     <View
       style={[estilos.bloque, { backgroundColor: colores.fondo, borderColor: borde }, style]}
@@ -82,7 +82,7 @@ const estilos = StyleSheet.create({
     gap: RITMO.interno,
     padding: RITMO.margen,
     borderRadius: RADIOS.medio,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   cabecera: {
     flexDirection: 'row',
@@ -91,8 +91,9 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     flex: 1,
-    ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.titular,
+    fontSize: 20,
+    lineHeight: 24,
   },
   // Alineado con el título, no bajo el signo.
   detalle: {

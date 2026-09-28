@@ -5,7 +5,7 @@ import {
 } from './colores-familia';
 
 /** Fondo de pantalla de la app (COLORES.fondo en apps/movil/src/theme/tokens.ts). */
-const FONDO_PANTALLA = '#E3E7EF';
+const FONDO_PANTALLA = '#E7E8E3';
 
 function canales(hex: string): number[] {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));

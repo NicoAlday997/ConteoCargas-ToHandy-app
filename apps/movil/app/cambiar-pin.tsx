@@ -13,6 +13,7 @@ import {
 } from '../src/componentes/base';
 import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
+import { useBarraEstado } from '../src/theme/barra-estado';
 import { useLayout } from '../src/theme/breakpoints';
 import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../src/theme/tokens';
 
@@ -35,6 +36,7 @@ interface Aviso {
 export default function PantallaCambiarPin() {
   const { esTablet } = useLayout();
   const mutacion = useCambiarPin();
+  useBarraEstado('dark');
   // Se lee una sola vez: es el PIN temporal con el que se acaba de entrar.
   const [pinActual] = useState(obtenerPinTemporal);
 

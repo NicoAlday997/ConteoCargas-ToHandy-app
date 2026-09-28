@@ -78,12 +78,15 @@ const estilos = StyleSheet.create({
     flex: 1,
     gap: ESPACIADO.xs,
   },
+  // Como la leyenda de un letrero de salida: condensada y firme.
   texto: {
-    ...TIPOGRAFIA.subtitulo,
+    ...TIPOGRAFIA.tituloBarra,
+    fontSize: 20,
+    lineHeight: 24,
     color: COLORES.texto,
   },
   textoSalida: {
-    color: COLORES.marcaHonda,
+    color: COLORES.error,
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,

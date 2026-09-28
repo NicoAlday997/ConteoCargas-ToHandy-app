@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
 import { Chevron, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, ESCALA_TEXTO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { CIFRAS, COLORES, ESCALA_TEXTO, ETIQUETA_DATO, RITMO, TIPOGRAFIA } from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -72,7 +72,6 @@ const estilos = StyleSheet.create({
   },
   ruta: {
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   // El tipo es el rótulo de la ruta: arriba, pegado, se retira.

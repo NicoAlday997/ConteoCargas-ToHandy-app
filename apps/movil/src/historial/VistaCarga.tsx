@@ -20,7 +20,7 @@ import { formatearNombreFamilia, formatearNombreProducto } from '../conteo/forma
 import { diaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
 import { EtiquetaFactor } from '../conteo/FilaProducto';
 import { formatearCifra, formatearEnPaquetes, formatearTotalPiezas } from '../conteo/formato-cantidad';
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RITMO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
 import { ANCHO_MAXIMO_LISTA, bandaDeEstado, DetalleCambiosFecha, DetalleCancelacion, volver } from './ComponentesHistorial';
 import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from './modelo-historial';
 
@@ -323,7 +323,7 @@ const estilos = StyleSheet.create({
   },
   nombreFamilia: {
     flex: 1,
-    ...TIPOGRAFIA.familia,
+    ...FAMILIA,
     color: COLORES.texto,
   },
   discrepanciasFamilia: {

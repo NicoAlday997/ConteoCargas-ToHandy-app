@@ -521,7 +521,7 @@ const estilos = StyleSheet.create({
   etiqueta: {
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.superficie,
   },
   textoEtiqueta: {

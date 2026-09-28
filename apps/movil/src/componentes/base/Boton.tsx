@@ -15,12 +15,13 @@ import {
   TOQUE_MINIMO,
   ONDA,
 } from '../../theme/tokens';
-import { Chevron } from './Icono';
+import { Flecha } from './Icono';
 import { Pulsable } from './Pulsable';
 
 /**
- * - primario: la acción que se espera. Una por pantalla o por modal.
- * - secundario: volver, cancelar, alternativas. Gris, sin borde.
+ * - primario: la acción que se espera. Una por pantalla o por modal. Verde
+ *   ruta: avanzar.
+ * - secundario: volver, cancelar, alternativas. Placa blanca con contorno.
  * - peligro: la acción no se puede deshacer. NUNCA es el botón dominante:
  *   contorno y texto en rojo; el sólido de ese modal es la salida segura
  *   ("No, volver").
@@ -101,10 +102,12 @@ export function Boton({
       {() => {
         const colorContenido = COLOR_CONTENIDO[variante];
         if (grande) {
-          // La acción principal de un inicio: se lee como un renglón (qué y
-          // para cuándo) y la flecha dice que lleva a otra pantalla.
+          // La acción principal de un inicio: un letrero de destino. Se lee
+          // como un renglón (qué y para cuándo), lleva el filete interior de
+          // un letrero y la flecha dice que lleva a otra pantalla.
           return (
             <>
+              <View pointerEvents="none" style={[estilos.filete, variante === 'primario' ? estilos.fileteSobreColor : estilos.fileteClaro]} />
               <View style={estilos.textosGrande}>
                 <View style={estilos.linea}>
                   {cargando && <ActivityIndicator color={colorContenido} />}
@@ -122,7 +125,7 @@ export function Boton({
                   </Text>
                 ) : null}
               </View>
-              <Chevron color={colorContenido} tamano={ESPACIADO.xxl} />
+              <Flecha color={colorContenido} tamano={ESPACIADO.xxl} />
             </>
           );
         }
@@ -161,6 +164,23 @@ const estilos = StyleSheet.create({
     paddingVertical: ESPACIADO.lg,
     borderRadius: RADIOS.grande,
   },
+  // El filete interior del letrero: una línea a 4 del canto, del color del texto.
+  filete: {
+    position: 'absolute',
+    top: ESPACIADO.xs,
+    left: ESPACIADO.xs,
+    right: ESPACIADO.xs,
+    bottom: ESPACIADO.xs,
+    borderRadius: RADIOS.grande - ESPACIADO.xs,
+    borderWidth: BORDES.medio,
+  },
+  fileteSobreColor: {
+    borderColor: COLORES.textoSobreColor,
+    opacity: 0.55,
+  },
+  fileteClaro: {
+    borderColor: COLORES.bordeSinContar,
+  },
   textosGrande: {
     flex: 1,
     gap: ESPACIADO.xs,
@@ -170,18 +190,20 @@ const estilos = StyleSheet.create({
     transform: [{ scale: ESCALA_PRESIONADO }],
   },
   primario: {
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
   },
   primarioPresionado: {
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: COLORES.accionHonda,
   },
+  // Placa blanca con contorno: a pleno sol no se funde con el concreto.
   secundario: {
-    backgroundColor: COLORES.superficieHonda,
-    borderWidth: BORDES.fino,
+    backgroundColor: COLORES.superficie,
+    borderWidth: BORDES.medio,
     borderColor: COLORES.bordeSinContar,
   },
   secundarioPresionado: {
-    backgroundColor: COLORES.divisor,
+    backgroundColor: COLORES.marcaTinte,
+    borderColor: COLORES.borde,
   },
   // Contorno: se lee como posible, no como lo esperado.
   peligro: {
@@ -200,8 +222,12 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO.sm,
   },
+  // La voz del letrero: condensada y firme, en minúsculas como un destino.
   texto: {
-    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.titular,
+    fontSize: 19,
+    lineHeight: 23,
+    letterSpacing: 0.2,
     textAlign: 'center',
   },
   textoGrande: {

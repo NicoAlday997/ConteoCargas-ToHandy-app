@@ -16,6 +16,7 @@ import {
   BloqueEsqueleto,
   Boton,
   Chevron,
+  EscudoRuta,
   Encabezado as EncabezadoBase,
   EstadoVacio,
   Esqueleto,
@@ -24,6 +25,7 @@ import {
   Lapiz,
   LineaEsqueleto,
   Palomita,
+  numeroRuta,
   PanelEncabezado,
   Pulsable,
 } from '../../src/componentes/base';
@@ -67,6 +69,7 @@ import {
   ESCALA_PRESIONADO,
   ESCALA_TEXTO,
   ESPACIADO,
+  FAMILIA,
   ETIQUETA_DATO,
   FUENTE,
   RADIOS,
@@ -775,6 +778,7 @@ function Encabezado({
       subtitulo={onCambiarFecha ? null : salida}
       onVolver={onVolver}
       etiquetaVolver="Volver al inicio. Lo contado queda guardado."
+      accion={numeroRuta(rutaNombre) ? <EscudoRuta numero={numeroRuta(rutaNombre)!} accessibilityLabel={rutaNombre ?? undefined} /> : undefined}
       inferior={
         <PanelEncabezado>
           <View style={estilos.filaProgreso}>
@@ -792,7 +796,7 @@ function Encabezado({
           <BarraAvance actual={capturados} total={total} />
           {completo && (
             <View style={estilos.lineaCompleto}>
-              <Palomita color={COLORES.capturado} tamano={ESPACIADO.lg} />
+              <Palomita color={COLORES.accionViva} tamano={ESPACIADO.lg} />
               <Text style={estilos.textoCompleto} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
                 Todo contado. Revisa y finaliza abajo.
               </Text>
@@ -884,7 +888,7 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   const alDia = tono === 'normal' && !sincronizando;
   const contenido = (
     <>
-      {alDia && <Palomita color={COLORES.capturado} tamano={ESPACIADO.lg} />}
+      {alDia && <Palomita color={COLORES.accionViva} tamano={ESPACIADO.lg} />}
       {!hayConexion && <Glifo nombre="sinSenal" color={colorIcono} tamano={ESPACIADO.lg} />}
       <Text
         style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
@@ -1357,7 +1361,7 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
   },
   pildoraAtencion: {
     backgroundColor: COLORES.discrepanciaFondo,
@@ -1416,12 +1420,12 @@ const estilos = StyleSheet.create({
   },
   nombreFamilia: {
     flex: 1,
-    ...TIPOGRAFIA.familia,
+    ...FAMILIA,
   },
   pastillaFamilia: {
     paddingHorizontal: ESPACIADO.sm + ESPACIADO.xs,
     paddingVertical: 2,
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.superficie,
   },
   // Aire entre la última fila de una familia y la banda de la siguiente.

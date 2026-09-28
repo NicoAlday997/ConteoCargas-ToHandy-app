@@ -611,7 +611,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.superficieHonda,
   },
   botonEditarPresionado: {

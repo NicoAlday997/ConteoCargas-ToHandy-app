@@ -1,27 +1,25 @@
 import type { TextStyle } from 'react-native';
 
 /**
- * Sistema de diseño de la app (docs/06 §1).
+ * Sistema de diseño "Señalamiento de Ruta" (docs/06 §1, DESIGN.md).
  *
- * Contexto operativo: el contador usa tablet en bodega con poca luz, de pie,
- * con las manos ocupadas. Los colores de estado comunican estado, nunca
- * decoran: un color, un estado.
+ * La app se lee como un letrero de carretera: de un vistazo, con prisa y a
+ * cualquier luz (sol directo, bodega en penumbra, cabina de noche). Por eso
+ * alto contraste, pocas formas, letra de señalamiento y cifras grandes.
  *
- * DOS SISTEMAS DE COLOR QUE NUNCA SE PISAN.
- *   - El ESTADO de una fila (sin contar, contado, no lleva, tecleando) tiñe la
- *     fila completa: fondo, borde, total y pastilla del factor.
- *   - El color de FAMILIA (lo asigna el supervisor, ver colores-familia.ts)
- *     solo identifica: la banda del encabezado de familia, y nada más.
+ * TRES CAPAS DE COLOR, CADA UNA CON UN SOLO TRABAJO.
+ *   - ASFALTO (`marca`): el cromo y la mano. Encabezados, teclados, la fila
+ *     que se está tecleando y lo seleccionado. Es casi negro; nunca un estado.
+ *   - VERDE RUTA (`accion`, `capturado`): avanzar y "ya quedó". La acción
+ *     principal (una por pantalla), la tecla de avance, el carril de avance y
+ *     lo contado. Verde es camino libre, como en el señalamiento.
+ *   - SEÑALES DE ESTADO: amarillo preventivo (aviso, siempre con rombo), rojo
+ *     alto (error, siempre con su glifo) y gris (no lleva). Un color, un estado.
+ *   El color de FAMILIA (colores-familia.ts) solo identifica la banda de su
+ *   encabezado en el conteo.
  *
- * LO QUE FALTA CONTAR ES EL ESTADO NORMAL, NO UN AVISO: va neutro (blanco con
- * borde gris claro) y el color aparece conforme se avanza. El ÁMBAR
- * (`discrepancia`) es para avisos reales (empaque sin confirmar, sueltas que
- * completan un paquete, diferencias): si lo que falta fuera ámbar, al abrir
- * una carga la pantalla entera sería alarma y el ámbar dejaría de significar.
- *
- * EL AZUL (`marca`) es el encabezado de las pantallas de trabajo, la acción
- * principal (un botón por pantalla) y lo que se está tecleando. Nunca un
- * estado.
+ * LO QUE FALTA CONTAR ES EL ESTADO NORMAL, NO UN AVISO: va en blanco, con el
+ * visor hueco. El amarillo es solo para avisos reales.
  *
  * Todo texto cumple 4.5:1 sobre el fondo en que aparece salvo las
  * excepciones documentadas par por par en contraste.spec.ts.
@@ -30,82 +28,100 @@ import type { TextStyle } from 'react-native';
 /**
  * La tipografía entera sale de aquí: cambiar de fuente es tocar solo esto (y
  * la carga en app/_layout.tsx). Con fuente propia React Native NO aplica
- * `fontWeight`: el peso se elige con la variante. Nunca se usa `fontWeight`
- * en un estilo; se usa `fontFamily: FUENTE.x`.
+ * `fontWeight`: el peso se elige con la variante.
+ *
+ * Dos cortes de una misma familia de señalamiento:
+ * - Barlow: texto, botones y datos. Grotesca de trazo firme y terminales
+ *   suaves, dibujada a partir del señalamiento vial; no se deshace al sol.
+ * - Barlow Semi Condensed: la voz del letrero. Títulos, rótulos en mayúsculas
+ *   y toda lectura numérica: cabe "1440" en el visor sin encoger la cifra.
  */
 export const FUENTE = {
-  regular: 'Archivo_400Regular',
-  medio: 'Archivo_500Medium',
-  semiNegrita: 'Archivo_600SemiBold',
-  negrita: 'Archivo_700Bold',
-  /** Solo las lecturas de la báscula: el total de una fila, la cifra que domina una pantalla. */
-  extraNegrita: 'Archivo_800ExtraBold',
+  regular: 'Barlow_400Regular',
+  medio: 'Barlow_500Medium',
+  semiNegrita: 'Barlow_600SemiBold',
+  negrita: 'Barlow_700Bold',
+  /** Rótulos en mayúsculas y placas de estado (condensada). */
+  rotulo: 'BarlowSemiCondensed_600SemiBold',
+  /** Títulos y encabezados (condensada). */
+  titular: 'BarlowSemiCondensed_700Bold',
+  /** Solo las lecturas: el total de una fila, la cifra que domina una pantalla, las teclas. */
+  extraNegrita: 'BarlowSemiCondensed_800ExtraBold',
 } as const;
 
 export type PesoFuente = keyof typeof FUENTE;
 
 /**
- * Paleta de grado exterior. Se usa en bodega con poca luz, pero también en la
- * calle, bajo sol directo y con reflejos: ningún texto baja de 4.5:1 sobre el
- * fondo en que aparece, ningún contorno de control baja de 3:1, y lo blanco se
- * separa del fondo por algo más que el tinte (contorno o forma).
+ * Paleta de grado exterior. Ningún texto baja de 4.5:1 sobre el fondo en que
+ * aparece, ningún contorno de control baja de 3:1, y lo blanco se separa del
+ * fondo por algo más que el tinte (contorno o forma).
  */
 export const COLORES = {
-  /** Gris Andén: fondo de toda pantalla. Lo bastante hondo para que el blanco se lea como pieza. */
-  fondo: '#E3E7EF',
-  /** Tarjetas, modales, filas. */
+  /** Concreto: fondo de toda pantalla. Gris cálido y mate; el blanco se lee como pieza encima. */
+  fondo: '#E7E8E3',
+  /** Blanco reflectivo: tarjetas, modales, filas. */
   superficie: '#FFFFFF',
-  /** Campos en reposo, pastillas neutras, bloques planos dentro de una tarjeta. */
-  superficieHonda: '#D8DDE8',
-  texto: '#0D1120',
-  textoSecundario: '#495068',
-  /** Rótulos de un dato ("Contó", "Productos"). Cumple AA sobre blanco y sobre el fondo. */
-  textoTerciario: '#5B6279',
+  /** Campos en reposo, placas neutras, bloques planos dentro de una tarjeta. */
+  superficieHonda: '#DBDDD6',
+  /** Tinta asfalto. */
+  texto: '#14181B',
+  textoSecundario: '#474D51',
+  /** Rótulos de un dato. Cumple AA sobre blanco y sobre el concreto. */
+  textoTerciario: '#585E62',
   textoSobreColor: '#FFFFFF',
-  divisor: '#D3D9E4',
-  /** Contorno de 1 px de una tarjeta blanca: la dibuja sobre el fondo aun con reflejo. */
-  contornoTarjeta: '#C9D0DC',
-  /** Contorno de controles (campos, teclas, opciones): 4:1 sobre blanco, 3.3:1 sobre el fondo. */
-  borde: '#767E94',
-  /** Borde de la fila SIN CONTAR: visible a pleno sol (2:1 sobre blanco) sin parecer un aviso. */
-  bordeSinContar: '#AEB6C7',
-  /** Borde de la fila NO LLEVA: un gris apenas más hondo que su fondo. */
-  bordeNoLleva: '#C3C8D4',
+  divisor: '#D0D3CB',
+  /** Contorno de 1 px de una pieza blanca: la dibuja sobre el concreto aun con reflejo. */
+  contornoTarjeta: '#C4C8C0',
+  /** Contorno de controles (campos, teclas, opciones): ≥ 3:1 sobre blanco y sobre el fondo. */
+  borde: '#747A74',
+  /** Borde de la fila SIN CONTAR: visible a pleno sol sin parecer un aviso. */
+  bordeSinContar: '#A9ADA5',
+  /** Borde de la fila NO LLEVA: apenas más hondo que su fondo. */
+  bordeNoLleva: '#C2C5BD',
   /** Oscurece lo de atrás de un modal. */
-  velo: 'rgba(13, 17, 32, 0.62)',
+  velo: 'rgba(12, 15, 18, 0.66)',
 
-  // MARCA: encabezado de trabajo y lo que se está tecleando.
-  marca: '#1E4FE0',
-  /** Bloques dentro del encabezado azul; campo inactivo de la fila que se teclea; presionado de `marca`. */
-  marcaHonda: '#1638B0',
-  /** Canal de la barra de progreso. */
-  marcaProfunda: '#102A86',
-  /** Texto que se retira sobre azul (5:1 sobre marca, 7.5:1 sobre marcaHonda). */
-  marcaTenue: '#DCE5FF',
-  marcaTinte: '#E7EDFF',
-  /** Botón de volver sobre azul: un tono más claro que la marca, para que se vea como botón. */
-  marcaClara: '#3A62EF',
+  // ASFALTO: el cromo y la mano (encabezados, teclados, lo que se teclea).
+  marca: '#171B1F',
+  /** Piezas sobre asfalto (paneles, teclas, campos inactivos de la fila que se teclea). */
+  marcaHonda: '#262C32',
+  /** Canal del carril de avance. */
+  marcaProfunda: '#0C0F12',
+  /** Texto que se retira sobre asfalto (≥ 7:1 sobre marca y marcaHonda). */
+  marcaTenue: '#B8C0C6',
+  /** Presionado o seleccionado sobre claro: un gris frío que no es un estado. */
+  marcaTinte: '#E2E5E1',
+  /** Botón de volver sobre asfalto: un tono arriba, para que se vea como botón. */
+  marcaClara: '#394148',
+  /** Marcas de carril (lo que falta del avance) sobre asfalto. */
+  carril: '#6A737B',
 
-  // CONTADO
-  capturado: '#14B8A6',
-  capturadoHondo: '#0B6E64',
-  capturadoFondo: '#CFF0E9',
-  capturadoTexto: '#0A3A35',
+  // VERDE RUTA: avanzar y "ya quedó".
+  accion: '#0A6B4E',
+  accionHonda: '#07523C',
+  /** Verde vivo sobre asfalto: relleno del carril de avance. */
+  accionViva: '#35C77E',
 
-  // AVISO (ámbar): solo lo que pide atención, nunca lo que falta contar
-  discrepancia: '#F59E0B',
-  discrepanciaHonda: '#D97706',
-  discrepanciaFondo: '#FEF3C7',
-  discrepanciaTexto: '#92400E',
+  // CONTADO (la misma familia verde)
+  capturado: '#2E9A69',
+  capturadoHondo: '#0A6B4E',
+  capturadoFondo: '#DCEFE5',
+  capturadoTexto: '#063E2D',
+
+  // AVISO: amarillo preventivo. Siempre con rombo; nunca lo que falta contar.
+  discrepancia: '#FFC21A',
+  discrepanciaHonda: '#C98F00',
+  discrepanciaFondo: '#FFF1C4',
+  discrepanciaTexto: '#6A4700',
 
   // NO LLEVA / inactivo
-  pendiente: '#545B70',
-  pendienteFondo: '#DCDFE8',
+  pendiente: '#555B5F',
+  pendienteFondo: '#DDDFDA',
 
-  // ERROR
-  error: '#DC2626',
-  errorFondo: '#FEE7E7',
-  errorTexto: '#911B1B',
+  // ERROR: rojo alto
+  error: '#C4132C',
+  errorFondo: '#FCE4E6',
+  errorTexto: '#8C0D20',
 } as const;
 
 export type ClaveColor = keyof typeof COLORES;
@@ -116,20 +132,20 @@ export type ClaveColor = keyof typeof COLORES;
  */
 export const ONDA = {
   /** Sobre blanco o gris: tinta al 12 %. */
-  sobreClaro: 'rgba(13, 17, 32, 0.12)',
+  sobreClaro: 'rgba(20, 24, 27, 0.12)',
   /** Sobre un relleno de color (azul, turquesa): blanco al 24 %. */
   sobreColor: 'rgba(255, 255, 255, 0.24)',
-  /** Sobre algo que se toca y lleva a su azul (una tarjeta tocable). */
-  marca: 'rgba(30, 79, 224, 0.12)',
+  /** Sobre una tarjeta tocable: asfalto al 10 %. */
+  marca: 'rgba(23, 27, 31, 0.10)',
   /** Acción destructiva sobre blanco. */
-  peligro: 'rgba(220, 38, 38, 0.16)',
+  peligro: 'rgba(196, 19, 44, 0.16)',
 } as const;
 
 /** Colores que comunican un estado; los únicos que admiten Etiqueta y tarjeta tintada. */
 export type ColorEstado = 'capturado' | 'pendiente' | 'discrepancia' | 'error';
 
 /** Estados más la marca: lo que admite una pastilla tintada. */
-export type ColorTono = ColorEstado | 'marca';
+export type ColorTono = ColorEstado | 'marca' | 'accion';
 
 /**
  * Los tres tonos de un color:
@@ -140,6 +156,7 @@ export type ColorTono = ColorEstado | 'marca';
  */
 export const TONOS: Record<ColorTono, { solido: string; fondo: string; texto: string }> = {
   marca: { solido: COLORES.marca, fondo: COLORES.marcaTinte, texto: COLORES.marcaHonda },
+  accion: { solido: COLORES.accion, fondo: COLORES.capturadoFondo, texto: COLORES.capturadoTexto },
   capturado: { solido: COLORES.capturadoHondo, fondo: COLORES.capturadoFondo, texto: COLORES.capturadoTexto },
   pendiente: { solido: COLORES.pendiente, fondo: COLORES.pendienteFondo, texto: COLORES.textoSecundario },
   discrepancia: { solido: COLORES.discrepanciaTexto, fondo: COLORES.discrepanciaFondo, texto: COLORES.discrepanciaTexto },
@@ -197,39 +214,43 @@ interface EstiloTexto {
 }
 
 /**
- * Escala tipográfica. Cada nivel lleva su variante de fuente.
+ * Escala tipográfica. Cada nivel lleva su variante de fuente. Los niveles de
+ * letrero (títulos, lecturas, rótulos) van en la condensada; el texto que se
+ * lee corrido, en Barlow.
  *
- * - numero: la cifra que domina la pantalla (total de piezas de una carga).
- * - display: el número que se busca con la mirada (dígitos del PIN).
- * - titulo: el nombre grande de login e inicio de rol, título de un modal.
- * - total: la lectura de una fila de conteo (32 px ExtraBold); no es tocable.
+ * - numero: la cifra que domina la pantalla (lo que falta por resolver).
+ * - display: el nombre de quien está en sesión; los dígitos del PIN.
+ * - titulo: título de un modal, de un paso; el texto de un botón grande.
+ * - total: la lectura de una fila de conteo; no es tocable.
  * - avance: el "4" del avance en el encabezado de conteo.
  * - campo: el número dentro de un campo de captura.
- * - tituloBarra: título del encabezado azul.
+ * - tecla: el dígito de una tecla de los teclados propios.
+ * - tituloBarra: título de un encabezado.
  * - tituloVacio: título de un estado vacío.
  * - subtitulo: el dato bajo su rótulo, el texto de un botón, el nombre de un producto.
  * - cuerpo: texto corrido e instrucciones.
- * - familia: nombre de la familia en su encabezado de la lista de conteo.
- * - etiqueta: texto de pastillas y notas.
- * - micro: rótulos de un dato y líneas de contexto (13 px, Medium: a pleno sol el Regular se deshace).
- * - rotulo: rótulo en mayúsculas de un campo de captura (12 px negrita). Nunca más
- *   chico: "PAQUETES" contra "SUELTAS" es la diferencia entre 12 y 144 piezas.
+ * - familia: nombre de la familia en su banda (mayúsculas, como un letrero de salida).
+ * - etiqueta: texto de notas y avisos.
+ * - micro: rótulos de un dato y líneas de contexto (Medium: a pleno sol el Regular se deshace).
+ * - rotulo: rótulo en MAYÚSCULAS de un campo de captura o de una placa. Nunca
+ *   más chico: "PAQUETES" contra "SUELTAS" es la diferencia entre 12 y 144 piezas.
  */
 export const TIPOGRAFIA = {
-  numero: { fontFamily: FUENTE.extraNegrita, fontSize: 48, lineHeight: 54 },
-  display: { fontFamily: FUENTE.negrita, fontSize: 34, lineHeight: 40 },
-  total: { fontFamily: FUENTE.extraNegrita, fontSize: 32, lineHeight: 36 },
-  titulo: { fontFamily: FUENTE.negrita, fontSize: 26, lineHeight: 32 },
-  avance: { fontFamily: FUENTE.extraNegrita, fontSize: 28, lineHeight: 32 },
-  campo: { fontFamily: FUENTE.negrita, fontSize: 22, lineHeight: 26 },
-  tituloBarra: { fontFamily: FUENTE.negrita, fontSize: 20, lineHeight: 24 },
-  tituloVacio: { fontFamily: FUENTE.semiNegrita, fontSize: 20, lineHeight: 26 },
+  numero: { fontFamily: FUENTE.extraNegrita, fontSize: 60, lineHeight: 62 },
+  display: { fontFamily: FUENTE.titular, fontSize: 36, lineHeight: 40 },
+  total: { fontFamily: FUENTE.extraNegrita, fontSize: 34, lineHeight: 36 },
+  titulo: { fontFamily: FUENTE.titular, fontSize: 28, lineHeight: 32 },
+  avance: { fontFamily: FUENTE.extraNegrita, fontSize: 40, lineHeight: 42 },
+  campo: { fontFamily: FUENTE.titular, fontSize: 24, lineHeight: 28 },
+  tecla: { fontFamily: FUENTE.titular, fontSize: 30, lineHeight: 34 },
+  tituloBarra: { fontFamily: FUENTE.titular, fontSize: 22, lineHeight: 26 },
+  tituloVacio: { fontFamily: FUENTE.titular, fontSize: 22, lineHeight: 26 },
   subtitulo: { fontFamily: FUENTE.semiNegrita, fontSize: 17, lineHeight: 22 },
-  cuerpo: { fontFamily: FUENTE.regular, fontSize: 16, lineHeight: 22 },
-  familia: { fontFamily: FUENTE.negrita, fontSize: 15, lineHeight: 20 },
-  etiqueta: { fontFamily: FUENTE.semiNegrita, fontSize: 14, lineHeight: 18 },
+  cuerpo: { fontFamily: FUENTE.regular, fontSize: 16, lineHeight: 23 },
+  familia: { fontFamily: FUENTE.titular, fontSize: 16, lineHeight: 20 },
+  etiqueta: { fontFamily: FUENTE.semiNegrita, fontSize: 14, lineHeight: 19 },
   micro: { fontFamily: FUENTE.medio, fontSize: 13, lineHeight: 18 },
-  rotulo: { fontFamily: FUENTE.negrita, fontSize: 12, lineHeight: 14 },
+  rotulo: { fontFamily: FUENTE.rotulo, fontSize: 12, lineHeight: 14 },
 } as const satisfies Record<string, EstiloTexto>;
 
 export type NivelTipografia = keyof typeof TIPOGRAFIA;
@@ -242,15 +263,43 @@ export const ROTULO = {
   ...TIPOGRAFIA.rotulo,
   color: COLORES.textoSecundario,
   textTransform: 'uppercase',
-  letterSpacing: 0.6,
+  letterSpacing: 1,
 } as const satisfies TextStyle;
 
 /**
- * Rótulo de un dato ("Contó", "Verificó", "Productos"): mayúscula inicial,
- * 13 px, en terciario. Cumple AA sobre tarjeta y sobre el fondo.
+ * El nombre de una familia en su banda: mayúsculas condensadas, como la
+ * leyenda de un letrero de salida ("REFRESCOS", "AGUAS").
+ */
+export const FAMILIA = {
+  ...TIPOGRAFIA.familia,
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+} as const satisfies TextStyle;
+
+/**
+ * Placa: el texto de una placa de estado o de un letrero pequeño ("ESPERANDO
+ * CONTADOR", "RUTA 3"). Mayúsculas condensadas con aire entre letras, como
+ * la leyenda de un letrero; se lee de reojo aun a pleno sol.
+ */
+export const PLACA = {
+  fontFamily: FUENTE.titular,
+  fontSize: 14,
+  lineHeight: 18,
+  textTransform: 'uppercase',
+  letterSpacing: 0.8,
+} as const satisfies TextStyle;
+
+/**
+ * Rótulo de un dato ("CONTÓ", "VERIFICÓ", "PRODUCTOS"): la leyenda de un
+ * letrero, en mayúsculas condensadas con aire entre letras, en terciario.
+ * Se retira frente al dato y lo encabeza como una ficha técnica.
  */
 export const ETIQUETA_DATO = {
-  ...TIPOGRAFIA.micro,
+  fontFamily: FUENTE.rotulo,
+  fontSize: 13,
+  lineHeight: 17,
+  letterSpacing: 0.8,
+  textTransform: 'uppercase',
   color: COLORES.textoTerciario,
 } as const satisfies TextStyle;
 
@@ -274,19 +323,23 @@ export const DATO_AUSENTE = {
  */
 export const CIFRAS: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
 
+/**
+ * Esquinas de letrero: cortas y firmes. Un letrero no es una burbuja; el
+ * radio crece poco con el tamaño de la pieza.
+ */
 export const RADIOS = {
-  /** Bloques internos y avisos. */
-  chico: 6,
+  /** Placas de estado, avisos internos, bloques pequeños. */
+  chico: 4,
   /** Campos, teclas, botones, el botón 0. */
-  medio: 12,
+  medio: 8,
   /** Cuadro del ícono de una fila de menú. */
-  icono: 11,
-  /** Paneles dentro del encabezado azul. */
-  panel: 14,
+  icono: 8,
+  /** Paneles dentro de un encabezado de asfalto. */
+  panel: 10,
   /** Tarjetas, filas de conteo y modales. */
-  grande: 18,
-  /** Esquinas inferiores del encabezado azul. */
-  encabezado: 22,
+  grande: 12,
+  /** Esquinas superiores de una hoja. */
+  encabezado: 16,
   completo: 999,
 } as const;
 
@@ -359,6 +412,8 @@ export const MOVIMIENTO = {
   hoja: 240,
   /** Destello que confirma una captura en la fila. */
   destello: 280,
+  /** El carril de avance se traza hasta su nuevo largo. */
+  carril: 360,
 } as const;
 
 /** Curva ease-out exponencial (0.16, 1, 0.3, 1). */

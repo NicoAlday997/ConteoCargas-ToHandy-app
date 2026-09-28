@@ -31,6 +31,7 @@ import {
   GrupoMenu,
   Hoja,
   LineaEsqueleto,
+  MarcaApp,
   Pulsable,
   Seccion,
   type TonoEtiqueta,
@@ -54,6 +55,7 @@ import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
+import { useBarraEstado } from '../src/theme/barra-estado';
 import { CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Una columna legible también en tablet. */
@@ -67,6 +69,7 @@ type EstadoSesion =
 export default function PantallaInicio() {
   const margenes = useSafeAreaInsets();
   const [estado, setEstado] = useState<EstadoSesion>({ tipo: 'verificando' });
+  useBarraEstado('light');
 
   useEffect(() => {
     let vigente = true;
@@ -107,7 +110,11 @@ export default function PantallaInicio() {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <ScrollView style={estilos.cuerpo} contentContainerStyle={[estilos.scroll, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}>
-        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.lg }]}>
+        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
+          <View style={[estilos.columna, estilos.margenLateral, estilos.lineaMarca]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.xs} />
+            <Text style={estilos.nombreApp}>Conteo de Cargas</Text>
+          </View>
           <View style={[estilos.columna, estilos.identidad]}>
             <View style={estilos.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <Text style={estilos.iniciales}>{iniciales(nombre)}</Text>
@@ -178,10 +185,11 @@ function EsqueletoInicio() {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <View style={estilos.cuerpo}>
-        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.lg }]}>
+        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
           <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad, estilos.margenLateral]}>
-            <LineaEsqueleto nivel="display" ancho="70%" />
-            <LineaEsqueleto nivel="cuerpo" ancho="30%" />
+            <LineaEsqueleto nivel="micro" ancho="40%" sobreMarca />
+            <LineaEsqueleto nivel="display" ancho="70%" sobreMarca />
+            <LineaEsqueleto nivel="cuerpo" ancho="30%" sobreMarca />
           </Esqueleto>
         </View>
         <View style={[estilos.columna, estilos.contenido]}>
@@ -870,16 +878,14 @@ const estilos = StyleSheet.create({
   scroll: {
     flexGrow: 1,
   },
-  // A todo el ancho, blanca con contorno abajo: quién está en sesión, como la
-  // etiqueta de un turno. Sin azul: el azul es donde está la mano.
-  // El margen lateral lo pone la columna de adentro, igual que en el contenido:
-  // en tablet el avatar queda alineado con las tarjetas de abajo.
+  // A todo el ancho y en asfalto: quién está en sesión, como el letrero de un
+  // turno. El margen lateral lo pone la columna de adentro: en tablet el
+  // avatar queda alineado con las tarjetas de abajo.
   bandaIdentidad: {
     paddingTop: ESPACIADO.lg,
     paddingBottom: ESPACIADO.xl,
-    backgroundColor: COLORES.superficie,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES.contornoTarjeta,
+    gap: ESPACIADO.xl,
+    backgroundColor: COLORES.marca,
   },
   // Una columna legible también en tablet; la banda sí va a todo el ancho.
   columna: {
@@ -890,24 +896,40 @@ const estilos = StyleSheet.create({
   margenLateral: {
     paddingHorizontal: RITMO.margen,
   },
+  lineaMarca: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+  },
+  nombreApp: {
+    fontFamily: FUENTE.titular,
+    fontSize: 15,
+    lineHeight: 18,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: COLORES.marcaTenue,
+  },
   identidad: {
     paddingHorizontal: RITMO.margen,
     flexDirection: 'row',
     alignItems: 'center',
     gap: RITMO.relacionado + ESPACIADO.xs,
   },
+  // Placa blanca sobre asfalto, como el escudo de una ruta.
   avatar: {
     width: TOQUE_MINIMO,
     height: TOQUE_MINIMO,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.texto,
+    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.superficie,
   },
   iniciales: {
-    ...TIPOGRAFIA.tituloBarra,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.textoSobreColor,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 24,
+    lineHeight: 28,
+    letterSpacing: 0.5,
+    color: COLORES.texto,
   },
   textosIdentidad: {
     flex: 1,
@@ -915,12 +937,15 @@ const estilos = StyleSheet.create({
   },
   nombre: {
     ...TIPOGRAFIA.display,
-    color: COLORES.texto,
+    color: COLORES.textoSobreColor,
   },
   rol: {
-    ...TIPOGRAFIA.cuerpo,
-    fontFamily: FUENTE.medio,
-    color: COLORES.textoSecundario,
+    fontFamily: FUENTE.titular,
+    fontSize: 15,
+    lineHeight: 18,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORES.accionViva,
   },
   // Texto en rojo, sin relleno: se encuentra, pero no invita.
   cerrarSesion: {

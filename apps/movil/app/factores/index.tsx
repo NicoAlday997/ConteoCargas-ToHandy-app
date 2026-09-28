@@ -67,6 +67,7 @@ import {
   CIFRAS,
   COLORES,
   ESPACIADO,
+  FAMILIA,
   ETIQUETA_DATO,
   FUENTE,
   RADIOS,
@@ -1229,7 +1230,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.marcaTinte,
   },
   botonAccionesPresionado: {
@@ -1242,7 +1243,7 @@ const estilos = StyleSheet.create({
   },
   textoFamilia: {
     flexShrink: 1,
-    ...TIPOGRAFIA.familia,
+    ...FAMILIA,
     color: COLORES.texto,
   },
   cantidadFamilia: {
@@ -1390,7 +1391,6 @@ const estilos = StyleSheet.create({
   // Resumen
   fraseResumen: {
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.texto,
   },
   lineaProductoFamilia: {

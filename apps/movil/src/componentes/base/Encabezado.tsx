@@ -1,8 +1,11 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Line } from 'react-native-svg';
 
-import { BORDES, COLORES, ESCALA_TEXTO, ESPACIADO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import { useBarraEstado } from '../../theme/barra-estado';
+import { BORDES, COLORES, CURVA_SALIDA, ESCALA_TEXTO, ESPACIADO, MOVIMIENTO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
 import { Chevron } from './Icono';
 import { Pulsable } from './Pulsable';
 
@@ -19,11 +22,12 @@ interface Props {
   /** Slot a la derecha del título: la acción de la pantalla. */
   accion?: ReactNode;
   /**
-   * - marca: bloque azul con las esquinas inferiores redondeadas. SOLO las
-   *   pantallas de trabajo con contexto propio (conteo, discrepancias,
-   *   historial, autorizaciones, factores). Sube bajo la barra de estado: la
-   *   pantalla que lo usa no debe aplicar el margen superior de área segura.
-   *   Lo que vaya en `accion` e `inferior` debe leerse sobre azul (`useSobreMarca`).
+   * - marca: bloque de asfalto a todo el ancho, como el letrero de un pórtico
+   *   sobre la carretera. SOLO las pantallas de trabajo con contexto propio
+   *   (conteo, discrepancias, historial, autorizaciones, factores). Sube bajo
+   *   la barra de estado: la pantalla que lo usa no debe aplicar el margen
+   *   superior de área segura. Lo que vaya en `accion` e `inferior` debe
+   *   leerse sobre asfalto (`useSobreMarca`).
    * - barra: sobre el fondo de pantalla, sin bloque (plantillas, familias…).
    * - plano: dentro del contenido (un modal, un paso de un flujo).
    */
@@ -48,6 +52,8 @@ export function Encabezado({
   inferior,
 }: Props) {
   const margenes = useSafeAreaInsets();
+  // Dentro de un modal (plano) la barra de estado no es suya.
+  useBarraEstado(variante === 'plano' ? null : variante === 'marca' ? 'light' : 'dark');
   const sobreMarca = variante === 'marca';
   const lineas = lineasTitulo ?? (sobreMarca ? 1 : 2);
   const estiloContenedor =
@@ -80,9 +86,9 @@ export function Encabezado({
               />
             </Pulsable>
           )}
-          <View style={[estilos.titulos, onVolver && (variante === 'plano' ? estilos.titulosConVolverPlano : estilos.titulosConVolver)]}>
+          <View style={[estilos.titulos, onVolver && (sobreMarca ? estilos.titulosConVolver : estilos.titulosConVolverPlano)]}>
             <Text
-              style={[variante === 'plano' ? estilos.tituloPlano : estilos.titulo, sobreMarca && estilos.textoInvertido]}
+              style={[sobreMarca ? estilos.titulo : estilos.tituloPlano, sobreMarca && estilos.textoInvertido]}
               accessibilityRole="header"
               numberOfLines={lineas}
               maxFontSizeMultiplier={sobreMarca ? ESCALA_TEXTO.compacto : undefined}
@@ -109,29 +115,52 @@ export function Encabezado({
 }
 
 /**
- * Segundo renglón del encabezado azul: un panel un tono más hondo que agrupa
- * el avance, la barra de progreso y el estado de envío.
+ * Segundo renglón del encabezado de asfalto: un panel un tono arriba que
+ * agrupa el avance, el carril y el estado de envío.
  */
 export function PanelEncabezado({ children }: { children: ReactNode }) {
   return <View style={estilos.panel}>{children}</View>;
 }
 
+const CURVA_CARRIL = Easing.bezier(...CURVA_SALIDA);
+
 /**
- * Barra de progreso sobre azul: canal profundo, relleno de "contado". Se lee
- * de reojo sin quitarle alto a la lista.
+ * El carril de avance: lo que falta se ve como las marcas discontinuas de un
+ * carril y lo contado lo cubre una línea verde continua, que se traza hasta su
+ * nuevo largo en cada captura. Se lee de reojo sin quitarle alto a la lista.
+ * Con "Reducir movimiento", Reanimated lo deja en su largo sin animar.
  */
 export function BarraAvance({ actual, total }: { actual: number; total: number }) {
   const avance = total > 0 ? Math.min(1, Math.max(0, actual / total)) : 0;
+  const largo = useSharedValue(avance);
+  useEffect(() => {
+    largo.value = withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_CARRIL });
+  }, [avance, largo]);
+  const estiloRelleno = useAnimatedStyle(() => ({ width: `${largo.value * 100}%` }));
+
   return (
     <View style={estilos.canal} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: actual }}>
-      <View style={[estilos.relleno, { width: `${avance * 100}%` }]} />
+      <Svg width="100%" height={ALTO_CARRIL} style={StyleSheet.absoluteFill}>
+        <Line
+          x1={ESPACIADO.sm}
+          y1={ALTO_CARRIL / 2}
+          x2="100%"
+          y2={ALTO_CARRIL / 2}
+          stroke={COLORES.carril}
+          strokeWidth={2}
+          strokeDasharray="10 8"
+        />
+      </Svg>
+      <Animated.View style={[estilos.relleno, estiloRelleno]} />
     </View>
   );
 }
 
+const ALTO_CARRIL = 10;
+
 const ContextoMarca = createContext(false);
 
-/** Si el contenido va dentro de un encabezado de marca (fondo azul): así elige colores que se lean. */
+/** Si el contenido va dentro de un encabezado de marca (asfalto): así elige colores que se lean. */
 export function useSobreMarca(): boolean {
   return useContext(ContextoMarca);
 }
@@ -153,11 +182,10 @@ const estilos = StyleSheet.create({
     paddingTop: ESPACIADO.md,
     paddingBottom: ESPACIADO.md,
   },
+  // A todo el ancho y a escuadra: un pórtico, no una tarjeta.
   barraMarca: {
     paddingBottom: RITMO.margen,
     backgroundColor: COLORES.marca,
-    borderBottomLeftRadius: RADIOS.encabezado,
-    borderBottomRightRadius: RADIOS.encabezado,
   },
   plano: {
     gap: ESPACIADO.sm,
@@ -236,16 +264,19 @@ const estilos = StyleSheet.create({
     paddingVertical: ESPACIADO.md,
     backgroundColor: COLORES.marcaHonda,
     borderRadius: RADIOS.panel,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.marcaClara,
   },
   canal: {
-    height: ESPACIADO.sm,
-    borderRadius: RADIOS.completo,
+    height: ALTO_CARRIL,
+    justifyContent: 'center',
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.marcaProfunda,
     overflow: 'hidden',
   },
   relleno: {
     height: '100%',
-    borderRadius: RADIOS.completo,
-    backgroundColor: COLORES.capturado,
+    borderRadius: RADIOS.chico,
+    backgroundColor: COLORES.accionViva,
   },
 });

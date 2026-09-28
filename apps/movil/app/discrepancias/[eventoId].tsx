@@ -1216,7 +1216,7 @@ const estilos = StyleSheet.create({
     height: ESPACIADO.xl + ESPACIADO.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.texto,
   },
   textoNumeroPaso: {
@@ -1289,7 +1289,7 @@ const estilos = StyleSheet.create({
   // El único número grande de la tarjeta: lo que se carga al camión.
   valorFinal: {
     ...TIPOGRAFIA.display,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.extraNegrita,
     ...CIFRAS,
   },
   detalleFinal: {

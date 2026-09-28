@@ -486,7 +486,7 @@ const estilos = StyleSheet.create({
     height: TOQUE_MINIMO,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.medio,
   },
   textoBotonMes: {
     ...TIPOGRAFIA.titulo,

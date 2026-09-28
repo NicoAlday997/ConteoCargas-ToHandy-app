@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, PLACA, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
 
 /**
  * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
@@ -67,6 +67,10 @@ export function Etiqueta({
   } else if (relleno === 'tintada' || tono === 'neutro' || tono === 'referencia') {
     apariencia = { backgroundColor: colores.fondo };
     colorTexto = colores.texto;
+  } else if (tono === 'discrepancia') {
+    // El aviso sólido es un letrero preventivo: amarillo con tinta asfalto.
+    apariencia = { backgroundColor: COLORES.discrepancia };
+    colorTexto = COLORES.texto;
   } else {
     apariencia = { backgroundColor: colores.solido };
     colorTexto = COLORES.textoSobreColor;
@@ -96,12 +100,12 @@ const estilos = StyleSheet.create({
     maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.md,
-    // Píldora: se reconoce como dato, no como texto suelto.
-    borderRadius: RADIOS.completo,
+    paddingHorizontal: ESPACIADO.sm + 2,
+    // Placa de letrero: esquina corta. Se reconoce como dato, no como texto suelto.
+    borderRadius: RADIOS.chico,
   },
   normal: {
-    paddingVertical: ESPACIADO.xs,
+    paddingVertical: 3,
   },
   // Sin relleno vertical: va en el teclado de conteo, donde cada punto de alto
   // es lista que se deja de ver. El interlineado del subtítulo ya le da aire.
@@ -124,17 +128,20 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
   },
+  // La leyenda de una placa: mayúsculas condensadas, se lee de reojo.
   texto_normal: {
-    ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.negrita,
+    ...PLACA,
+    ...CIFRAS,
   },
   texto_destacada: {
     ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 18,
     ...CIFRAS,
   },
   texto_grande: {
     ...TIPOGRAFIA.titulo,
+    fontFamily: FUENTE.extraNegrita,
     ...CIFRAS,
   },
 });

@@ -1,7 +1,7 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
-import { COLORES, ESPACIADO, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
+import { CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
 
 /**
  * Iconos en SVG, sin librerías: pocos, simples y del mismo trazo. Van en un
@@ -16,7 +16,8 @@ import { COLORES, ESPACIADO, RADIOS, TONOS, type ColorTono, type Tarea } from '.
  * - personas: usuarios.
  * - caja: productos de una carga; el empaque.
  * - candado: sin acceso.
- * - alerta: algo falló.
+ * - alerta: aviso preventivo (rombo, como el letrero amarillo): pide atención.
+ * - alto: error o bloqueo (octágono, como el letrero de alto): algo falló.
  * - autorizar: el visto bueno del supervisor.
  * - plantilla: qué productos ve cada ruta.
  * - calendario: días no laborables.
@@ -34,6 +35,7 @@ export type NombreIcono =
   | 'caja'
   | 'candado'
   | 'alerta'
+  | 'alto'
   | 'autorizar'
   | 'plantilla'
   | 'calendario'
@@ -66,9 +68,11 @@ interface Props {
   tono?: ColorTono;
 }
 
-/** Círculo de 72 px en el tinte del tono, con el dibujo grande en su color fuerte. */
+/** Placa de 72 px en el tinte del tono, con el dibujo grande en su color fuerte. */
 export function Icono({ nombre, tono = 'marca' }: Props) {
-  const { solido, fondo } = TONOS[tono];
+  // Informativo (marca): placa de asfalto con el pictograma en blanco, como en
+  // el menú. Un estado: su tinte con el dibujo en el color fuerte.
+  const { solido, fondo } = tono === 'marca' ? { solido: COLORES.textoSobreColor, fondo: COLORES.marca } : TONOS[tono];
   return (
     <View
       style={[estilos.circulo, { backgroundColor: fondo }]}
@@ -81,17 +85,18 @@ export function Icono({ nombre, tono = 'marca' }: Props) {
 }
 
 /**
- * Cuadro de 40 px de una fila de menú: el ícono de la tarea en tinta sobre gris
- * hundido. `invertido` cuando la fila está presionada (fondo azul).
+ * Cuadro de 40 px de una fila de menú: el pictograma de la tarea en blanco
+ * sobre asfalto, como la placa de un servicio en carretera. `invertido` cuando
+ * la fila está presionada (fondo de asfalto): la placa sube un tono.
  */
 export function IconoTarea({ tarea, invertido = false }: { tarea: Tarea; invertido?: boolean }) {
   return (
     <View
-      style={[estilos.cuadro, { backgroundColor: invertido ? COLORES.marcaHonda : COLORES.superficieHonda }]}
+      style={[estilos.cuadro, { backgroundColor: invertido ? COLORES.marcaClara : COLORES.marca }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Dibujo nombre={ICONO_TAREA[tarea]} color={invertido ? COLORES.textoSobreColor : COLORES.texto} tamano={DIBUJO_TAREA} />
+      <Dibujo nombre={ICONO_TAREA[tarea]} color={COLORES.textoSobreColor} tamano={DIBUJO_TAREA} />
     </View>
   );
 }
@@ -124,6 +129,26 @@ export function Chevron({
       </Svg>
     </View>
   );
+}
+
+/**
+ * Flecha de letrero de destino: gruesa y con punta abierta. Dice "esto te lleva
+ * a otra pantalla" en el botón grande, donde el chevron se veía tímido.
+ */
+export function Flecha({ color, tamano = ESPACIADO.xl + ESPACIADO.sm }: { color: string; tamano?: number }) {
+  return (
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
+        <Path d="M3.5 12h15.5M13 5.5l6.5 6.5-6.5 6.5" stroke={color} strokeWidth={2.75} strokeLinecap="square" strokeLinejoin="miter" />
+      </Svg>
+    </View>
+  );
+}
+
+/** El número de una ruta a partir de su nombre ("Ruta 3" → "3"); null si no trae número. */
+export function numeroRuta(nombre: string | null | undefined): string | null {
+  const encontrado = nombre?.match(/\d+/);
+  return encontrado ? encontrado[0] : null;
 }
 
 /** Palomita en SVG: "contado", "completa". */
@@ -215,10 +240,20 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
       );
       break;
     case 'alerta':
+      // Rombo preventivo: la forma dice "atención" aunque el sol lave el amarillo.
       contenido = (
         <>
-          <Path d="M12 3.5L2.5 20h19L12 3.5z" {...trazo} />
-          <Path d="M12 9.5v5M12 17.5v.01" {...trazo} />
+          <Path d="M12 2.5l9.5 9.5-9.5 9.5L2.5 12z" {...trazo} />
+          <Path d="M12 8v5M12 16.25v.01" {...trazo} strokeWidth={2.5} />
+        </>
+      );
+      break;
+    case 'alto':
+      // Octágono de alto: la forma dice "falló" o "detente" sin leer el color.
+      contenido = (
+        <>
+          <Path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z" {...trazo} />
+          <Path d="M12 7.75v5.5M12 16.25v.01" {...trazo} strokeWidth={2.5} />
         </>
       );
       break;
@@ -286,13 +321,101 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
   );
 }
 
+/**
+ * Escudo de ruta, como el de las carreteras federales: identifica una ruta de
+ * venta ("3") igual que el escudo identifica una carretera. Es un dato, no un
+ * adorno: lleva el número de la ruta y nada más.
+ * - claro: escudo blanco con contorno y número en tinta (sobre concreto o tarjeta).
+ * - oscuro: escudo blanco sobre asfalto (en un encabezado).
+ */
+export function EscudoRuta({
+  numero,
+  tamano = 'normal',
+  accessibilityLabel,
+}: {
+  numero: string;
+  tamano?: 'normal' | 'grande';
+  accessibilityLabel?: string;
+}) {
+  const alto = tamano === 'grande' ? ALTO_ESCUDO_GRANDE : ALTO_ESCUDO;
+  const ancho = Math.round(alto * 0.88);
+  const texto = numero.length > 3 ? numero.slice(0, 3) : numero;
+  return (
+    <View
+      style={{ width: ancho, height: alto, alignItems: 'center', justifyContent: 'center' }}
+      accessible
+      accessibilityLabel={accessibilityLabel ?? `Ruta ${numero}`}
+    >
+      <Svg width={ancho} height={alto} viewBox="0 0 44 50" style={StyleSheet.absoluteFill}>
+        <Path
+          d="M4 3h36c1.1 0 2 .9 2 2v17c0 13-9 21.5-20 25C11 43.5 2 35 2 22V5c0-1.1.9-2 2-2z"
+          fill={COLORES.superficie}
+          stroke={COLORES.texto}
+          strokeWidth={2.5}
+        />
+        <Path d="M6 7.5h32" stroke={COLORES.texto} strokeWidth={1.5} strokeLinecap="round" />
+      </Svg>
+      <Text
+        style={[tamano === 'grande' ? estilos.numeroEscudoGrande : estilos.numeroEscudo, texto.length > 2 && estilos.numeroEscudoLargo]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={ESCALA_TEXTO.control}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        {texto}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * La marca provisional de la app: un escudo de ruta con la palomita de dos
+ * trazos (dos conteos que coinciden). Asfalto sobre claro o blanco sobre asfalto.
+ */
+export function MarcaApp({ tamano = ESPACIADO.xxl + ESPACIADO.sm, invertida = false }: { tamano?: number; invertida?: boolean }) {
+  const fondo = invertida ? COLORES.superficie : COLORES.marca;
+  const tinta = invertida ? COLORES.marca : COLORES.superficie;
+  return (
+    <View style={{ width: tamano * 0.88, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano * 0.88} height={tamano} viewBox="0 0 44 50">
+        <Path d="M4 3h36c1.1 0 2 .9 2 2v17c0 13-9 21.5-20 25C11 43.5 2 35 2 22V5c0-1.1.9-2 2-2z" fill={fondo} />
+        <Path d="M11 24.5l7 7L33 16" stroke={COLORES.accionViva} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <Path d="M11 24.5l7 7L33 16" stroke={tinta} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
+    </View>
+  );
+}
+
+const ALTO_ESCUDO = 36;
+const ALTO_ESCUDO_GRANDE = 52;
+
 const estilos = StyleSheet.create({
+  numeroEscudo: {
+    marginTop: 2,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 17,
+    lineHeight: 20,
+    color: COLORES.texto,
+    ...CIFRAS,
+  },
+  numeroEscudoGrande: {
+    marginTop: 4,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 24,
+    lineHeight: 28,
+    color: COLORES.texto,
+    ...CIFRAS,
+  },
+  numeroEscudoLargo: {
+    fontSize: 14,
+  },
   circulo: {
     width: TAMANO_VACIO,
     height: TAMANO_VACIO,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.grande,
   },
   cuadro: {
     width: TAMANO_TAREA,

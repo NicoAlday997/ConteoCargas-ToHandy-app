@@ -4,13 +4,13 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 import {
   CIFRAS,
   COLORES,
+  PLACA,
   ELEVACION,
   ESCALA_PRESIONADO,
   ESPACIADO,
   ETIQUETA_DATO,
   RADIOS,
   RITMO,
-  TIPOGRAFIA,
   TONOS,
   type ColorTono,
   type NivelElevacion,
@@ -138,18 +138,19 @@ const estilos = StyleSheet.create({
     gap: RITMO.relacionado,
   },
   // Pastilla del ancho de su texto: tinte del estado y texto hondo del mismo color.
+  // Placa de letrero del ancho de su texto: tinte del estado y leyenda honda.
   bloqueEstado: {
     flexShrink: 1,
-    paddingHorizontal: ESPACIADO.md,
-    paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.completo,
+    paddingHorizontal: ESPACIADO.sm + 2,
+    paddingVertical: 3,
+    borderRadius: RADIOS.chico,
   },
-  tituloBanda: TIPOGRAFIA.etiqueta,
+  tituloBanda: PLACA,
   detalleBanda: {
     ...ETIQUETA_DATO,
     ...CIFRAS,
   },
-  // Tinte de marca y la tarjeta se hunde un poco: el toque se nota al instante.
+  // Tinte frío y contorno en asfalto; la tarjeta se hunde un poco: el toque se nota al instante.
   presionada: {
     backgroundColor: COLORES.marcaTinte,
     borderColor: COLORES.marca,

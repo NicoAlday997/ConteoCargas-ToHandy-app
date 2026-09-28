@@ -84,10 +84,10 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: RITMO.relacionado,
   },
+  // El título de una sección es la leyenda de un letrero: condensada y firme.
   seccion: {
     flex: 1,
-    ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
+    ...TIPOGRAFIA.tituloBarra,
     color: COLORES.texto,
   },
   grupo: {

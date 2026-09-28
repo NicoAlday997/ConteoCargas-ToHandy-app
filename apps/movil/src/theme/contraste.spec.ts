@@ -48,25 +48,53 @@ describe('contraste: texto general', () => {
       ['rótulo terciario sobre el fondo de pantalla', 'textoTerciario', 'fondo'],
       ['texto del botón de peligro', 'errorTexto', 'superficie'],
       ['botón destructivo de contorno', 'error', 'superficie'],
-      ['antetítulo del login', 'marca', 'fondo'],
-      ['texto de "Finalizar" listo (blanco con texto azul)', 'marca', 'superficie'],
+      ['verde ruta como texto sobre tarjeta', 'accion', 'superficie'],
+      ['verde ruta como texto sobre el fondo de pantalla', 'accion', 'fondo'],
+      ['texto sobre lo seleccionado (tinte frío)', 'texto', 'marcaTinte'],
     ],
     MINIMO_TEXTO,
   );
 });
 
-describe('contraste: encabezado azul', () => {
+describe('contraste: botones', () => {
+  comprobar(
+    [
+      ['primario: blanco sobre verde ruta', 'textoSobreColor', 'accion'],
+      ['primario presionado', 'textoSobreColor', 'accionHonda'],
+      ['secundario: tinta sobre placa blanca', 'texto', 'superficie'],
+    ],
+    MINIMO_TEXTO,
+  );
+  comprobar([['contorno del secundario presionado', 'borde', 'marcaTinte']], MINIMO_GRANDE);
+});
+
+describe('contraste: encabezados y teclados de asfalto', () => {
   comprobar(
     [
       ['título', 'textoSobreColor', 'marca'],
       ['subtítulo, "de 14" y quién cuenta', 'marcaTenue', 'marca'],
       ['avance y "Al día" en el panel', 'textoSobreColor', 'marcaHonda'],
-      ['"de 14" y Finalizar deshabilitado en el panel', 'marcaTenue', 'marcaHonda'],
-      ['botón principal', 'textoSobreColor', 'marca'],
+      ['"de 14" en el panel', 'marcaTenue', 'marcaHonda'],
+      ['rol en verde vivo sobre el letrero de inicio', 'accionViva', 'marca'],
+      ['dígito de una tecla', 'textoSobreColor', 'marcaHonda'],
+      ['tecla presionada (encendida en blanco)', 'texto', 'superficie'],
+      ['tecla de avance: tinta sobre verde vivo', 'texto', 'accionViva'],
+      ['tecla "No lleva"', 'textoSobreColor', 'pendiente'],
+      ['aviso preventivo sobre el teclado: tinta sobre amarillo', 'texto', 'discrepancia'],
+      ['opción de campo activa (placa blanca)', 'texto', 'superficie'],
+      ['opción de campo inactiva', 'marcaTenue', 'marcaProfunda'],
     ],
     MINIMO_TEXTO,
   );
-  comprobar([['relleno de la barra de progreso sobre su canal', 'capturado', 'marcaProfunda']], MINIMO_GRANDE);
+  comprobar(
+    [
+      ['relleno del carril de avance sobre su canal', 'accionViva', 'marcaProfunda'],
+      ['marcas de carril (lo que falta) sobre su canal', 'carril', 'marcaProfunda'],
+      ['subrayado verde del visor del teclado', 'accionViva', 'marca'],
+      ['casilla vacía del PIN sobre asfalto', 'carril', 'marca'],
+    ],
+    MINIMO_GRANDE,
+  );
 });
 
 describe('contraste: filas de conteo', () => {
@@ -114,7 +142,7 @@ describe('contraste: filas de conteo', () => {
  */
 describe('contraste: excepciones documentadas de la paleta', () => {
   const EXCEPCIONES: [string, ClaveColor, ClaveColor, number][] = [
-    ['fila SIN CONTAR: blanco sobre el fondo de pantalla', 'superficie', 'fondo', 1.24],
+    ['fila SIN CONTAR: blanco sobre el fondo de pantalla', 'superficie', 'fondo', 1.23],
     ['borde de la fila SIN CONTAR', 'bordeSinContar', 'superficie', 2.04],
     ['contorno de tarjeta', 'contornoTarjeta', 'superficie', 1.5],
     ['borde de la fila CONTADO', 'capturado', 'capturadoFondo', 2.0],
@@ -131,8 +159,9 @@ describe('contraste: inicio y menús', () => {
     [
       ['nombre sobre la banda de identidad', 'texto', 'superficie'],
       ['rol sobre la banda de identidad', 'textoSecundario', 'superficie'],
-      ['iniciales sobre el círculo de tinta', 'textoSobreColor', 'texto'],
-      ['ícono de tarea en tinta sobre gris hundido', 'texto', 'superficieHonda'],
+      ['iniciales en la placa de asfalto (entrada)', 'textoSobreColor', 'marca'],
+      ['iniciales en la placa blanca (inicio)', 'texto', 'superficie'],
+      ['pictograma de tarea en blanco sobre asfalto', 'textoSobreColor', 'marca'],
       ['"Completa" en la pastilla blanca de la banda de familia', 'capturadoHondo', 'superficie'],
     ],
     MINIMO_TEXTO,
@@ -189,6 +218,8 @@ describe('tipografía', () => {
     [FUENTE.medio]: 500,
     [FUENTE.semiNegrita]: 600,
     [FUENTE.negrita]: 700,
+    [FUENTE.rotulo]: 600,
+    [FUENTE.titular]: 700,
     [FUENTE.extraNegrita]: 800,
   };
 
@@ -200,22 +231,23 @@ describe('tipografía', () => {
     }
   });
 
-  it('FUENTE tiene exactamente los cinco pesos que se cargan', () => {
+  it('FUENTE tiene exactamente los siete cortes que se cargan (cuatro de texto, tres condensados)', () => {
     assert.deepEqual(
       Object.keys(FUENTE).sort(),
-      (['extraNegrita', 'medio', 'negrita', 'regular', 'semiNegrita'] satisfies PesoFuente[]).sort(),
+      (['extraNegrita', 'medio', 'negrita', 'regular', 'rotulo', 'semiNegrita', 'titular'] satisfies PesoFuente[]).sort(),
     );
   });
 
-  it('el dato es más grande y pesa más que su rótulo', () => {
+  it('el dato es más grande y pesa más que su rótulo, que va en mayúsculas', () => {
     assert.ok(DATO.fontSize > ETIQUETA_DATO.fontSize && DATO.fontSize > ROTULO.fontSize);
-    assert.ok(PESO[DATO.fontFamily] - PESO[ETIQUETA_DATO.fontFamily] >= 200);
+    assert.ok(PESO[DATO.fontFamily] > PESO[ETIQUETA_DATO.fontFamily]);
+    assert.equal(ETIQUETA_DATO.textTransform, 'uppercase');
   });
 
-  it('la lectura de la fila es 32 px ExtraBold y el número del campo 22 px', () => {
-    assert.equal(TIPOGRAFIA.total.fontSize, 32);
+  it('la lectura de la fila es 34 px ExtraBold condensada y el número del campo 24 px', () => {
+    assert.equal(TIPOGRAFIA.total.fontSize, 34);
     assert.equal(TIPOGRAFIA.total.fontFamily, FUENTE.extraNegrita);
-    assert.equal(TIPOGRAFIA.campo.fontSize, 22);
+    assert.equal(TIPOGRAFIA.campo.fontSize, 24);
   });
 
   it('ningún texto baja de 12 px: "PAQUETES" contra "SUELTAS" se lee a pleno sol', () => {

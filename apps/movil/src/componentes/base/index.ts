@@ -7,7 +7,7 @@ export { EstadoVacio, type AccionEstado } from './EstadoVacio';
 export { Etiqueta, type RellenoEtiqueta, type TamanoEtiqueta, type TonoEtiqueta } from './Etiqueta';
 export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
-export { Chevron, Glifo, Icono, IconoTarea, Lapiz, Palomita, type NombreIcono } from './Icono';
+export { Chevron, EscudoRuta, Flecha, Glifo, Icono, IconoTarea, Lapiz, MarcaApp, numeroRuta, Palomita, type NombreIcono } from './Icono';
 export { AccionesHoja, Hoja } from './Hoja';
 export { PantallaModal } from './PantallaModal';
 export { Pulsable } from './Pulsable';

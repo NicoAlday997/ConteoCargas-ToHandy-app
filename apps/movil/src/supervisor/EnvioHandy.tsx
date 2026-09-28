@@ -246,7 +246,6 @@ const estilos = StyleSheet.create({
   tituloExito: {
     flex: 1,
     ...TIPOGRAFIA.titulo,
-    fontFamily: FUENTE.negrita,
     color: COLORES.capturadoTexto,
   },
   texto: {

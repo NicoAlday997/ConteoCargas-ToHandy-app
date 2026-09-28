@@ -12,7 +12,7 @@ import {
 } from '../componentes/base';
 import { textoEmpaque, type EmpaqueConfirmado } from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Piezas comunes de las pantallas de plantillas: filas de producto, casillas y avisos. */
 
@@ -207,7 +207,7 @@ const estilos = StyleSheet.create({
   },
   textoFamilia: {
     flexShrink: 1,
-    ...TIPOGRAFIA.familia,
+    ...FAMILIA,
     color: COLORES.texto,
   },
   cantidadFamilia: {
@@ -219,7 +219,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.completo,
+    borderRadius: RADIOS.chico,
     backgroundColor: COLORES.marcaTinte,
   },
   botonFamiliaPresionado: {
