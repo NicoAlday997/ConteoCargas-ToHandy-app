@@ -15,6 +15,7 @@ import {
   listarConflictosPendientes,
   listarFechasOperativasDisponibles,
   listarPendientesVerificacion,
+  obtenerContextoResolucion,
   obtenerDiscrepancias,
   obtenerEvento,
   obtenerProductos,
@@ -40,6 +41,7 @@ export const clavesCargas = {
   pendientesVerificacion: ['cargas', 'pendientes-verificacion'] as const,
   conflictosPendientes: ['cargas', 'conflictos-pendientes'] as const,
   discrepancias: (eventoId: string) => ['cargas', eventoId, 'discrepancias'] as const,
+  contextoResolucion: (eventoId: string) => ['cargas', eventoId, 'contexto-resolucion'] as const,
   fechasDisponibles: ['cargas', 'fechas-disponibles'] as const,
 };
 
@@ -316,13 +318,50 @@ interface VariablesConfirmar {
   productoCode: string;
   cantidadFinal: number;
   pin: string;
+  /** Otra persona confirma en este teléfono. */
+  confirmaUsuarioAppId?: string;
+}
+
+export interface ParticipanteResolucion {
+  id: string;
+  nombre: string;
+  /** 'VENDEDOR' | 'CONTADOR' (tipo de sesión con que contó). */
+  tipoSesion: string | null;
+}
+
+export interface ContextoResolucion {
+  rutaNombre: string | null;
+  tipo: string | null;
+  /** `aaaa-mm-dd` o ISO del servidor. */
+  fechaOperativa: string | null;
+  participantes: ParticipanteResolucion[];
+}
+
+/** Cambia poco: ruta, día y quiénes contaron. */
+export function useContextoResolucion(eventoId: string) {
+  return useQuery({
+    queryKey: clavesCargas.contextoResolucion(eventoId),
+    queryFn: () => obtenerContextoResolucion(eventoId),
+    enabled: eventoId.length > 0,
+    staleTime: 60_000,
+    select: (datos): ContextoResolucion => ({
+      rutaNombre: datos?.rutaNombre ?? null,
+      tipo: datos?.tipo ?? null,
+      fechaOperativa: datos?.fechaOperativa ?? null,
+      participantes: (datos?.participantes ?? []).flatMap((p) =>
+        p && typeof p.usuarioAppId === 'string'
+          ? [{ id: p.usuarioAppId, nombre: p.nombreCompleto?.trim() || 'Sin nombre', tipoSesion: p.tipoSesion ?? null }]
+          : [],
+      ),
+    }),
+  });
 }
 
 export function useConfirmarDiscrepancia(eventoId: string) {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: ({ productoCode, cantidadFinal, pin }: VariablesConfirmar) =>
-      confirmarDiscrepancia(eventoId, productoCode, cantidadFinal, pin),
+    mutationFn: ({ productoCode, cantidadFinal, pin, confirmaUsuarioAppId }: VariablesConfirmar) =>
+      confirmarDiscrepancia(eventoId, productoCode, cantidadFinal, pin, confirmaUsuarioAppId),
     onSettled: () => {
       void cliente.invalidateQueries({ queryKey: clavesCargas.discrepancias(eventoId) });
       void cliente.invalidateQueries({ queryKey: clavesCargas.conflictosPendientes });

@@ -18,6 +18,12 @@ interface Props {
   cargando: boolean;
   /** Por qué falló el último intento; el modal sigue abierto para reintentar o cancelar. */
   error?: { titulo: string; detalle: string; tono?: 'error' | 'atencion' } | null;
+  /**
+   * Una segunda salida que también hace algo, más modesta que confirmar
+   * (p. ej. «Solo autorizar» junto a «Autorizar y enviar»). Va de contorno,
+   * junto a cerrar; confirmar queda solo abajo, al alcance del pulgar.
+   */
+  alternativa?: { texto: string; onPress: () => void };
   onConfirmar: () => void;
   onCerrar: () => void;
 }
@@ -37,6 +43,7 @@ export function ModalConfirmacion({
   variante = 'primario',
   cargando,
   error,
+  alternativa,
   onConfirmar,
   onCerrar,
 }: Props) {
@@ -66,6 +73,14 @@ export function ModalConfirmacion({
           <AccionesHoja apiladas>
             {confirmar}
             <Boton texto={textoCerrar} onPress={cerrar} deshabilitado={cargando} />
+          </AccionesHoja>
+        ) : alternativa ? (
+          <AccionesHoja apiladas>
+            <AccionesHoja>
+              <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} />
+              <Boton texto={alternativa.texto} variante="secundario" onPress={alternativa.onPress} deshabilitado={cargando} />
+            </AccionesHoja>
+            {confirmar}
           </AccionesHoja>
         ) : (
           <AccionesHoja>

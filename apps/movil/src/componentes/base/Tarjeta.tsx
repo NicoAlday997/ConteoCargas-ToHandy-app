@@ -14,6 +14,7 @@ import {
   TONOS,
   type ColorTono,
   type NivelElevacion,
+  ONDA,
 } from '../../theme/tokens';
 import { Pulsable } from './Pulsable';
 
@@ -106,7 +107,7 @@ export function Tarjeta({
   return (
     <Pulsable
       onPress={onPress}
-      onda="rgba(30, 79, 224, 0.12)"
+      onda={ONDA.marca}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}

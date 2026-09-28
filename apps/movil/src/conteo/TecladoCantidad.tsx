@@ -1,7 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ALTO_TECLA_GRANDE, BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  ALTO_TECLA_GRANDE,
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  FUENTE,
+  ONDA,
+  RADIOS,
+  ROTULO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../theme/tokens';
 import {
   factorEfectivo,
   sueltasExcedenPaquete,
@@ -13,8 +26,13 @@ import { Chevron, Glifo, Pulsable } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 import { formatearNombreProducto } from './formato-nombre';
 
-/** Cabe una cantidad de 4 dígitos al tamaño de título. */
+/** Cabe una cantidad de 4 dígitos a 30 px. */
 const ANCHO_VISOR = ESPACIADO.xxxl + ESPACIADO.xxl + ESPACIADO.sm;
+/** Controles del encabezado del teclado: 40 de alto y 8 de holgura arriba y abajo llegan a 56. */
+const ALTO_CONTROL_ENCABEZADO = ESPACIADO.xxl + ESPACIADO.sm;
+const HOLGURA_ENCABEZADO = { top: ESPACIADO.sm, bottom: ESPACIADO.sm, left: ESPACIADO.xs, right: ESPACIADO.xs };
+/** La columna de acciones es más ancha que la de un dígito: "Siguiente" cabe sin encogerse. */
+const PESO_COLUMNA_ACCIONES = 1.3;
 
 const FILAS: readonly (readonly string[])[] = [
   ['1', '2', '3'],
@@ -25,6 +43,8 @@ const FILAS: readonly (readonly string[])[] = [
 interface Props {
   producto: ProductoConteo;
   campo: CampoCaptura;
+  /** Los campos que admite el producto, en orden. Con dos (y `onCambiarCampo`), el encabezado deja cambiar de uno a otro. */
+  camposDisponibles?: readonly CampoCaptura[];
   /** Lo tecleado; vacío es "sin capturar". */
   texto: string;
   /** El valor mostrado aún no se toca: la primera tecla lo reemplaza. */
@@ -32,7 +52,7 @@ interface Props {
   /** Captura con lo tecleado aplicado, para avisar si las sueltas ya son un paquete. */
   captura: CapturaProducto;
   etiquetaSiguiente: string;
-  /** La tecla de avance lleva a otro campo (no termina): muestra un chevron. */
+  /** La tecla de avance lleva a otro campo o producto (no termina): muestra un chevron. */
   siguienteConChevron?: boolean;
   /** Panel lateral (tablet expandida): ocupa el alto de la pantalla. */
   lateral: boolean;
@@ -43,19 +63,26 @@ interface Props {
   onDigito: (digito: string) => void;
   onBorrar: () => void;
   onSiguiente: () => void;
+  /** "Revisado, no lleva": el producto queda en 0 y se pasa al siguiente. Sin él, no hay tecla. */
+  onNoLleva?: () => void;
+  onCambiarCampo?: (campo: CampoCaptura) => void;
   onListo: () => void;
 }
 
 /**
  * Teclado propio (nunca el del sistema, que cambia de tamaño y tapa la lista
  * según el dispositivo). Arriba repite qué producto y qué campo se captura:
- * con 73 productos casi iguales, perder el hilo es el error más caro. El total
- * en piezas no se repite aquí: la fila en edición queda a la vista y ya lo
- * muestra al teclear.
+ * con 73 productos casi iguales, perder el hilo es el error más caro.
+ *
+ * El ritmo manda. La tecla que avanza es la acción de la pantalla (azul
+ * sólido, doble alto, abajo a la derecha donde descansa el pulgar); "No lleva"
+ * vive junto a ella porque es la captura más repetida del día; "Listo" solo
+ * cierra y por eso es la más callada.
  */
 export function TecladoCantidad({
   producto,
   campo,
+  camposDisponibles = [campo],
   texto,
   reemplazar,
   captura,
@@ -67,6 +94,8 @@ export function TecladoCantidad({
   onDigito,
   onBorrar,
   onSiguiente,
+  onNoLleva,
+  onCambiarCampo,
   onListo,
 }: Props) {
   // El panel llega hasta el borde de abajo: su fondo absorbe el área segura.
@@ -75,39 +104,21 @@ export function TecladoCantidad({
   const avisoSueltas = campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
   const altoTecla = teclasGrandes ? ALTO_TECLA_GRANDE : TOQUE_MINIMO;
   const etiquetaCampo = nombreCampo(producto, campo);
+  const nombre = formatearNombreProducto(producto.nombre);
 
   return (
     <View style={[estilos.panel, lateral && estilos.panelLateral, { paddingBottom: (lateral ? ESPACIADO.lg : ESPACIADO.md) + (areaSegura ? margenes.bottom : 0) }]}>
       <View style={estilos.encabezado}>
-        <View style={estilos.contexto} accessibilityLiveRegion="polite">
-          <View style={estilos.lineaProducto}>
-            <EtiquetaFactor producto={producto} grande={lateral} />
-            <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-              {formatearNombreProducto(producto.nombre)}
-            </Text>
-          </View>
-          <View style={estilos.lineaValor}>
-            <Text style={estilos.campo} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-              {etiquetaCampo}
-            </Text>
-            <View
-              style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
-              accessible
-              accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
-            >
-              <Text
-                style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
-                numberOfLines={1}
-                maxFontSizeMultiplier={ESCALA_TEXTO.control}
-              >
-                {texto === '' ? '—' : texto}
-              </Text>
-            </View>
-          </View>
+        <View style={estilos.lineaProducto} accessible accessibilityLabel={`Capturando ${nombre}`} accessibilityLiveRegion="polite">
+          <EtiquetaFactor producto={producto} grande={lateral} />
+          <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            {nombre}
+          </Text>
         </View>
         <Pulsable
           onPress={onListo}
-          onda="rgba(255, 255, 255, 0.24)"
+          onda={ONDA.sobreClaro}
+          hitSlop={HOLGURA_ENCABEZADO}
           accessibilityRole="button"
           accessibilityLabel="Listo, cerrar teclado"
           style={({ pressed }) => [estilos.botonListo, pressed && estilos.botonListoPresionado]}
@@ -116,6 +127,56 @@ export function TecladoCantidad({
             Listo
           </Text>
         </Pulsable>
+      </View>
+
+      <View style={estilos.lineaValor}>
+        {camposDisponibles.length > 1 && onCambiarCampo ? (
+          <View style={estilos.selector} accessibilityRole="tablist">
+            {camposDisponibles.map((c) => {
+              const activo = c === campo;
+              const rotulo = nombreCampo(producto, c);
+              return (
+                <Pulsable
+                  key={c}
+                  onPress={() => {
+                    if (!activo) onCambiarCampo(c);
+                  }}
+                  tacto="seleccion"
+                  hitSlop={HOLGURA_ENCABEZADO}
+                  accessibilityRole="tab"
+                  accessibilityLabel={`Capturar ${rotulo}`}
+                  accessibilityState={{ selected: activo }}
+                  style={[estilos.opcionCampo, activo && estilos.opcionCampoActiva]}
+                >
+                  <Text
+                    style={[estilos.textoOpcion, activo && estilos.textoOpcionActiva]}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={ESCALA_TEXTO.control}
+                  >
+                    {rotulo}
+                  </Text>
+                </Pulsable>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={estilos.campoUnico} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            {etiquetaCampo}
+          </Text>
+        )}
+        <View
+          style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
+          accessible
+          accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
+        >
+          <Text
+            style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
+          >
+            {texto === '' ? '—' : texto}
+          </Text>
+        </View>
       </View>
 
       {/* Avisa, no bloquea: a veces el paquete viene abierto. Altura reservada para que las teclas no se muevan. */}
@@ -131,54 +192,82 @@ export function TecladoCantidad({
       </View>
 
       <View style={[estilos.teclado, lateral && estilos.tecladoLateral]}>
-        {FILAS.map((fila) => (
-          <View key={fila.join('')} style={estilos.fila}>
-            {fila.map((digito) => (
-              <Tecla key={digito} etiqueta={digito} alto={altoTecla} onPress={() => onDigito(digito)} />
-            ))}
+        <View style={[estilos.digitos, lateral && estilos.tecladoLateral]}>
+          {FILAS.map((fila) => (
+            <View key={fila.join('')} style={estilos.fila}>
+              {fila.map((digito) => (
+                <Tecla key={digito} etiqueta={digito} alto={altoTecla} onPress={() => onDigito(digito)} />
+              ))}
+            </View>
+          ))}
+          <View style={estilos.fila}>
+            <Tecla etiqueta="0" alto={altoTecla} onPress={() => onDigito('0')} />
           </View>
-        ))}
-        <View style={estilos.fila}>
-          <Tecla etiqueta="Borrar" alto={altoTecla} onPress={onBorrar} secundaria etiquetaAccesible="Borrar último dígito" />
-          <Tecla etiqueta="0" alto={altoTecla} onPress={() => onDigito('0')} />
-          <Tecla etiqueta={etiquetaSiguiente} alto={altoTecla} onPress={onSiguiente} secundaria avance chevron={siguienteConChevron} />
+        </View>
+
+        <View style={[estilos.acciones, lateral && estilos.tecladoLateral]}>
+          <Tecla etiqueta="Borrar" alto={altoTecla} onPress={onBorrar} variante="secundaria" etiquetaAccesible="Borrar último dígito" />
+          {onNoLleva && (
+            <Tecla
+              etiqueta="No lleva"
+              alto={altoTecla}
+              onPress={onNoLleva}
+              variante="noLleva"
+              etiquetaAccesible="No lleva: marcar en cero y pasar al siguiente"
+            />
+          )}
+          <Tecla
+            etiqueta={etiquetaSiguiente}
+            alto={altoTecla}
+            onPress={onSiguiente}
+            variante="avance"
+            chevron={siguienteConChevron}
+            estirar
+          />
         </View>
       </View>
     </View>
   );
 }
 
+type VarianteTecla = 'digito' | 'secundaria' | 'noLleva' | 'avance';
+
 interface PropsTecla {
   etiqueta: string;
   alto: number;
   onPress: () => void;
-  secundaria?: boolean;
-  /** La tecla que avanza: tinte de marca, se encuentra sin buscarla. */
-  avance?: boolean;
+  variante?: VarianteTecla;
   etiquetaAccesible?: string;
   chevron?: boolean;
+  /** Ocupa el alto que sobra en su columna (la tecla de avance mide dos filas). */
+  estirar?: boolean;
 }
 
-function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, etiquetaAccesible, chevron = false }: PropsTecla) {
+function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible, chevron = false, estirar = false }: PropsTecla) {
+  const avance = variante === 'avance';
   return (
     <Pulsable
       onPress={onPress}
       tacto="tecla"
       repetible
+      onda={avance ? ONDA.sobreColor : undefined}
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       style={({ pressed }) => [
         estilos.tecla,
         { minHeight: alto },
+        estirar && estilos.teclaEstirada,
+        variante === 'noLleva' && estilos.teclaNoLleva,
         avance && estilos.teclaAvance,
-        pressed && estilos.teclaPresionada,
+        pressed && (avance ? estilos.teclaAvancePresionada : estilos.teclaPresionada),
       ]}
     >
-      {({ pressed }) => {
-        const texto = (
+      {({ pressed }) => (
+        <View style={estilos.contenidoTecla}>
           <Text
             style={[
-              secundaria ? estilos.textoSecundario : estilos.textoDigito,
+              variante === 'digito' ? estilos.textoDigito : estilos.textoSecundario,
+              variante === 'noLleva' && estilos.textoNoLleva,
               avance && estilos.textoAvance,
               pressed && estilos.textoInvertido,
             ]}
@@ -188,25 +277,14 @@ function Tecla({ etiqueta, alto, onPress, secundaria = false, avance = false, et
           >
             {etiqueta}
           </Text>
-        );
-        if (!chevron) return texto;
-        return (
-          <View style={estilos.conChevron}>
-            {texto}
-            <Chevron color={pressed ? COLORES.textoSobreColor : COLORES.marcaHonda} tamano={ESPACIADO.lg + ESPACIADO.xs} />
-          </View>
-        );
-      }}
+          {chevron && <Chevron color={COLORES.textoSobreColor} tamano={ESPACIADO.xl} />}
+        </View>
+      )}
     </Pulsable>
   );
 }
 
 const estilos = StyleSheet.create({
-  conChevron: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO.xs,
-  },
   panel: {
     gap: ESPACIADO.sm,
     padding: ESPACIADO.md,
@@ -223,14 +301,11 @@ const estilos = StyleSheet.create({
   },
   encabezado: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: ESPACIADO.md,
   },
-  contexto: {
-    flex: 1,
-    gap: ESPACIADO.xs,
-  },
   lineaProducto: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
@@ -241,18 +316,61 @@ const estilos = StyleSheet.create({
     fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
+  // Solo cierra: la más callada del panel. Gris hundido, sin azul.
+  botonListo: {
+    minHeight: ALTO_CONTROL_ENCABEZADO,
+    paddingHorizontal: ESPACIADO.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
+  },
+  botonListoPresionado: {
+    backgroundColor: COLORES.divisor,
+  },
+  textoListo: {
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.texto,
+  },
   lineaValor: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: ESPACIADO.sm,
   },
-  // Rótulo del campo: se lee de reojo ("¿paquetes o sueltas?") sin competir con la cifra.
-  campo: {
-    ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.negrita,
+  // Paquetes | Sueltas: cuál se captura se ve por forma (relleno) y no solo por el rótulo.
+  selector: {
+    flexDirection: 'row',
+    gap: ESPACIADO.xs,
+    padding: ESPACIADO.xs,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
+  },
+  opcionCampo: {
+    minHeight: ALTO_CONTROL_ENCABEZADO - ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIOS.chico,
+  },
+  opcionCampoActiva: {
+    backgroundColor: COLORES.marca,
+  },
+  textoOpcion: {
+    ...ROTULO,
+    fontSize: TIPOGRAFIA.etiqueta.fontSize,
+    lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
+    color: COLORES.textoSecundario,
+  },
+  textoOpcionActiva: {
+    color: COLORES.textoSobreColor,
+  },
+  campoUnico: {
+    ...ROTULO,
+    fontSize: TIPOGRAFIA.etiqueta.fontSize,
+    lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
     color: COLORES.marcaHonda,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
   },
   visor: {
     minWidth: ANCHO_VISOR,
@@ -267,7 +385,6 @@ const estilos = StyleSheet.create({
   // teclado no crece (los dígitos no tienen descendentes).
   valor: {
     ...TIPOGRAFIA.titulo,
-    fontSize: 30,
     fontFamily: FUENTE.negrita,
     color: COLORES.texto,
     textAlign: 'right',
@@ -276,22 +393,6 @@ const estilos = StyleSheet.create({
   // Se ve "seleccionado": la primera tecla lo reemplaza, no se le agrega.
   valorPorReemplazar: {
     color: COLORES.textoSecundario,
-  },
-  botonListo: {
-    minHeight: TOQUE_MINIMO,
-    minWidth: TOQUE_MINIMO + ESPACIADO.xl,
-    paddingHorizontal: ESPACIADO.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORES.marca,
-    borderRadius: RADIOS.medio,
-  },
-  botonListoPresionado: {
-    backgroundColor: COLORES.marcaHonda,
-  },
-  textoListo: {
-    ...TIPOGRAFIA.subtitulo,
-    color: COLORES.textoSobreColor,
   },
   // Cabe un aviso de dos líneas: al aparecer, las teclas no se mueven.
   zonaAviso: {
@@ -313,11 +414,21 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.etiqueta,
     color: COLORES.discrepanciaTexto,
   },
+  // Numpad: tres columnas de dígitos y una de acciones a la derecha, del lado del pulgar.
   teclado: {
+    flexDirection: 'row',
     gap: ESPACIADO.sm,
   },
   tecladoLateral: {
     gap: ESPACIADO.md,
+  },
+  digitos: {
+    flex: 3,
+    gap: ESPACIADO.sm,
+  },
+  acciones: {
+    flex: PESO_COLUMNA_ACCIONES,
+    gap: ESPACIADO.sm,
   },
   fila: {
     flexDirection: 'row',
@@ -333,9 +444,26 @@ const estilos = StyleSheet.create({
     borderColor: COLORES.bordeSinContar,
     borderRadius: RADIOS.medio,
   },
+  // Dentro de la columna de acciones la tecla no se estira sola; la de avance sí.
+  teclaEstirada: {
+    flexGrow: 1,
+  },
+  contenidoTecla: {
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
+  },
+  // El tinte de la fila "no lleva": la tecla dice qué estado deja.
+  teclaNoLleva: {
+    backgroundColor: COLORES.pendienteFondo,
+  },
+  // La acción del panel: azul sólido, como el botón principal de una pantalla.
   teclaAvance: {
-    backgroundColor: COLORES.marcaTinte,
+    backgroundColor: COLORES.marca,
     borderColor: COLORES.marca,
+  },
+  teclaAvancePresionada: {
+    backgroundColor: COLORES.marcaHonda,
+    borderColor: COLORES.marcaHonda,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
   teclaPresionada: {
@@ -352,9 +480,14 @@ const estilos = StyleSheet.create({
     fontFamily: FUENTE.semiNegrita,
     color: COLORES.texto,
   },
-  textoAvance: {
+  textoNoLleva: {
+    color: COLORES.pendiente,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+  },
+  textoAvance: {
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.textoSobreColor,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

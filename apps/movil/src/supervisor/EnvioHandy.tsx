@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import type { EstadoCargaApi } from '../api/historial';
 import { useEnviarCarga } from '../api/hooks-supervisor';
-import { BloqueError, FilaDato, Tarjeta } from '../componentes/base';
+import { BloqueError, FilaDato, Palomita, Tarjeta } from '../componentes/base';
 import { formatearCifra } from '../conteo/formato-cantidad';
+import { sentir } from '../theme/tacto';
 import type { CargaDetalle } from '../historial/modelo-historial';
-import { COLORES, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
 import { codigosDeDetalle, nombresDeProductos } from './modelo-supervisor';
 import { ModalConfirmacion } from './ModalConfirmacion';
 
@@ -51,25 +52,29 @@ export function useEnvioHandy(eventoId: string, carga: CargaDetalle | null, onSe
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
-  const confirmar = () => {
+  /** `alTerminar`: quien lanzó el envío desde su propio modal (autorizar y enviar) lo cierra aquí. */
+  const confirmar = (alTerminar?: () => void) => {
     if (!carga) return;
     enviar.mutate(undefined, {
-      onSuccess: (r) =>
-        setResultado({
-          tipo: 'enviada',
-          idHandy: r?.idHandy ?? null,
-          yaExistia: r?.yaExistia === true,
-          rechazados: nombresDeProductos(r?.productosRechazados ?? [], carga),
-        }),
+      onSuccess: (r) => {
+        const rechazados = nombresDeProductos(r?.productosRechazados ?? [], carga);
+        // El cierre del día del supervisor: se siente aunque no mire la pantalla.
+        sentir(rechazados.length > 0 ? 'aviso' : 'exito');
+        setResultado({ tipo: 'enviada', idHandy: r?.idHandy ?? null, yaExistia: r?.yaExistia === true, rechazados });
+      },
       onError: (e) => {
         if (e instanceof ErrorApi && e.estado === 401) {
           onSesionVencida();
           return;
         }
+        sentir('error');
         setResultado(interpretarError(e, carga));
       },
       // Sea cual sea el desenlace, lo que sigue se lee en la pantalla, no en el modal.
-      onSettled: () => setConfirmando(false),
+      onSettled: () => {
+        setConfirmando(false);
+        alTerminar?.();
+      },
     });
   };
 
@@ -95,16 +100,30 @@ export function textoBotonEnvio(estado: EstadoCargaApi | null): string {
  * pantalla); la respuesta del último intento agrega lo que el estado no
  * guarda: el id de Handy y los productos rechazados.
  */
-export function AvisoEnvio({ estado, envio }: { estado: EstadoCargaApi | null; envio: EnvioHandy }) {
+export function AvisoEnvio({
+  estado,
+  envio,
+  resumen,
+}: {
+  estado: EstadoCargaApi | null;
+  envio: EnvioHandy;
+  /** "73 productos · 1,204 piezas en la ruta de Ruta 3.": lo que quedó en Handy. */
+  resumen?: string;
+}) {
   const { resultado } = envio;
 
   if (estado === 'ENVIADA') {
     const enviada = resultado?.tipo === 'enviada' ? resultado : null;
     return (
       <Tarjeta tintada="capturado" elevacion={0} compacta style={estilos.bloque}>
-        <Text style={estilos.tituloExito} accessibilityRole="header">
-          Enviada a Handy
-        </Text>
+        {/* El final del recorrido: lectura grande, como la del conteo terminado. */}
+        <View style={estilos.cabeceraExito}>
+          <Palomita color={COLORES.capturadoHondo} tamano={ESPACIADO.xl + ESPACIADO.xs} />
+          <Text style={estilos.tituloExito} accessibilityRole="header">
+            Enviada a Handy
+          </Text>
+        </View>
+        {resumen && <Text style={estilos.texto}>{resumen}</Text>}
         {enviada?.idHandy && <FilaDato etiqueta="Ruta en Handy" valor={`#${enviada.idHandy}`} />}
         {enviada?.yaExistia && (
           <Text style={estilos.texto}>
@@ -197,7 +216,7 @@ export function ModalEnviar({ carga, envio }: { carga: CargaDetalle; envio: Envi
       textoConfirmar={reintento ? 'Reintentar' : 'Enviar'}
       textoCargando="Enviando…"
       cargando={envio.enviando}
-      onConfirmar={envio.confirmar}
+      onConfirmar={() => envio.confirmar()}
       onCerrar={envio.cancelar}
     >
       <Text style={estilos.texto}>
@@ -219,8 +238,14 @@ const estilos = StyleSheet.create({
     marginTop: RITMO.relacionado,
     gap: RITMO.relacionado,
   },
+  cabeceraExito: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+  },
   tituloExito: {
-    ...TIPOGRAFIA.subtitulo,
+    flex: 1,
+    ...TIPOGRAFIA.titulo,
     fontFamily: FUENTE.negrita,
     color: COLORES.capturadoTexto,
   },

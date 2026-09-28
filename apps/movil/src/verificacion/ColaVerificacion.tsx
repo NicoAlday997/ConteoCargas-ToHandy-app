@@ -36,6 +36,7 @@ import {
   RITMO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
+  ONDA,
 } from '../theme/tokens';
 
 const MENSAJE_SIN_RED =
@@ -334,7 +335,7 @@ function FilaCarga({
     <Pulsable
       onPress={() => onPress(carga)}
       disabled={deshabilitada}
-      onda="rgba(255, 255, 255, 0.2)"
+      onda={ONDA.sobreColor}
       accessibilityRole="button"
       accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}

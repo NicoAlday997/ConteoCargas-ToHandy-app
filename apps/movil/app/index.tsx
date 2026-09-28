@@ -54,7 +54,7 @@ import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
-import { CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import { CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
 
 /** Una columna legible también en tablet. */
 const ANCHO_CONTENIDO = 560;
@@ -246,7 +246,7 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
       <Pulsable
         onPress={() => void alTocar()}
         disabled={consultando}
-        onda="rgba(220, 38, 38, 0.16)"
+        onda={ONDA.peligro}
         accessibilityRole="button"
         accessibilityState={{ busy: consultando }}
         style={({ pressed }) => [estilos.cerrarSesion, pressed && estilos.cerrarSesionPresionado]}

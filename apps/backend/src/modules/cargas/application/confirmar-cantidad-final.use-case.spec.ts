@@ -5,6 +5,7 @@ import type {
   DatosActualizarDiscrepancia,
   Discrepancia,
   EventoCarga,
+  SesionConteo,
 } from './carga.repository';
 import {
   ConfirmarCantidadFinalUseCase,
@@ -144,8 +145,27 @@ class FakeCargaRepository implements CargaRepository {
   async listarItemsDeSesion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
-  async listarSesionesDeEvento(): Promise<never> {
-    throw new Error('no usado en estas pruebas');
+  /** Quienes contaron en cada evento: basta el usuario para la regla del mismo dispositivo. */
+  private readonly participantesPorEvento = new Map<string, string[]>();
+
+  sembrarParticipantes(eventoId: string, usuarios: string[]): void {
+    this.participantesPorEvento.set(eventoId, [...usuarios]);
+  }
+
+  async listarSesionesDeEvento(eventoId: string): Promise<SesionConteo[]> {
+    return (this.participantesPorEvento.get(eventoId) ?? []).map(
+      (usuarioAppId, i) => ({
+        id: `sesion-${i}`,
+        eventoCargaId: eventoId,
+        tipo: usuarioAppId.startsWith('vendedor') ? 'VENDEDOR' : 'CONTADOR',
+        usuarioAppId,
+        dispositivoId: null,
+        ubicacion: null,
+        estado: 'CERRADA',
+        iniciadaEn: AHORA,
+        finalizadaEn: AHORA,
+      }),
+    );
   }
   async guardarDiscrepancias(): Promise<void> {
     throw new Error('no usado en estas pruebas');
@@ -499,5 +519,119 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     expect(repo.cambiosDeEstado).toEqual([]);
     const evento = await repo.buscarEventoPorId('ev-1');
     expect(evento?.estado).toBe('CONFLICTOS_PENDIENTES');
+  });
+  describe('en el mismo dispositivo (quien tiene la sesion pasa el telefono)', () => {
+    beforeEach(() => {
+      repo.sembrarParticipantes('ev-1', ['vendedor-1', 'contador-1']);
+    });
+
+    it('confirma la persona elegida con SU PIN, aunque la sesion sea de quien capturo', async () => {
+      repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+      const resultado = await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          dispositivoUsuarioAppId: 'vendedor-1',
+          pin: PINES['contador-1'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      );
+
+      const exito = exigirExito(resultado);
+      expect(exito.discrepancia.confirmadaPor).toBe('contador-1');
+      expect(verificador.llamadas).toEqual([
+        { usuarioAppId: 'contador-1', pin: PINES['contador-1'] },
+      ]);
+    });
+
+    it('RECHAZA elegir como confirmador a quien capturo, sin gastar intentos de PIN', async () => {
+      repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+      const resultado = await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'vendedor-1',
+          dispositivoUsuarioAppId: 'contador-1',
+          pin: PINES['vendedor-1'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'AUTOCONFIRMACION_PROHIBIDA',
+      });
+      expect(verificador.llamadas).toEqual([]);
+      expect(repo.actualizaciones).toEqual([]);
+    });
+
+    it('RECHAZA a alguien que no conto esta carga, sin gastar intentos de PIN', async () => {
+      repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+      const resultado = await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-2',
+          dispositivoUsuarioAppId: 'vendedor-1',
+          pin: PINES['contador-2'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'CONFIRMADOR_NO_PARTICIPA',
+      });
+      expect(verificador.llamadas).toEqual([]);
+      expect(repo.actualizaciones).toEqual([]);
+    });
+
+    it('RECHAZA el PIN de quien tiene la sesion: el PIN es el de quien confirma', async () => {
+      repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+      const resultado = await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          dispositivoUsuarioAppId: 'vendedor-1',
+          pin: PINES['vendedor-1'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      );
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'PIN_INCORRECTO',
+        intentosRestantes: 4,
+      });
+      expect(repo.actualizaciones).toEqual([]);
+    });
+
+    it('entre dispositivos no exige participacion: un contador que no conto puede confirmar', async () => {
+      repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+
+      const resultado = await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-2',
+          dispositivoUsuarioAppId: 'contador-2',
+          pin: PINES['contador-2'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      );
+
+      expect(exigirExito(resultado).discrepancia.confirmadaPor).toBe('contador-2');
+    });
   });
 });

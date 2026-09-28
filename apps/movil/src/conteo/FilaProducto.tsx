@@ -259,8 +259,41 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
   // borrar lo que ya se contó. Para corregir a cero se usa el teclado.
   const ceroBloqueado = estado === 'con-cantidad';
 
+  // Con lector de pantalla la fila es UNA parada, con acciones (deslizar
+  // arriba/abajo en TalkBack, rotor en VoiceOver): 73 productos no pueden
+  // costar ~6 gestos cada uno. Lo visual no cambia.
+  const acciones = [
+    ...(conPaquetes ? [{ name: 'paquetes', label: `Capturar ${nombreCampo(producto, 'paquetes')}` }] : []),
+    ...(conSueltas ? [{ name: 'sueltas', label: 'Capturar sueltas' }] : []),
+    ...(ceroBloqueado ? [] : [{ name: 'noLleva', label: 'No lleva, marcar en cero' }]),
+  ];
+  const vozFila = [
+    nombre,
+    aspecto === 'tecleando' ? 'capturando' : estado === 'sin-capturar' ? 'sin contar' : estado === 'en-cero' ? 'no lleva' : 'contado',
+    conPaquetes && captura.paquetes !== null ? `${nombreCampo(producto, 'paquetes')} ${captura.paquetes}` : null,
+    conSueltas && captura.sueltas !== null ? `sueltas ${captura.sueltas}` : null,
+    estado === 'con-cantidad' ? textoTotalAccesible(total, estado, unidadTotal) : null,
+    envio === 'por-enviar' ? 'por enviar' : envio === 'rechazado' ? `rechazado por el servidor: ${errorEnvio ?? 'revisa la cantidad'}` : null,
+    !producto.factorConfirmado ? 'empaque sin confirmar' : null,
+    avisoSueltas ? 'las sueltas ya completan un paquete' : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   return (
-    <View style={[estilos.fila, { backgroundColor: colores.fondo, borderColor: colores.borde }]}>
+    <View
+      style={[estilos.fila, { backgroundColor: colores.fondo, borderColor: colores.borde }]}
+      accessible
+      accessibilityLabel={vozFila}
+      accessibilityHint={conPaquetes || conSueltas ? 'Toca dos veces para capturar. Más acciones con el gesto de acciones.' : undefined}
+      accessibilityActions={[{ name: 'activate' }, ...acciones]}
+      onAccessibilityAction={({ nativeEvent }) => {
+        const accion = nativeEvent.actionName;
+        if (accion === 'activate') onAbrirCampo(producto.code, conPaquetes ? 'paquetes' : 'sueltas');
+        else if (accion === 'paquetes' || accion === 'sueltas') onAbrirCampo(producto.code, accion);
+        else if (accion === 'noLleva') onCero(producto.code);
+      }}
+    >
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}

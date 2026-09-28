@@ -296,6 +296,20 @@ export interface RespuestaDesbloquear {
   mensaje?: string | null;
 }
 
+/** Una persona que contó en la carga (`GET /eventos-carga/:id/participantes`). */
+export interface ParticipanteApi {
+  usuarioAppId: string;
+  nombreCompleto: string | null;
+  tipoSesion: string | null;
+}
+
+export interface ContextoResolucionApi {
+  rutaNombre: string | null;
+  tipo: string | null;
+  fechaOperativa: string | null;
+  participantes: ParticipanteApi[] | null;
+}
+
 export interface RespuestaConfirmarDiscrepancia {
   enEsperaAutorizacion: boolean | null;
 }
@@ -321,6 +335,11 @@ export async function obtenerDiscrepancias(eventoId: string): Promise<Discrepanc
   return Array.isArray(filas) ? filas : [];
 }
 
+/** De qué carga se trata y quiénes contaron: encabezado de la resolución y "¿Quién confirma?". */
+export function obtenerContextoResolucion(eventoId: string): Promise<ContextoResolucionApi | null> {
+  return peticion<ContextoResolucionApi | null>(`${rutaEvento(eventoId)}/participantes`);
+}
+
 const rutaDiscrepancia = (eventoId: string, productoCode: string) =>
   `${rutaEvento(eventoId)}/discrepancias/${encodeURIComponent(productoCode)}`;
 
@@ -335,16 +354,20 @@ export function capturarDiscrepancia(eventoId: string, productoCode: string, can
 /**
  * `cantidadFinal` es la que la persona tiene a la vista: si alguien la recapturó
  * mientras tecleaba su PIN, el servidor rechaza (409 `CANTIDAD_CAMBIO`).
+ *
+ * `confirmaUsuarioAppId`: confirmación en este mismo teléfono por otra persona
+ * (el PIN es el suyo). Sin él, confirma quien tiene la sesión abierta.
  */
 export function confirmarDiscrepancia(
   eventoId: string,
   productoCode: string,
   cantidadFinal: number,
   pin: string,
+  confirmaUsuarioAppId?: string,
 ): Promise<RespuestaConfirmarDiscrepancia | null> {
   return peticion<RespuestaConfirmarDiscrepancia | null>(`${rutaDiscrepancia(eventoId, productoCode)}/confirmar`, {
     method: 'POST',
-    cuerpo: { cantidadFinal, pin },
+    cuerpo: confirmaUsuarioAppId ? { cantidadFinal, pin, confirmaUsuarioAppId } : { cantidadFinal, pin },
   });
 }
 

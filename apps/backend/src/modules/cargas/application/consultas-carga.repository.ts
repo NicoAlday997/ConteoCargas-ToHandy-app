@@ -77,6 +77,25 @@ export interface DiscrepanciaDetalle extends Discrepancia {
   segundoConteo: LadoDiscrepancia;
 }
 
+/** Una persona que conto en la carga: puede capturar o confirmar sus discrepancias. */
+export interface ParticipanteCarga {
+  usuarioAppId: string;
+  nombreCompleto: string;
+  /** Con que conteo participo (hoy VENDEDOR o CONTADOR). */
+  tipoSesion: TipoSesion;
+}
+
+/**
+ * Lo que la pantalla de resolucion necesita para decir de que carga se trata
+ * y para ofrecer "¿Quien confirma?" en el mismo dispositivo.
+ */
+export interface ContextoResolucion {
+  rutaNombre: string;
+  tipo: TipoCarga;
+  fechaOperativa: Date;
+  participantes: ParticipanteCarga[];
+}
+
 /** Salida ya enviada a Handy sobre la que se puede recargar. */
 export interface DiaRecargable {
   /** Inicio del dia operativo en la zona del negocio. */
@@ -97,6 +116,14 @@ export abstract class ConsultasCargaRepository {
   abstract listarConflictosDeParticipante(
     usuarioAppId: string,
   ): Promise<CargaConConflictos[]>;
+
+  /**
+   * Ruta, tipo, dia y las personas que contaron (una por usuario, en el orden
+   * en que empezaron a contar). `null` si el evento no existe.
+   */
+  abstract obtenerContextoResolucion(
+    eventoId: string,
+  ): Promise<ContextoResolucion | null>;
 
   /** Discrepancias del evento, ordenadas por nombre de producto. */
   abstract listarDiscrepanciasDetalle(

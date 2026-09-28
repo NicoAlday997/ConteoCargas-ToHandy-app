@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA, esTipoCarga, type TipoCarga } from '../../src/api/cargas';
 import { ETIQUETAS_ROL } from '../../src/api/auth';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
+import { useContextoResolucion, useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
   AccionesHoja,
@@ -35,6 +35,7 @@ import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/
 import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
 import {
   admiteSueltas,
+  camposDe,
   capturaDe,
   estadoFila,
   fijarCampo,
@@ -58,6 +59,7 @@ import { TONOS_COLOR_FAMILIA, type ColorFamilia } from '../../src/theme/colores-
 import { sentir } from '../../src/theme/tacto';
 import {
   ALTO_CONTROL,
+  ANCHO_MAXIMO_LISTA,
   ANCHO_MODAL,
   BORDES,
   CIFRAS,
@@ -71,6 +73,7 @@ import {
   RITMO,
   TIPOGRAFIA,
   TOQUE_MINIMO,
+  ONDA,
 } from '../../src/theme/tokens';
 
 /** 9999 piezas sueltas o paquetes ya es un error de dedo, no una carga. */
@@ -193,12 +196,15 @@ interface PropsConteo {
    * del servidor manda en cuanto llega: la fecha se puede cambiar.
    */
   fechaOperativa: string | null;
-  /** Solo la trae la navegación del contador: cuenta rutas ajenas y debe ver cuál. */
+  /** La trae la navegación del contador; la del vendedor se pide al servidor. */
   rutaNombre: string | null;
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, rutaNombre }: PropsConteo) {
+function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, rutaNombre: rutaNavegacion }: PropsConteo) {
   const { esTablet, tecladoLateral, ancho } = useLayout();
+  // Todos ven qué ruta cuentan: con la del vendedor también se evita contar la carga equivocada.
+  const contexto = useContextoResolucion(rutaNavegacion ? '' : eventoId);
+  const rutaNombre = rutaNavegacion ?? (contexto.data?.rutaNombre?.trim() || null);
   // Siempre: además de la fecha trae el estado, que decide si se puede cambiar el día.
   const evento = useEventoCarga(eventoId, true);
   const fechaOperativa = diaDesdeApi(evento.data?.evento?.fechaOperativa) ?? fechaNavegacion;
@@ -299,18 +305,44 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     fijarEdicion(null);
   }, [confirmarEdicion, fijarEdicion]);
 
+  /** El producto que sigue en la lista, en su primer campo; `null` al final. */
+  const productoSiguiente = useCallback(
+    (code: string): { code: string; campo: CampoCaptura } | null => {
+      const siguiente = productos[productos.findIndex((p) => p.code === code) + 1];
+      return siguiente ? { code: siguiente.code, campo: primerCampo(siguiente) } : null;
+    },
+    [productos],
+  );
+
+  /**
+   * "Revisado, no lleva". Desde el teclado o desde el 0 de la fila que se
+   * teclea: el cero gana sobre lo tecleado y se pasa al siguiente producto sin
+   * cerrar el teclado, que es lo que mantiene el ritmo. Desde el 0 de otra
+   * fila: se marca esa y el teclado sigue donde estaba.
+   */
   const marcarCero = useCallback(
     (code: string) => {
       const producto = productos.find((p) => p.code === code);
-      if (!producto) return;
-      // Si se tecleaba en esta misma fila el cero gana; si era otra, se guarda lo tecleado.
-      if (edicionRef.current?.code !== code) confirmarEdicion();
-      fijarEdicion(null);
       const base = conteoRef.current;
-      if (base) aplicar(fijarCero(base, producto));
+      if (!producto || !base) return;
+      const enEdicion = edicionRef.current?.code === code;
+      aplicar(fijarCero(base, producto));
+      if (!enEdicion) return;
+      const destino = productoSiguiente(code);
+      if (!destino) {
+        fijarEdicion(null);
+        return;
+      }
+      const valor = capturaDe(conteoRef.current ?? {}, destino.code)[destino.campo];
+      fijarEdicion({ ...destino, texto: valor === null ? '' : String(valor), reemplazar: true });
     },
-    [aplicar, confirmarEdicion, fijarEdicion, productos],
+    [aplicar, fijarEdicion, productoSiguiente, productos],
   );
+
+  const alNoLleva = useCallback(() => {
+    const actual = edicionRef.current;
+    if (actual) marcarCero(actual.code);
+  }, [marcarCero]);
 
   const alDigito = useCallback(
     (digito: string) => {
@@ -330,18 +362,21 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     fijarEdicion({ ...actual, texto: actual.reemplazar ? '' : actual.texto.slice(0, -1), reemplazar: false });
   }, [fijarEdicion]);
 
-  /** Paquetes → Sueltas → siguiente producto: el orden del recorrido. Lo completo no tiene sueltas. */
+  /**
+   * El recorrido. Con paquetes tecleados se salta al siguiente producto: las
+   * sueltas sin capturar cuentan como 0 y casi nunca hay. Con Paquetes vacío,
+   * lo que se quiere contar son sueltas: se va a ellas. Para agregar sueltas a
+   * un producto con paquetes está el selector del teclado.
+   */
   const destinoSiguiente = useCallback(
     (actual: Edicion): { code: string; campo: CampoCaptura } | null => {
-      const indice = productos.findIndex((p) => p.code === actual.code);
-      if (actual.campo === 'paquetes' && productos[indice] && admiteSueltas(productos[indice])) {
+      const producto = productos.find((p) => p.code === actual.code);
+      if (actual.campo === 'paquetes' && actual.texto === '' && producto && admiteSueltas(producto)) {
         return { code: actual.code, campo: 'sueltas' };
       }
-      const siguiente = productos[indice + 1];
-      if (!siguiente) return null;
-      return { code: siguiente.code, campo: primerCampo(siguiente) };
+      return productoSiguiente(actual.code);
     },
-    [productos],
+    [productos, productoSiguiente],
   );
 
   const alSiguiente = useCallback(() => {
@@ -496,22 +531,26 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     abrirCampo(producto.code, primerCampo(producto));
   };
 
-  const siguienteEsSueltas = edicion?.campo === 'paquetes' && productoEditado !== undefined && admiteSueltas(productoEditado);
+  const destino = edicion ? destinoSiguiente(edicion) : null;
+  const siguienteEsSueltas = edicion !== null && destino?.code === edicion.code;
   const teclado =
     edicion && productoEditado ? (
       <TecladoCantidad
         producto={productoEditado}
         campo={edicion.campo}
+        camposDisponibles={camposDe(productoEditado)}
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion.code)}
-        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas' : destinoSiguiente(edicion) ? 'Siguiente' : 'Terminar'}
-        siguienteConChevron={siguienteEsSueltas || destinoSiguiente(edicion) !== null}
+        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas' : destino ? 'Siguiente' : 'Terminar'}
+        siguienteConChevron={destino !== null}
         lateral={tecladoLateral}
         teclasGrandes={esTablet}
         onDigito={alDigito}
         onBorrar={alBorrar}
         onSiguiente={alSiguiente}
+        onNoLleva={alNoLleva}
+        onCambiarCampo={(campo) => abrirCampo(edicion.code, campo)}
         onListo={cerrarTeclado}
       />
     ) : null;
@@ -607,7 +646,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
               <View style={estilos.lateralVacio}>
                 <Glifo nombre="caja" color={COLORES.textoSecundario} tamano={ESPACIADO.xxxl} />
                 <Text style={estilos.textoLateralVacio}>Toca Paquetes o Sueltas de un producto para capturar.</Text>
-                <Text style={estilos.detalleLateralVacio}>Si no lleva, toca su botón 0.</Text>
+                <Text style={estilos.detalleLateralVacio}>Si no lleva, toca su botón 0 o «No lleva» en el teclado.</Text>
               </View>
             )}
           </View>
@@ -959,7 +998,7 @@ function RenglonIrAProducto({ producto, onIr }: { producto: ProductoConteo; onIr
   return (
     <Pulsable
       onPress={() => onIr(producto)}
-      onda="rgba(13, 17, 32, 0.12)"
+      onda={ONDA.sobreClaro}
       accessibilityRole="button"
       accessibilityLabel={`Ir a ${nombre}`}
       style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
@@ -1118,7 +1157,8 @@ function PanelConfirmar({
           // Fue el segundo conteo y hubo diferencias: resolverlas es lo siguiente,
           // con la otra persona al lado. Se reemplaza el conteo: ya no se puede volver a él.
           if (respuesta?.evento?.estado === 'CONFLICTOS_PENDIENTES') {
-            router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
+            // `desdeConteo`: la pantalla abre diciendo qué pasó ("no coinciden en 3 productos").
+            router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId, desdeConteo: '1' } });
             return;
           }
           // El inicio confirma que llegó y dice qué sigue: el cierre del conteo.
@@ -1359,7 +1399,7 @@ const estilos = StyleSheet.create({
   // Tablet en vertical: una columna, pero no de 800 de ancho; el ojo no viaja de más.
   contenidoListaMedio: {
     width: '100%',
-    maxWidth: 720,
+    maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
   },
   // Banda a todo el ancho (sin los márgenes de la lista), opaca: tapa las filas al fijarse arriba.

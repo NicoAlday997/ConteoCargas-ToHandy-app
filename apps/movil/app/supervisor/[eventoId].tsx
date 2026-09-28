@@ -7,7 +7,7 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { useAutorizarCarga, useRechazarProductos } from '../../src/api/hooks-supervisor';
 import { cerrarSesion } from '../../src/api/sesion';
-import { Boton, CampoTexto, EstadoVacio, Palomita, Pulsable, Tarjeta } from '../../src/componentes/base';
+import { Boton, CampoTexto, Chevron, EstadoVacio, Glifo, Palomita, Pulsable, Tarjeta } from '../../src/componentes/base';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import { estadoDeCarga, type CargaDetalle, type ProductoDetalle } from '../../src/historial/modelo-historial';
 import {
@@ -36,14 +36,18 @@ import {
   rechazosParaEnviar,
 } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { BORDES, COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { formatearCifra } from '../../src/conteo/formato-cantidad';
+import { sentir } from '../../src/theme/tacto';
+import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
- * Revisión de una carga que espera el visto bueno del supervisor. Se ve igual
- * que en el historial (misma vista consolidada) y abajo van sus tres salidas:
- * autorizar, rechazar productos puntuales o modificar una cantidad. Ya
- * autorizada, desde aquí mismo se envía a Handy. En cualquier estado que lo
- * admita, también se cancela (ya enviada, se cancela en Handy).
+ * Revisión de una carga que espera el visto bueno del supervisor. Como una
+ * báscula: primero la lectura (¿cuadró?), luego solo lo que cambió, y la
+ * lista completa a un toque — misma vista consolidada que el historial, con
+ * el mismo detalle cuadre o no. La salida esperada es una: autorizar y enviar
+ * a Handy en una sola decisión; «Solo autorizar» queda dentro de esa hoja y
+ * las excepciones (rechazar, modificar, cambiar fecha, cancelar) tras «Más
+ * acciones».
  */
 
 /**
@@ -141,6 +145,8 @@ function Revision({ eventoId }: { eventoId: string }) {
   const [aModificar, setAModificar] = useState<ProductoDetalle | null>(null);
   /** Las acciones de excepción se guardan tras «Más acciones»: la barra no se come la lista. */
   const [masAcciones, setMasAcciones] = useState(false);
+  /** Lo que coincidió se colapsa: el camino feliz no pide leer, pero está a un toque. */
+  const [verTodo, setVerTodo] = useState(false);
   const lista = useRef<SectionList<ProductoDetalle, SeccionFamilia>>(null);
 
   const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
@@ -158,6 +164,15 @@ function Revision({ eventoId }: { eventoId: string }) {
   const modo: Modo = estado === 'EN_ESPERA_AUTORIZACION' ? modoElegido : 'revisar';
 
   const secciones = useMemo(() => seccionesDeCarga(carga), [carga]);
+  const conCambio = useMemo(() => secciones.flatMap((s) => s.data.filter((p) => p.discrepancia !== null)), [secciones]);
+  // Lo que coincidió, por familia (lo que cambió ya va arriba, no se repite).
+  const coincidieron = useMemo(
+    () =>
+      secciones
+        .map((s) => ({ ...s, data: s.data.filter((p) => p.discrepancia === null) }))
+        .filter((s) => s.data.length > 0),
+    [secciones],
+  );
 
   if (consulta.isPending) {
     return (
@@ -234,14 +249,25 @@ function Revision({ eventoId }: { eventoId: string }) {
     });
   };
 
-  const confirmarAutorizacion = () => {
+  /**
+   * Autorizar y enviar son una sola decisión: la hoja sigue abierta hasta que
+   * Handy responde. Si el envío falla, la carga ya quedó autorizada y la
+   * pantalla dice qué pasó y ofrece reintentar el envío.
+   */
+  const confirmarAutorizacion = (enviarTambien: boolean) => {
     autorizar.mutate(undefined, {
       onSuccess: () => {
-        setConfirmandoAutorizacion(false);
         setErrorAutorizacion(null);
+        if (!enviarTambien) {
+          sentir('exito');
+          setConfirmandoAutorizacion(false);
+          return;
+        }
+        envio.confirmar(() => setConfirmandoAutorizacion(false));
       },
       onError: (e) => {
         if (e instanceof ErrorApi && e.estado === 401) return sesionVencida();
+        sentir('error');
         setErrorAutorizacion(mensajeError(e, 'No se pudo autorizar'));
       },
     });
@@ -287,14 +313,19 @@ function Revision({ eventoId }: { eventoId: string }) {
     return <TarjetaProducto producto={producto} />;
   };
 
+  // Para rechazar o modificar se elige entre todos: la lista completa, sin colapsar.
+  const colapsado = modo === 'revisar' && !verTodo && carga.totalProductos > 0;
+  const seccionesVisibles = modo !== 'revisar' ? secciones : verTodo ? coincidieron : [];
+  const nCoincidieron = carga.totalProductos - conCambio.length;
+
   return (
     <Pantalla {...titulosCarga(carga)}>
       <SectionList<ProductoDetalle, SeccionFamilia>
         ref={lista}
         style={estilosVistaCarga.lista}
         contentContainerStyle={estilosVistaCarga.contenidoLista}
-        sections={secciones}
-        extraData={{ modo, seleccion, intentoRechazo }}
+        sections={seccionesVisibles}
+        extraData={{ modo, seleccion, intentoRechazo, verTodo }}
         keyExtractor={(p) => p.code}
         stickySectionHeadersEnabled
         initialNumToRender={30}
@@ -305,15 +336,33 @@ function Revision({ eventoId }: { eventoId: string }) {
           <>
             <ResumenCarga carga={carga} />
             <PanelEstado carga={carga} modo={modo} envio={envio} />
+            {modo === 'revisar' && carga.totalProductos > 0 && (
+              <>
+                <Lectura carga={carga} />
+                {conCambio.map((p) => (
+                  <TarjetaProducto key={p.code} producto={p} />
+                ))}
+                {nCoincidieron > 0 && (
+                  <AlternarLista
+                    abierta={!colapsado}
+                    cantidad={nCoincidieron}
+                    todos={conCambio.length === 0}
+                    onPress={() => setVerTodo((v) => !v)}
+                  />
+                )}
+              </>
+            )}
           </>
         }
         ListEmptyComponent={
-          <EstadoVacio
-            icono="caja"
-            titulo="Sin productos"
-            detalle="Esta carga no trae productos contados. Actualiza; si sigue así, no la autorices y revisa con quien la contó."
-            enLinea
-          />
+          carga.totalProductos === 0 ? (
+            <EstadoVacio
+              icono="caja"
+              titulo="Sin productos"
+              detalle="Esta carga no trae productos contados. Actualiza; si sigue así, no la autorices y revisa con quien la contó."
+              enLinea
+            />
+          ) : null
         }
         renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
         renderItem={({ item }) => renderProducto(item)}
@@ -355,6 +404,7 @@ function Revision({ eventoId }: { eventoId: string }) {
         )}
         {modo === 'revisar' && (hayMasAcciones || enEspera || enviable) && (
           <View style={estilos.filaBotones}>
+            {/* Con la bandeja abierta, la decisión es cuál excepción: la acción principal se retira. */}
             {hayMasAcciones && (
               <Boton
                 texto={masAcciones ? 'Menos' : 'Más acciones'}
@@ -365,9 +415,9 @@ function Revision({ eventoId }: { eventoId: string }) {
                 style={enEspera || enviable ? estilos.botonMas : estilos.botonFila}
               />
             )}
-            {enEspera && (
+            {enEspera && !masAcciones && (
               <Boton
-                texto="Autorizar carga"
+                texto="Autorizar y enviar"
                 onPress={() => {
                   setErrorAutorizacion(null);
                   setConfirmandoAutorizacion(true);
@@ -376,7 +426,7 @@ function Revision({ eventoId }: { eventoId: string }) {
                 style={estilos.botonFila}
               />
             )}
-            {enviable && estado !== null && (
+            {enviable && estado !== null && !masAcciones && (
               <Boton
                 texto={textoBotonEnvio(estado)}
                 variante={estado === 'ERROR_ENVIO' ? 'secundario' : 'primario'}
@@ -392,18 +442,31 @@ function Revision({ eventoId }: { eventoId: string }) {
 
       <ModalConfirmacion
         visible={confirmandoAutorizacion}
-        titulo="¿Autorizar esta carga?"
-        textoConfirmar="Autorizar"
-        textoCargando="Autorizando…"
-        cargando={autorizar.isPending}
+        titulo="¿Autorizar y enviar a Handy?"
+        textoConfirmar="Autorizar y enviar"
+        textoCargando={envio.enviando ? 'Enviando a Handy…' : 'Autorizando…'}
+        cargando={autorizar.isPending || envio.enviando}
         error={errorAutorizacion}
-        onConfirmar={confirmarAutorizacion}
+        alternativa={{ texto: 'Solo autorizar', onPress: () => confirmarAutorizacion(false) }}
+        onConfirmar={() => confirmarAutorizacion(true)}
         onCerrar={() => setConfirmandoAutorizacion(false)}
       >
+        <View style={estilos.cifrasEnvio} accessible accessibilityLabel={`${carga.totalProductos} productos, ${carga.totalPiezas} piezas`}>
+          <View style={estilos.cifraEnvio}>
+            <Text style={estilos.numeroEnvio}>{carga.totalProductos}</Text>
+            <Text style={estilos.rotuloEnvio}>Productos</Text>
+          </View>
+          <View style={estilos.cifraEnvio}>
+            <Text style={estilos.numeroEnvio}>{formatearCifra(carga.totalPiezas)}</Text>
+            <Text style={estilos.rotuloEnvio}>Piezas</Text>
+          </View>
+        </View>
         <Text style={estilos.texto}>
-          Después de autorizar, la carga de <Text style={estilos.negrita}>{carga.evento.rutaNombre}</Text> queda lista para
-          enviarse a Handy con estas cantidades. Ya no podrás rechazar productos ni modificar cantidades.
+          {carga.evento.tipo === 'RECARGA' ? 'Se agrega como recarga a la ruta abierta de ' : 'Se crea la ruta de '}
+          <Text style={estilos.negrita}>{carga.evento.rutaNombre}</Text> en Handy con estas cantidades. Después ya no se
+          rechazan productos ni se modifican cantidades.
         </Text>
+        <Text style={estilos.nota}>«Solo autorizar» la deja lista para enviarla después desde aquí.</Text>
       </ModalConfirmacion>
 
       <ModalConfirmacion
@@ -488,7 +551,13 @@ function PanelEstado({ carga, modo, envio }: { carga: CargaDetalle; modo: Modo; 
   }
 
   if (estado !== null && (ESTADOS_ENVIABLES.has(estado) || estado === 'ENVIADA')) {
-    return <AvisoEnvio estado={estado} envio={envio} />;
+    return (
+      <AvisoEnvio
+        estado={estado}
+        envio={envio}
+        resumen={`${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'} · ${formatearCifra(carga.totalPiezas)} piezas en la ruta de ${carga.evento.rutaNombre}.`}
+      />
+    );
   }
 
   return (
@@ -497,6 +566,70 @@ function PanelEstado({ carga, modo, envio }: { carga: CargaDetalle; modo: Modo; 
         Esta carga está en «{estadoDeCarga(estado).etiqueta}»: no espera tu autorización. Aquí solo se consulta.
       </Text>
     </Tarjeta>
+  );
+}
+
+/**
+ * La lectura de la báscula antes que cualquier lista: ¿cuadró o no? Si hubo
+ * diferencias, cuántas y que ya las resolvieron dos personas; debajo van
+ * esos productos, que es lo único que hace falta revisar.
+ */
+function Lectura({ carga }: { carga: CargaDetalle }) {
+  const { totalDiscrepancias, totalProductos, sinResolver } = carga;
+  if (totalDiscrepancias === 0) {
+    return (
+      <Tarjeta elevacion={0} tintada="capturado" compacta style={estilos.lectura}>
+        <View style={estilos.cabeceraLectura}>
+          <Palomita color={COLORES.capturadoHondo} tamano={ESPACIADO.xl} />
+          <Text style={[estilos.tituloLectura, { color: COLORES.capturadoTexto }]} accessibilityRole="header">
+            Cuadró
+          </Text>
+        </View>
+        <Text style={estilos.texto}>
+          Vendedor y contador contaron lo mismo en {totalProductos === 1 ? 'el único producto' : `los ${totalProductos} productos`}.
+        </Text>
+      </Tarjeta>
+    );
+  }
+  return (
+    <View style={estilos.lectura}>
+      <View style={estilos.cabeceraLectura}>
+        <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl} />
+        <Text style={[estilos.tituloLectura, { color: COLORES.discrepanciaTexto }]} accessibilityRole="header">
+          {totalDiscrepancias === 1 ? '1 producto no cuadró' : `${totalDiscrepancias} productos no cuadraron`}
+        </Text>
+      </View>
+      <Text style={estilos.texto}>
+        {sinResolver > 0
+          ? 'Hay diferencias sin resolver: no se puede autorizar todavía.'
+          : 'Ya se resolvieron: una persona capturó la cantidad final y otra distinta la confirmó con su PIN. Revísalos aquí.'}
+      </Text>
+    </View>
+  );
+}
+
+/** El resto de la carga, a un toque. La misma vista del historial: nada se esconde, solo se pliega. */
+function AlternarLista({ abierta, cantidad, todos, onPress }: { abierta: boolean; cantidad: number; todos: boolean; onPress: () => void }) {
+  const texto = abierta
+    ? 'Ocultar la lista'
+    : todos
+      ? `Ver los ${cantidad} productos`
+      : `Ver ${cantidad === 1 ? 'el producto que coincidió' : `los ${cantidad} que coincidieron`}`;
+  return (
+    <Pulsable
+      onPress={onPress}
+      tacto="seleccion"
+      onda={ONDA.sobreClaro}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: abierta }}
+      accessibilityLabel={texto}
+      style={({ pressed }) => [estilos.alternar, pressed && estilos.alternarPresionado]}
+    >
+      <Text style={estilos.textoAlternar}>{texto}</Text>
+      <View style={{ transform: [{ rotate: abierta ? '-90deg' : '90deg' }] }}>
+        <Chevron color={COLORES.texto} tamano={ESPACIADO.xl} />
+      </View>
+    </Pulsable>
   );
 }
 
@@ -597,6 +730,63 @@ const estilos = StyleSheet.create({
   },
   negrita: {
     fontFamily: FUENTE.negrita,
+  },
+  nota: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
+  },
+  lectura: {
+    marginTop: RITMO.grupo,
+    gap: RITMO.interno,
+  },
+  cabeceraLectura: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+  },
+  tituloLectura: {
+    flex: 1,
+    ...TIPOGRAFIA.titulo,
+  },
+  alternar: {
+    minHeight: TOQUE_MINIMO,
+    marginTop: RITMO.relacionado,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.lg,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
+  },
+  alternarPresionado: {
+    backgroundColor: COLORES.divisor,
+  },
+  textoAlternar: {
+    flex: 1,
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.texto,
+  },
+  cifrasEnvio: {
+    flexDirection: 'row',
+    gap: ESPACIADO.sm,
+  },
+  cifraEnvio: {
+    flex: 1,
+    gap: 2,
+    padding: ESPACIADO.md,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.medio,
+  },
+  numeroEnvio: {
+    ...TIPOGRAFIA.titulo,
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.texto,
+    ...CIFRAS,
+  },
+  rotuloEnvio: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
   },
   listaRechazo: {
     gap: RITMO.interno,

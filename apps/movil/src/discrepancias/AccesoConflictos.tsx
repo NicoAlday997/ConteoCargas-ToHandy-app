@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
 import { Chevron, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, ETIQUETA_DATO, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
+import { CIFRAS, COLORES, ESCALA_TEXTO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -41,8 +41,12 @@ export function AccesoConflictos() {
               </View>
               {/* Lo que falta domina: es lo que hay que hacer. */}
               <View style={estilos.cifra}>
-                <Text style={estilos.numero}>{faltan}</Text>
-                <Text style={estilos.unidad}>de {total} por resolver</Text>
+                <Text style={estilos.numero} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                  {faltan}
+                </Text>
+                <Text style={estilos.unidad} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                  de {total} por resolver
+                </Text>
               </View>
               <Chevron />
             </View>
@@ -81,8 +85,10 @@ const estilos = StyleSheet.create({
     color: COLORES.discrepanciaTexto,
     ...CIFRAS,
   },
+  // Rótulo de dato, no de campo de captura: sin mayúsculas (ROTULO es solo para capturas).
   unidad: {
-    ...ROTULO,
+    ...TIPOGRAFIA.etiqueta,
     color: COLORES.discrepanciaTexto,
+    ...CIFRAS,
   },
 });

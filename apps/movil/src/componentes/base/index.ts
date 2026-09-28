@@ -9,6 +9,7 @@ export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
 export { Chevron, Glifo, Icono, IconoTarea, Lapiz, Palomita, type NombreIcono } from './Icono';
 export { AccionesHoja, Hoja } from './Hoja';
+export { PantallaModal } from './PantallaModal';
 export { Pulsable } from './Pulsable';
 export { BarraAccion } from './BarraAccion';
 export { Datos, Personas, type Dato, type Persona } from './Personas';

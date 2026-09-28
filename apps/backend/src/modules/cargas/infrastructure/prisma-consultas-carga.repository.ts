@@ -6,6 +6,7 @@ import {
   ConsultasCargaRepository,
   type CargaConConflictos,
   type CargaPendienteVerificacion,
+  type ContextoResolucion,
   type DiaRecargable,
   type DiscrepanciaDetalle,
   type LadoDiscrepancia,
@@ -111,6 +112,47 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
     return row === null
       ? null
       : { fechaOperativa: row.fechaOperativa, eventoInicialId: row.id };
+  }
+
+  async obtenerContextoResolucion(
+    eventoId: string,
+  ): Promise<ContextoResolucion | null> {
+    const row = await this.prisma.eventoCarga.findUnique({
+      where: { id: eventoId },
+      select: {
+        tipo: true,
+        fechaOperativa: true,
+        ruta: { select: { nombre: true } },
+        sesiones: {
+          where: { tipo: { in: ['VENDEDOR', 'CONTADOR'] } },
+          select: {
+            tipo: true,
+            usuarioAppId: true,
+            usuarioApp: { select: { nombreCompleto: true } },
+          },
+          orderBy: { iniciadaEn: 'asc' },
+        },
+      },
+    });
+    if (row === null) return null;
+    const vistos = new Set<string>();
+    const participantes = row.sesiones.flatMap((s) => {
+      if (vistos.has(s.usuarioAppId)) return [];
+      vistos.add(s.usuarioAppId);
+      return [
+        {
+          usuarioAppId: s.usuarioAppId,
+          nombreCompleto: s.usuarioApp.nombreCompleto,
+          tipoSesion: s.tipo,
+        },
+      ];
+    });
+    return {
+      rutaNombre: row.ruta.nombre,
+      tipo: row.tipo,
+      fechaOperativa: row.fechaOperativa,
+      participantes,
+    };
   }
 
   async listarDiscrepanciasDetalle(

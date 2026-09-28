@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
 
 /**
  * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
@@ -9,8 +9,8 @@ import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, RADIOS, TIPOGRAFIA, TONOS, 
  * - `referencia`: fondo gris claro y texto secundario; un dato que se consulta
  *   y no es un estado, como el factor de empaque confirmado. Se retira.
  * `marca` no es para etiquetas de estado: el azul es para la acción principal
- * y lo que se edita (ver la regla del azul en tokens.ts). Solo lo usa el
- * contador de trabajo pendiente de una tarea cuyo color es `marca` (COLOR_TAREA).
+ * y lo que se edita (ver la regla del azul en tokens.ts). Solo lo que marca una
+ * elección en curso (un producto seleccionado para agregar a la plantilla).
  */
 export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro' | 'referencia';
 
@@ -83,7 +83,7 @@ export function Etiqueta({
       accessible={accessibilityLabel !== undefined}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text style={[estilos[`texto_${tamano}`], { color: colorTexto }]} numberOfLines={1} adjustsFontSizeToFit={ajustar}>
+      <Text style={[estilos[`texto_${tamano}`], { color: colorTexto }]} numberOfLines={1} adjustsFontSizeToFit={ajustar} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
         {texto}
       </Text>
     </View>

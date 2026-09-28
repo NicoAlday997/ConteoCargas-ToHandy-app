@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { BandaTarjeta } from '../componentes/base';
-import type { ColorTono } from '../theme/tokens';
+import type { ColorEstado } from '../theme/tokens';
 import { minutosEspera, nivelEspera, textoEspera, type NivelEspera } from './modelo-supervisor';
 
 /** Cada cuánto se recalcula "cuánto lleva esperando" en pantalla. */
@@ -18,11 +18,12 @@ export function useAhora(): number {
 }
 
 /**
- * Reciente sigue su curso (marca); ya pesa, ámbar; detenida frena al camión,
- * rojo. Sin dato, gris: no se puede afirmar nada.
+ * Reciente sigue su curso: neutro, no pide nada todavía (el azul nunca es un
+ * estado). Ya pesa, ámbar; detenida frena al camión, rojo. Sin dato, gris:
+ * no se puede afirmar nada.
  */
-export const TONO_ESPERA: Record<NivelEspera, ColorTono> = {
-  reciente: 'marca',
+export const TONO_ESPERA: Record<NivelEspera, ColorEstado> = {
+  reciente: 'pendiente',
   atencion: 'discrepancia',
   detenida: 'error',
   desconocida: 'pendiente',

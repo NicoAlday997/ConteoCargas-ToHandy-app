@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 
 import { useColaAutorizacion, usePorEnviar } from '../api/hooks-supervisor';
 import { Chevron, FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, FUENTE, RITMO, ROTULO, TIPOGRAFIA, TONOS } from '../theme/tokens';
+import { CIFRAS, COLORES, ESCALA_TEXTO, FUENTE, RITMO, TIPOGRAFIA, TONOS } from '../theme/tokens';
 import { espera, TONO_ESPERA, useAhora } from './ComponentesSupervisor';
 
 function abrir() {
@@ -79,8 +79,12 @@ export function AccesoAutorizaciones() {
         </View>
         {/* Lo que falta domina: es lo que hay que hacer. */}
         <View style={estilos.cifra}>
-          <Text style={[estilos.numero, { color: colorCifra }]}>{n}</Text>
-          <Text style={[estilos.unidad, { color: colorCifra }]}>{n === 1 ? 'espera' : 'esperan'}</Text>
+          <Text style={[estilos.numero, { color: colorCifra }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            {n}
+          </Text>
+          <Text style={[estilos.unidad, { color: colorCifra }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            {n === 1 ? 'espera' : 'esperan'}
+          </Text>
         </View>
         <Chevron />
       </View>
@@ -120,5 +124,6 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.numero,
     ...CIFRAS,
   },
-  unidad: ROTULO,
+  // Rótulo de dato, no de campo de captura: sin mayúsculas.
+  unidad: TIPOGRAFIA.etiqueta,
 });

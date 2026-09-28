@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useModificarCantidad } from '../api/hooks-supervisor';
@@ -10,6 +10,7 @@ import {
   CampoTexto,
   Encabezado,
   FilaDato,
+  PantallaModal,
   Tarjeta,
   Pulsable,
 } from '../componentes/base';
@@ -144,7 +145,7 @@ function Editor({
   const alSiguiente = () => {
     const e = edicionRef.current;
     if (!e) return;
-    if (e.campo === 'paquetes' && admiteSueltas(producto)) {
+    if (e.campo === 'paquetes' && e.texto === '' && admiteSueltas(producto)) {
       setCaptura((c) => ({ ...c, paquetes: textoAValor(e.texto) }));
       fijarEdicion({ campo: 'sueltas', texto: visible.sueltas === null ? '' : String(visible.sueltas), reemplazar: true });
       return;
@@ -202,7 +203,9 @@ function Editor({
       texto={edicion.texto}
       reemplazar={edicion.reemplazar}
       captura={visible}
-      etiquetaSiguiente={edicion.campo === 'paquetes' && admiteSueltas(producto) ? 'Sueltas' : 'Motivo'}
+      camposDisponibles={campos}
+      onCambiarCampo={abrirCampo}
+      etiquetaSiguiente={edicion.campo === 'paquetes' && edicion.texto === '' && admiteSueltas(producto) ? 'Sueltas' : 'Motivo'}
       siguienteConChevron
       lateral={tecladoLateral}
       teclasGrandes={esTablet}
@@ -219,104 +222,102 @@ function Editor({
   else if (igual) avisoCantidad = 'Es la misma cantidad que ya tiene: no hay nada que modificar.';
 
   return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cerrar}>
-      <SafeAreaProvider>
-        <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['top', 'left', 'right'] : undefined}>
-          <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
-          <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
-            <ScrollView
-              style={estilos.scroll}
-              contentContainerStyle={estilos.contenido}
-              keyboardShouldPersistTaps="handled"
-              automaticallyAdjustKeyboardInsets
-            >
-              <Tarjeta compacta>
-                <View style={estilos.lineaProducto}>
-                  <EtiquetaFactor producto={producto} />
-                  <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
-                </View>
-                <FilaDato etiqueta="Cantidad actual" valor={actual === null ? null : cantidadEnUnidad(actual, producto)} ausente="Sin resolver" />
-              </Tarjeta>
-
-              {/* Primero lo que pasa después: se lee antes de teclear nada. */}
-              <Tarjeta tintada="discrepancia" elevacion={0} compacta style={estilos.aviso}>
-                <Text style={estilos.tituloAviso} accessibilityRole="header">
-                  Tu cambio no queda aplicado todavía
-                </Text>
-                <Text style={estilos.textoAviso}>
-                  Nadie, ni el supervisor, cambia una cantidad sin el respaldo de dos personas. Tu cantidad queda como
-                  propuesta hasta que <Text style={estilos.negrita}>el vendedor o el contador la confirmen con su PIN</Text>.
-                </Text>
-                <Text style={estilos.textoAviso}>
-                  Al guardar, la carga <Text style={estilos.negrita}>sale de tu lista y vuelve a diferencias por resolver</Text>.
-                  Regresará para tu autorización cuando la confirmen. Solo puedes modificar un producto por ronda.
-                </Text>
-              </Tarjeta>
-
-              <View style={estilos.editor}>
-                <Text style={estilos.rotulo}>Cantidad nueva</Text>
-                <View style={estilos.campos}>
-                  {campos.map((campo) => {
-                    const activo = edicion?.campo === campo;
-                    const valor = visible[campo];
-                    return (
-                      <Pulsable
-                        key={campo}
-                        onPress={() => abrirCampo(campo)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${nombreCampo(producto, campo)}: ${valor ?? 'sin capturar'}`}
-                        style={({ pressed }) => [estilos.campo, (activo || pressed) && estilos.campoActivo]}
-                      >
-                        {({ pressed }) => (
-                          <>
-                            <Text style={[estilos.etiquetaCampo, (activo || pressed) && estilos.textoInvertido]}>
-                              {nombreCampo(producto, campo)}
-                            </Text>
-                            <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
-                          </>
-                        )}
-                      </Pulsable>
-                    );
-                  })}
-                  {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
-                  <Text style={estilos.total}>{nueva === null || seVendeCompleto(producto) ? '' : `= ${formatearPiezas(nueva)}`}</Text>
-                </View>
-                {avisoCantidad && <Text style={estilos.avisoCampo}>{avisoCantidad}</Text>}
+    <PantallaModal visible onCerrar={cerrar}>
+      <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['top', 'left', 'right'] : undefined}>
+        <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
+        <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
+          <ScrollView
+            style={estilos.scroll}
+            contentContainerStyle={estilos.contenido}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
+            <Tarjeta compacta>
+              <View style={estilos.lineaProducto}>
+                <EtiquetaFactor producto={producto} />
+                <Text style={estilos.nombreProducto}>{producto.nombre}</Text>
               </View>
+              <FilaDato etiqueta="Cantidad actual" valor={actual === null ? null : cantidadEnUnidad(actual, producto)} ausente="Sin resolver" />
+            </Tarjeta>
 
-              <CampoTexto
-                ref={campoMotivo}
-                etiqueta="Motivo"
-                valor={motivo}
-                onCambiar={setMotivo}
-                ejemplo="Ej. hay que cargar 2 cajas más para la ruta"
-                multilinea
-                maxLength={200}
-                onFocus={cerrarTeclado}
-                ayuda={`Mínimo ${MOTIVO_MINIMO} caracteres.`}
-                error={intentoGuardar && !motivoOk ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+            {/* Primero lo que pasa después: se lee antes de teclear nada. */}
+            <Tarjeta tintada="discrepancia" elevacion={0} compacta style={estilos.aviso}>
+              <Text style={estilos.tituloAviso} accessibilityRole="header">
+                Tu cambio no queda aplicado todavía
+              </Text>
+              <Text style={estilos.textoAviso}>
+                Nadie, ni el supervisor, cambia una cantidad sin el respaldo de dos personas. Tu cantidad queda como
+                propuesta hasta que <Text style={estilos.negrita}>el vendedor o el contador la confirmen con su PIN</Text>.
+              </Text>
+              <Text style={estilos.textoAviso}>
+                Al guardar, la carga <Text style={estilos.negrita}>sale de tu lista y vuelve a diferencias por resolver</Text>.
+                Regresará para tu autorización cuando la confirmen. Solo puedes modificar un producto por ronda.
+              </Text>
+            </Tarjeta>
+
+            <View style={estilos.editor}>
+              <Text style={estilos.rotulo}>Cantidad nueva</Text>
+              <View style={estilos.campos}>
+                {campos.map((campo) => {
+                  const activo = edicion?.campo === campo;
+                  const valor = visible[campo];
+                  return (
+                    <Pulsable
+                      key={campo}
+                      onPress={() => abrirCampo(campo)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${nombreCampo(producto, campo)}: ${valor ?? 'sin capturar'}`}
+                      style={({ pressed }) => [estilos.campo, (activo || pressed) && estilos.campoActivo]}
+                    >
+                      {({ pressed }) => (
+                        <>
+                          <Text style={[estilos.etiquetaCampo, (activo || pressed) && estilos.textoInvertido]}>
+                            {nombreCampo(producto, campo)}
+                          </Text>
+                          <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
+                        </>
+                      )}
+                    </Pulsable>
+                  );
+                })}
+                {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
+                <Text style={estilos.total}>{nueva === null || seVendeCompleto(producto) ? '' : `= ${formatearPiezas(nueva)}`}</Text>
+              </View>
+              {avisoCantidad && <Text style={estilos.avisoCampo}>{avisoCantidad}</Text>}
+            </View>
+
+            <CampoTexto
+              ref={campoMotivo}
+              etiqueta="Motivo"
+              valor={motivo}
+              onCambiar={setMotivo}
+              ejemplo="Ej. hay que cargar 2 cajas más para la ruta"
+              multilinea
+              maxLength={200}
+              onFocus={cerrarTeclado}
+              ayuda={`Mínimo ${MOTIVO_MINIMO} caracteres.`}
+              error={intentoGuardar && !motivoOk ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+            />
+
+            {error && <BloqueError titulo={error.titulo} detalle={error.detalle} />}
+
+            <View style={estilos.botones}>
+              <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={modificar.isPending} style={estilos.boton} />
+              <Boton
+                texto="Proponer cantidad"
+                onPress={guardar}
+                cargando={modificar.isPending}
+                textoCargando="Guardando…"
+                deshabilitado={igual}
+                accessibilityHint="Queda pendiente de que el vendedor o el contador la confirmen con su PIN"
+                style={estilos.boton}
               />
-
-              {error && <BloqueError titulo={error.titulo} detalle={error.detalle} />}
-
-              <View style={estilos.botones}>
-                <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={modificar.isPending} style={estilos.boton} />
-                <Boton
-                  texto="Proponer cantidad"
-                  onPress={guardar}
-                  cargando={modificar.isPending}
-                  textoCargando="Guardando…"
-                  deshabilitado={igual}
-                  accessibilityHint="Queda pendiente de que el vendedor o el contador la confirmen con su PIN"
-                  style={estilos.boton}
-                />
-              </View>
-            </ScrollView>
-            {tecladoLateral ? <View style={estilos.lateral}>{teclado}</View> : teclado}
-          </View>
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </Modal>
+            </View>
+          </ScrollView>
+          {tecladoLateral ? <View style={estilos.lateral}>{teclado}</View> : teclado}
+        </View>
+      </SafeAreaView>
+    </PantallaModal>
   );
 }
 

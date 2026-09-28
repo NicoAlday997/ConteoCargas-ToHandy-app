@@ -13,6 +13,7 @@ import {
   RADIOS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
+  ONDA,
 } from '../../theme/tokens';
 import { Chevron } from './Icono';
 import { Pulsable } from './Pulsable';
@@ -54,10 +55,10 @@ const COLOR_CONTENIDO: Record<VarianteBoton, string> = {
 };
 
 /** Onda de Android: un velo del color del contenido, se ve sobre cualquier relleno. */
-const ONDA: Record<VarianteBoton, string> = {
-  primario: 'rgba(255, 255, 255, 0.24)',
-  secundario: 'rgba(13, 17, 32, 0.12)',
-  peligro: 'rgba(220, 38, 38, 0.16)',
+const ONDA_VARIANTE: Record<VarianteBoton, string> = {
+  primario: ONDA.sobreColor,
+  secundario: ONDA.sobreClaro,
+  peligro: ONDA.peligro,
 };
 
 export function Boton({
@@ -82,7 +83,7 @@ export function Boton({
       onPress={onPress}
       disabled={inactivo}
       tacto={tacto}
-      onda={ONDA[variante]}
+      onda={ONDA_VARIANTE[variante]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (detalle && grande ? `${textoVisible}. ${detalle}` : textoVisible)}
       accessibilityHint={accessibilityHint}

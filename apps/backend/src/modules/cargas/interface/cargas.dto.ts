@@ -107,6 +107,11 @@ export const ConfirmarCantidadSchema = z.object({
   pin: z
     .string()
     .regex(/^[0-9]{4}$/, 'El PIN debe tener exactamente 4 digitos numericos'),
+  /**
+   * Confirmacion en el mismo dispositivo: quien confirma no es quien tiene la
+   * sesion abierta. El PIN es el de esta persona. Ausente = entre dispositivos.
+   */
+  confirmaUsuarioAppId: z.cuid('El identificador no es valido').optional(),
 });
 
 /** Motivo obligatorio que debe dar el supervisor al rechazar o modificar. */

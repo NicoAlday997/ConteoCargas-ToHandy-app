@@ -110,6 +110,21 @@ export const COLORES = {
 
 export type ClaveColor = keyof typeof COLORES;
 
+/**
+ * Onda de Android al tocar (`android_ripple`). Translúcida a propósito: se
+ * pinta ENCIMA del control y deja ver su fondo. En iOS no hay onda.
+ */
+export const ONDA = {
+  /** Sobre blanco o gris: tinta al 12 %. */
+  sobreClaro: 'rgba(13, 17, 32, 0.12)',
+  /** Sobre un relleno de color (azul, turquesa): blanco al 24 %. */
+  sobreColor: 'rgba(255, 255, 255, 0.24)',
+  /** Sobre algo que se toca y lleva a su azul (una tarjeta tocable). */
+  marca: 'rgba(30, 79, 224, 0.12)',
+  /** Acción destructiva sobre blanco. */
+  peligro: 'rgba(220, 38, 38, 0.16)',
+} as const;
+
 /** Colores que comunican un estado; los únicos que admiten Etiqueta y tarjeta tintada. */
 export type ColorEstado = 'capturado' | 'pendiente' | 'discrepancia' | 'error';
 
@@ -323,6 +338,9 @@ export const TOQUE_MINIMO = 56;
 
 /** Alto de botones y campos de captura: el mismo toque mínimo, una sola medida. */
 export const ALTO_CONTROL = TOQUE_MINIMO;
+
+/** Ancho máximo de una lista en tablet: el ojo no viaja de más de un borde al otro. */
+export const ANCHO_MAXIMO_LISTA = 720;
 
 /** Ancho máximo de un modal en tablet: una columna que se lee de un vistazo. */
 export const ANCHO_MODAL = 480;

@@ -5,7 +5,7 @@ import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { ErrorRed } from '../api/cliente';
 import { useFechasOperativasDisponibles } from '../api/hooks-cargas';
 import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto, Hoja, Pulsable } from '../componentes/base';
-import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, ONDA, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   deLaSalida,
   diaNegocio,
@@ -431,7 +431,7 @@ function OpcionDia({ titulo, subtitulo, marca, deshabilitado, onPress, onLayout 
       onPress={onPress}
       disabled={deshabilitado}
       tacto="seleccion"
-      onda="rgba(255, 255, 255, 0.2)"
+      onda={ONDA.sobreColor}
       onLayout={onLayout ? (e) => onLayout(e.nativeEvent.layout.y) : undefined}
       accessibilityRole="button"
       accessibilityLabel={`${titulo}${subtitulo ? `, ${subtitulo}` : ''}${marca ? `. ${marca}` : ''}`}

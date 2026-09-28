@@ -614,6 +614,28 @@ export class CargasController {
   }
 
   /**
+   * De que carga se trata (ruta, tipo, dia) y quienes contaron en ella. La
+   * pantalla de resolucion lo usa para su encabezado y para ofrecer "¿Quien
+   * confirma?" cuando la otra persona confirma en este mismo dispositivo.
+   */
+  @Get(':id/participantes')
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async participantes(
+    @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    const contexto = await this.consultas.obtenerContextoResolucion(eventoId);
+    if (contexto === null) {
+      throw new NotFoundException({
+        statusCode: 404,
+        mensaje: 'El evento de carga no existe.',
+      });
+    }
+    await this.exigirVendedorParticipante(eventoId, usuario);
+    return contexto;
+  }
+
+  /**
    * Paso 1 de la resolucion de una discrepancia: una persona captura la cantidad
    * final acordada para el producto en conflicto.
    */
@@ -691,12 +713,17 @@ export class CargasController {
   ) {
     await this.exigirVendedorParticipante(eventoId, usuario);
 
+    // Mismo dispositivo: confirma la persona elegida, con SU PIN. Entre
+    // dispositivos: quien tiene la sesion. El servidor valida las dos igual.
+    const confirmaId = dto.confirmaUsuarioAppId ?? usuario.usuarioAppId;
+    const mismoDispositivo = confirmaId !== usuario.usuarioAppId;
     const ahora = new Date();
     const resultado = await this.confirmarCantidadFinalUseCase.ejecutar(
       {
         eventoId,
         productoCode,
-        usuarioAppId: usuario.usuarioAppId,
+        usuarioAppId: confirmaId,
+        dispositivoUsuarioAppId: usuario.usuarioAppId,
         pin: dto.pin,
         cantidadFinal: dto.cantidadFinal,
       },
@@ -709,8 +736,16 @@ export class CargasController {
           throw new ForbiddenException({
             statusCode: 403,
             codigo: 'AUTOCONFIRMACION_PROHIBIDA',
+            mensaje: mismoDispositivo
+              ? 'Esa persona capturo la cantidad: la confirmacion debe hacerla alguien distinto con su propio PIN.'
+              : 'No puedes confirmar una cantidad que tu mismo capturaste: la confirmacion debe hacerla otra persona con su propio PIN.',
+          });
+        case 'CONFIRMADOR_NO_PARTICIPA':
+          throw new ForbiddenException({
+            statusCode: 403,
+            codigo: 'CONFIRMADOR_NO_PARTICIPA',
             mensaje:
-              'No puedes confirmar una cantidad que tu mismo capturaste: la confirmacion debe hacerla otra persona con su propio PIN.',
+              'Solo puede confirmar en este telefono alguien que conto esta carga.',
           });
         case 'CANTIDAD_CAMBIO':
           throw new ConflictException({
@@ -735,16 +770,18 @@ export class CargasController {
           throw new ForbiddenException({
             statusCode: 403,
             codigo: 'USUARIO_BLOQUEADO',
-            mensaje:
-              'Tu usuario quedo bloqueado temporalmente por intentos fallidos de PIN. Espera unos minutos o pide a tu supervisor que lo restablezca.',
+            mensaje: mismoDispositivo
+              ? 'Ese usuario quedo bloqueado temporalmente por intentos fallidos de PIN. Espera unos minutos o pide al supervisor que lo restablezca.'
+              : 'Tu usuario quedo bloqueado temporalmente por intentos fallidos de PIN. Espera unos minutos o pide a tu supervisor que lo restablezca.',
             bloqueadoHasta: resultado.bloqueadoHasta.toISOString(),
           });
         case 'INACTIVO':
           throw new ForbiddenException({
             statusCode: 403,
             codigo: 'USUARIO_INACTIVO',
-            mensaje:
-              'Tu usuario esta desactivado. Pide a tu supervisor que lo reactive.',
+            mensaje: mismoDispositivo
+              ? 'Ese usuario esta desactivado. Pide al supervisor que lo reactive.'
+              : 'Tu usuario esta desactivado. Pide a tu supervisor que lo reactive.',
           });
         case 'ESTADO_INVALIDO':
           throw new ConflictException({

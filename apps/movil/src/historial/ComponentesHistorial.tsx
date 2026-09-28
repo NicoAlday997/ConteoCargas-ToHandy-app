@@ -9,7 +9,7 @@ import { textoCambioFecha } from '../conteo/fecha-operativa';
 import { estadoDeCarga, type Cancelacion, type CambioFecha, type TonoEstado } from './modelo-historial';
 
 /** Ancho máximo de las listas en tablet: una columna legible, no una fila de 1000 px. */
-export const ANCHO_MAXIMO_LISTA = 720;
+export { ANCHO_MAXIMO_LISTA } from '../theme/tokens';
 
 export function volver() {
   if (router.canGoBack()) router.back();

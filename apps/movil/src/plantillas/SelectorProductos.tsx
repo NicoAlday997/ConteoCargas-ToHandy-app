@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Modal, SectionList, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SectionList, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useFactoresCatalogo } from '../api/hooks-factores';
@@ -14,6 +14,7 @@ import {
   Esqueleto,
   LineaEsqueleto,
   NotaEncabezado,
+  PantallaModal,
   TarjetaEsqueleto,
 } from '../componentes/base';
 import { contarPendientes, textoProductos } from '../factores/modelo-factores';
@@ -40,10 +41,9 @@ interface Props {
  */
 export function SelectorProductos(props: Props) {
   return (
-    <Modal visible={props.visible} animationType="slide" onRequestClose={props.onCerrar}>
-      {/* El modal vive fuera del árbol de la app: necesita su propio proveedor de márgenes. */}
-      <SafeAreaProvider>{props.visible && <Contenido {...props} />}</SafeAreaProvider>
-    </Modal>
+    <PantallaModal visible={props.visible} onCerrar={props.onCerrar}>
+      {props.visible && <Contenido {...props} />}
+    </PantallaModal>
   );
 }
 

@@ -102,6 +102,14 @@ export function admiteSueltas(producto: ProductoConteo): boolean {
   return !seVendeCompleto(producto);
 }
 
+/** Los campos que se capturan de un producto, en el orden del recorrido. */
+export function camposDe(producto: ProductoConteo): CampoCaptura[] {
+  const campos: CampoCaptura[] = [];
+  if (admitePaquetes(producto)) campos.push('paquetes');
+  if (admiteSueltas(producto)) campos.push('sueltas');
+  return campos;
+}
+
 /** El primer campo que se captura de un producto al llegar a él. */
 export function primerCampo(producto: ProductoConteo): CampoCaptura {
   return admitePaquetes(producto) ? 'paquetes' : 'sueltas';

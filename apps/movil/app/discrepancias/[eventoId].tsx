@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useCapturarDiscrepancia, useConfirmarDiscrepancia, useDiscrepancias } from '../../src/api/hooks-cargas';
+import { ETIQUETAS_TIPO_CARGA, esTipoCarga } from '../../src/api/cargas';
+import {
+  useCapturarDiscrepancia,
+  useConfirmarDiscrepancia,
+  useContextoResolucion,
+  useDiscrepancias,
+  type ContextoResolucion,
+} from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
   BarraAvance,
@@ -30,6 +37,7 @@ import { IndicadoresPin, LONGITUD_PIN } from '../../src/componentes/IndicadoresP
 import { TecladoPin } from '../../src/componentes/TecladoPin';
 import {
   admitePaquetes,
+  camposDe,
   admiteSueltas,
   factorEfectivo,
   primerCampo,
@@ -43,6 +51,13 @@ import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { EtiquetaFactor, nombreCampo } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearPiezas, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
+import { diaDesdeApi, diaNegocio, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
+import {
+  candidatosConfirmar,
+  confirmadorInicial,
+  nombreCorto,
+  type Participante,
+} from '../../src/discrepancias/quien-confirma';
 import {
   capturaInicial,
   diferencia,
@@ -60,9 +75,11 @@ import {
   CIFRAS,
   COLORES,
   ESCALA_TEXTO,
+  ANCHO_MAXIMO_LISTA,
   ESPACIADO,
   ETIQUETA_DATO,
   FUENTE,
+  ONDA,
   RADIOS,
   RITMO,
   ROTULO,
@@ -75,7 +92,6 @@ import type { ColorEstado } from '../../src/theme/tokens';
 /** Igual que en el conteo: 9999 ya es un error de dedo. */
 const MAX_DIGITOS = 4;
 const ANCHO_TECLADO_LATERAL = 380;
-const ANCHO_MAXIMO_LISTA = 720;
 /** Tras abrir el teclado hay que esperar al layout para llevar la tarjeta a la vista. */
 const RETRASO_SCROLL_MS = 60;
 
@@ -125,8 +141,9 @@ function asentar(e: Edicion): Edicion {
 }
 
 export default function PantallaDiscrepancias() {
-  const params = useLocalSearchParams<{ eventoId: string }>();
+  const params = useLocalSearchParams<{ eventoId: string; desdeConteo?: string }>();
   const eventoId = parametro(params.eventoId);
+  const desdeConteo = parametro(params.desdeConteo) === '1';
 
   if (!eventoId) {
     return (
@@ -141,7 +158,7 @@ export default function PantallaDiscrepancias() {
     );
   }
 
-  return <Resolucion eventoId={eventoId} />;
+  return <Resolucion eventoId={eventoId} desdeConteo={desdeConteo} />;
 }
 
 function volver() {
@@ -149,12 +166,44 @@ function volver() {
   else router.replace('/');
 }
 
-function Resolucion({ eventoId }: { eventoId: string }) {
+/** "Ruta 3" / "Carga inicial · Sale mañana, mar 29 de septiembre": de qué carga se trata. */
+function subtituloCarga(contexto: ContextoResolucion | undefined): string | null {
+  if (!contexto) return null;
+  const tipo = contexto.tipo && esTipoCarga(contexto.tipo) ? ETIQUETAS_TIPO_CARGA[contexto.tipo] : null;
+  const dia = diaDesdeApi(contexto.fechaOperativa);
+  const salida = dia ? textoSalidaCorta(dia, diaNegocio(new Date())) : null;
+  return [tipo, salida].filter(Boolean).join(' · ') || null;
+}
+
+/** "Irvin (vendedor) · Juan (contador)": quiénes contaron, que son quienes resuelven. */
+function lineaPersonas(participantes: readonly Participante[]): string | null {
+  if (participantes.length === 0) return null;
+  return participantes
+    .map((p) => {
+      const rol = etiquetaRol({ tipoSesion: p.tipoSesion, piezas: 0, paquetes: null, sueltas: null }, '');
+      return rol ? `${nombreCorto(p.nombre)} (${rol.toLowerCase()})` : nombreCorto(p.nombre);
+    })
+    .join(' · ');
+}
+
+function Resolucion({ eventoId, desdeConteo }: { eventoId: string; desdeConteo: boolean }) {
   const { esTablet, tecladoLateral } = useLayout();
   const consulta = useDiscrepancias(eventoId);
+  const contexto = useContextoResolucion(eventoId);
+  const contaron = contexto.data?.participantes ?? [];
+  const rutaNombre = contexto.data?.rutaNombre?.trim() || null;
   const capturar = useCapturarDiscrepancia(eventoId);
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [usuarioNombre, setUsuarioNombre] = useState<string | null>(null);
+  // Quien tiene la sesión siempre puede confirmar desde ella (entre dispositivos),
+  // haya contado o no esta carga: se suma a la lista si no está.
+  const participantes = useMemo(
+    () =>
+      usuarioId && !contaron.some((p) => p.id === usuarioId)
+        ? [...contaron, { id: usuarioId, nombre: usuarioNombre ?? 'Tú', tipoSesion: null }]
+        : contaron,
+    [contaron, usuarioId, usuarioNombre],
+  );
   const [edicion, setEdicion] = useState<Edicion | null>(null);
   const edicionRef = useRef<Edicion | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
@@ -260,7 +309,8 @@ function Resolucion({ eventoId }: { eventoId: string }) {
     if (!actual) return;
     const asentada = asentar(actual);
     const d = discrepancias.find((x) => x.code === actual.code);
-    if (actual.campo === 'paquetes' && d && admiteSueltas(d.producto)) {
+    // Mismo ritmo que el conteo: con paquetes tecleados se guarda (las sueltas vacías son 0).
+    if (actual.campo === 'paquetes' && actual.texto === '' && d && admiteSueltas(d.producto)) {
       abrirCampo(actual.code, 'sueltas', asentada.captura);
       return;
     }
@@ -363,6 +413,12 @@ function Resolucion({ eventoId }: { eventoId: string }) {
 
   const faltan = total - resueltas;
   const editada = edicion ? discrepancias.find((d) => d.code === edicion.code) : undefined;
+  const personas = lineaPersonas(contaron);
+  // Una sola acción azul en la pantalla: la de la primera diferencia que falta.
+  const enFoco = discrepancias.find((d) => estadoDe(d) !== 'confirmada')?.code ?? null;
+  // La explicación de cómo se resuelve solo mientras nadie ha empezado.
+  const nadieHaCapturado = discrepancias.every((d) => estadoDe(d) === 'sin-capturar');
+  const otraPersona = contaron.find((p) => p.id !== usuarioId) ?? null;
 
   const teclado =
     edicion?.tecladoAbierto && editada ? (
@@ -372,14 +428,16 @@ function Resolucion({ eventoId }: { eventoId: string }) {
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion)}
+        camposDisponibles={camposDe(editada.producto)}
+        onCambiarCampo={(campo) => abrirCampo(edicion.code, campo, asentar(edicion).captura)}
         etiquetaSiguiente={
-          edicion.campo === 'paquetes' && admiteSueltas(editada.producto)
+          edicion.campo === 'paquetes' && edicion.texto === '' && admiteSueltas(editada.producto)
             ? 'Sueltas'
             : capturar.isPending
               ? 'Guardando…'
               : 'Guardar'
         }
-        siguienteConChevron={edicion.campo === 'paquetes' && admiteSueltas(editada.producto)}
+        siguienteConChevron={edicion.campo === 'paquetes' && edicion.texto === '' && admiteSueltas(editada.producto)}
         lateral={tecladoLateral}
         teclasGrandes={esTablet}
         areaSegura={!tecladoLateral}
@@ -395,7 +453,8 @@ function Resolucion({ eventoId }: { eventoId: string }) {
     <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['left', 'right'] : ['left', 'right', 'bottom']}>
       <Encabezado
         variante="marca"
-        titulo="Diferencias por resolver"
+        titulo={rutaNombre ? `Diferencias · ${rutaNombre}` : 'Diferencias por resolver'}
+        subtitulo={subtituloCarga(contexto.data)}
         onVolver={volver}
         etiquetaVolver="Volver al inicio"
         inferior={
@@ -411,7 +470,16 @@ function Resolucion({ eventoId }: { eventoId: string }) {
             <BarraAvance actual={resueltas} total={total} />
           </PanelEncabezado>
         }
-      />
+      >
+        {personas && (
+          <View style={estilos.lineaPersonas} accessible accessibilityLabel={`Contaron ${personas}`}>
+            <Glifo nombre="personas" color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
+            <Text style={estilos.textoPersonas} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              {personas}
+            </Text>
+          </View>
+        )}
+      </Encabezado>
       {/* Trabajo pendiente: en pastilla tintada, no en texto gris. */}
       <View style={estilos.faltan}>
         <Etiqueta
@@ -427,12 +495,23 @@ function Resolucion({ eventoId }: { eventoId: string }) {
           contentContainerStyle={estilos.contenidoLista}
           keyboardShouldPersistTaps="handled"
         >
-          <PasosCruzados />
+          {nadieHaCapturado && (
+            <PasosCruzados
+              titulo={
+                desdeConteo
+                  ? `${otraPersona ? `Tu conteo y el de ${nombreCorto(otraPersona.nombre)}` : 'Los dos conteos'} no coinciden en ${total} ${total === 1 ? 'producto' : 'productos'}. Resuélvanlo juntos.`
+                  : null
+              }
+            />
+          )}
           {discrepancias.map((d) => (
             <View key={d.code} onLayout={(e) => posiciones.current.set(d.code, e.nativeEvent.layout.y)}>
               <TarjetaDiscrepancia
                 discrepancia={d}
                 usuarioId={usuarioId}
+                enFoco={enFoco === d.code}
+                candidatos={candidatosConfirmar(participantes, d.capturadaPor, usuarioId)}
+                rutaNombre={rutaNombre}
                 edicion={edicion?.code === d.code ? edicion : null}
                 ocupado={capturar.isPending && capturar.variables?.productoCode === d.code}
                 bloqueada={edicion !== null && edicion.code !== d.code}
@@ -467,7 +546,9 @@ function Resolucion({ eventoId }: { eventoId: string }) {
       <ModalConfirmar
         eventoId={eventoId}
         discrepancia={aConfirmar}
-        confirmaNombre={usuarioNombre}
+        candidatos={aConfirmar ? candidatosConfirmar(participantes, aConfirmar.capturadaPor, usuarioId) : []}
+        usuarioSesionId={usuarioId}
+        usuarioSesionNombre={usuarioNombre}
         onCerrar={() => setAConfirmar(null)}
         onConfirmada={(ultima) => {
           setAConfirmar(null);
@@ -486,15 +567,16 @@ function Resolucion({ eventoId }: { eventoId: string }) {
  * La regla, como dos pasos con su número: la secuencia ES la regla (primero
  * uno captura, después otro confirma). Neutra: no es un estado, es cómo se hace.
  */
-function PasosCruzados() {
+function PasosCruzados({ titulo }: { titulo: string | null }) {
   return (
     <View
       style={estilos.pasos}
       accessible
-      accessibilityLabel="Cómo se resuelve: 1, una persona captura la cantidad final. 2, otra persona distinta la confirma desde su teléfono con su propio PIN."
+      accessibilityLabel={`${titulo ? `${titulo} ` : ''}Cómo se resuelve: 1, una persona captura la cantidad final. 2, otra persona distinta la confirma con su propio PIN, aquí mismo o en su teléfono.`}
     >
+      {titulo && <Text style={estilos.tituloPasos}>{titulo}</Text>}
       <Paso numero="1" titulo="Una persona captura" detalle="la cantidad final, tras recontar." />
-      <Paso numero="2" titulo="Otra persona confirma" detalle="desde su teléfono, con su propio PIN. Nunca la misma." />
+      <Paso numero="2" titulo="Otra persona confirma" detalle="con su propio PIN, aquí mismo o en su teléfono. Nunca la misma." />
     </View>
   );
 }
@@ -518,6 +600,11 @@ function Paso({ numero, titulo, detalle }: { numero: string; titulo: string; det
 interface PropsTarjeta {
   discrepancia: Discrepancia;
   usuarioId: string | null;
+  /** La primera diferencia que falta: la única con la acción en azul. */
+  enFoco: boolean;
+  /** Quiénes pueden confirmar en este teléfono (sin quien capturó). */
+  candidatos: readonly Participante[];
+  rutaNombre: string | null;
   edicion: Edicion | null;
   ocupado: boolean;
   /** Se captura otra tarjeta: una a la vez. */
@@ -540,6 +627,9 @@ const BANDA_ESTADO: Record<ReturnType<typeof estadoDe>, { titulo: string; tono: 
 function TarjetaDiscrepancia({
   discrepancia: d,
   usuarioId,
+  enFoco,
+  candidatos,
+  rutaNombre,
   edicion,
   ocupado,
   bloqueada,
@@ -552,6 +642,11 @@ function TarjetaDiscrepancia({
 }: PropsTarjeta) {
   const estado = estadoDe(d);
   const soyQuienCapturo = d.capturadaPor !== null && d.capturadaPor === usuarioId;
+  const variante = enFoco ? 'primario' : 'secundario';
+  // Quien confirmaría si no soy yo: nombrarla dice a quién pasarle el teléfono.
+  const otros = candidatos.filter((p) => p.id !== usuarioId);
+  const otro = otros.length === 1 ? nombreCorto(otros[0].nombre) : null;
+  const dondeInicio = rutaNombre ? `en su Inicio, en «Resolver diferencias» de ${rutaNombre}` : 'en su Inicio, en «Resolver diferencias»';
 
   return (
     <Tarjeta conAcento={BANDA_ESTADO[estado]} style={estilos.tarjeta}>
@@ -578,7 +673,7 @@ function TarjetaDiscrepancia({
       {edicion ? (
         <EditorCantidad d={d} edicion={edicion} ocupado={ocupado} onAbrirCampo={onAbrirCampo} onGuardar={onGuardar} onCancelar={onCancelar} />
       ) : estado === 'sin-capturar' ? (
-        <Boton texto="Capturar cantidad final" onPress={onCapturar} deshabilitado={bloqueada} />
+        <Boton texto="Capturar cantidad final" variante={variante} onPress={onCapturar} deshabilitado={bloqueada} />
       ) : (
         <View style={estilos.final}>
           {d.cantidadFinal !== null && (
@@ -600,7 +695,7 @@ function TarjetaDiscrepancia({
                   {
                     rotulo: 'Confirma',
                     valor: puedeConfirmar(d, usuarioId) ? 'Tú, con tu PIN' : null,
-                    ausente: 'Otra persona',
+                    ausente: otro ? `${otro}, con su PIN` : 'Otra persona',
                   },
                 ]}
               />
@@ -608,8 +703,8 @@ function TarjetaDiscrepancia({
                 <View style={estilos.avisoCruzado}>
                   <Glifo nombre="personas" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl - ESPACIADO.xs} />
                   <Text style={estilos.textoAvisoCruzado}>
-                    Tú la capturaste, así que no puedes confirmarla. Otra persona la confirma desde su teléfono, entrando a
-                    esta carga con su usuario y su PIN.
+                    Tú la capturaste, así que no puedes confirmarla. {otro ?? 'Otra persona'} la confirma con su propio PIN:
+                    aquí mismo, pasándole el teléfono, o desde su teléfono, {dondeInicio}.
                   </Text>
                 </View>
               )}
@@ -621,9 +716,20 @@ function TarjetaDiscrepancia({
                   deshabilitado={bloqueada}
                   style={estilos.botonFila}
                 />
-                {/* A quien capturó ni se le ofrece: el servidor lo rechazaría igual. */}
-                {puedeConfirmar(d, usuarioId) && (
-                  <Boton texto="Confirmar con mi PIN" onPress={onConfirmar} deshabilitado={bloqueada} style={estilos.botonFila} />
+                {/* A quien capturó no se le ofrece confirmar él: sí pasar el teléfono. El servidor valida igual. */}
+                {puedeConfirmar(d, usuarioId) ? (
+                  <Boton texto="Confirmar con mi PIN" variante={variante} onPress={onConfirmar} deshabilitado={bloqueada} style={estilos.botonFila} />
+                ) : (
+                  otros.length > 0 && (
+                    <Boton
+                      texto={otro ? `Confirma ${otro} aquí` : 'Confirmar aquí'}
+                      variante={variante}
+                      onPress={onConfirmar}
+                      deshabilitado={bloqueada}
+                      accessibilityHint="Pásale el teléfono: confirma con su propio PIN"
+                      style={estilos.botonFila}
+                    />
+                  )
                 )}
               </View>
             </>
@@ -764,8 +870,11 @@ type AvisoConfirmar =
 interface PropsModalConfirmar {
   eventoId: string;
   discrepancia: Discrepancia | null;
-  /** Quién está en sesión: confirma como esa persona. */
-  confirmaNombre: string | null;
+  /** Quiénes pueden confirmar en este teléfono (nunca quien capturó). */
+  candidatos: readonly Participante[];
+  /** Quién tiene la sesión abierta en el teléfono. */
+  usuarioSesionId: string | null;
+  usuarioSesionNombre: string | null;
   onCerrar: () => void;
   onConfirmada: (ultima: boolean) => void;
 }
@@ -774,13 +883,41 @@ interface PropsModalConfirmar {
  * Mismo teclado e indicadores que el login. Muestra lo que se confirma (la
  * cantidad y quién la capturó) y la manda junto con el PIN: si alguien la
  * recapturó mientras tanto, el servidor rechaza en vez de confirmar otra.
+ *
+ * "¿Quién confirma?" arriba: quien tiene la sesión, o la otra persona que
+ * contó y está al lado (se le pasa el teléfono y teclea SU PIN). Entre
+ * dispositivos no cambia nada: cada quien confirma desde su sesión.
  */
-function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, onConfirmada }: PropsModalConfirmar) {
+function ModalConfirmar({
+  eventoId,
+  discrepancia: d,
+  candidatos,
+  usuarioSesionId,
+  usuarioSesionNombre,
+  onCerrar,
+  onConfirmada,
+}: PropsModalConfirmar) {
   const confirmar = useConfirmarDiscrepancia(eventoId);
   const pinRef = useRef('');
   const [cantidad, setCantidad] = useState(0);
   const [claveError, setClaveError] = useState(0);
   const [aviso, setAviso] = useState<AvisoConfirmar | null>(null);
+
+  // Sin participantes (aún no llegan o no se pudieron leer): confirma la sesión, como entre dispositivos.
+  const opciones: readonly Participante[] =
+    candidatos.length > 0
+      ? candidatos
+      : usuarioSesionId && d?.capturadaPor !== usuarioSesionId
+        ? [{ id: usuarioSesionId, nombre: usuarioSesionNombre ?? 'Tú', tipoSesion: null }]
+        : [];
+  // Lo elegido a mano vale solo para la diferencia en que se eligió; si no,
+  // manda la elección inicial (y se recalcula cuando llega la lista de personas).
+  const [eleccion, setEleccion] = useState<{ code: string; id: string } | null>(null);
+  const elegido =
+    d && eleccion?.code === d.code ? eleccion.id : d ? confirmadorInicial(opciones, usuarioSesionId) : null;
+
+  const persona = opciones.find((p) => p.id === elegido) ?? null;
+  const esSesion = persona !== null && persona.id === usuarioSesionId;
 
   const enviando = confirmar.isPending;
   const definitivo = aviso?.tipo === 'definitivo';
@@ -797,10 +934,23 @@ function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, o
     onCerrar();
   };
 
+  const elegir = (id: string) => {
+    if (enviando || id === elegido) return;
+    limpiarPin();
+    setAviso(null);
+    if (d) setEleccion({ code: d.code, id });
+  };
+
   const enviar = (pin: string) => {
-    if (!d || d.cantidadFinal === null) return;
+    if (!d || d.cantidadFinal === null || !persona) return;
     confirmar.mutate(
-      { productoCode: d.code, cantidadFinal: d.cantidadFinal, pin },
+      {
+        productoCode: d.code,
+        cantidadFinal: d.cantidadFinal,
+        pin,
+        // Otra persona en este teléfono: el servidor verifica SU PIN y que no haya capturado.
+        confirmaUsuarioAppId: esSesion ? undefined : persona.id,
+      },
       {
         onSuccess: (respuesta) => {
           limpiarPin();
@@ -834,7 +984,7 @@ function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, o
   };
 
   const alDigito = (digito: string) => {
-    if (enviando || definitivo || pinRef.current.length >= LONGITUD_PIN) return;
+    if (enviando || definitivo || !persona || pinRef.current.length >= LONGITUD_PIN) return;
     const nuevo = pinRef.current + digito;
     pinRef.current = nuevo;
     setCantidad(nuevo.length);
@@ -848,15 +998,56 @@ function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, o
     setCantidad(pinRef.current.length);
   };
 
+  const titulo = !persona ? '¿Quién confirma?' : esSesion ? 'Confirma con tu PIN' : `${nombreCorto(persona.nombre)}, confirma con tu PIN`;
+  const detalle = !persona
+    ? 'Elige tu nombre. Quien capturó la cantidad no puede confirmarla.'
+    : esSesion
+      ? `Confirmas como ${persona.nombre}.`
+      : `Confirmas como ${persona.nombre}, en el teléfono de ${usuarioSesionNombre ? nombreCorto(usuarioSesionNombre) : 'otra persona'}.`;
+
   return (
     <Hoja
       visible={d !== null}
       onCerrar={cerrar}
       bloqueada={enviando}
-      titulo="Confirma con tu PIN"
-      detalle={confirmaNombre ? `Confirmas como ${confirmaNombre}.` : null}
+      titulo={titulo}
+      detalle={detalle}
       pie={<Boton texto={definitivo ? 'Cerrar' : 'Cancelar'} variante="secundario" onPress={cerrar} deshabilitado={enviando} />}
     >
+      {opciones.length > 1 && (
+        <View style={estilos.quienConfirma} accessibilityRole="radiogroup" accessibilityLabel="¿Quién confirma?">
+          {opciones.map((p) => {
+            const activo = p.id === elegido;
+            const rol = etiquetaRol({ tipoSesion: p.tipoSesion, piezas: 0, paquetes: null, sueltas: null }, '');
+            return (
+              <Pulsable
+                key={p.id}
+                onPress={() => elegir(p.id)}
+                tacto="seleccion"
+                onda={activo ? ONDA.sobreColor : ONDA.sobreClaro}
+                disabled={enviando}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: activo, disabled: enviando }}
+                accessibilityLabel={`${p.nombre}${rol ? `, ${rol.toLowerCase()}` : ''}${p.id === usuarioSesionId ? ', tu sesión' : ''}`}
+                style={[estilos.opcionPersona, activo && estilos.opcionPersonaActiva]}
+              >
+                <Glifo nombre="persona" color={activo ? COLORES.textoSobreColor : COLORES.textoSecundario} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+                <View style={estilos.textosPersona}>
+                  <Text style={[estilos.nombrePersona, activo && estilos.textoInvertido]} numberOfLines={1}>
+                    {p.id === usuarioSesionId ? `${nombreCorto(p.nombre)} (tú)` : nombreCorto(p.nombre)}
+                  </Text>
+                  {rol ? (
+                    <Text style={[estilos.rolPersona, activo && estilos.rolPersonaActiva]} numberOfLines={1}>
+                      {rol}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pulsable>
+            );
+          })}
+        </View>
+      )}
+
       {d && (
         <Tarjeta elevacion={0} compacta>
           <View style={estilos.lineaProducto}>
@@ -894,8 +1085,14 @@ function ModalConfirmar({ eventoId, discrepancia: d, confirmaNombre, onCerrar, o
         <View style={estilos.panelDefinitivo} accessibilityRole="alert" accessibilityLiveRegion="assertive">
           <Text style={estilos.textoDefinitivo}>{aviso.mensaje}</Text>
         </View>
+      ) : opciones.length === 0 ? (
+        <View style={estilos.panelDefinitivo} accessibilityRole="alert">
+          <Text style={estilos.textoDefinitivo}>
+            Nadie más que contó esta carga puede confirmar en este teléfono. La confirma otra persona desde su propia sesión.
+          </Text>
+        </View>
       ) : (
-        <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
+        <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando || !persona} />
       )}
     </Hoja>
   );
@@ -955,6 +1152,59 @@ const estilos = StyleSheet.create({
   },
   pasos: {
     gap: ESPACIADO.sm,
+  },
+  tituloPasos: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.texto,
+    marginBottom: ESPACIADO.xs,
+  },
+  lineaPersonas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
+    marginTop: 2,
+  },
+  textoPersonas: {
+    flexShrink: 1,
+    ...TIPOGRAFIA.micro,
+    color: COLORES.marcaTenue,
+  },
+  // ¿Quién confirma?: dos o tres personas, cada una un bloque que se toca con el pulgar.
+  quienConfirma: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: ESPACIADO.sm,
+  },
+  opcionPersona: {
+    flexGrow: 1,
+    flexBasis: 140,
+    minHeight: TOQUE_MINIMO,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    backgroundColor: COLORES.superficie,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.borde,
+    borderRadius: RADIOS.medio,
+  },
+  opcionPersonaActiva: {
+    backgroundColor: COLORES.marca,
+    borderColor: COLORES.marca,
+  },
+  textosPersona: {
+    flex: 1,
+  },
+  nombrePersona: {
+    ...TIPOGRAFIA.subtitulo,
+    color: COLORES.texto,
+  },
+  rolPersona: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.textoSecundario,
+  },
+  rolPersonaActiva: {
+    color: COLORES.marcaTenue,
   },
   paso: {
     flexDirection: 'row',
