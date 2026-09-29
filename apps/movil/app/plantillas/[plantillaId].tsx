@@ -108,7 +108,7 @@ function Pantalla({
   children: ReactNode;
 }) {
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <Encabezado titulo={titulo} subtitulo={subtitulo} onVolver={volver} accion={accion}>
         {nota ? <NotaEncabezado>{nota}</NotaEncabezado> : null}
       </Encabezado>
@@ -615,7 +615,7 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.superficieHonda,
   },
   botonEditarPresionado: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.accion,
   },
   textoEditar: {
     ...TIPOGRAFIA.etiqueta,

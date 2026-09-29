@@ -1,11 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Glifo } from './base/Icono';
 import { Pulsable } from './base/Pulsable';
 
-import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, OPACIDAD, FUENTE, ONDA, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESCALA_PRESIONADO_CONTROL,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  OPACIDAD,
+  ONDA,
+  RADIOS,
+  SOMBRAS,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../theme/tokens';
 
-/** Por encima del mínimo de 56: el PIN se teclea de pie y con prisa. */
-const ALTO_TECLA = TOQUE_MINIMO + ESPACIADO.lg;
+/** Diámetro máximo de una tecla: en tablet no crece más, el pulgar no lo necesita. */
+const LADO_MAXIMO_TECLA = 78;
 
 const FILAS: readonly (readonly string[])[] = [
   ['1', '2', '3'],
@@ -17,13 +31,15 @@ interface Props {
   onDigito: (digito: string) => void;
   onBorrar: () => void;
   deshabilitado?: boolean;
-  /** Sobre asfalto (la entrada): teclas en relieve tonal con dígitos blancos. */
+  /** Sobre el héroe azul noche (la entrada): teclas translúcidas con dígitos blancos. */
   oscuro?: boolean;
 }
 
 /**
- * Teclado numérico propio: nunca el teclado del sistema, que cambia de
- * tamaño y distribución según el dispositivo.
+ * Teclado numérico propio (nunca el del sistema, que cambia de tamaño y
+ * distribución según el dispositivo). Teclas circulares: la misma geometría
+ * que los círculos del PIN, y un blanco grande y centrado para el pulgar. Se
+ * hunden con un resorte y se encienden al presionar.
  */
 export function TecladoPin({ onDigito, onBorrar, deshabilitado = false, oscuro = false }: Props) {
   return (
@@ -36,14 +52,14 @@ export function TecladoPin({ onDigito, onBorrar, deshabilitado = false, oscuro =
         </View>
       ))}
       <View style={estilos.fila}>
-        <View style={estilos.huecoVacio} />
+        <View style={estilos.hueco} />
         <Tecla etiqueta="0" onPress={() => onDigito('0')} deshabilitado={deshabilitado} oscuro={oscuro} />
         <Tecla
           etiqueta="Borrar"
           onPress={onBorrar}
           deshabilitado={deshabilitado}
           oscuro={oscuro}
-          secundaria
+          borrar
           etiquetaAccesible="Borrar último dígito"
         />
       </View>
@@ -55,110 +71,105 @@ interface PropsTecla {
   etiqueta: string;
   onPress: () => void;
   deshabilitado: boolean;
-  secundaria?: boolean;
+  /** La tecla de borrar: sin fondo, con su ícono. */
+  borrar?: boolean;
   etiquetaAccesible?: string;
   oscuro: boolean;
 }
 
-function Tecla({ etiqueta, onPress, deshabilitado, secundaria = false, etiquetaAccesible, oscuro }: PropsTecla) {
+function Tecla({ etiqueta, onPress, deshabilitado, borrar = false, etiquetaAccesible, oscuro }: PropsTecla) {
   return (
     <Pulsable
       onPress={onPress}
       disabled={deshabilitado}
       tacto="tecla"
       repetible
+      escala={ESCALA_PRESIONADO_CONTROL - 0.04}
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       accessibilityState={{ disabled: deshabilitado }}
       onda={oscuro ? ONDA.sobreColor : ONDA.sobreClaro}
       style={({ pressed }) => [
         estilos.tecla,
-        oscuro && estilos.teclaOscura,
+        borrar ? estilos.teclaBorrar : oscuro ? estilos.teclaOscura : estilos.teclaClara,
         pressed && (oscuro ? estilos.teclaPresionadaOscura : estilos.teclaPresionada),
         deshabilitado && estilos.teclaDeshabilitada,
       ]}
     >
-      {({ pressed }) => (
-        <Text
-          style={[
-            secundaria ? estilos.textoSecundario : estilos.textoDigito,
-            oscuro && estilos.textoOscuro,
-            pressed && (oscuro ? estilos.textoPresionadoOscuro : estilos.textoPresionado),
-          ]}
-          maxFontSizeMultiplier={ESCALA_TEXTO.control}
-        >
-          {etiqueta}
-        </Text>
-      )}
+      {({ pressed }) => {
+        const color = pressed && !borrar ? (oscuro ? COLORES.marca : COLORES.textoSobreColor) : oscuro ? COLORES.textoSobreColor : COLORES.texto;
+        return borrar ? (
+          <Glifo nombre="borrar" color={pressed ? (oscuro ? COLORES.marca : COLORES.textoSobreColor) : color} tamano={ESPACIADO.xl + ESPACIADO.xs} />
+        ) : (
+          <Text style={[estilos.textoDigito, { color }]} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+            {etiqueta}
+          </Text>
+        );
+      }}
     </Pulsable>
   );
 }
 
 const estilos = StyleSheet.create({
   teclado: {
-    gap: ESPACIADO.md,
+    gap: ESPACIADO.md + 2,
+    width: '100%',
+    maxWidth: LADO_MAXIMO_TECLA * 3 + ESPACIADO.xl * 2 + ESPACIADO.lg,
+    alignSelf: 'center',
   },
   fila: {
     flexDirection: 'row',
-    gap: ESPACIADO.md,
+    justifyContent: 'center',
+    gap: ESPACIADO.xl,
   },
-  // Base 0: todas miden lo mismo aunque "Borrar" sea más ancho que un dígito.
+  // Círculo: base 0 y lado máximo, así las tres miden igual en cualquier ancho.
   tecla: {
     flex: 1,
     flexBasis: 0,
-    minHeight: ALTO_TECLA,
+    maxWidth: LADO_MAXIMO_TECLA,
+    minHeight: TOQUE_MINIMO,
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    // Blanca: resalta sobre el fondo tintado de la pantalla, como una tarjeta.
-    backgroundColor: COLORES.superficie,
-    borderWidth: BORDES.medio,
-    borderColor: COLORES.bordeSinContar,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
   },
-  // Inversión completa al presionar: se nota aun con poca luz.
-  teclaPresionada: {
-    backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
-  },
-  // Sobre asfalto: relieve tonal, y al presionar se enciende en blanco.
+  // Sobre el héroe: vidrio tenue sin desenfoque, con un filo de luz.
   teclaOscura: {
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
     borderWidth: BORDES.fino,
-    borderColor: COLORES.marcaClara,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
   },
+  // Sobre claro: pieza blanca con contorno y sombra corta.
+  teclaClara: {
+    backgroundColor: COLORES.superficie,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.contornoTarjeta,
+    boxShadow: SOMBRAS.tecla,
+  },
+  teclaBorrar: {
+    backgroundColor: 'transparent',
+  },
+  // Se enciende al presionar: blanco sobre azul noche, azul señal sobre claro.
   teclaPresionadaOscura: {
     backgroundColor: COLORES.superficie,
     borderColor: COLORES.superficie,
   },
+  teclaPresionada: {
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
+  },
   teclaDeshabilitada: {
     opacity: OPACIDAD.deshabilitado,
   },
-  // Con el mismo contorno (invisible) que una tecla: si no, las teclas de su fila se corren.
-  huecoVacio: {
+  hueco: {
     flex: 1,
     flexBasis: 0,
-    borderWidth: BORDES.medio,
-    borderColor: 'transparent',
+    maxWidth: LADO_MAXIMO_TECLA,
   },
   textoDigito: {
-    ...TIPOGRAFIA.display,
-    fontFamily: FUENTE.titular,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.tecla,
+    fontSize: 28,
+    lineHeight: 34,
     ...CIFRAS,
-  },
-  textoSecundario: {
-    fontFamily: FUENTE.titular,
-    fontSize: 19,
-    lineHeight: 23,
-    color: COLORES.texto,
-  },
-  textoPresionado: {
-    color: COLORES.textoSobreColor,
-  },
-  textoOscuro: {
-    color: COLORES.textoSobreColor,
-  },
-  textoPresionadoOscuro: {
-    color: COLORES.texto,
   },
 });

@@ -1234,12 +1234,12 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.marcaTinte,
   },
   botonAccionesPresionado: {
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
   },
   textoBotonAcciones: {
     ...TIPOGRAFIA.etiqueta,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.accionHonda,
   },
   textoFamilia: {
     flexShrink: 1,
@@ -1324,13 +1324,13 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   opcionSeleccionada: {
-    borderColor: COLORES.marca,
+    borderColor: COLORES.accion,
     backgroundColor: COLORES.marcaTinte,
   },
   // Inversión completa al presionar: se nota aun con poca luz.
   opcionPresionada: {
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marca,
+    borderColor: COLORES.accion,
+    backgroundColor: COLORES.accion,
   },
   tituloOpcion: {
     ...TIPOGRAFIA.titulo,
@@ -1362,7 +1362,7 @@ const estilos = StyleSheet.create({
     minWidth: ESPACIADO.xxxl * 2,
     paddingHorizontal: ESPACIADO.sm,
     borderBottomWidth: BORDES.grueso,
-    borderBottomColor: COLORES.marca,
+    borderBottomColor: COLORES.accion,
   },
   valorVisor: {
     ...TIPOGRAFIA.numero,

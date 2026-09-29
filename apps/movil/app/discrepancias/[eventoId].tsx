@@ -22,7 +22,6 @@ import {
   EstadoVacio,
   Esqueleto,
   Etiqueta,
-  FilaDato,
   Glifo,
   Hoja,
   LineaEsqueleto,
@@ -657,18 +656,13 @@ function TarjetaDiscrepancia({
         </Text>
       </View>
 
-      <Tarjeta elevacion={0} compacta>
-        <RenglonConteo etiqueta={etiquetaRol(d.primerConteo, 'Primer conteo')} lado={d.primerConteo} d={d} />
-        <RenglonConteo etiqueta={etiquetaRol(d.segundoConteo, 'Segundo conteo')} lado={d.segundoConteo} d={d} />
-        <FilaDato
-          etiqueta="Diferencia"
-          valor={enPaquetes(diferencia(d), d)}
-          detalle={[quienContoMas(d), totalSecundario(diferencia(d), d)].filter(Boolean).join(' · ')}
-          tono="discrepancia"
-          separado
-          accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}. ${quienContoMas(d) ?? ''}`}
-        />
-      </Tarjeta>
+      <View style={estilos.comparacion}>
+        <View style={estilos.ladosConteo}>
+          <LadoConteo etiqueta={etiquetaRol(d.primerConteo, 'Primer conteo')} lado={d.primerConteo} d={d} />
+          <LadoConteo etiqueta={etiquetaRol(d.segundoConteo, 'Segundo conteo')} lado={d.segundoConteo} d={d} />
+        </View>
+        <FranjaDiferencia d={d} />
+      </View>
 
       {edicion ? (
         <EditorCantidad d={d} edicion={edicion} ocupado={ocupado} onAbrirCampo={onAbrirCampo} onGuardar={onGuardar} onCancelar={onCancelar} />
@@ -750,14 +744,39 @@ function quienContoMas(d: Discrepancia): string | null {
   return `${mayor}: más`;
 }
 
-/** "Vendedor   5 paquetes y 2 piezas": en la unidad en que se contó, sin dividir de cabeza. */
-function RenglonConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLado; d: Discrepancia }) {
+/** Un conteo como bloque: quién (el rol) arriba y lo que contó, grande, en la unidad en que se contó. */
+function LadoConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLado; d: Discrepancia }) {
   return (
-    <FilaDato
-      etiqueta={etiqueta}
-      valor={enPaquetes(lado.piezas, d)}
-      accessibilityLabel={`${etiqueta}: ${vozCantidad(lado.piezas, d)}`}
-    />
+    <View style={estilos.ladoConteo} accessible accessibilityLabel={`${etiqueta}: ${vozCantidad(lado.piezas, d)}`}>
+      <Text style={estilos.rotuloLado} numberOfLines={1}>
+        {etiqueta}
+      </Text>
+      <Text style={estilos.valorLado}>{enPaquetes(lado.piezas, d)}</Text>
+    </View>
+  );
+}
+
+/**
+ * La diferencia: franja ámbar con su rombo (la forma dice "atención" aunque el
+ * sol lave el color), la cifra grande y, en palabras, quién contó más.
+ */
+function FranjaDiferencia({ d }: { d: Discrepancia }) {
+  const detalle = [quienContoMas(d), totalSecundario(diferencia(d), d)].filter(Boolean).join(' · ');
+  return (
+    <View
+      style={estilos.franjaDiferencia}
+      accessible
+      accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}. ${quienContoMas(d) ?? ''}`}
+    >
+      <View style={estilos.circuloRombo}>
+        <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl - ESPACIADO.xs} />
+      </View>
+      <View style={estilos.textosDiferencia}>
+        <Text style={estilos.rotuloDiferencia}>Diferencia</Text>
+        {detalle ? <Text style={estilos.detalleDiferencia}>{detalle}</Text> : null}
+      </View>
+      <Text style={estilos.valorDiferencia}>{enPaquetes(diferencia(d), d)}</Text>
+    </View>
   );
 }
 
@@ -1099,6 +1118,72 @@ function ModalConfirmar({
 }
 
 const estilos = StyleSheet.create({
+  // Los dos conteos lado a lado y la diferencia debajo: se comparan de un vistazo.
+  comparacion: {
+    gap: ESPACIADO.sm,
+  },
+  ladosConteo: {
+    flexDirection: 'row',
+    gap: ESPACIADO.sm,
+  },
+  ladoConteo: {
+    flex: 1,
+    gap: 2,
+    padding: ESPACIADO.md,
+    backgroundColor: COLORES.fondo,
+    borderRadius: RADIOS.control,
+  },
+  rotuloLado: ETIQUETA_DATO,
+  valorLado: {
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 18,
+    lineHeight: 24,
+    color: COLORES.texto,
+    ...CIFRAS,
+  },
+  franjaDiferencia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.md,
+    paddingVertical: ESPACIADO.sm + 2,
+    paddingLeft: ESPACIADO.sm + 2,
+    paddingRight: ESPACIADO.lg,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.discrepanciaHonda,
+    borderRadius: RADIOS.completo,
+  },
+  circuloRombo: {
+    width: ESPACIADO.xxl + ESPACIADO.sm,
+    height: ESPACIADO.xxl + ESPACIADO.sm,
+    borderRadius: RADIOS.completo,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES.superficie,
+  },
+  textosDiferencia: {
+    flex: 1,
+  },
+  rotuloDiferencia: {
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.discrepanciaTexto,
+  },
+  detalleDiferencia: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.discrepanciaTexto,
+    ...CIFRAS,
+  },
+  valorDiferencia: {
+    flexShrink: 1,
+    ...TIPOGRAFIA.titulo,
+    fontSize: 20,
+    lineHeight: 26,
+    color: COLORES.discrepanciaTexto,
+    textAlign: 'right',
+    ...CIFRAS,
+  },
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondo,
@@ -1189,8 +1274,8 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   opcionPersonaActiva: {
-    backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
   },
   textosPersona: {
     flex: 1,
@@ -1216,8 +1301,8 @@ const estilos = StyleSheet.create({
     height: ESPACIADO.xl + ESPACIADO.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.chico,
-    backgroundColor: COLORES.texto,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.accion,
   },
   textoNumeroPaso: {
     ...TIPOGRAFIA.etiqueta,
@@ -1236,8 +1321,6 @@ const estilos = StyleSheet.create({
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: 1,
-    borderLeftColor: COLORES.contornoTarjeta,
   },
   lateralVacio: {
     flex: 1,
@@ -1337,7 +1420,7 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.marcaTinte,
     borderRadius: RADIOS.medio,
     borderWidth: BORDES.medio,
-    borderColor: COLORES.marca,
+    borderColor: COLORES.accion,
   },
   camposEditor: {
     flexDirection: 'row',
@@ -1357,8 +1440,8 @@ const estilos = StyleSheet.create({
   // Lo que se está editando lleva la marca, relleno completo como en el conteo.
   // Mismo grosor de contorno en ambos estados: el campo no salta al activarse.
   campoEditorActivo: {
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marca,
+    borderColor: COLORES.accion,
+    backgroundColor: COLORES.accion,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -1377,7 +1460,7 @@ const estilos = StyleSheet.create({
     flexShrink: 1,
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.accionHonda,
     ...CIFRAS,
   },
 

@@ -495,11 +495,11 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.superficie,
   },
   opcionPropuesta: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.accion,
   },
   opcionPresionada: {
-    backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
     transform: [{ scale: ESCALA_PRESIONADO }],
   },
   filaOpcion: {

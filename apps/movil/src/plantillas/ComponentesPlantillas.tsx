@@ -12,7 +12,7 @@ import {
 } from '../componentes/base';
 import { textoEmpaque, type EmpaqueConfirmado } from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import { BARRA_INFERIOR, BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 
 /** Piezas comunes de las pantallas de plantillas: filas de producto, casillas y avisos. */
 
@@ -223,12 +223,12 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.marcaTinte,
   },
   botonFamiliaPresionado: {
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
   },
   textoBotonFamilia: {
     ...TIPOGRAFIA.etiqueta,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.accionHonda,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -252,7 +252,7 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.errorFondo,
   },
   filaMarcadaMarca: {
-    borderColor: COLORES.marca,
+    borderColor: COLORES.accion,
     backgroundColor: COLORES.marcaTinte,
   },
   filaPresionada: {
@@ -291,8 +291,8 @@ const estilos = StyleSheet.create({
     borderColor: COLORES.error,
   },
   cajaMarca: {
-    backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
   },
   // Palomita: dos lados de un rectángulo, girados (igual que al rechazar productos).
   palomita: {
@@ -305,11 +305,8 @@ const estilos = StyleSheet.create({
     transform: [{ rotate: '45deg' }],
   },
   barra: {
-    paddingHorizontal: RITMO.margen,
-    paddingVertical: ESPACIADO.md,
-    backgroundColor: COLORES.superficie,
-    borderTopWidth: BORDES.grueso,
-    borderTopColor: COLORES.marca,
+    ...BARRA_INFERIOR,
+    paddingBottom: ESPACIADO.md,
   },
   columnaBarra: {
     width: '100%',

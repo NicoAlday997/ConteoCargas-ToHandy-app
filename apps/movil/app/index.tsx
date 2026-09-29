@@ -26,6 +26,7 @@ import {
   BloqueEsqueleto,
   Boton,
   CampoTexto,
+  Degradado,
   Esqueleto,
   FilaMenu,
   GrupoMenu,
@@ -56,10 +57,34 @@ import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
 import { useBarraEstado } from '../src/theme/barra-estado';
-import { CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import {
+  BORDES,
+  CIFRAS,
+  COLORES,
+  DEGRADADOS,
+  ESPACIADO,
+  FUENTE,
+  MOVIMIENTO,
+  ONDA,
+  RADIOS,
+  RESORTES,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../src/theme/tokens';
 
 /** Una columna legible también en tablet. */
 const ANCHO_CONTENIDO = 560;
+const TAMANO_AVATAR = TOQUE_MINIMO;
+
+/** El contenido del inicio sube a su lugar con un resorte, escalonado por bloque. */
+function entradaBloque(orden: number) {
+  return FadeInDown.delay(orden * MOVIMIENTO.escalon * 2)
+    .springify()
+    .damping(RESORTES.entrada.damping)
+    .stiffness(RESORTES.entrada.stiffness);
+}
 
 type EstadoSesion =
   | { tipo: 'verificando' }
@@ -111,60 +136,75 @@ export default function PantallaInicio() {
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <ScrollView style={estilos.cuerpo} contentContainerStyle={[estilos.scroll, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}>
         <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
+          <Degradado degradado={DEGRADADOS.marca} halo anillos />
           <View style={[estilos.columna, estilos.margenLateral, estilos.lineaMarca]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.xs} />
-            <Text style={estilos.nombreApp}>Conteo de Cargas</Text>
+            <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.sm} />
+            <Text style={estilos.nombreApp}>Handy Conteo</Text>
           </View>
           <View style={[estilos.columna, estilos.identidad]}>
-            <View style={estilos.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              <Text style={estilos.iniciales}>{iniciales(nombre)}</Text>
-            </View>
             <View style={estilos.textosIdentidad}>
-              <Text style={estilos.nombre} accessibilityRole="header">
+              <Text style={estilos.saludo}>Hola,</Text>
+              <Text style={estilos.nombre} accessibilityRole="header" numberOfLines={2}>
                 {nombre}
               </Text>
-              {usuario?.rolApp && <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>}
+              {usuario?.rolApp && (
+                <View style={estilos.pastillaRol}>
+                  <View style={estilos.puntoRol} />
+                  <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>
+                </View>
+              )}
+            </View>
+            <View style={estilos.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <Degradado degradado={DEGRADADOS.accion} radio={TAMANO_AVATAR / 2} />
+              <Text style={estilos.iniciales}>{iniciales(nombre)}</Text>
             </View>
           </View>
+          <View pointerEvents="none" style={estilos.montura} />
         </View>
         <View style={[estilos.columna, estilos.contenido]}>
           {cuenta && usuario && (
-            <>
+            <Animated.View entering={entradaBloque(0)} style={estilos.bloque}>
               <AccesoConflictos />
               <AccionesCarga usuario={usuario} />
-            </>
+            </Animated.View>
           )}
           {/* Primero lo que frena al camión: ninguna carga llega a Handy sin autorización. */}
-          {usuario?.rolApp === 'SUPERVISOR' && <AccesoAutorizaciones />}
-          {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
-          {usuario?.rolApp === 'SUPERVISOR' && <AccesoFactores />}
-          <GrupoMenu>
-            {usuario?.rolApp === 'SUPERVISOR' && (
-              <FilaMenu
-                tarea="plantillas"
-                texto="Plantillas de carga"
-                detalle="Qué productos ve cada ruta al contar"
-                onPress={() => router.push('/plantillas')}
-              />
-            )}
-            {usuario?.rolApp === 'SUPERVISOR' && (
-              <FilaMenu
-                tarea="coloresFamilia"
-                texto="Colores de familias"
-                detalle="Para ubicar cada familia más rápido al contar"
-                onPress={() => router.push('/familias')}
-              />
-            )}
-            {usuario?.rolApp === 'SUPERVISOR' && (
-              <FilaMenu
-                tarea="diasNoLaborables"
-                texto="Días no laborables"
-                detalle="Festivos, paros o cierres en que no sale ningún camión"
-                onPress={() => router.push('/dias-no-laborables')}
-              />
-            )}
-            {usuario && <FilaMenu tarea="historial" texto="Historial de cargas" onPress={() => router.push('/historial')} />}
-          </GrupoMenu>
+          {usuario?.rolApp === 'SUPERVISOR' && (
+            <Animated.View entering={entradaBloque(0)} style={estilos.bloque}>
+              <AccesoAutorizaciones />
+              {/* Mientras haya empaques sin confirmar, esos productos no se cuentan en paquetes. */}
+              <AccesoFactores />
+            </Animated.View>
+          )}
+          <Animated.View entering={entradaBloque(1)}>
+            <GrupoMenu>
+              {usuario?.rolApp === 'SUPERVISOR' && (
+                <FilaMenu
+                  tarea="plantillas"
+                  texto="Plantillas de carga"
+                  detalle="Qué productos ve cada ruta al contar"
+                  onPress={() => router.push('/plantillas')}
+                />
+              )}
+              {usuario?.rolApp === 'SUPERVISOR' && (
+                <FilaMenu
+                  tarea="coloresFamilia"
+                  texto="Colores de familias"
+                  detalle="Para ubicar cada familia más rápido al contar"
+                  onPress={() => router.push('/familias')}
+                />
+              )}
+              {usuario?.rolApp === 'SUPERVISOR' && (
+                <FilaMenu
+                  tarea="diasNoLaborables"
+                  texto="Días no laborables"
+                  detalle="Festivos, paros o cierres en que no sale ningún camión"
+                  onPress={() => router.push('/dias-no-laborables')}
+                />
+              )}
+              {usuario && <FilaMenu tarea="historial" texto="Historial de cargas" onPress={() => router.push('/historial')} />}
+            </GrupoMenu>
+          </Animated.View>
           <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
         </View>
       </ScrollView>
@@ -186,11 +226,13 @@ function EsqueletoInicio() {
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <View style={estilos.cuerpo}>
         <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
+          <Degradado degradado={DEGRADADOS.marca} halo anillos />
           <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad, estilos.margenLateral]}>
             <LineaEsqueleto nivel="micro" ancho="40%" sobreMarca />
             <LineaEsqueleto nivel="display" ancho="70%" sobreMarca />
             <LineaEsqueleto nivel="cuerpo" ancho="30%" sobreMarca />
           </Esqueleto>
+          <View pointerEvents="none" style={estilos.montura} />
         </View>
         <View style={[estilos.columna, estilos.contenido]}>
           <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
@@ -878,14 +920,25 @@ const estilos = StyleSheet.create({
   scroll: {
     flexGrow: 1,
   },
-  // A todo el ancho y en asfalto: quién está en sesión, como el letrero de un
-  // turno. El margen lateral lo pone la columna de adentro: en tablet el
-  // avatar queda alineado con las tarjetas de abajo.
+  // A todo el ancho y en azul noche: quién está en sesión, la portada del
+  // producto. El margen lateral lo pone la columna de adentro: en tablet el
+  // saludo queda alineado con las piezas de abajo.
   bandaIdentidad: {
     paddingTop: ESPACIADO.lg,
-    paddingBottom: ESPACIADO.xl,
+    paddingBottom: RADIOS.encabezado + ESPACIADO.xl,
     gap: ESPACIADO.xl,
-    backgroundColor: COLORES.marca,
+    overflow: 'hidden',
+  },
+  // La superficie clara monta el héroe con su borde redondeado.
+  montura: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: RADIOS.encabezado + 1,
+    backgroundColor: COLORES.fondo,
+    borderTopLeftRadius: RADIOS.encabezado,
+    borderTopRightRadius: RADIOS.encabezado,
   },
   // Una columna legible también en tablet; la banda sí va a todo el ancho.
   columna: {
@@ -902,50 +955,76 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.sm,
   },
   nombreApp: {
-    fontFamily: FUENTE.titular,
-    fontSize: 15,
-    lineHeight: 18,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: COLORES.marcaTenue,
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.textoSobreColor,
   },
   identidad: {
     paddingHorizontal: RITMO.margen,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: RITMO.relacionado + ESPACIADO.xs,
+    alignItems: 'flex-end',
+    gap: RITMO.relacionado,
   },
-  // Placa blanca sobre asfalto, como el escudo de una ruta.
+  // Círculo en degradado azul con filo blanco: el gafete de quien está en sesión.
   avatar: {
-    width: TOQUE_MINIMO,
-    height: TOQUE_MINIMO,
+    width: TAMANO_AVATAR,
+    height: TAMANO_AVATAR,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.medio,
-    backgroundColor: COLORES.superficie,
+    borderRadius: RADIOS.completo,
+    borderWidth: BORDES.medio,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+    boxShadow: '0px 8px 20px rgba(3, 10, 30, 0.35)',
   },
   iniciales: {
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 24,
-    lineHeight: 28,
-    letterSpacing: 0.5,
-    color: COLORES.texto,
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: 0.2,
+    color: COLORES.textoSobreColor,
   },
   textosIdentidad: {
     flex: 1,
-    gap: RITMO.interno,
+    gap: 2,
+  },
+  saludo: {
+    ...TIPOGRAFIA.cuerpo,
+    fontSize: 17,
+    color: COLORES.marcaTenue,
   },
   nombre: {
     ...TIPOGRAFIA.display,
+    fontSize: 34,
+    lineHeight: 40,
     color: COLORES.textoSobreColor,
   },
+  // El rol en una pastilla de luz con su punto: se lee de reojo.
+  pastillaRol: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+    marginTop: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs,
+    borderRadius: RADIOS.completo,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: BORDES.fino,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  puntoRol: {
+    width: ESPACIADO.sm,
+    height: ESPACIADO.sm,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.cian,
+  },
   rol: {
-    fontFamily: FUENTE.titular,
-    fontSize: 15,
-    lineHeight: 18,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: COLORES.accionViva,
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.textoSobreColor,
+  },
+  bloque: {
+    gap: RITMO.grupo,
   },
   // Texto en rojo, sin relleno: se encuentra, pero no invita.
   cerrarSesion: {
@@ -953,7 +1032,7 @@ const estilos = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.xl,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
     marginTop: 'auto',
   },
   cerrarSesionPresionado: {
@@ -972,7 +1051,7 @@ const estilos = StyleSheet.create({
     flexGrow: 1,
     gap: RITMO.grupo,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xl,
+    paddingTop: ESPACIADO.xs,
   },
   esqueletoAcciones: {
     gap: RITMO.relacionado,

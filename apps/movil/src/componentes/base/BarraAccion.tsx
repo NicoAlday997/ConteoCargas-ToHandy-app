@@ -2,13 +2,13 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ANCHO_MAXIMO_LISTA, COLORES, ESCALA_TEXTO, ESPACIADO, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import { ANCHO_MAXIMO_LISTA, BARRA_INFERIOR, COLORES, ESCALA_TEXTO, ESPACIADO, RITMO, TIPOGRAFIA } from '../../theme/tokens';
 
 /**
  * La acción de la pantalla, fija abajo: donde llega el pulgar con el teléfono
  * en una mano y la otra ocupada. Sobre ella, en una línea, por qué todavía no
- * se puede (si no se puede). Blanca con contorno arriba: se separa de la
- * lista que pasa por debajo sin sombra.
+ * se puede (si no se puede). Una pieza blanca de esquinas altas redondeadas
+ * con sombra que sube: flota sobre la lista que pasa por debajo.
  */
 export function BarraAccion({
   children,
@@ -37,13 +37,7 @@ export function BarraAccion({
 }
 
 const estilos = StyleSheet.create({
-  barra: {
-    paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.md,
-    backgroundColor: COLORES.superficie,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.contornoTarjeta,
-  },
+  barra: BARRA_INFERIOR,
   // En tablet, la barra va a todo el ancho pero el botón no: la misma columna que la lista.
   columna: {
     width: '100%',

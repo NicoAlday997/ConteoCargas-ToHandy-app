@@ -8,9 +8,8 @@ import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, PLACA, RADIOS
  * - `neutro`: fondo gris claro; para lo que no pide ninguna decisión.
  * - `referencia`: fondo gris claro y texto secundario; un dato que se consulta
  *   y no es un estado, como el factor de empaque confirmado. Se retira.
- * `marca` no es para etiquetas de estado: el azul es para la acción principal
- * y lo que se edita (ver la regla del azul en tokens.ts). Solo lo que marca una
- * elección en curso (un producto seleccionado para agregar a la plantilla).
+ * `marca` / `accion` (azul) no son estados: marcan lo seleccionado o en curso
+ * (un producto elegido para la plantilla, un filtro activo).
  */
 export type TonoEtiqueta = ColorTono | 'fuerte' | 'neutro' | 'referencia';
 
@@ -44,7 +43,7 @@ interface Props {
 /** Sólido, fondo tintado y texto sobre ese fondo, por tono. */
 const COLORES_TONO: Record<TonoEtiqueta, { solido: string; fondo: string; texto: string }> = {
   ...TONOS,
-  fuerte: { solido: COLORES.texto, fondo: COLORES.superficieHonda, texto: COLORES.texto },
+  fuerte: { solido: COLORES.marca, fondo: COLORES.superficieHonda, texto: COLORES.texto },
   neutro: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.texto },
   referencia: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.textoSecundario },
 };
@@ -100,23 +99,25 @@ const estilos = StyleSheet.create({
     maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.sm + 2,
-    // Placa de letrero: esquina corta. Se reconoce como dato, no como texto suelto.
-    borderRadius: RADIOS.chico,
+    paddingHorizontal: ESPACIADO.md,
+    // Pastilla: la forma de un estado en toda la app. Se reconoce como dato, no como texto suelto.
+    borderRadius: RADIOS.completo,
   },
   normal: {
-    paddingVertical: 3,
+    paddingVertical: ESPACIADO.xs,
   },
   // Sin relleno vertical: va en el teclado de conteo, donde cada punto de alto
   // es lista que se deja de ver. El interlineado del subtítulo ya le da aire.
   destacada: {
     paddingVertical: 0,
+    borderRadius: RADIOS.chico,
   },
   // Sin relleno vertical: el interlineado ya da aire y la fila no crece. Tampoco
   // más relleno lateral: le quitaría ancho al nombre y lo haría saltar de línea.
   grande: {
     paddingVertical: 0,
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.md,
+    borderRadius: RADIOS.control,
   },
   anchoFijo: {
     minWidth: TOQUE_MINIMO,
@@ -128,7 +129,7 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
   },
-  // La leyenda de una placa: mayúsculas condensadas, se lee de reojo.
+  // La leyenda de una pastilla: negrita compacta, se lee de reojo.
   texto_normal: {
     ...PLACA,
     ...CIFRAS,
@@ -136,7 +137,7 @@ const estilos = StyleSheet.create({
   texto_destacada: {
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 18,
+    fontSize: 17,
     ...CIFRAS,
   },
   texto_grande: {

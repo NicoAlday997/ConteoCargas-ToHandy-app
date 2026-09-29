@@ -161,7 +161,7 @@ export default function PantallaCambiarPin() {
   };
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <View style={[estilos.contenido, esTablet && estilos.contenidoTablet]}>
         <View>
           <Pulsable
@@ -240,7 +240,7 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.medio,
   },
   botonCancelarPresionado: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.accion,
   },
   textoBotonCancelar: {
     ...TIPOGRAFIA.subtitulo,

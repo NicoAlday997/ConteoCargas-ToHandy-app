@@ -84,7 +84,6 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: RITMO.relacionado,
   },
-  // El título de una sección es la leyenda de un letrero: condensada y firme.
   seccion: {
     flex: 1,
     ...TIPOGRAFIA.tituloBarra,
@@ -107,19 +106,18 @@ const estilos = StyleSheet.create({
     marginVertical: -ESPACIADO.md,
     marginRight: -ESPACIADO.md,
     paddingHorizontal: ESPACIADO.md,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
   },
   accionPresionada: {
-    backgroundColor: COLORES.texto,
+    backgroundColor: COLORES.marcaTinte,
   },
-  // Enlace de texto: neutro y subrayado (ver la regla del azul en tokens.ts).
+  // Enlace de texto: azul señal, lo que se toca en la app.
   textoAccion: {
     ...TIPOGRAFIA.cuerpo,
-    fontFamily: FUENTE.negrita,
-    color: COLORES.texto,
-    textDecorationLine: 'underline',
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.accion,
   },
   textoInvertido: {
-    color: COLORES.textoSobreColor,
+    color: COLORES.accionHonda,
   },
 });

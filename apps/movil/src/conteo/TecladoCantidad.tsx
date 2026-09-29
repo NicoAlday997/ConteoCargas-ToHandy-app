@@ -6,12 +6,15 @@ import {
   BORDES,
   CIFRAS,
   COLORES,
+  DEGRADADOS,
+  ESCALA_PRESIONADO_CONTROL,
   ESCALA_TEXTO,
   ESPACIADO,
   FUENTE,
   ONDA,
   RADIOS,
   ROTULO,
+  SOMBRAS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
 } from '../theme/tokens';
@@ -22,7 +25,7 @@ import {
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
-import { Chevron, Glifo, Pulsable } from '../componentes/base';
+import { Chevron, Degradado, Glifo, Pulsable } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 import { formatearNombreProducto } from './formato-nombre';
 
@@ -75,9 +78,10 @@ interface Props {
  * con 73 productos casi iguales, perder el hilo es el error más caro.
  *
  * El ritmo manda. La tecla que avanza es la acción de la pantalla (azul
- * sólido, doble alto, abajo a la derecha donde descansa el pulgar); "No lleva"
- * vive junto a ella porque es la captura más repetida del día; "Listo" solo
- * cierra y por eso es la más callada.
+ * luminoso en degradado, doble alto, abajo a la derecha donde descansa el
+ * pulgar); "No lleva" vive junto a ella porque es la captura más repetida del
+ * día; "Listo" solo cierra y por eso es la más callada. La lectura va en un
+ * visor azul noche: la pantalla de la báscula.
  */
 export function TecladoCantidad({
   producto,
@@ -117,10 +121,11 @@ export function TecladoCantidad({
         </View>
         <Pulsable
           onPress={onListo}
-          onda={ONDA.sobreColor}
+          onda={ONDA.sobreClaro}
           hitSlop={HOLGURA_ENCABEZADO}
           accessibilityRole="button"
           accessibilityLabel="Listo, cerrar teclado"
+          escala={ESCALA_PRESIONADO_CONTROL}
           style={({ pressed }) => [estilos.botonListo, pressed && estilos.botonListoPresionado]}
         >
           <Text style={estilos.textoListo} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
@@ -169,6 +174,7 @@ export function TecladoCantidad({
           accessible
           accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
         >
+          <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.control} />
           <Text
             style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
             numberOfLines={1}
@@ -183,7 +189,7 @@ export function TecladoCantidad({
       <View style={estilos.zonaAviso}>
         {avisoSueltas && factor !== null && (
           <View style={estilos.aviso} accessibilityRole="alert">
-            <Glifo nombre="alerta" color={COLORES.texto} tamano={ESPACIADO.lg + 2} />
+            <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.lg + 2} />
             <Text style={estilos.textoAviso} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
               Eso ya es un paquete completo de {factor}. Si venía cerrado, cuéntalo en Paquetes.
             </Text>
@@ -250,7 +256,8 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
       onPress={onPress}
       tacto="tecla"
       repetible
-      onda={avance ? ONDA.sobreClaro : ONDA.sobreColor}
+      escala={ESCALA_PRESIONADO_CONTROL}
+      onda={avance || variante === 'noLleva' ? ONDA.sobreColor : ONDA.sobreClaro}
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       style={({ pressed }) => [
@@ -264,6 +271,7 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
     >
       {({ pressed }) => (
         <View style={estilos.contenidoTecla}>
+          {avance && <Degradado degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion} radio={RADIOS.control} />}
           <Text
             style={[
               variante === 'digito' ? estilos.textoDigito : estilos.textoSecundario,
@@ -277,7 +285,7 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
           >
             {etiqueta}
           </Text>
-          {chevron && <Chevron color={pressed ? COLORES.textoSobreColor : COLORES.texto} tamano={ESPACIADO.xl} />}
+          {chevron && <Chevron color={avance || pressed ? COLORES.textoSobreColor : COLORES.texto} tamano={ESPACIADO.xl} />}
         </View>
       )}
     </Pulsable>
@@ -285,21 +293,24 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
 }
 
 const estilos = StyleSheet.create({
-  // El tablero de asfalto: se acopla abajo y se separa de la lista clara por
-  // su propio fondo, como el tablero de una cabina. Teclas en relieve tonal.
+  // El panel claro se acopla abajo y flota sobre la lista con su sombra que
+  // sube. Las teclas son piezas suaves; lo único oscuro es el visor.
   panel: {
     gap: ESPACIADO.sm,
     padding: ESPACIADO.md,
-    backgroundColor: COLORES.marca,
+    paddingTop: ESPACIADO.md + ESPACIADO.xs,
+    backgroundColor: COLORES.superficie,
     borderTopLeftRadius: RADIOS.encabezado,
     borderTopRightRadius: RADIOS.encabezado,
+    boxShadow: SOMBRAS.panel,
   },
   panelLateral: {
     flex: 1,
     justifyContent: 'flex-end',
     padding: ESPACIADO.lg,
-    borderTopLeftRadius: 0,
+    borderTopLeftRadius: RADIOS.encabezado,
     borderTopRightRadius: 0,
+    borderBottomLeftRadius: RADIOS.encabezado,
   },
   encabezado: {
     flexDirection: 'row',
@@ -314,27 +325,27 @@ const estilos = StyleSheet.create({
   },
   nombre: {
     flex: 1,
-    ...TIPOGRAFIA.cuerpo,
-    fontFamily: FUENTE.semiNegrita,
-    color: COLORES.textoSobreColor,
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.texto,
   },
-  // Solo cierra: la más callada del panel. Un tono arriba del asfalto.
+  // Solo cierra: la más callada del panel. Una pastilla azul suave.
   botonListo: {
     minHeight: ALTO_CONTROL_ENCABEZADO,
     paddingHorizontal: ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.marcaHonda,
-    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.azulSuave,
+    borderRadius: RADIOS.completo,
   },
   botonListoPresionado: {
-    backgroundColor: COLORES.marcaClara,
+    backgroundColor: COLORES.marcaTinte,
   },
   textoListo: {
     ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.titular,
-    fontSize: 16,
-    color: COLORES.textoSobreColor,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 15,
+    color: COLORES.accionHonda,
   },
   lineaValor: {
     flexDirection: 'row',
@@ -342,57 +353,64 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: ESPACIADO.sm,
   },
-  // Paquetes | Sueltas: cuál se captura se ve por forma (placa blanca) y no solo por el rótulo.
+  // Paquetes | Sueltas: control segmentado en cápsula; cuál se captura se ve
+  // por forma (la pieza blanca que flota) y no solo por el rótulo.
   selector: {
     flexDirection: 'row',
     gap: ESPACIADO.xs,
     padding: ESPACIADO.xs,
-    backgroundColor: COLORES.marcaProfunda,
-    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.completo,
   },
   opcionCampo: {
     minHeight: ALTO_CONTROL_ENCABEZADO - ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
+    paddingHorizontal: ESPACIADO.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.chico,
+    borderRadius: RADIOS.completo,
   },
   opcionCampoActiva: {
     backgroundColor: COLORES.superficie,
+    boxShadow: SOMBRAS.tecla,
   },
   textoOpcion: {
     ...ROTULO,
-    fontFamily: FUENTE.titular,
+    fontFamily: FUENTE.negrita,
     fontSize: TIPOGRAFIA.etiqueta.fontSize,
     lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
-    color: COLORES.marcaTenue,
+    color: COLORES.textoSecundario,
   },
   textoOpcionActiva: {
-    color: COLORES.texto,
+    fontFamily: FUENTE.extraNegrita,
+    color: COLORES.accionHonda,
   },
   campoUnico: {
     ...ROTULO,
-    fontFamily: FUENTE.titular,
+    fontFamily: FUENTE.negrita,
     fontSize: TIPOGRAFIA.etiqueta.fontSize,
     lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
-    color: COLORES.marcaTenue,
+    color: COLORES.textoSecundario,
   },
-  // La lectura de lo tecleado, subrayada en verde: la línea continua del carril.
+  // El visor de la báscula: azul noche con la lectura en blanco.
   visor: {
     minWidth: ANCHO_VISOR,
-    paddingHorizontal: ESPACIADO.sm,
-    borderBottomWidth: BORDES.grueso + 1,
-    borderBottomColor: COLORES.accionViva,
+    minHeight: ALTO_CONTROL_ENCABEZADO + ESPACIADO.xs,
+    justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.md,
+    borderRadius: RADIOS.control,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.marca,
   },
   visorConAviso: {
-    borderBottomColor: COLORES.discrepancia,
+    borderColor: COLORES.discrepancia,
   },
   // Lo que se teclea domina el panel. Mismo alto de línea que un título: el
   // teclado no crece (los dígitos no tienen descendentes).
   valor: {
     ...TIPOGRAFIA.titulo,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 32,
+    fontSize: 30,
+    lineHeight: 36,
     color: COLORES.textoSobreColor,
     textAlign: 'right',
     ...CIFRAS,
@@ -406,20 +424,22 @@ const estilos = StyleSheet.create({
     minHeight: TIPOGRAFIA.etiqueta.lineHeight * 2 + ESPACIADO.xs,
     justifyContent: 'center',
   },
-  // Letrero preventivo sobre el asfalto: amarillo con tinta y rombo.
+  // Aviso ámbar con su rombo.
   aviso: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.sm + 2,
     paddingVertical: 2,
-    backgroundColor: COLORES.discrepancia,
-    borderRadius: RADIOS.chico,
+    backgroundColor: COLORES.discrepanciaFondo,
+    borderWidth: BORDES.fino,
+    borderColor: COLORES.discrepanciaHonda,
+    borderRadius: RADIOS.medio,
   },
   textoAviso: {
     flex: 1,
     ...TIPOGRAFIA.etiqueta,
-    color: COLORES.texto,
+    color: COLORES.discrepanciaTexto,
   },
   // Numpad: tres columnas de dígitos y una de acciones a la derecha, del lado del pulgar.
   teclado: {
@@ -441,63 +461,70 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     gap: ESPACIADO.sm,
   },
+  // Pieza suave sobre el panel blanco, con un contorno fino que la dibuja a pleno sol.
   tecla: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.xs,
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: COLORES.fondo,
     borderWidth: BORDES.fino,
-    borderColor: COLORES.marcaClara,
-    borderRadius: RADIOS.medio,
+    borderColor: COLORES.contornoTarjeta,
+    borderRadius: RADIOS.control,
   },
   // Dentro de la columna de acciones la tecla no se estira sola; la de avance sí.
   teclaEstirada: {
     flexGrow: 1,
   },
   contenidoTecla: {
+    alignSelf: 'stretch',
+    flexGrow: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: ESPACIADO.xs,
   },
-  // El gris de la fila "no lleva": la tecla dice qué estado deja.
+  // El gris pizarra de la fila "no lleva": la tecla dice qué estado deja.
   teclaNoLleva: {
     backgroundColor: COLORES.pendiente,
     borderColor: COLORES.pendiente,
   },
-  // La acción del panel: verde vivo, el "adelante" del tablero.
+  // La acción del panel: azul luminoso en degradado con su sombra azul.
   teclaAvance: {
-    backgroundColor: COLORES.accionViva,
-    borderColor: COLORES.accionViva,
+    paddingHorizontal: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    boxShadow: SOMBRAS.accion,
   },
   teclaAvancePresionada: {
+    boxShadow: 'none',
+  },
+  // Se enciende en azul al presionar: se nota aun con poca luz.
+  teclaPresionada: {
     backgroundColor: COLORES.accion,
     borderColor: COLORES.accion,
   },
-  // Inversión completa al presionar: la tecla se enciende en blanco, se nota aun con poca luz.
-  teclaPresionada: {
-    backgroundColor: COLORES.superficie,
-    borderColor: COLORES.superficie,
-  },
   textoDigito: {
     ...TIPOGRAFIA.tecla,
-    color: COLORES.textoSobreColor,
+    color: COLORES.texto,
     ...CIFRAS,
   },
   textoSecundario: {
     ...TIPOGRAFIA.cuerpo,
-    fontFamily: FUENTE.titular,
-    fontSize: 18,
-    color: COLORES.textoSobreColor,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 16,
+    color: COLORES.texto,
   },
   textoNoLleva: {
     color: COLORES.textoSobreColor,
   },
   textoAvance: {
     ...TIPOGRAFIA.tituloBarra,
-    color: COLORES.texto,
+    fontSize: 18,
+    lineHeight: 24,
+    color: COLORES.textoSobreColor,
   },
   textoPresionado: {
-    color: COLORES.texto,
+    color: COLORES.textoSobreColor,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,

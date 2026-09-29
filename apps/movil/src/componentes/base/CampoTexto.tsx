@@ -61,7 +61,7 @@ export function CampoTexto({
         placeholder={ejemplo}
         placeholderTextColor={COLORES.textoSecundario}
         selectionColor={COLORES.accion}
-        cursorColor={COLORES.marca}
+        cursorColor={COLORES.accion}
         multiline={multilinea}
         maxLength={maxLength}
         autoFocus={autoFocus}
@@ -99,8 +99,8 @@ const estilos = StyleSheet.create({
   etiqueta: ETIQUETA_DATO,
   // Con foco, el rótulo sube a tinta: dice qué se está escribiendo.
   etiquetaEnfocada: {
-    fontFamily: FUENTE.semiNegrita,
-    color: COLORES.texto,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.accionHonda,
   },
   campo: {
     minHeight: TOQUE_MINIMO,
@@ -109,17 +109,18 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.texto,
     backgroundColor: COLORES.superficie,
-    borderWidth: BORDES.medio,
+    borderWidth: 1.5,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.control,
   },
   multilinea: {
     minHeight: TOQUE_MINIMO + ESPACIADO.xl,
     textAlignVertical: 'top',
   },
-  // Lo que se está editando se dibuja en asfalto, igual que la fila que se teclea.
+  // Lo que se está editando se dibuja en azul señal, con un contorno más grueso.
   enfocado: {
-    borderColor: COLORES.marca,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.accion,
     backgroundColor: COLORES.superficie,
   },
   conError: {

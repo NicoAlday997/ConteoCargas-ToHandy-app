@@ -2,12 +2,14 @@ import { memo, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { Glifo, Palomita, Pulsable } from '../componentes/base';
+import { Degradado, Glifo, Palomita, Pulsable } from '../componentes/base';
 import {
   ALTO_CONTROL,
   BORDES,
   CIFRAS,
   COLORES,
+  DEGRADADOS,
+  ESCALA_PRESIONADO_CONTROL,
   ESCALA_TEXTO,
   ESPACIADO,
   FUENTE,
@@ -15,7 +17,9 @@ import {
   OPACIDAD,
   RADIOS,
   ROTULO,
+  SOMBRAS,
   TIPOGRAFIA,
+  TOQUE_MINIMO,
 } from '../theme/tokens';
 import {
   admitePaquetes,
@@ -38,7 +42,10 @@ const DURACION_DESTELLO_MS = MOVIMIENTO.destello;
 const OPACIDAD_DESTELLO = 0.3;
 /** El visor cabe "9999" en la lectura y "NO LLEVA" en su rótulo. */
 const ANCHO_VISOR = 96;
-const ANCHO_CERO = 52;
+/** El 0 es un círculo del toque mínimo: la forma dice "un solo toque, nada que capturar". */
+const LADO_CERO = TOQUE_MINIMO;
+/** La palomita de "contado" va en un círculo verde: forma y color. */
+const LADO_PALOMITA = ESPACIADO.xl;
 /** Pastilla del factor: mismo ancho en todas las filas, así quedan en columna. */
 const ANCHO_FACTOR = 60;
 
@@ -58,7 +65,7 @@ export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): stri
  *   dentro de la fila (empaque sin confirmar, sueltas, rechazo).
  * - contado: con cantidad.
  * - no-lleva: marcado en cero; se retira.
- * - tecleando: la fila entera en asfalto; imposible perder dónde vas.
+ * - tecleando: la fila entera en azul noche; imposible perder dónde vas.
  */
 export type AspectoFila = 'sin-contar' | 'contado' | 'no-lleva' | 'tecleando';
 
@@ -81,13 +88,16 @@ interface ColoresAspecto {
   campoTexto: string;
   /**
    * El visor: la lectura de la báscula. Vacío es un marco punteado; con
-   * lectura es un bloque sólido. Se distingue por FORMA (hueco o lleno), no
-   * solo por tinte: a pleno sol, blanco y verde agua casi se confunden.
+   * lectura es un bloque sólido (encendido en azul cuando está contado). Se
+   * distingue por FORMA (hueco o lleno), no solo por tinte.
    */
   visorFondo: string;
   visorBorde: string;
   visorPunteado: boolean;
 }
+
+/** Contorno de la fila contada: azul claro, se separa del fondo sin competir con el visor. */
+const BORDE_CONTADO = '#9DB8F6';
 
 const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
   'sin-contar': {
@@ -104,18 +114,19 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
     visorBorde: COLORES.bordeSinContar,
     visorPunteado: true,
   },
+  // Contado: la fila se tiñe de azul suave y el visor se enciende (degradado azul).
   contado: {
-    fondo: COLORES.capturadoFondo,
-    borde: COLORES.capturado,
+    fondo: COLORES.azulSuave,
+    borde: BORDE_CONTADO,
     nombre: COLORES.texto,
     total: COLORES.textoSobreColor,
     unidad: COLORES.textoSobreColor,
-    factorFondo: COLORES.capturadoHondo,
+    factorFondo: COLORES.accion,
     factorTexto: COLORES.textoSobreColor,
     campo: COLORES.superficie,
     campoTexto: COLORES.texto,
-    visorFondo: COLORES.capturadoHondo,
-    visorBorde: COLORES.capturadoHondo,
+    visorFondo: COLORES.accion,
+    visorBorde: COLORES.accion,
     visorPunteado: false,
   },
   'no-lleva': {
@@ -138,12 +149,12 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
     nombre: COLORES.textoSobreColor,
     total: COLORES.textoSobreColor,
     unidad: COLORES.marcaTenue,
-    factorFondo: COLORES.marcaHonda,
+    factorFondo: COLORES.marcaClara,
     factorTexto: COLORES.textoSobreColor,
     campo: COLORES.marcaHonda,
     campoTexto: COLORES.textoSobreColor,
     visorFondo: COLORES.marcaHonda,
-    visorBorde: COLORES.marcaHonda,
+    visorBorde: COLORES.marcaClara,
     visorPunteado: false,
   },
 };
@@ -282,7 +293,11 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
 
   return (
     <View
-      style={[estilos.fila, { backgroundColor: colores.fondo, borderColor: colores.borde }]}
+      style={[
+        estilos.fila,
+        { backgroundColor: colores.fondo, borderColor: colores.borde },
+        aspecto === 'no-lleva' ? null : aspecto === 'tecleando' ? estilos.filaTecleando : estilos.filaElevada,
+      ]}
       accessible
       accessibilityLabel={vozFila}
       accessibilityHint={conPaquetes || conSueltas ? 'Toca dos veces para capturar. Más acciones con el gesto de acciones.' : undefined}
@@ -294,9 +309,10 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         else if (accion === 'noLleva') onCero(producto.code);
       }}
     >
+      {aspecto === 'tecleando' && <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.pieza - BORDES_FILA} />}
       <Animated.View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}
+        style={[StyleSheet.absoluteFill, estilos.destello, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}
       />
 
       <View style={estilos.encabezado}>
@@ -305,7 +321,11 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           {nombre}
         </Text>
         <MarcaEnvio envio={envio} sobreMarca={aspecto === 'tecleando'} />
-        {aspecto === 'contado' && envio !== 'rechazado' && <Palomita color={COLORES.capturadoHondo} />}
+        {aspecto === 'contado' && envio !== 'rechazado' && (
+          <View style={estilos.circuloPalomita}>
+            <Palomita color={COLORES.textoSobreColor} tamano={ESPACIADO.lg} />
+          </View>
+        )}
       </View>
 
       <View style={estilos.captura}>
@@ -346,10 +366,11 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           accessible
           accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}
         >
+          {aspecto === 'contado' && <Degradado degradado={DEGRADADOS.visor} radio={RADIOS.medio} />}
           <Text
             style={[estilos.numeroTotal, { color: colores.total }, estado === 'sin-capturar' && estilos.numeroVacio]}
             numberOfLines={1}
-            adjustsFontSizeToFit
+            adjustsFontSizeToFit={estado !== 'sin-capturar'}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {total === null ? '—' : total}
@@ -357,7 +378,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           <Text
             style={[estilos.unidadTotal, { color: colores.unidad }, estado === 'sin-capturar' && estilos.unidadVacia]}
             numberOfLines={1}
-            adjustsFontSizeToFit
+            adjustsFontSizeToFit={estado !== 'sin-capturar'}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {estado === 'en-cero' && aspecto !== 'tecleando' ? 'No lleva' : unidadTotal}
@@ -372,6 +393,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           accessibilityLabel={`${nombre}: no lleva, marcar en cero`}
           accessibilityState={{ disabled: ceroBloqueado, selected: estado === 'en-cero' }}
           hitSlop={ESPACIADO.xs}
+          escala={ESCALA_PRESIONADO_CONTROL - 0.04}
           style={({ pressed }) => [
             estilos.botonCero,
             aspecto === 'tecleando' && estilos.botonCeroSobreMarca,
@@ -418,7 +440,7 @@ function textoTotalAccesible(total: number | null, estado: EstadoFila, unidad: s
 
 const COLOR_DESTELLO: Record<EstadoFila, string> = {
   'sin-capturar': COLORES.pendiente,
-  'con-cantidad': COLORES.capturado,
+  'con-cantidad': COLORES.accion,
   'en-cero': COLORES.pendiente,
 };
 
@@ -486,7 +508,7 @@ interface PropsCampo {
 
 /**
  * Sin borde: el fondo propio lo separa de la fila. El campo que se teclea va
- * en blanco con el número oscuro sobre la fila de asfalto, subrayado en verde.
+ * en blanco con el número oscuro sobre la fila azul noche, con un aro azul luminoso.
  */
 function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProducto, aviso = false }: PropsCampo) {
   const color = activo ? COLORES.texto : colorTexto;
@@ -498,6 +520,7 @@ function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProd
       accessibilityRole="button"
       accessibilityLabel={`${nombreProducto}, ${etiqueta}: ${valor === null ? 'sin capturar' : valor}`}
       accessibilityState={{ selected: activo }}
+      escala={ESCALA_PRESIONADO_CONTROL}
       style={({ pressed }) => [
         estilos.campo,
         { backgroundColor: activo ? COLORES.superficie : fondo },
@@ -512,7 +535,7 @@ function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProd
       <Text
         style={[estilos.valorCampo, { color }, valor === null && estilos.valorVacio]}
         numberOfLines={1}
-        adjustsFontSizeToFit
+        adjustsFontSizeToFit={valor !== null}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >
         {valor === null ? '—' : valor}
@@ -521,16 +544,26 @@ function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProd
   );
 }
 
+const BORDES_FILA = 1.5;
+
 const estilos = StyleSheet.create({
   // El estado va en el fondo y el borde de toda la fila, y en el visor; todas
   // miden lo mismo en cualquier estado. Poco aire dentro; entre filas lo pone la lista.
   fila: {
     flex: 1,
-    gap: ESPACIADO.sm,
+    gap: ESPACIADO.sm + 2,
     padding: ESPACIADO.md,
-    borderRadius: RADIOS.grande,
-    borderWidth: BORDES.medio,
-    overflow: 'hidden',
+    borderRadius: RADIOS.pieza,
+    borderWidth: BORDES_FILA,
+  },
+  filaElevada: {
+    boxShadow: SOMBRAS.tarjeta,
+  },
+  filaTecleando: {
+    boxShadow: SOMBRAS.elevada,
+  },
+  destello: {
+    borderRadius: RADIOS.pieza - BORDES_FILA,
   },
   encabezado: {
     flexDirection: 'row',
@@ -542,8 +575,17 @@ const estilos = StyleSheet.create({
   nombre: {
     flex: 1,
     ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
   },
-  // Placa del empaque: esquina corta, como la placa de un letrero.
+  circuloPalomita: {
+    width: LADO_PALOMITA,
+    height: LADO_PALOMITA,
+    borderRadius: RADIOS.completo,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES.capturadoHondo,
+  },
+  // La pastilla del empaque: esquina suave, del mismo ancho en todas las filas.
   factor: {
     minWidth: ANCHO_FACTOR,
     alignItems: 'center',
@@ -559,14 +601,13 @@ const estilos = StyleSheet.create({
   textoFactor: {
     ...TIPOGRAFIA.etiqueta,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 15,
-    letterSpacing: 0.4,
+    fontSize: 14,
+    letterSpacing: 0.2,
     ...CIFRAS,
   },
   textoFactorGrande: {
     ...TIPOGRAFIA.tituloBarra,
     fontFamily: FUENTE.extraNegrita,
-    letterSpacing: 0.4,
     ...CIFRAS,
   },
   captura: {
@@ -585,14 +626,14 @@ const estilos = StyleSheet.create({
     flex: 1,
     minHeight: ALTO_CONTROL,
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.sm + 2,
     borderRadius: RADIOS.medio,
   },
-  // El campo que se teclea: blanco sobre la fila de asfalto, subrayado en
-  // verde como el visor del teclado. Es el único así en la pantalla.
+  // El campo que se teclea: blanco sobre la fila azul noche, con aro azul luminoso.
+  // Es el único así en la pantalla.
   campoActivo: {
-    borderBottomWidth: BORDES.grueso + 1,
-    borderBottomColor: COLORES.accionViva,
+    borderWidth: BORDES.grueso,
+    borderColor: COLORES.accionViva,
   },
   campoConAviso: {
     borderWidth: BORDES.medio,
@@ -627,7 +668,7 @@ const estilos = StyleSheet.create({
     minHeight: ALTO_CONTROL,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: ESPACIADO.sm + 2,
     borderRadius: RADIOS.medio,
     borderWidth: BORDES.medio,
   },
@@ -651,14 +692,15 @@ const estilos = StyleSheet.create({
     color: COLORES.textoSecundario,
   },
   botonCero: {
-    width: ANCHO_CERO,
-    minHeight: ALTO_CONTROL,
+    width: LADO_CERO,
+    height: LADO_CERO,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORES.superficie,
     borderWidth: BORDES.medio,
     borderColor: COLORES.borde,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
   },
   botonCeroSobreMarca: {
     backgroundColor: 'transparent',
@@ -671,8 +713,8 @@ const estilos = StyleSheet.create({
   },
   // Inversión completa: se nota aun con poca luz.
   botonCeroPresionado: {
-    backgroundColor: COLORES.marcaHonda,
-    borderColor: COLORES.marcaHonda,
+    backgroundColor: COLORES.pendiente,
+    borderColor: COLORES.pendiente,
   },
   botonCeroBloqueado: {
     opacity: OPACIDAD.bloqueado,
@@ -692,7 +734,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.sm,
     paddingVertical: ESPACIADO.xs + 2,
     backgroundColor: COLORES.discrepanciaFondo,
-    borderRadius: RADIOS.chico,
+    borderRadius: RADIOS.medio,
     borderWidth: BORDES.fino,
     borderColor: COLORES.discrepanciaHonda,
   },

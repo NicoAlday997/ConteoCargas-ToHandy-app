@@ -33,12 +33,14 @@ import {
   BORDES,
   CIFRAS,
   COLORES,
+  ELEVACION,
   ESCALA_PRESIONADO,
   ESPACIADO,
   FUENTE,
   OPACIDAD,
   RADIOS,
   RITMO,
+  SOMBRAS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
 } from '../../src/theme/tokens';
@@ -84,7 +86,7 @@ export default function PantallaDiasNoLaborables() {
 function Pantalla({ children }: { children: ReactNode }) {
   // Sin margen inferior: lo absorbe la barra de acción, que llega al borde.
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>{AYUDA}</NotaEncabezado>
       </BarraSuperior>
@@ -419,9 +421,8 @@ const estilos = StyleSheet.create({
     paddingBottom: ESPACIADO.xxxl,
   },
   tarjeta: {
-    backgroundColor: COLORES.superficie,
+    ...ELEVACION[1],
     borderRadius: RADIOS.grande,
-    overflow: 'hidden',
   },
   renglon: {
     minHeight: TOQUE_MINIMO + ESPACIADO.sm,
@@ -455,10 +456,10 @@ const estilos = StyleSheet.create({
     minHeight: TOQUE_MINIMO,
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
   },
   quitarPresionado: {
-    backgroundColor: COLORES.superficieHonda,
+    backgroundColor: COLORES.errorFondo,
   },
   textoQuitar: {
     ...TIPOGRAFIA.etiqueta,
@@ -486,11 +487,12 @@ const estilos = StyleSheet.create({
     height: TOQUE_MINIMO,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.azulSuave,
   },
   textoBotonMes: {
     ...TIPOGRAFIA.titulo,
-    color: COLORES.texto,
+    color: COLORES.accionHonda,
   },
   mes: {
     gap: ESPACIADO.xs,
@@ -505,30 +507,32 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.etiqueta,
     color: COLORES.textoSecundario,
   },
-  // Todas con el mismo contorno (transparente): la de hoy no crece al pintarlo.
+  // Círculos, todos con el mismo contorno (transparente): el de hoy no crece al pintarlo.
   celda: {
     flex: 1,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
     borderWidth: BORDES.medio,
     borderColor: 'transparent',
   },
   celdaTocable: {
-    backgroundColor: COLORES.superficieHonda,
+    backgroundColor: COLORES.fondo,
   },
-  // Hoy se reconoce por el contorno, no por un color: no es un estado.
+  // Hoy se reconoce por el aro, no por un color: no es un estado.
   celdaHoy: {
-    borderColor: COLORES.texto,
+    borderColor: COLORES.accion,
   },
   celdaPresionada: {
-    backgroundColor: COLORES.divisor,
+    backgroundColor: COLORES.marcaTinte,
     transform: [{ scale: ESCALA_PRESIONADO }],
   },
+  // Elegido: círculo azul sólido con sombra azul, lo único encendido del mes.
   celdaElegida: {
-    backgroundColor: COLORES.texto,
-    borderColor: COLORES.texto,
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
+    boxShadow: SOMBRAS.accion,
   },
   celdaInhabil: {
     opacity: OPACIDAD.bloqueado,

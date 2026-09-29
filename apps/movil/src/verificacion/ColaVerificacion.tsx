@@ -27,6 +27,7 @@ import { estaConectado } from '../conteo/cola-sincronizacion';
 import { horaNegocio } from '../conteo/fecha-operativa';
 import {
   COLORES,
+  SOMBRAS,
   ESCALA_PRESIONADO,
   ESPACIADO,
   ETIQUETA_DATO,
@@ -457,16 +458,17 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.grande,
     borderWidth: 1,
     borderColor: COLORES.contornoTarjeta,
-    overflow: 'hidden',
+    boxShadow: SOMBRAS.tarjeta,
   },
   filaInactiva: {
     backgroundColor: COLORES.pendienteFondo,
     borderColor: COLORES.bordeNoLleva,
+    boxShadow: 'none',
   },
   // Inversión completa: el toque se nota aun con poca luz.
   filaPresionada: {
-    backgroundColor: COLORES.marca,
-    borderColor: COLORES.marca,
+    backgroundColor: COLORES.accion,
+    borderColor: COLORES.accion,
     transform: [{ scale: ESCALA_PRESIONADO }],
   },
   // Entre la ruta y sus datos, aire de grupo: se leen como dos bloques.

@@ -67,7 +67,7 @@ export default function PantallaPlantillas() {
 function Pantalla({ children }: { children: ReactNode }) {
   // Sin margen inferior: lo absorbe la barra de acción, que llega al borde.
   return (
-    <SafeAreaView style={estilos.pantalla} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>Qué productos ve cada ruta al contar.</NotaEncabezado>
       </BarraSuperior>

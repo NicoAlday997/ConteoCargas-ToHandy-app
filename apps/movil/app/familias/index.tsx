@@ -28,6 +28,7 @@ import {
 import {
   BORDES,
   COLORES,
+  ELEVACION,
   ESPACIADO,
   RADIOS,
   RITMO,
@@ -81,7 +82,7 @@ export default function PantallaFamilias() {
 
 function Pantalla({ children }: { children: ReactNode }) {
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo={TITULO} marca={false}>
         <NotaEncabezado>Se ven en el conteo, junto al nombre de cada familia.</NotaEncabezado>
       </BarraSuperior>
@@ -310,9 +311,8 @@ const estilos = StyleSheet.create({
     paddingBottom: ESPACIADO.xxxl,
   },
   tarjeta: {
-    backgroundColor: COLORES.superficie,
+    ...ELEVACION[1],
     borderRadius: RADIOS.grande,
-    overflow: 'hidden',
     paddingVertical: ESPACIADO.xs,
   },
   renglon: {

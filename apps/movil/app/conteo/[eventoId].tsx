@@ -63,7 +63,6 @@ import {
   ALTO_CONTROL,
   ANCHO_MAXIMO_LISTA,
   ANCHO_MODAL,
-  BORDES,
   CIFRAS,
   COLORES,
   ESCALA_PRESIONADO,
@@ -74,6 +73,7 @@ import {
   FUENTE,
   RADIOS,
   RITMO,
+  SOMBRAS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
   ONDA,
@@ -796,7 +796,7 @@ function Encabezado({
           <BarraAvance actual={capturados} total={total} />
           {completo && (
             <View style={estilos.lineaCompleto}>
-              <Palomita color={COLORES.accionViva} tamano={ESPACIADO.lg} />
+              <Palomita color={COLORES.cian} tamano={ESPACIADO.lg} />
               <Text style={estilos.textoCompleto} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
                 Todo contado. Revisa y finaliza abajo.
               </Text>
@@ -888,7 +888,7 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   const alDia = tono === 'normal' && !sincronizando;
   const contenido = (
     <>
-      {alDia && <Palomita color={COLORES.accionViva} tamano={ESPACIADO.lg} />}
+      {alDia && <Palomita color={COLORES.cian} tamano={ESPACIADO.lg} />}
       {!hayConexion && <Glifo nombre="sinSenal" color={colorIcono} tamano={ESPACIADO.lg} />}
       <Text
         style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
@@ -918,11 +918,11 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
 
 /**
  * Banda a todo el ancho, fija arriba mientras se recorre su familia: con 60
- * productos, es lo que dice en qué parte de la lista vas. Con color de familia
- * (lo da el supervisor) la banda va en su tinte, el nombre y el avance en su
- * tono fuerte y una línea del sólido abajo: identifica, no comunica estado, y
- * no toca las filas. Sin color, gris claro con texto normal. Completa, el
- * avance pasa a "Completa" en verde.
+ * productos, es lo que dice en qué parte de la lista vas. Una cápsula en el
+ * tinte de la familia (lo da el supervisor) con un punto de su color sólido,
+ * el nombre en su tono fuerte y el avance en una pastilla blanca: identifica,
+ * no comunica estado, y no toca las filas. Sin color, gris azulado. Completa,
+ * el avance pasa a "Completa" en verde con su palomita.
  */
 function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conteo: EstadoConteo }) {
   const { capturados, total } = progreso(seccion.productos, conteo);
@@ -934,17 +934,21 @@ function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conte
   const textoNombre = tonos?.texto ?? COLORES.texto;
   const textoPastilla = completa ? COLORES.capturadoHondo : (tonos?.texto ?? COLORES.textoSecundario);
   return (
-    <View style={[estilos.encabezadoFamilia, { backgroundColor: fondoBanda, borderBottomColor: linea }]} accessibilityRole="header">
-      <Text style={[estilos.nombreFamilia, { color: textoNombre }]} numberOfLines={1}>
-        {formatearNombreFamilia(seccion.titulo)}
-      </Text>
-      <View style={estilos.pastillaFamilia}>
-        <Text
-          style={[estilos.conteoFamilia, { color: textoPastilla }]}
-          accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
-        >
-          {completa ? 'Completa' : `${capturados} de ${total}`}
+    <View style={estilos.encabezadoFamilia} accessibilityRole="header">
+      <View style={[estilos.bandaFamilia, { backgroundColor: fondoBanda }]}>
+        <View style={[estilos.puntoFamilia, { backgroundColor: linea === fondoBanda ? COLORES.textoTerciario : linea }]} />
+        <Text style={[estilos.nombreFamilia, { color: textoNombre }]} numberOfLines={1}>
+          {formatearNombreFamilia(seccion.titulo)}
         </Text>
+        <View style={[estilos.pastillaFamilia, completa && estilos.pastillaFamiliaCompleta]}>
+          {completa && <Palomita color={COLORES.capturadoHondo} tamano={ESPACIADO.md + ESPACIADO.xs} />}
+          <Text
+            style={[estilos.conteoFamilia, { color: textoPastilla }]}
+            accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
+          >
+            {completa ? 'Completa' : `${capturados} de ${total}`}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -1359,9 +1363,10 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.xs,
-    paddingHorizontal: ESPACIADO.sm,
-    paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.chico,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs + 2,
+    borderRadius: RADIOS.completo,
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
   },
   pildoraAtencion: {
     backgroundColor: COLORES.discrepanciaFondo,
@@ -1406,27 +1411,43 @@ const estilos = StyleSheet.create({
     maxWidth: ANCHO_MAXIMO_LISTA,
     alignSelf: 'center',
   },
-  // Banda a todo el ancho (sin los márgenes de la lista), opaca: tapa las filas al fijarse arriba.
+  // A todo el ancho (sin los márgenes de la lista) y opaca: tapa las filas al fijarse arriba.
   encabezadoFamilia: {
+    marginHorizontal: -ESPACIADO.md,
+    paddingHorizontal: ESPACIADO.md,
+    paddingTop: ESPACIADO.sm,
+    paddingBottom: ESPACIADO.xs,
+    backgroundColor: COLORES.fondo,
+  },
+  bandaFamilia: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.sm,
-    marginHorizontal: -ESPACIADO.md,
-    paddingHorizontal: RITMO.margen,
-    paddingVertical: ESPACIADO.sm + ESPACIADO.xs,
-    backgroundColor: COLORES.superficieHonda,
-    borderBottomWidth: BORDES.grueso,
-    borderBottomColor: COLORES.superficieHonda,
+    gap: ESPACIADO.sm + 2,
+    minHeight: ESPACIADO.xxxl - ESPACIADO.xs,
+    paddingLeft: ESPACIADO.lg,
+    paddingRight: ESPACIADO.xs + 2,
+    borderRadius: RADIOS.completo,
+  },
+  puntoFamilia: {
+    width: ESPACIADO.md,
+    height: ESPACIADO.md,
+    borderRadius: RADIOS.completo,
   },
   nombreFamilia: {
     flex: 1,
     ...FAMILIA,
   },
   pastillaFamilia: {
-    paddingHorizontal: ESPACIADO.sm + ESPACIADO.xs,
-    paddingVertical: 2,
-    borderRadius: RADIOS.chico,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.xs,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs + 2,
+    borderRadius: RADIOS.completo,
     backgroundColor: COLORES.superficie,
+  },
+  pastillaFamiliaCompleta: {
+    backgroundColor: COLORES.capturadoFondo,
   },
   // Aire entre la última fila de una familia y la banda de la siguiente.
   pieFamilia: {
@@ -1434,6 +1455,7 @@ const estilos = StyleSheet.create({
   },
   conteoFamilia: {
     ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.extraNegrita,
     ...CIFRAS,
   },
   // Más aire entre productos que dentro de cada uno: un renglón no se confunde con el siguiente.
@@ -1452,13 +1474,12 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.sm,
     padding: ESPACIADO.md,
     backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
+    borderRadius: RADIOS.pieza,
+    boxShadow: SOMBRAS.tarjeta,
   },
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: 1,
-    borderLeftColor: COLORES.contornoTarjeta,
   },
   lateralVacio: {
     flex: 1,
@@ -1484,8 +1505,8 @@ const estilos = StyleSheet.create({
     flex: 1,
     gap: 2,
     padding: ESPACIADO.md,
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.fondo,
+    borderRadius: RADIOS.control,
   },
   numeroResumen: {
     ...TIPOGRAFIA.titulo,
@@ -1509,12 +1530,12 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.sm,
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.medio,
+    paddingHorizontal: ESPACIADO.md,
+    backgroundColor: COLORES.fondo,
+    borderRadius: RADIOS.control,
   },
   pendientePresionado: {
-    backgroundColor: COLORES.divisor,
+    backgroundColor: COLORES.marcaTinte,
     transform: [{ scale: ESCALA_PRESIONADO }],
   },
   nombrePendiente: {

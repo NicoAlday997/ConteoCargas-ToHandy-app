@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, FlatList, StyleSheet, Text, View } from 'react-native';
-import Animated, { SlideInLeft, SlideInRight } from 'react-native-reanimated';
+import Animated, { FadeInDown, SlideInLeft, SlideInRight } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
@@ -16,6 +16,7 @@ import { recordarPinTemporal } from '../src/api/sesion';
 import {
   BloqueError,
   Chevron,
+  Degradado,
   Esqueleto,
   EstadoVacio,
   LineaEsqueleto,
@@ -29,13 +30,32 @@ import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
 import { useBarraEstado } from '../src/theme/barra-estado';
 import { sentir } from '../src/theme/tacto';
-import { COLORES, ELEVACION, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../src/theme/tokens';
+import {
+  BORDES,
+  COLORES,
+  DEGRADADOS,
+  ELEVACION,
+  ESCALA_PRESIONADO_CONTROL,
+  ESPACIADO,
+  FUENTE,
+  MOVIMIENTO,
+  RADIOS,
+  RESORTES,
+  RITMO,
+  SOMBRAS,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../src/theme/tokens';
 
 /** Corto: la transición orienta al usuario, no debe hacerlo esperar. */
 const DURACION_TRANSICION_MS = 180;
 const FILAS_SKELETON = 6;
 const ANCHO_MAXIMO_PIN = 440;
-const TAMANO_AVATAR = TOQUE_MINIMO;
+const TAMANO_AVATAR = TOQUE_MINIMO - ESPACIADO.xs;
+const TAMANO_AVATAR_PIN = TOQUE_MINIMO;
+const TAMANO_MARCA = ESPACIADO.xxxl + ESPACIADO.lg;
+/** Las tarjetas de usuario entran escalonadas, sin hacer esperar: solo las primeras. */
+const MAXIMO_ESCALONADAS = 6;
 /** Cabe el aviso más alto (recuadro de red o PIN con 1 intento) sin mover el teclado. */
 const ALTO_ZONA_AVISO = ESPACIADO.xxxl * 2 + ESPACIADO.sm;
 /** Basta para que la cuenta regresiva del bloqueo no se quede atrás un minuto entero. */
@@ -58,9 +78,10 @@ export default function PantallaLogin() {
     setUsuario(null);
   };
 
-  // Sin bloque azul: la entrada va sobre el fondo de pantalla, con el título grande.
+  // Toda la entrada va sobre el cromo azul noche, con su halo y los anillos de la carátula.
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
+      <Degradado degradado={DEGRADADOS.marca} halo anillos />
       {usuario ? (
         <Animated.View
           key={`pin-${usuario.id}`}
@@ -87,22 +108,23 @@ export default function PantallaLogin() {
 // ---------------------------------------------------------------------------
 
 /**
- * Encabezado de la entrada: la identidad de la app (el camión y su nombre, en
- * tinta, como la placa de una báscula) y la instrucción grande.
+ * Encabezado de la entrada: la marca (cubo sobre placa azul), el nombre de la
+ * app con su lema y la instrucción. Centrado: es la portada del producto.
  */
 function BandaMarca({ titulo }: { titulo: string }) {
   const margenes = useSafeAreaInsets();
   return (
-    <View style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.lg }]}>
-      <View style={estilos.columnaBanda}>
-        <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Conteo de Cargas">
-          <MarcaApp invertida tamano={ESPACIADO.xxl + ESPACIADO.xs} />
-          <Text style={estilos.nombreApp}>Conteo de Cargas</Text>
+    <View style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.xl }]}>
+      <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Handy Conteo, la báscula de bodega">
+        <View style={estilos.placaMarca}>
+          <MarcaApp invertida tamano={TAMANO_MARCA} />
         </View>
-        <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
-          {titulo}
-        </Text>
+        <Text style={estilos.nombreApp}>Handy Conteo</Text>
+        <Text style={estilos.lema}>La Báscula de Bodega</Text>
       </View>
+      <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
+        {titulo}
+      </Text>
     </View>
   );
 }
@@ -113,7 +135,7 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
   const margenes = useSafeAreaInsets();
   const relleno = { paddingBottom: ESPACIADO.xxxl + margenes.bottom };
 
-  const encabezado = <BandaMarca titulo="Selecciona tu nombre" />;
+  const encabezado = <BandaMarca titulo="Selecciona tu usuario" />;
 
   if (consulta.isPending) {
     return (
@@ -153,23 +175,41 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
         keyExtractor={(u) => u.id}
         numColumns={columnas}
         columnWrapperStyle={columnas > 1 ? estilos.filaColumnas : undefined}
-        contentContainerStyle={[estilos.contenidoLista, estilos.separacionFilas, relleno]}
+        contentContainerStyle={[estilos.contenidoLista, columnas === 1 && estilos.contenidoUnaColumna, estilos.separacionFilas, relleno]}
         ListEmptyComponent={
-          <EstadoVacio
-            icono="personas"
-            titulo="No hay usuarios activos"
-            detalle="Aquí aparecerán los nombres en cuanto un supervisor dé de alta a su equipo. Pídele que registre tu usuario."
-            accion={{
-              texto: 'Actualizar',
-              onPress: () => void consulta.refetch(),
-              cargando: consulta.isFetching,
-              textoCargando: 'Actualizando…',
-            }}
-          />
+          // Sobre el cromo, el estado vacío va en su propia pieza blanca para leerse.
+          <View style={estilos.piezaVacia}>
+            <EstadoVacio
+              icono="personas"
+              titulo="No hay usuarios activos"
+              detalle="Aquí aparecerán los nombres en cuanto un supervisor dé de alta a su equipo. Pídele que registre tu usuario."
+              accion={{
+                texto: 'Actualizar',
+                onPress: () => void consulta.refetch(),
+                cargando: consulta.isFetching,
+                textoCargando: 'Actualizando…',
+              }}
+              enLinea
+            />
+          </View>
         }
         refreshing={consulta.isRefetching}
         onRefresh={() => void consulta.refetch()}
-        renderItem={({ item }) => <FilaUsuario usuario={item} onPress={() => onElegir(item)} />}
+        renderItem={({ item, index }) => (
+          <Animated.View
+            style={estilos.celdaUsuario}
+            entering={
+              index < MAXIMO_ESCALONADAS
+                ? FadeInDown.delay(index * MOVIMIENTO.escalon)
+                    .springify()
+                    .damping(RESORTES.entrada.damping)
+                    .stiffness(RESORTES.entrada.stiffness)
+                : undefined
+            }
+          >
+            <FilaUsuario usuario={item} onPress={() => onElegir(item)} />
+          </Animated.View>
+        )}
       />
     </View>
   );
@@ -189,20 +229,31 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
     <Tarjeta
       onPress={onPress}
       compacta
+      elevacion={2}
       accessibilityLabel={rol ? `${nombre}, ${rol}` : nombre}
       style={[estilos.filaUsuario, estilos.filaUsuarioContenido]}
     >
-      <View style={estilos.avatar}>
-        <Text style={estilos.textoAvatar}>{iniciales(nombre)}</Text>
-      </View>
+      <Avatar nombre={nombre} tamano={TAMANO_AVATAR} />
       <View style={estilos.datosUsuario}>
-        {rol && <Text style={estilos.rolUsuario}>{rol}</Text>}
         <Text style={estilos.nombreUsuario} numberOfLines={2}>
           {nombre}
         </Text>
+        {rol && <Text style={estilos.rolUsuario}>{rol}</Text>}
       </View>
-      <Chevron />
+      <View style={estilos.circuloChevron}>
+        <Chevron color={COLORES.accion} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+      </View>
     </Tarjeta>
+  );
+}
+
+/** Círculo en degradado azul con las iniciales: el gafete de quien entra. */
+function Avatar({ nombre, tamano }: { nombre: string; tamano: number }) {
+  return (
+    <View style={[estilos.avatar, { width: tamano, height: tamano }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Degradado degradado={DEGRADADOS.accion} radio={tamano / 2} />
+      <Text style={[estilos.textoAvatar, { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 }]}>{iniciales(nombre)}</Text>
+    </View>
   );
 }
 
@@ -215,7 +266,7 @@ function SkeletonUsuarios({ columnas }: { columnas: number }) {
         <View key={fila} style={estilos.filaColumnas}>
           {Array.from({ length: columnas }, (_, col) => (
             <View key={col} style={[estilos.filaUsuario, estilos.filaUsuarioContenido, estilos.filaSkeleton]}>
-              <View style={[estilos.avatar, estilos.avatarSkeleton]} />
+              <View style={[estilos.avatar, estilos.avatarSkeleton, { width: TAMANO_AVATAR, height: TAMANO_AVATAR }]} />
               <View style={estilos.datosUsuario}>
                 <LineaEsqueleto nivel="titulo" ancho="65%" />
                 <LineaEsqueleto nivel="etiqueta" ancho="30%" />
@@ -313,30 +364,36 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
   const nombre = usuario.nombreCompleto?.trim() || 'Usuario sin nombre';
 
   return (
-    <View style={[estilos.paso, estilos.pasoPin]}>
-      <View style={[estilos.bandaMarca, estilos.bandaPin, { paddingTop: margenes.top + ESPACIADO.sm }]}>
+    <View style={estilos.paso}>
+      <View style={[estilos.bandaPin, { paddingTop: margenes.top + ESPACIADO.sm }]}>
         {/* En tablet, la misma columna que el teclado: nombre y teclas alineados. */}
-        <View style={[estilos.columnaBanda, esTablet && estilos.columnaPin]}>
+        <View style={[estilos.columnaPin, esTablet && estilos.columnaPinTablet]}>
           <Pulsable
             onPress={onVolver}
             accessibilityRole="button"
             accessibilityLabel="Volver y elegir otro usuario"
+            escala={ESCALA_PRESIONADO_CONTROL}
             style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
           >
-            <Chevron direccion="izquierda" color={COLORES.textoSobreColor} />
+            <View style={estilos.circuloVolver}>
+              <Chevron direccion="izquierda" color={COLORES.textoSobreColor} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+            </View>
             <Text style={estilos.textoBotonVolver}>Elegir otro usuario</Text>
           </Pulsable>
-          <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
-            {nombre}
-          </Text>
-          <Text style={estilos.subtituloBanda}>Teclea tu PIN de {LONGITUD_PIN} dígitos</Text>
         </View>
       </View>
       <View
-        style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.lg + margenes.bottom }]}
+        style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}
       >
+        <View style={estilos.quienEntra}>
+          <Avatar nombre={nombre} tamano={TAMANO_AVATAR_PIN} />
+          <Text style={estilos.nombrePin} accessibilityRole="header" numberOfLines={2}>
+            {nombre}
+          </Text>
+          <Text style={estilos.subtituloBanda}>Ingresa tu PIN de {LONGITUD_PIN} dígitos</Text>
+        </View>
         <View style={estilos.zonaIndicadores}>
-          <IndicadoresPin cantidad={cantidad} claveError={claveError} oscuro />
+          <IndicadoresPin cantidad={enviando ? LONGITUD_PIN : cantidad} claveError={claveError} oscuro />
           <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
             {enviando ? (
               <Text style={estilos.textoVerificando}>Verificando…</Text>
@@ -452,66 +509,58 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
 const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: COLORES.marca,
   },
   paso: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
   },
-  // El letrero de la entrada: asfalto a todo el ancho y a escuadra.
+  // La portada: marca centrada y la instrucción, sobre el cromo.
   bandaMarca: {
+    alignItems: 'center',
+    gap: ESPACIADO.xl,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.xl,
-    paddingBottom: ESPACIADO.xl,
-    backgroundColor: COLORES.marca,
-  },
-  bandaPin: {
-    paddingBottom: ESPACIADO.sm,
-  },
-  // El paso del PIN es todo asfalto: la entrada se siente como un tablero.
-  pasoPin: {
-    backgroundColor: COLORES.marca,
-  },
-  columnaBanda: {
-    width: '100%',
-    maxWidth: ANCHO_MAXIMO_PIN * 2,
-    alignSelf: 'center',
-    gap: ESPACIADO.xs,
-  },
-  // El teclado mide ANCHO_MAXIMO_PIN con su relleno adentro; la banda lo pone afuera.
-  columnaPin: {
-    maxWidth: ANCHO_MAXIMO_PIN - RITMO.margen * 2,
+    paddingBottom: ESPACIADO.lg,
   },
   identidad: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO.sm,
-    marginBottom: ESPACIADO.xl,
+    gap: ESPACIADO.xs,
+  },
+  // La placa de la marca flota con una sombra azul honda.
+  placaMarca: {
+    marginBottom: ESPACIADO.md,
+    borderRadius: RADIOS.grande,
+    boxShadow: '0px 12px 28px rgba(3, 10, 30, 0.45)',
   },
   nombreApp: {
-    fontFamily: FUENTE.titular,
-    fontSize: 18,
-    lineHeight: 22,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    ...TIPOGRAFIA.display,
     color: COLORES.textoSobreColor,
+  },
+  lema: {
+    ...TIPOGRAFIA.cuerpo,
+    color: COLORES.marcaTenue,
   },
   tituloBanda: {
-    ...TIPOGRAFIA.display,
-    fontSize: 40,
-    lineHeight: 44,
+    ...TIPOGRAFIA.tituloBarra,
     color: COLORES.textoSobreColor,
+    textAlign: 'center',
   },
   subtituloBanda: {
-    ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.medio,
+    ...TIPOGRAFIA.cuerpo,
     color: COLORES.marcaTenue,
+    textAlign: 'center',
   },
 
   // Paso 1
   contenidoLista: {
     flexGrow: 1,
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_PIN * 2,
+    alignSelf: 'center',
     padding: RITMO.margen,
+  },
+  // Una sola columna (celular y tablet vertical): el ancho de una lectura, no de la pantalla.
+  contenidoUnaColumna: {
+    maxWidth: ANCHO_MAXIMO_PIN + ESPACIADO.xxxl * 2 + ESPACIADO.xxl,
   },
   separacionFilas: {
     gap: SEPARACION_TARJETAS,
@@ -519,6 +568,9 @@ const estilos = StyleSheet.create({
   filaColumnas: {
     flexDirection: 'row',
     gap: SEPARACION_TARJETAS,
+  },
+  celdaUsuario: {
+    flex: 1,
   },
   filaUsuario: {
     flex: 1,
@@ -530,32 +582,47 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: RITMO.margen,
   },
-  // Placa de iniciales: asfalto con letra blanca, como el gafete de un turno.
   avatar: {
-    width: TAMANO_AVATAR,
-    height: TAMANO_AVATAR,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORES.marca,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.completo,
   },
   textoAvatar: {
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 22,
-    lineHeight: 26,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
     color: COLORES.textoSobreColor,
   },
   datosUsuario: {
     flex: 1,
+    gap: 2,
   },
   // El nombre es lo que se busca: domina la fila.
   nombreUsuario: {
-    ...TIPOGRAFIA.titulo,
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 19,
+    lineHeight: 24,
     color: COLORES.texto,
   },
-  // El rol es su rótulo, arriba y pegado: se retira.
-  rolUsuario: ETIQUETA_DATO,
+  // El rol, debajo: se retira.
+  rolUsuario: {
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.medio,
+    color: COLORES.textoSecundario,
+  },
+  circuloChevron: {
+    width: ESPACIADO.xxl + ESPACIADO.xs,
+    height: ESPACIADO.xxl + ESPACIADO.xs,
+    borderRadius: RADIOS.completo,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES.azulSuave,
+  },
+  piezaVacia: {
+    ...ELEVACION[2],
+    padding: ESPACIADO.xl,
+    borderRadius: RADIOS.grande,
+  },
   filaSkeleton: {
     ...ELEVACION[1],
     padding: RITMO.margen,
@@ -566,13 +633,23 @@ const estilos = StyleSheet.create({
   },
 
   // Paso 2
-  // Indicadores, aviso y teclado juntos abajo, donde está el pulgar: el ojo no
-  // viaja de los puntos a las teclas, y el aviso aparece junto al dedo.
+  bandaPin: {
+    paddingHorizontal: RITMO.margen,
+  },
+  columnaPin: {
+    width: '100%',
+    alignSelf: 'center',
+  },
+  columnaPinTablet: {
+    maxWidth: ANCHO_MAXIMO_PIN,
+  },
+  // Quién entra, los círculos, el aviso y el teclado: juntos abajo, donde está
+  // el pulgar. El ojo no viaja de los círculos a las teclas.
   contenidoPin: {
     flex: 1,
     justifyContent: 'flex-end',
-    padding: RITMO.margen,
-    gap: RITMO.margen,
+    paddingHorizontal: RITMO.margen,
+    gap: ESPACIADO.lg,
   },
   // En tablet sobra alto: el bloque va al centro, no pegado al borde.
   contenidoPinTablet: {
@@ -581,18 +658,40 @@ const estilos = StyleSheet.create({
     maxWidth: ANCHO_MAXIMO_PIN,
     alignSelf: 'center',
   },
+  quienEntra: {
+    alignItems: 'center',
+    gap: ESPACIADO.sm,
+  },
+  nombrePin: {
+    ...TIPOGRAFIA.display,
+    fontSize: 26,
+    lineHeight: 32,
+    color: COLORES.textoSobreColor,
+    textAlign: 'center',
+  },
   botonVolver: {
     minHeight: TOQUE_MINIMO,
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.md,
-    marginLeft: -ESPACIADO.md,
-    borderRadius: RADIOS.medio,
+    gap: ESPACIADO.sm,
+    paddingRight: ESPACIADO.lg,
+    paddingLeft: ESPACIADO.xs,
+    marginLeft: -ESPACIADO.xs,
+    borderRadius: RADIOS.completo,
   },
   botonVolverPresionado: {
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  circuloVolver: {
+    width: ESPACIADO.xxxl - ESPACIADO.xs,
+    height: ESPACIADO.xxxl - ESPACIADO.xs,
+    borderRadius: RADIOS.completo,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: BORDES.fino,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   textoBotonVolver: {
     ...TIPOGRAFIA.subtitulo,
@@ -600,7 +699,7 @@ const estilos = StyleSheet.create({
   },
   zonaIndicadores: {
     alignItems: 'center',
-    gap: RITMO.margen,
+    gap: ESPACIADO.md,
   },
   // Altura reservada: que aparezca un aviso no debe mover el teclado bajo el dedo.
   // Cabe el aviso más alto (recuadro de red o PIN con 1 intento).
@@ -611,43 +710,46 @@ const estilos = StyleSheet.create({
   },
   textoVerificando: {
     ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.medio,
+    fontFamily: FUENTE.semiNegrita,
     color: COLORES.marcaTenue,
   },
   tituloAviso: {
     ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.negrita,
+    fontFamily: FUENTE.extraNegrita,
     textAlign: 'center',
   },
   detalleAviso: {
     marginTop: ESPACIADO.xs,
-    ...TIPOGRAFIA.cuerpo,
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.medio,
     color: COLORES.texto,
     textAlign: 'center',
   },
-  // Un aviso es un bloque tintado de su estado, no texto de color: se lee de
-  // reojo. El fondo basta para separarlo: sin contorno.
+  // Un aviso es una pieza clara de su estado sobre el azul noche, no texto de color: se lee de reojo.
   recuadroRed: {
-    paddingVertical: RITMO.interno,
-    paddingHorizontal: RITMO.relacionado,
+    paddingVertical: ESPACIADO.sm,
+    paddingHorizontal: RITMO.margen,
     backgroundColor: COLORES.discrepanciaFondo,
-    borderRadius: RADIOS.medio,
-    borderWidth: 1,
+    borderRadius: RADIOS.control,
+    borderWidth: BORDES.fino,
     borderColor: COLORES.discrepanciaHonda,
+    boxShadow: SOMBRAS.tarjeta,
   },
   recuadroError: {
-    paddingVertical: RITMO.interno,
-    paddingHorizontal: RITMO.relacionado,
+    paddingVertical: ESPACIADO.sm,
+    paddingHorizontal: RITMO.margen,
     backgroundColor: COLORES.errorFondo,
-    borderRadius: RADIOS.medio,
-    borderWidth: 1,
+    borderRadius: RADIOS.control,
+    borderWidth: BORDES.fino,
     borderColor: COLORES.error,
+    boxShadow: SOMBRAS.tarjeta,
   },
   panelBloqueo: {
     gap: RITMO.interno,
     padding: ESPACIADO.xl,
     backgroundColor: COLORES.error,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.grande,
+    boxShadow: SOMBRAS.elevada,
   },
   tituloPanelBloqueo: {
     ...TIPOGRAFIA.titulo,
@@ -655,10 +757,10 @@ const estilos = StyleSheet.create({
   },
   textoPanelBloqueo: {
     ...TIPOGRAFIA.subtitulo,
-    fontFamily: FUENTE.regular,
+    fontFamily: FUENTE.medio,
     color: COLORES.textoSobreColor,
   },
   textoPanelAccion: {
-    fontFamily: FUENTE.semiNegrita,
+    fontFamily: FUENTE.extraNegrita,
   },
 });

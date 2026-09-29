@@ -81,7 +81,7 @@ const estilos = StyleSheet.create({
     width: '100%',
     gap: RITMO.interno,
     padding: RITMO.margen,
-    borderRadius: RADIOS.medio,
+    borderRadius: RADIOS.control,
     borderWidth: 1.5,
   },
   cabecera: {
@@ -91,8 +91,8 @@ const estilos = StyleSheet.create({
   },
   titulo: {
     flex: 1,
-    fontFamily: FUENTE.titular,
-    fontSize: 20,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 17,
     lineHeight: 24,
   },
   // Alineado con el título, no bajo el signo.

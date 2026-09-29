@@ -1,6 +1,7 @@
 export { BloqueError } from './BloqueError';
 export { Boton, type VarianteBoton } from './Boton';
 export { CampoTexto } from './CampoTexto';
+export { Degradado } from './Degradado';
 export { BarraAvance, Encabezado, NotaEncabezado, PanelEncabezado, useSobreMarca } from './Encabezado';
 export { BloqueEsqueleto, Esqueleto, LineaEsqueleto, TarjetaEsqueleto } from './Esqueleto';
 export { EstadoVacio, type AccionEstado } from './EstadoVacio';

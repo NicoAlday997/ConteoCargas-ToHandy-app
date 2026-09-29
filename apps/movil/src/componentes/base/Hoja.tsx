@@ -13,7 +13,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { Easing, FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../../theme/breakpoints';
@@ -24,14 +24,22 @@ import {
   ESPACIADO,
   MOVIMIENTO,
   RADIOS,
+  RESORTES,
   RITMO,
+  SOMBRAS,
   TIPOGRAFIA,
 } from '../../theme/tokens';
 
 const CURVA = Easing.bezier(...CURVA_SALIDA);
 const ENTRADA_VELO = FadeIn.duration(MOVIMIENTO.hoja).easing(CURVA);
-const ENTRADA_HOJA = SlideInDown.duration(MOVIMIENTO.hoja).easing(CURVA);
-const ENTRADA_DIALOGO = FadeIn.duration(MOVIMIENTO.rapido).easing(CURVA);
+const ENTRADA_HOJA = SlideInDown.springify()
+  .damping(RESORTES.entrada.damping)
+  .stiffness(RESORTES.entrada.stiffness)
+  .mass(RESORTES.entrada.mass);
+const ENTRADA_DIALOGO = FadeInDown.springify()
+  .damping(RESORTES.entrada.damping)
+  .stiffness(RESORTES.entrada.stiffness * 1.4)
+  .mass(RESORTES.entrada.mass);
 
 interface Props {
   visible: boolean;
@@ -61,7 +69,7 @@ interface Props {
  * - Celular: hoja inferior. Sube desde abajo, donde está el pulgar, y deja los
  *   botones a una mano.
  * - Tablet: diálogo centrado de 480 como máximo, que se lee de un vistazo.
- * Entra rápido y con frenado (nunca rebota) y, con "Reducir movimiento",
+ * Entra con un resorte amortiguado (llega firme, sin rebote visible) y, con "Reducir movimiento",
  * aparece sin animar (Reanimated respeta el ajuste del sistema).
  */
 export function Hoja({
@@ -150,6 +158,7 @@ export function Hoja({
               style={[esTablet ? estilos.dialogo : estilos.hoja]}
               accessibilityViewIsModal
             >
+              {!esTablet && <View style={estilos.tirador} accessibilityElementsHidden importantForAccessibility="no" />}
               {cuerpo}
               {pie ? (
                 <View style={[estilos.pie, !esTablet && { paddingBottom: margenes.bottom + RITMO.margen }]}>{pie}</View>
@@ -208,7 +217,16 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.superficie,
     borderTopLeftRadius: RADIOS.encabezado,
     borderTopRightRadius: RADIOS.encabezado,
-    overflow: 'hidden',
+    boxShadow: SOMBRAS.panel,
+  },
+  // El tirador: dice "esto es una hoja" de un vistazo.
+  tirador: {
+    alignSelf: 'center',
+    width: ESPACIADO.xxl + ESPACIADO.sm,
+    height: 5,
+    marginTop: ESPACIADO.sm + 2,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.bordeNoLleva,
   },
   dialogo: {
     width: '100%',
@@ -216,8 +234,8 @@ const estilos = StyleSheet.create({
     maxHeight: '100%',
     alignSelf: 'center',
     backgroundColor: COLORES.superficie,
-    borderRadius: RADIOS.grande,
-    overflow: 'hidden',
+    borderRadius: RADIOS.encabezado,
+    boxShadow: SOMBRAS.elevada,
   },
   desplazable: {
     flexGrow: 0,
@@ -226,6 +244,7 @@ const estilos = StyleSheet.create({
   contenido: {
     gap: RITMO.relacionado,
     padding: ESPACIADO.xl,
+    paddingTop: ESPACIADO.lg,
     paddingBottom: RITMO.margen,
   },
   contenidoFijo: {

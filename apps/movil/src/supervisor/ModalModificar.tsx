@@ -224,7 +224,7 @@ function Editor({
 
   return (
     <PantallaModal visible onCerrar={cerrar}>
-      <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['top', 'left', 'right'] : undefined}>
+      <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['left', 'right'] : ['left', 'right', 'bottom']}>
         <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
         <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
           <ScrollView
@@ -390,8 +390,8 @@ const estilos = StyleSheet.create({
   },
   // Lo que se está editando lleva la marca, relleno completo como en el conteo.
   campoActivo: {
-    borderColor: COLORES.marca,
-    backgroundColor: COLORES.marca,
+    borderColor: COLORES.accion,
+    backgroundColor: COLORES.accion,
   },
   textoInvertido: {
     color: COLORES.textoSobreColor,
@@ -410,7 +410,7 @@ const estilos = StyleSheet.create({
     flexShrink: 1,
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.negrita,
-    color: COLORES.marcaHonda,
+    color: COLORES.accionHonda,
     ...CIFRAS,
   },
   avisoCampo: {
@@ -427,7 +427,5 @@ const estilos = StyleSheet.create({
   lateral: {
     width: ANCHO_TECLADO_LATERAL,
     backgroundColor: COLORES.fondo,
-    borderLeftWidth: 1,
-    borderLeftColor: COLORES.contornoTarjeta,
   },
 });

@@ -10,6 +10,8 @@ import { COLORES } from './tokens.ts';
 
 const canales = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
+const FONDO_REFERENCIA_TINTES = '#E7E8E3';
+
 describe('colores de familia', () => {
   it('son exactamente 10', () => {
     assert.equal(COLORES_FAMILIA.length, 10);
@@ -30,8 +32,10 @@ describe('colores de familia', () => {
       assert.ok(razonContraste(texto, COLORES.superficie) >= 4.5);
     });
 
-    it(`${color}: el tinte es el sólido al 15 % sobre el fondo de pantalla`, () => {
-      const fondo = canales(COLORES.fondo);
+    // La paleta es compartida con el backend y sus tintes se calcularon sobre el
+    // fondo de referencia que ella documenta (#E7E8E3), no sobre el fondo actual de la app.
+    it(`${color}: el tinte es el sólido al 15 % sobre el fondo de referencia de la paleta`, () => {
+      const fondo = canales(FONDO_REFERENCIA_TINTES);
       assert.deepEqual(
         canales(tinte),
         canales(solido).map((c, i) => Math.round(c * 0.15 + fondo[i] * 0.85)),

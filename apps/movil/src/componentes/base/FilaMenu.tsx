@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
-import { COLORES, ELEVACION, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type Tarea } from '../../theme/tokens';
+import { COLORES, ELEVACION, ESCALA_PRESIONADO, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO, type Tarea } from '../../theme/tokens';
 import { Chevron, IconoTarea } from './Icono';
 import { Pulsable } from './Pulsable';
 
 /**
- * Opciones de navegación agrupadas en un solo bloque blanco, sin líneas entre
- * ellas: cada renglón ya mide un toque y el texto las separa.
+ * Opciones de navegación agrupadas en un solo bloque blanco que flota, sin
+ * líneas entre ellas: cada renglón ya mide un toque y el círculo de su ícono
+ * lo separa. Al presionar, el renglón se enciende como una pastilla interior.
  */
 export function GrupoMenu({ children }: { children: ReactNode }) {
   return <View style={estilos.grupo}>{children}</View>;
@@ -18,8 +19,8 @@ interface Props {
   /** Lo que hay detrás, en una línea que se retira. */
   detalle?: string;
   /**
-   * La tarea a la que lleva: pone a la izquierda su ícono, en tinta. El ícono
-   * ubica la tarea; el color queda para los estados.
+   * La tarea a la que lleva: pone a la izquierda su ícono en un círculo azul
+   * suave. El ícono ubica la tarea; el color de estado queda para los estados.
    */
   tarea?: Tarea;
   onPress: () => void;
@@ -37,18 +38,21 @@ export function FilaMenu({ texto, detalle, tarea, onPress, salida = false, carga
       accessibilityRole="button"
       accessibilityHint={accessibilityHint}
       accessibilityState={{ busy: cargando }}
+      escala={ESCALA_PRESIONADO}
       style={({ pressed }) => [estilos.fila, pressed && estilos.presionada]}
     >
       {({ pressed }) => (
         <>
           {tarea && <IconoTarea tarea={tarea} invertido={pressed} />}
           <View style={estilos.textos}>
-            <Text style={[estilos.texto, salida && estilos.textoSalida, pressed && estilos.invertido]}>
-              {cargando ? 'Un momento…' : texto}
-            </Text>
-            {detalle ? <Text style={[estilos.detalle, pressed && estilos.invertido]}>{detalle}</Text> : null}
+            <Text style={[estilos.texto, salida && estilos.textoSalida]}>{cargando ? 'Un momento…' : texto}</Text>
+            {detalle ? <Text style={estilos.detalle}>{detalle}</Text> : null}
           </View>
-          {!salida && <Chevron color={pressed ? COLORES.textoSobreColor : undefined} />}
+          {!salida && (
+            <View style={[estilos.circuloChevron, pressed && estilos.circuloChevronPresionado]}>
+              <Chevron color={pressed ? COLORES.textoSobreColor : COLORES.textoTerciario} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+            </View>
+          )}
         </>
       )}
     </Pulsable>
@@ -59,30 +63,40 @@ const estilos = StyleSheet.create({
   grupo: {
     ...ELEVACION[1],
     borderRadius: RADIOS.grande,
-    overflow: 'hidden',
-    paddingVertical: ESPACIADO.xs,
+    padding: ESPACIADO.sm - 2,
   },
   fila: {
-    minHeight: TOQUE_MINIMO + ESPACIADO.sm,
+    minHeight: TOQUE_MINIMO + ESPACIADO.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: RITMO.relacionado,
-    paddingHorizontal: RITMO.margen,
-    paddingVertical: RITMO.interno,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.sm,
+    borderRadius: RADIOS.control,
   },
-  // Inversión completa: el toque se nota aun con poca luz.
+  // Pastilla interior azul: el toque se nota aun con poca luz.
   presionada: {
-    backgroundColor: COLORES.marca,
+    backgroundColor: COLORES.marcaTinte,
+  },
+  circuloChevron: {
+    width: ESPACIADO.xxl,
+    height: ESPACIADO.xxl,
+    borderRadius: RADIOS.completo,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circuloChevronPresionado: {
+    backgroundColor: COLORES.accion,
   },
   textos: {
     flex: 1,
     gap: ESPACIADO.xs,
   },
-  // Como la leyenda de un letrero de salida: condensada y firme.
   texto: {
-    ...TIPOGRAFIA.tituloBarra,
-    fontSize: 20,
-    lineHeight: 24,
+    ...TIPOGRAFIA.subtitulo,
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 17,
+    lineHeight: 22,
     color: COLORES.texto,
   },
   textoSalida: {
@@ -90,10 +104,7 @@ const estilos = StyleSheet.create({
   },
   detalle: {
     ...TIPOGRAFIA.etiqueta,
-    fontFamily: FUENTE.regular,
+    fontFamily: FUENTE.medio,
     color: COLORES.textoSecundario,
-  },
-  invertido: {
-    color: COLORES.textoSobreColor,
   },
 });

@@ -7,6 +7,7 @@ import {
   PLACA,
   ELEVACION,
   ESCALA_PRESIONADO,
+  SOMBRAS,
   ESPACIADO,
   ETIQUETA_DATO,
   RADIOS,
@@ -34,7 +35,7 @@ export interface BandaTarjeta {
 
 interface Props {
   children?: ReactNode;
-  /** 0: bloque plano dentro de otro. 1 (por omisión): bloque independiente en una lista. */
+  /** 0: bloque plano dentro de otro. 1 (por omisión): bloque independiente en una lista. 2: la pieza que flota (la principal de una pantalla). */
   elevacion?: NivelElevacion;
   /**
    * El estado como primera línea: un bloque tintado con su nombre, y un
@@ -111,6 +112,7 @@ export function Tarjeta({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      escala={ESCALA_PRESIONADO}
       style={({ pressed }) => [estilo, pressed && estilos.presionada]}
     >
       {contenido}
@@ -119,9 +121,9 @@ export function Tarjeta({
 }
 
 const estilos = StyleSheet.create({
+  // Sin recorte: la sombra suave vive fuera de la pieza.
   base: {
     borderRadius: RADIOS.grande,
-    overflow: 'hidden',
   },
   normal: {
     gap: RITMO.relacionado,
@@ -137,23 +139,22 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: RITMO.relacionado,
   },
-  // Pastilla del ancho de su texto: tinte del estado y texto hondo del mismo color.
-  // Placa de letrero del ancho de su texto: tinte del estado y leyenda honda.
+  // Pastilla del ancho de su texto: tinte del estado y leyenda honda del mismo color.
   bloqueEstado: {
     flexShrink: 1,
-    paddingHorizontal: ESPACIADO.sm + 2,
-    paddingVertical: 3,
-    borderRadius: RADIOS.chico,
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs,
+    borderRadius: RADIOS.completo,
   },
   tituloBanda: PLACA,
   detalleBanda: {
     ...ETIQUETA_DATO,
     ...CIFRAS,
   },
-  // Tinte frío y contorno en asfalto; la tarjeta se hunde un poco: el toque se nota al instante.
+  // Tinte azul y contorno azul señal; la tarjeta se hunde con resorte: el toque se nota al instante.
   presionada: {
     backgroundColor: COLORES.marcaTinte,
-    borderColor: COLORES.marca,
-    transform: [{ scale: ESCALA_PRESIONADO }],
+    borderColor: COLORES.accion,
+    boxShadow: SOMBRAS.tecla,
   },
 });

@@ -112,12 +112,12 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
   },
   barra: {
-    borderRadius: RADIOS.chico,
-    backgroundColor: COLORES.borde,
+    borderRadius: RADIOS.completo,
+    backgroundColor: COLORES.bordeSinContar,
     opacity: OPACIDAD.esqueleto,
   },
   barraMarca: {
-    backgroundColor: COLORES.marcaTinte,
+    backgroundColor: COLORES.marcaTenue,
   },
   tarjeta: {
     ...ELEVACION[1],

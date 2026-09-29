@@ -1,100 +1,25 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-28T07:23:59.000Z",
-  "title": "Design System: Conteo de Cargas",
+  "generatedAt": "2026-09-29T20:07:48.049465Z",
+  "title": "Design System: Handy Conteo",
   "extensions": {
     "colorMeta": {
       "fondo": {
         "role": "neutral",
-        "displayName": "Concreto",
-        "canonical": "oklch(92.9% 0.007 115.7)",
+        "displayName": "Niebla Azulada",
+        "canonical": "oklch(96.0% 0.010 261.8)",
         "tonalRamp": [
-          "#0B0B09",
-          "#252522",
-          "#42423F",
-          "#61625E",
-          "#82837F",
-          "#A5A5A1",
-          "#C9CAC5",
-          "#EEEFEA"
+          "#090B10",
+          "#22252A",
+          "#3F4247",
+          "#5E6167",
+          "#7F8288",
+          "#A1A5AB",
+          "#C5C9CF",
+          "#EAEEF5"
         ]
       },
       "superficie": {
-        "role": "neutral",
-        "displayName": "Blanco Reflectivo",
-        "canonical": "oklch(100.0% 0.000 89.9)",
-        "tonalRamp": [
-          "#0B0B0B",
-          "#252525",
-          "#424242",
-          "#616161",
-          "#828282",
-          "#A5A5A5",
-          "#C9C9C9",
-          "#EEEEEE"
-        ]
-      },
-      "superficie-honda": {
-        "role": "neutral",
-        "displayName": "Concreto Hundido",
-        "canonical": "oklch(89.4% 0.010 119.6)",
-        "tonalRamp": [
-          "#0B0C08",
-          "#242621",
-          "#41433E",
-          "#60625D",
-          "#81837D",
-          "#A4A6A0",
-          "#C8CAC4",
-          "#EEEFE9"
-        ]
-      },
-      "texto": {
-        "role": "neutral",
-        "displayName": "Tinta Asfalto",
-        "canonical": "oklch(20.6% 0.009 240.3)",
-        "tonalRamp": [
-          "#080C0E",
-          "#222628",
-          "#3E4346",
-          "#5D6265",
-          "#7E8387",
-          "#A1A6A9",
-          "#C5CACE",
-          "#EAEFF3"
-        ]
-      },
-      "texto-secundario": {
-        "role": "neutral",
-        "displayName": "Pizarra",
-        "canonical": "oklch(41.6% 0.010 236.8)",
-        "tonalRamp": [
-          "#080C0F",
-          "#212629",
-          "#3E4346",
-          "#5C6266",
-          "#7D8387",
-          "#A0A6AA",
-          "#C4CACE",
-          "#E9F0F4"
-        ]
-      },
-      "texto-terciario": {
-        "role": "neutral",
-        "displayName": "Gris Rótulo",
-        "canonical": "oklch(47.8% 0.010 236.7)",
-        "tonalRamp": [
-          "#080C0E",
-          "#212629",
-          "#3E4346",
-          "#5D6266",
-          "#7D8387",
-          "#A0A6AA",
-          "#C4CACE",
-          "#E9EFF4"
-        ]
-      },
-      "texto-sobre-color": {
         "role": "neutral",
         "displayName": "Blanco",
         "canonical": "oklch(100.0% 0.000 89.9)",
@@ -104,503 +29,664 @@
           "#424242",
           "#616161",
           "#828282",
-          "#A5A5A5",
-          "#C9C9C9",
+          "#A4A4A4",
+          "#C8C8C8",
+          "#EEEEEE"
+        ]
+      },
+      "superficie-honda": {
+        "role": "neutral",
+        "displayName": "Niebla Honda",
+        "canonical": "oklch(93.3% 0.016 262.8)",
+        "tonalRamp": [
+          "#080B12",
+          "#21252D",
+          "#3D424B",
+          "#5C616B",
+          "#7D828C",
+          "#9FA5AF",
+          "#C3C9D4",
+          "#E8EEF9"
+        ]
+      },
+      "azul-suave": {
+        "role": "neutral",
+        "displayName": "Azul Suave",
+        "canonical": "oklch(95.7% 0.020 264.5)",
+        "tonalRamp": [
+          "#070B14",
+          "#20252F",
+          "#3C424D",
+          "#5B616D",
+          "#7C828F",
+          "#9EA5B2",
+          "#C2C9D6",
+          "#E7EEFC"
+        ]
+      },
+      "texto": {
+        "role": "neutral",
+        "displayName": "Tinta Marino",
+        "canonical": "oklch(21.2% 0.058 264.5)",
+        "tonalRamp": [
+          "#020823",
+          "#172441",
+          "#324161",
+          "#516182",
+          "#7182A5",
+          "#93A5CA",
+          "#B6C9EF",
+          "#DBEEFF"
+        ]
+      },
+      "texto-secundario": {
+        "role": "neutral",
+        "displayName": "Pizarra",
+        "canonical": "oklch(43.8% 0.045 263.2)",
+        "tonalRamp": [
+          "#030A1E",
+          "#19253B",
+          "#35425A",
+          "#54617B",
+          "#74829D",
+          "#96A5C1",
+          "#BAC9E7",
+          "#DEEEFF"
+        ]
+      },
+      "texto-terciario": {
+        "role": "neutral",
+        "displayName": "Pizarra Clara",
+        "canonical": "oklch(49.5% 0.041 264.1)",
+        "tonalRamp": [
+          "#040A1C",
+          "#1B2539",
+          "#374258",
+          "#556179",
+          "#76829B",
+          "#98A5BF",
+          "#BBC9E4",
+          "#E0EEFF"
+        ]
+      },
+      "texto-sobre-color": {
+        "role": "neutral",
+        "displayName": "Blanco sobre Color",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A4A4A4",
+          "#C8C8C8",
           "#EEEEEE"
         ]
       },
       "divisor": {
         "role": "neutral",
         "displayName": "Divisor",
-        "canonical": "oklch(86.2% 0.011 123.5)",
+        "canonical": "oklch(91.4% 0.017 259.4)",
         "tonalRamp": [
-          "#0A0C07",
-          "#242621",
-          "#41433D",
-          "#60625C",
-          "#81837D",
-          "#A4A69F",
-          "#C8CAC3",
-          "#EDF0E8"
+          "#070B12",
+          "#20252D",
+          "#3D424B",
+          "#5B616B",
+          "#7C828C",
+          "#9EA5AF",
+          "#C2C9D4",
+          "#E7EEF9"
         ]
       },
       "contorno-tarjeta": {
         "role": "neutral",
-        "displayName": "Contorno de Tarjeta",
-        "canonical": "oklch(82.7% 0.012 128.6)",
+        "displayName": "Contorno",
+        "canonical": "oklch(89.5% 0.020 260.2)",
         "tonalRamp": [
-          "#0A0C07",
-          "#232621",
-          "#40433D",
-          "#5F625C",
-          "#80847D",
-          "#A3A69F",
-          "#C7CBC3",
-          "#ECF0E8"
+          "#070B14",
+          "#1F252F",
+          "#3C424D",
+          "#5B616D",
+          "#7B828E",
+          "#9EA5B1",
+          "#C1C9D6",
+          "#E6EEFC"
         ]
       },
       "borde": {
         "role": "neutral",
         "displayName": "Borde de Control",
-        "canonical": "oklch(57.3% 0.012 145.4)",
+        "canonical": "oklch(60.2% 0.041 263.5)",
         "tonalRamp": [
-          "#080C09",
-          "#222622",
-          "#3F443F",
-          "#5E635E",
-          "#7F847F",
-          "#A1A7A1",
-          "#C5CBC5",
-          "#EAF0EA"
+          "#040A1C",
+          "#1A2539",
+          "#364258",
+          "#556179",
+          "#75829B",
+          "#97A5BF",
+          "#BBC9E4",
+          "#E0EEFF"
         ]
       },
       "borde-sin-contar": {
         "role": "neutral",
         "displayName": "Borde Sin Contar",
-        "canonical": "oklch(74.2% 0.012 128.6)",
+        "canonical": "oklch(76.1% 0.033 261.7)",
         "tonalRamp": [
-          "#0A0C07",
-          "#232621",
-          "#40433D",
-          "#5F625C",
-          "#80847D",
-          "#A3A69F",
-          "#C7CBC3",
-          "#ECF0E8"
+          "#040B19",
+          "#1C2535",
+          "#384254",
+          "#576174",
+          "#778396",
+          "#99A5BA",
+          "#BDC9DF",
+          "#E2EFFF"
         ]
       },
       "borde-no-lleva": {
         "role": "neutral",
         "displayName": "Borde No Lleva",
-        "canonical": "oklch(81.9% 0.011 123.5)",
+        "canonical": "oklch(85.8% 0.020 260.2)",
         "tonalRamp": [
-          "#0A0C07",
-          "#242620",
-          "#41433D",
-          "#60625C",
-          "#81837D",
-          "#A4A69F",
-          "#C8CAC3",
-          "#EDF0E8"
+          "#070B14",
+          "#1F252F",
+          "#3C424D",
+          "#5A616D",
+          "#7B828E",
+          "#9DA5B2",
+          "#C1C9D6",
+          "#E6EEFC"
         ]
       },
-      "asfalto": {
-        "role": "primary",
-        "displayName": "Asfalto",
-        "canonical": "oklch(22.0% 0.010 248.3)",
-        "tonalRamp": [
-          "#080C0F",
-          "#222529",
-          "#3E4247",
-          "#5D6266",
-          "#7E8388",
-          "#A1A6AA",
-          "#C5CACF",
-          "#EAEFF4"
-        ]
-      },
-      "asfalto-alto": {
-        "role": "primary",
-        "displayName": "Asfalto Alto",
-        "canonical": "oklch(29.0% 0.014 248.3)",
-        "tonalRamp": [
-          "#070C10",
-          "#20262B",
-          "#3D4348",
-          "#5C6268",
-          "#7D838A",
-          "#9FA6AD",
-          "#C3CAD1",
-          "#E8EFF7"
-        ]
-      },
-      "asfalto-profundo": {
-        "role": "primary",
-        "displayName": "Asfalto Profundo",
-        "canonical": "oklch(16.6% 0.008 248.3)",
-        "tonalRamp": [
-          "#090B0E",
-          "#222528",
-          "#3F4246",
-          "#5E6265",
-          "#7F8386",
-          "#A2A5A9",
-          "#C6CACE",
-          "#EBEFF3"
-        ]
-      },
-      "asfalto-tenue": {
-        "role": "primary",
-        "displayName": "Gris Neblina",
-        "canonical": "oklch(80.3% 0.012 239.9)",
-        "tonalRamp": [
-          "#070C0F",
-          "#20262A",
-          "#3D4347",
-          "#5C6267",
-          "#7D8388",
-          "#9FA6AB",
-          "#C3CAD0",
-          "#E8F0F5"
-        ]
-      },
-      "asfalto-tinte": {
-        "role": "primary",
-        "displayName": "Tinte Frío",
-        "canonical": "oklch(91.8% 0.006 137.8)",
-        "tonalRamp": [
-          "#0A0C09",
-          "#242623",
-          "#414340",
-          "#60625F",
-          "#818380",
-          "#A3A6A2",
-          "#C7CAC6",
-          "#EDEFEC"
-        ]
-      },
-      "asfalto-claro": {
-        "role": "primary",
-        "displayName": "Asfalto Claro",
-        "canonical": "oklch(37.1% 0.016 244.6)",
-        "tonalRamp": [
-          "#060C11",
-          "#1F262C",
-          "#3C4349",
-          "#5B6269",
-          "#7B838B",
-          "#9EA6AE",
-          "#C2CAD2",
-          "#E7F0F8"
-        ]
-      },
-      "carril": {
-        "role": "primary",
-        "displayName": "Marca de Carril",
-        "canonical": "oklch(55.1% 0.017 244.9)",
-        "tonalRamp": [
-          "#060C11",
-          "#1F262C",
-          "#3C434A",
-          "#5A6269",
-          "#7B838B",
-          "#9EA6AE",
-          "#C1CAD2",
-          "#E7F0F8"
-        ]
-      },
-      "verde-ruta": {
+      "azul-noche": {
         "role": "secondary",
-        "displayName": "Verde Ruta",
-        "canonical": "oklch(46.9% 0.095 165.8)",
+        "displayName": "Azul Noche",
+        "canonical": "oklch(28.8% 0.116 263.6)",
         "tonalRamp": [
-          "#001403",
-          "#00311B",
-          "#005037",
-          "#267056",
-          "#4B9376",
-          "#6EB699",
-          "#93DBBC",
-          "#B8FFE1"
+          "#00003B",
+          "#051D5C",
+          "#203D7E",
+          "#3E5EA2",
+          "#5E80C7",
+          "#7FA3ED",
+          "#A2C8FF",
+          "#C6EEFF"
         ]
       },
-      "verde-ruta-hondo": {
+      "azul-noche-alto": {
         "role": "secondary",
-        "displayName": "Verde Ruta Hondo",
-        "canonical": "oklch(39.1% 0.077 166.7)",
+        "displayName": "Azul Noche Alto",
+        "canonical": "oklch(35.2% 0.133 264.9)",
         "tonalRamp": [
-          "#001305",
-          "#002F1D",
-          "#114E3A",
-          "#356E59",
-          "#579079",
-          "#7AB39C",
-          "#9ED8BF",
-          "#C2FEE4"
+          "#020042",
+          "#051964",
+          "#1D3B87",
+          "#3B5CAC",
+          "#5A7ED1",
+          "#7BA2F8",
+          "#9EC7FF",
+          "#C2ECFF"
         ]
       },
-      "verde-vivo": {
+      "azul-noche-profundo": {
         "role": "secondary",
-        "displayName": "Verde Vivo",
-        "canonical": "oklch(73.7% 0.161 156.2)",
+        "displayName": "Azul Noche Profundo",
+        "canonical": "oklch(19.6% 0.068 264.9)",
+        "tonalRamp": [
+          "#010727",
+          "#142346",
+          "#304166",
+          "#4E6088",
+          "#6E82AB",
+          "#90A4D0",
+          "#B3C9F6",
+          "#D8EEFF"
+        ]
+      },
+      "azul-noche-luz": {
+        "role": "secondary",
+        "displayName": "Azul Noche con Luz",
+        "canonical": "oklch(39.0% 0.163 263.7)",
+        "tonalRamp": [
+          "#020045",
+          "#000F72",
+          "#103696",
+          "#2E59BC",
+          "#4E7DE2",
+          "#6FA1FF",
+          "#91C6FF",
+          "#BDEDFF"
+        ]
+      },
+      "azul-tenue": {
+        "role": "secondary",
+        "displayName": "Azul Tenue",
+        "canonical": "oklch(82.0% 0.066 264.9)",
+        "tonalRamp": [
+          "#010726",
+          "#152345",
+          "#304165",
+          "#4E6087",
+          "#6E82AA",
+          "#90A4CF",
+          "#B4C9F5",
+          "#D8EEFF"
+        ]
+      },
+      "azul-tinte": {
+        "role": "neutral",
+        "displayName": "Azul Tinte",
+        "canonical": "oklch(94.3% 0.027 267.5)",
+        "tonalRamp": [
+          "#070B17",
+          "#1F2532",
+          "#3B4251",
+          "#5A6171",
+          "#7B8293",
+          "#9DA4B6",
+          "#C1C8DB",
+          "#E6EEFF"
+        ]
+      },
+      "azul-noche-claro": {
+        "role": "secondary",
+        "displayName": "Azul Noche Claro",
+        "canonical": "oklch(42.4% 0.145 264.2)",
+        "tonalRamp": [
+          "#030045",
+          "#011669",
+          "#18398D",
+          "#365BB2",
+          "#557ED8",
+          "#76A2FF",
+          "#99C6FF",
+          "#BEECFF"
+        ]
+      },
+      "azul-senal": {
+        "role": "primary",
+        "displayName": "Azul Señal",
+        "canonical": "oklch(51.6% 0.243 263.8)",
+        "tonalRamp": [
+          "#020045",
+          "#000F72",
+          "#0731A2",
+          "#1E52D5",
+          "#3D77FD",
+          "#679EFF",
+          "#91C6FF",
+          "#BDEDFF"
+        ]
+      },
+      "azul-senal-hondo": {
+        "role": "primary",
+        "displayName": "Azul Señal Hondo",
+        "canonical": "oklch(43.0% 0.208 264.0)",
+        "tonalRamp": [
+          "#030045",
+          "#000E72",
+          "#0931A2",
+          "#1F52D4",
+          "#3F77FC",
+          "#679EFF",
+          "#92C5FF",
+          "#BEEDFF"
+        ]
+      },
+      "azul-senal-brillante": {
+        "role": "primary",
+        "displayName": "Azul Señal Brillante",
+        "canonical": "oklch(55.7% 0.228 264.2)",
+        "tonalRamp": [
+          "#030045",
+          "#000E72",
+          "#0B31A2",
+          "#2051D5",
+          "#3F76FD",
+          "#689EFF",
+          "#92C5FF",
+          "#BEECFF"
+        ]
+      },
+      "azul-luminoso": {
+        "role": "tertiary",
+        "displayName": "Azul Luminoso",
+        "canonical": "oklch(69.3% 0.162 259.0)",
+        "tonalRamp": [
+          "#000044",
+          "#001471",
+          "#003A95",
+          "#1E5CBB",
+          "#417FE1",
+          "#63A4FF",
+          "#86C9FF",
+          "#B4F0FF"
+        ]
+      },
+      "cian-luz": {
+        "role": "tertiary",
+        "displayName": "Cian Luz",
+        "canonical": "oklch(84.1% 0.101 228.2)",
+        "tonalRamp": [
+          "#000D2C",
+          "#002B4B",
+          "#004A6C",
+          "#006B8E",
+          "#2F8DB2",
+          "#57B1D7",
+          "#7DD6FD",
+          "#A2FCFF"
+        ]
+      },
+      "listo": {
+        "role": "status",
+        "displayName": "Listo",
+        "canonical": "oklch(60.8% 0.134 158.7)",
         "tonalRamp": [
           "#001700",
-          "#003600",
-          "#00561C",
-          "#00783C",
-          "#079B5C",
-          "#45BF7E",
-          "#6EE5A1",
-          "#96FFC6"
+          "#003506",
+          "#005525",
+          "#007743",
+          "#199963",
+          "#4BBE85",
+          "#73E3A8",
+          "#9AFFCD"
         ]
       },
-      "capturado": {
-        "role": "secondary",
-        "displayName": "Contado",
-        "canonical": "oklch(61.3% 0.123 159.3)",
+      "listo-hondo": {
+        "role": "status",
+        "displayName": "Listo Hondo",
+        "canonical": "oklch(51.2% 0.115 159.1)",
         "tonalRamp": [
           "#001600",
-          "#00330F",
-          "#00532B",
-          "#08744A",
-          "#3B966A",
-          "#61BA8C",
-          "#86DFAF",
-          "#ABFFD4"
+          "#00340D",
+          "#00532A",
+          "#007448",
+          "#379769",
+          "#5DBA8A",
+          "#83E0AE",
+          "#A8FFD2"
         ]
       },
-      "capturado-fondo": {
-        "role": "secondary",
-        "displayName": "Agua Contada",
-        "canonical": "oklch(93.5% 0.024 163.1)",
+      "listo-fondo": {
+        "role": "status",
+        "displayName": "Listo Fondo",
+        "canonical": "oklch(94.7% 0.028 165.5)",
         "tonalRamp": [
-          "#040E09",
-          "#1B2822",
-          "#38463F",
-          "#57655E",
-          "#77877F",
-          "#99AAA1",
-          "#BDCEC5",
-          "#E2F3EA"
+          "#010F08",
+          "#172922",
+          "#34473E",
+          "#52665D",
+          "#73887E",
+          "#95ABA0",
+          "#B8CFC4",
+          "#DDF4E9"
         ]
       },
-      "capturado-texto": {
-        "role": "secondary",
-        "displayName": "Tinta Contada",
-        "canonical": "oklch(32.5% 0.063 166.9)",
+      "listo-texto": {
+        "role": "status",
+        "displayName": "Listo Texto",
+        "canonical": "oklch(35.6% 0.075 161.1)",
         "tonalRamp": [
-          "#001206",
-          "#002D1F",
-          "#204C3B",
-          "#406C5A",
-          "#618E7B",
-          "#83B19D",
-          "#A7D6C1",
-          "#CBFBE6"
+          "#001302",
+          "#002F18",
+          "#104E34",
+          "#356E53",
+          "#579073",
+          "#79B495",
+          "#9DD8B9",
+          "#C2FEDE"
         ]
       },
-      "preventivo": {
-        "role": "tertiary",
-        "displayName": "Amarillo Preventivo",
-        "canonical": "oklch(84.6% 0.169 84.9)",
+      "aviso": {
+        "role": "status",
+        "displayName": "Aviso Ámbar",
+        "canonical": "oklch(82.4% 0.166 78.4)",
         "tonalRamp": [
-          "#250000",
-          "#451400",
-          "#663500",
-          "#885600",
-          "#AC7800",
-          "#D19C00",
-          "#F6C03D",
-          "#FFE669"
+          "#260000",
+          "#4B0800",
+          "#6E2D00",
+          "#924F00",
+          "#B67100",
+          "#DC9500",
+          "#FFBA2C",
+          "#FFE279"
         ]
       },
-      "preventivo-hondo": {
-        "role": "tertiary",
-        "displayName": "Preventivo Hondo",
-        "canonical": "oklch(68.9% 0.143 79.7)",
+      "aviso-hondo": {
+        "role": "status",
+        "displayName": "Aviso Hondo",
+        "canonical": "oklch(67.2% 0.142 73.9)",
         "tonalRamp": [
-          "#240000",
-          "#441600",
-          "#643500",
-          "#875600",
-          "#AA7800",
-          "#CF9B38",
-          "#F5BF60",
-          "#FFE586"
+          "#280000",
+          "#4A0C00",
+          "#6C2F00",
+          "#8F5000",
+          "#B47200",
+          "#D99524",
+          "#FFB952",
+          "#FFDF7C"
         ]
       },
-      "preventivo-fondo": {
-        "role": "tertiary",
-        "displayName": "Crema Preventiva",
-        "canonical": "oklch(95.8% 0.060 92.8)",
+      "aviso-fondo": {
+        "role": "status",
+        "displayName": "Aviso Fondo",
+        "canonical": "oklch(96.3% 0.045 89.1)",
         "tonalRamp": [
           "#130900",
-          "#2E2400",
-          "#4C411E",
-          "#6C613D",
-          "#8D825D",
-          "#B1A57F",
-          "#D5C9A2",
-          "#FBEEC6"
+          "#2E2407",
+          "#4B4125",
+          "#6B6043",
+          "#8D8163",
+          "#B0A485",
+          "#D4C8A8",
+          "#FAEDCC"
         ]
       },
-      "preventivo-texto": {
-        "role": "tertiary",
-        "displayName": "Tinta Preventiva",
-        "canonical": "oklch(42.6% 0.089 76.7)",
+      "aviso-texto": {
+        "role": "status",
+        "displayName": "Aviso Texto",
+        "canonical": "oklch(42.4% 0.090 73.5)",
         "tonalRamp": [
-          "#1C0300",
-          "#3A1D00",
-          "#5A3B00",
-          "#7B5B27",
-          "#9E7C49",
-          "#C29F6B",
-          "#E7C38E",
-          "#FFE8B2"
+          "#1F0100",
+          "#3E1B00",
+          "#5E3900",
+          "#7F581D",
+          "#A27941",
+          "#C79C63",
+          "#ECC086",
+          "#FFE5AA"
         ]
       },
-      "pendiente": {
-        "role": "tertiary",
-        "displayName": "Gris No Lleva",
-        "canonical": "oklch(46.7% 0.010 236.7)",
+      "no-lleva": {
+        "role": "status",
+        "displayName": "No Lleva Pizarra",
+        "canonical": "oklch(49.9% 0.038 264.1)",
         "tonalRamp": [
-          "#080C0E",
-          "#212629",
-          "#3E4346",
-          "#5D6266",
-          "#7D8387",
-          "#A0A6AA",
-          "#C4CACE",
-          "#E9EFF4"
+          "#040A1B",
+          "#1C2538",
+          "#384256",
+          "#566177",
+          "#778299",
+          "#99A5BD",
+          "#BCC9E2",
+          "#E1EEFF"
         ]
       },
-      "pendiente-fondo": {
-        "role": "tertiary",
-        "displayName": "Fondo No Lleva",
-        "canonical": "oklch(90.1% 0.007 124.5)",
+      "no-lleva-fondo": {
+        "role": "status",
+        "displayName": "No Lleva Fondo",
+        "canonical": "oklch(93.0% 0.012 259.8)",
         "tonalRamp": [
-          "#0A0C09",
-          "#242622",
-          "#41433F",
-          "#60625E",
-          "#81837F",
-          "#A4A6A1",
-          "#C8CAC5",
-          "#EDEFEB"
+          "#080B10",
+          "#22252B",
+          "#3E4248",
+          "#5D6168",
+          "#7E8289",
+          "#A0A5AC",
+          "#C4C9D1",
+          "#E9EEF6"
         ]
       },
       "error": {
-        "role": "tertiary",
-        "displayName": "Rojo Alto",
-        "canonical": "oklch(52.4% 0.203 22.9)",
+        "role": "status",
+        "displayName": "Error",
+        "canonical": "oklch(56.2% 0.201 21.6)",
         "tonalRamp": [
-          "#3B0000",
-          "#620000",
-          "#8A0007",
-          "#B21B2B",
-          "#DA484C",
-          "#FF6E6D",
-          "#FF9390",
-          "#FFB9B4"
+          "#320000",
+          "#5D0000",
+          "#8A000B",
+          "#B80028",
+          "#E13C49",
+          "#FF6B6F",
+          "#FF9A99",
+          "#FFC7C4"
         ]
       },
       "error-fondo": {
-        "role": "tertiary",
-        "displayName": "Rosa Alto",
-        "canonical": "oklch(93.9% 0.026 11.9)",
+        "role": "status",
+        "displayName": "Error Fondo",
+        "canonical": "oklch(94.9% 0.023 7.7)",
         "tonalRamp": [
-          "#140709",
-          "#302022",
-          "#4E3D3F",
-          "#6E5C5E",
-          "#907D7E",
-          "#B39FA1",
-          "#D8C3C5",
-          "#FEE8EA"
+          "#130709",
+          "#2F2023",
+          "#4D3D3F",
+          "#6D5C5E",
+          "#8F7D7F",
+          "#B29FA2",
+          "#D7C3C6",
+          "#FDE8EB"
         ]
       },
       "error-texto": {
-        "role": "tertiary",
-        "displayName": "Tinta Roja",
-        "canonical": "oklch(41.0% 0.157 21.8)",
+        "role": "status",
+        "displayName": "Error Texto",
+        "canonical": "oklch(41.8% 0.156 21.0)",
         "tonalRamp": [
           "#320000",
-          "#570000",
-          "#7C0F1D",
-          "#A2373B",
-          "#C95B5B",
-          "#F17E7D",
-          "#FFA2A0",
-          "#FFC7C4"
+          "#5B0000",
+          "#810019",
+          "#A72F38",
+          "#CF5458",
+          "#F77879",
+          "#FF9C9C",
+          "#FFC7C5"
         ]
       }
     },
     "typographyMeta": {
       "numero": {
         "displayName": "Numero",
-        "purpose": ""
-      },
-      "display": {
-        "displayName": "Display",
-        "purpose": ""
+        "purpose": "La cifra que domina una pantalla."
       },
       "avance": {
         "displayName": "Avance",
-        "purpose": ""
+        "purpose": "El número del avance en el héroe de conteo."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Nombre de la app y de quien entra."
       },
       "total": {
         "displayName": "Total",
-        "purpose": ""
+        "purpose": "La lectura del visor de cada fila."
       },
       "tecla": {
         "displayName": "Tecla",
-        "purpose": ""
+        "purpose": "Dígitos de los teclados propios."
       },
       "titulo": {
         "displayName": "Titulo",
-        "purpose": ""
+        "purpose": "Títulos de héroe, hojas y botón grande."
       },
       "campo": {
         "displayName": "Campo",
-        "purpose": ""
+        "purpose": "El número dentro de un campo de captura."
       },
       "titulo-barra": {
         "displayName": "Titulo barra",
-        "purpose": ""
+        "purpose": "Títulos de sección y de estado vacío."
       },
       "boton": {
         "displayName": "Boton",
-        "purpose": ""
+        "purpose": "Texto de botones."
       },
       "subtitulo": {
         "displayName": "Subtitulo",
-        "purpose": ""
+        "purpose": "Nombres de producto, datos bajo su rótulo."
       },
       "cuerpo": {
         "displayName": "Cuerpo",
-        "purpose": ""
+        "purpose": "Texto corrido e instrucciones (Medium)."
       },
       "familia": {
         "displayName": "Familia",
-        "purpose": ""
-      },
-      "placa": {
-        "displayName": "Placa",
-        "purpose": ""
+        "purpose": "Nombre de la familia en su banda."
       },
       "etiqueta": {
         "displayName": "Etiqueta",
-        "purpose": ""
+        "purpose": "Avisos y notas."
       },
-      "etiqueta-dato": {
-        "displayName": "Etiqueta dato",
-        "purpose": ""
+      "placa": {
+        "displayName": "Placa",
+        "purpose": "Leyenda de pastillas de estado."
       },
       "micro": {
         "displayName": "Micro",
-        "purpose": ""
+        "purpose": "Contexto y subtítulos pequeños."
+      },
+      "etiqueta-dato": {
+        "displayName": "Etiqueta dato",
+        "purpose": "Rótulo de un dato."
       },
       "rotulo": {
         "displayName": "Rotulo",
-        "purpose": ""
+        "purpose": "Rótulo de campo de captura y unidad."
       }
     },
-    "shadows": [],
+    "shadows": [
+      {
+        "name": "tarjeta",
+        "value": "0px 1px 2px rgba(11,23,51,0.06), 0px 6px 16px rgba(16,42,110,0.07)",
+        "purpose": "tarjetas, filas de conteo, grupo de menú, botón secundario."
+      },
+      {
+        "name": "elevada",
+        "value": "0px 2px 6px rgba(11,23,51,0.06), 0px 14px 32px rgba(10,36,99,0.14)",
+        "purpose": "la pieza que flota (tarjetas de usuario, fila que se teclea, diálogo)."
+      },
+      {
+        "name": "accion",
+        "value": "0px 6px 16px rgba(22,82,240,0.30)",
+        "purpose": "botón primario, tecla de avance, día elegido. Desaparece al presionar."
+      },
+      {
+        "name": "panel",
+        "value": "0px -6px 24px rgba(10,36,99,0.12)",
+        "purpose": "lo acoplado abajo (teclado, barra inferior, hoja): la sombra sube."
+      },
+      {
+        "name": "tecla",
+        "value": "0px 1px 2px rgba(11,23,51,0.10)",
+        "purpose": "teclas claras del PIN, opción activa del selector."
+      }
+    ],
     "motion": [
       {
         "name": "toque",
         "value": "90ms",
-        "purpose": "Respuesta al toque (escala 0.98, tinte)."
+        "purpose": "Respuesta tonal al toque."
       },
       {
         "name": "rapido",
         "value": "160ms",
-        "purpose": "Un cambio pequeño; entrada de un diálogo."
+        "purpose": "Un cambio pequeño: pastilla, aviso."
       },
       {
         "name": "hoja",
-        "value": "240ms",
-        "purpose": "Entrada de una hoja inferior."
+        "value": "260ms",
+        "purpose": "Velo de una hoja."
       },
       {
         "name": "destello",
@@ -609,13 +695,38 @@
       },
       {
         "name": "carril",
-        "value": "360ms",
-        "purpose": "El carril de avance se traza hasta su nuevo largo."
+        "value": "420ms",
+        "purpose": "La barra de avance crece a su nuevo largo."
+      },
+      {
+        "name": "entrada",
+        "value": "320ms",
+        "purpose": "Contenido de una pantalla que sube y aparece."
+      },
+      {
+        "name": "escalon",
+        "value": "45ms",
+        "purpose": "Escalonado entre bloques que entran juntos."
       },
       {
         "name": "curva-salida",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Frenado exponencial; nunca rebota."
+        "purpose": "Ease-out exponencial para barras y velos."
+      },
+      {
+        "name": "resorte-presion",
+        "value": "spring(damping 20, stiffness 420, mass 0.6)",
+        "purpose": "Hundirse al tocar (0.96 controles, 0.98 piezas)."
+      },
+      {
+        "name": "resorte-seleccion",
+        "value": "spring(damping 14, stiffness 320, mass 0.7)",
+        "purpose": "Círculos del PIN que se llenan."
+      },
+      {
+        "name": "resorte-entrada",
+        "value": "spring(damping 22, stiffness 200, mass 0.9)",
+        "purpose": "Hojas, diálogos y tarjetas que llegan."
       }
     ],
     "breakpoints": [
@@ -638,149 +749,136 @@
       "name": "Botón primario",
       "kind": "button",
       "refersTo": "boton-primario",
-      "description": "Avanzar: la acción que se espera, una por pantalla u hoja.",
+      "description": "La acción esperada: una por pantalla u hoja.",
       "html": "<button class=\"ds-btn-primario\">Finalizar conteo</button>",
-      "css": ".ds-btn-primario { min-height: 56px; padding: 8px 16px; border: none; border-radius: 8px; background: #0A6B4E; color: #FFFFFF; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 19px; line-height: 23px; letter-spacing: 0.2px; cursor: pointer; transition: background 0.09s, transform 0.09s; } .ds-btn-primario:hover, .ds-btn-primario:active { background: #07523C; transform: scale(0.98); } .ds-btn-primario:focus-visible { outline: 3px solid #35C77E; outline-offset: 2px; }"
-    },
-    {
-      "name": "Botón letrero",
-      "kind": "button",
-      "refersTo": "boton-letrero",
-      "description": "La acción principal del inicio: un letrero de destino con filete interior y flecha.",
-      "html": "<button class=\"ds-btn-letrero\"><span class=\"ds-letrero-textos\"><span class=\"ds-letrero-titulo\">Continuar carga inicial</span><span class=\"ds-letrero-detalle\">Sale mañana, jueves 1</span></span><svg width=\"32\" height=\"32\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M3.5 12h15.5M13 5.5l6.5 6.5-6.5 6.5\" stroke=\"#fff\" stroke-width=\"2.75\" stroke-linecap=\"square\"/></svg></button>",
-      "css": ".ds-btn-letrero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 112px; padding: 16px 24px; border: none; border-radius: 12px; background: #0A6B4E; color: #fff; text-align: left; cursor: pointer; } .ds-btn-letrero::after { content: ''; position: absolute; inset: 4px; border: 2px solid rgba(255,255,255,0.55); border-radius: 8px; pointer-events: none; } .ds-letrero-textos { display: flex; flex-direction: column; gap: 4px; } .ds-letrero-titulo { font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 28px; line-height: 32px; } .ds-letrero-detalle { font-family: 'Barlow', system-ui, sans-serif; font-weight: 500; font-size: 16px; line-height: 23px; } .ds-btn-letrero:hover, .ds-btn-letrero:active { background: #07523C; transform: scale(0.98); }"
+      "css": ".ds-btn-primario { font-family: Manrope, system-ui, sans-serif; font-weight: 800; font-size: 17px; color: #fff; background: linear-gradient(180deg, #2B63F6, #1446DB); border: none; border-radius: 16px; min-height: 56px; padding: 8px 24px; box-shadow: 0px 6px 16px rgba(22,82,240,0.30); transition: transform .15s, box-shadow .15s; } .ds-btn-primario:hover { filter: brightness(1.05); } .ds-btn-primario:active { transform: scale(.96); background: linear-gradient(180deg, #1446DB, #0E3DBF); box-shadow: none; } .ds-btn-primario:focus-visible { outline: 3px solid #5B9BFF; outline-offset: 2px; }"
     },
     {
       "name": "Botón secundario",
       "kind": "button",
       "refersTo": "boton-secundario",
-      "description": "Volver, cancelar, alternativas: placa blanca con contorno.",
-      "html": "<button class=\"ds-btn-secundario\">Iniciar recarga</button>",
-      "css": ".ds-btn-secundario { min-height: 56px; padding: 8px 16px; border: 2px solid #A9ADA5; border-radius: 8px; background: #FFFFFF; color: #14181B; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 19px; line-height: 23px; cursor: pointer; } .ds-btn-secundario:hover, .ds-btn-secundario:active { background: #E2E5E1; border-color: #747A74; } .ds-btn-secundario:focus-visible { outline: 3px solid #171B1F; outline-offset: 2px; }"
+      "description": "Alternativas, volver, cancelar.",
+      "html": "<button class=\"ds-btn-sec\">Iniciar recarga</button>",
+      "css": ".ds-btn-sec { font-family: Manrope, system-ui, sans-serif; font-weight: 800; font-size: 17px; color: #0E3DBF; background: #fff; border: 1px solid #D5DDEA; border-radius: 16px; min-height: 56px; padding: 8px 24px; box-shadow: 0px 1px 2px rgba(11,23,51,0.06), 0px 6px 16px rgba(16,42,110,0.07); } .ds-btn-sec:active { background: #E4ECFF; border-color: #1652F0; transform: scale(.96); } .ds-btn-sec:focus-visible { outline: 3px solid #5B9BFF; outline-offset: 2px; }"
     },
     {
-      "name": "Placa de estado",
+      "name": "Pastilla de estado",
       "kind": "chip",
-      "refersTo": "placa-aviso",
-      "description": "El estado de una carga como leyenda de letrero: esquina corta y mayúsculas condensadas.",
-      "html": "<span class=\"ds-placa ds-placa-aviso\">Esperando contador</span> <span class=\"ds-placa ds-placa-contado\">Autorizada</span> <span class=\"ds-placa ds-placa-error\">Error de envío</span>",
-      "css": ".ds-placa { display: inline-block; padding: 3px 10px; border-radius: 4px; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 14px; line-height: 18px; letter-spacing: 0.8px; text-transform: uppercase; } .ds-placa-aviso { background: #FFF1C4; color: #6A4700; } .ds-placa-contado { background: #DCEFE5; color: #063E2D; } .ds-placa-error { background: #FCE4E6; color: #8C0D20; }"
+      "refersTo": "pastilla-estado",
+      "description": "Estado de una carga: tinte + texto hondo, en cápsula.",
+      "html": "<span class=\"ds-pastilla\">Esperando contador</span>",
+      "css": ".ds-pastilla { font-family: Manrope, system-ui, sans-serif; font-weight: 700; font-size: 13px; line-height: 18px; color: #6B4500; background: #FFF2D1; border-radius: 999px; padding: 4px 12px; display: inline-block; }"
+    },
+    {
+      "name": "Tarjeta",
+      "kind": "card",
+      "refersTo": "tarjeta",
+      "description": "Pieza blanca que flota sobre la niebla azulada.",
+      "html": "<div class=\"ds-tarjeta\"><span class=\"ds-t-est\">Autorizada</span><h3>Carga inicial · Ruta 3</h3><p>Contó <b>Irvin Alday</b></p></div>",
+      "css": ".ds-tarjeta { font-family: Manrope, system-ui, sans-serif; background: #fff; border: 1px solid #D5DDEA; border-radius: 22px; padding: 24px; box-shadow: 0px 1px 2px rgba(11,23,51,0.06), 0px 6px 16px rgba(16,42,110,0.07); color: #0B1733; } .ds-tarjeta h3 { font-weight: 800; font-size: 24px; margin: 12px 0 8px; } .ds-tarjeta p { color: #45526B; margin: 0; } .ds-t-est { font-weight: 700; font-size: 13px; color: #07482F; background: #DDF4E9; border-radius: 999px; padding: 4px 12px; }"
     },
     {
       "name": "Campo de texto",
       "kind": "input",
       "refersTo": "campo-texto",
-      "description": "Rótulo en mayúsculas condensadas arriba; con foco el contorno pasa a asfalto.",
-      "html": "<label class=\"ds-campo\"><span>Motivo</span><input placeholder=\"Escribe el motivo\"/></label>",
-      "css": ".ds-campo { display: flex; flex-direction: column; gap: 4px; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 600; font-size: 13px; letter-spacing: 0.8px; text-transform: uppercase; color: #585E62; } .ds-campo input { min-height: 56px; padding: 8px 12px; border: 2px solid #747A74; border-radius: 8px; background: #fff; color: #14181B; font-family: 'Barlow', system-ui, sans-serif; font-size: 16px; text-transform: none; letter-spacing: 0; } .ds-campo input:focus { outline: none; border-color: #171B1F; } .ds-campo input::placeholder { color: #474D51; }"
+      "description": "Texto libre: contorno visible, foco en azul señal.",
+      "html": "<label class=\"ds-campo\"><span>Motivo (opcional)</span><input placeholder=\"Ej. elegí la fecha equivocada\"></label>",
+      "css": ".ds-campo { font-family: Manrope, system-ui, sans-serif; display: grid; gap: 4px; } .ds-campo span { font-weight: 600; font-size: 12px; color: #56627A; } .ds-campo input { font-family: Manrope, system-ui, sans-serif; font-weight: 500; font-size: 16px; min-height: 56px; padding: 8px 12px; border: 1.5px solid #74819A; border-radius: 16px; color: #0B1733; } .ds-campo input:focus { outline: none; border: 2px solid #1652F0; }"
     },
     {
-      "name": "Encabezado de asfalto con carril",
+      "name": "Héroe",
       "kind": "nav",
-      "refersTo": "encabezado-asfalto",
-      "description": "El pórtico de las pantallas de trabajo: título, escudo de ruta, lectura del avance y carril.",
-      "html": "<header class=\"ds-portico\"><div class=\"ds-portico-fila\"><h1>Carga inicial · Ruta 3</h1><span class=\"ds-escudo\">3</span></div><p>Sale mañana, jueves 1</p><div class=\"ds-panel\"><div><b>6</b> de 14 productos</div><div class=\"ds-carril\"><i style=\"width:43%\"></i></div></div></header>",
-      "css": ".ds-portico { background: #171B1F; color: #fff; padding: 12px 16px 16px; font-family: 'Barlow', system-ui, sans-serif; } .ds-portico-fila { display: flex; justify-content: space-between; align-items: center; } .ds-portico h1 { margin: 0; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 22px; line-height: 26px; } .ds-portico p { margin: 0 0 12px; color: #B8C0C6; font-size: 13px; } .ds-escudo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 36px; background: #fff; color: #14181B; border: 2px solid #14181B; border-radius: 3px 3px 16px 16px; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 800; font-size: 17px; } .ds-panel { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #262C32; border: 1px solid #394148; border-radius: 10px; color: #B8C0C6; font-size: 14px; } .ds-panel b { font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 800; font-size: 40px; line-height: 42px; color: #fff; font-variant-numeric: tabular-nums; } .ds-carril { position: relative; height: 10px; background: #0C0F12 repeating-linear-gradient(90deg, #6A737B 0 10px, transparent 10px 18px) center / 100% 2px no-repeat; border-radius: 4px; overflow: hidden; } .ds-carril i { position: absolute; left: 0; top: 0; bottom: 0; background: #35C77E; border-radius: 4px; transition: width 0.36s cubic-bezier(0.16,1,0.3,1); }"
+      "refersTo": "heroe",
+      "description": "Cromo azul noche con halo, volver circular y montura de 28.",
+      "html": "<header class=\"ds-heroe\"><button aria-label=\"Volver\">‹</button><div><h2>Carga inicial · Ruta 3</h2><p>Sale mañana, jueves 1</p></div></header>",
+      "css": ".ds-heroe { font-family: Manrope, system-ui, sans-serif; display: flex; gap: 12px; align-items: flex-start; padding: 20px 16px 44px; color: #fff; background: radial-gradient(ellipse at 88% 0%, rgba(76,141,255,.42), transparent 60%), linear-gradient(165deg, #133A9A, #0A2463 55%, #061233); border-radius: 0 0 28px 28px; } .ds-heroe button { width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.14); color: #fff; font-size: 22px; } .ds-heroe h2 { margin: 6px 0 2px; font-weight: 800; font-size: 24px; letter-spacing: -.4px; } .ds-heroe p { margin: 0; color: #AFC4F0; font-size: 14px; }"
     },
     {
-      "name": "Fila de conteo",
+      "name": "Fila de conteo (contado)",
       "kind": "custom",
       "refersTo": "fila-contado",
-      "description": "La báscula de cada producto: visor hueco cuando falta, sólido verde cuando ya tiene lectura.",
-      "html": "<div class=\"ds-fila\"><div class=\"ds-fila-cab\"><span class=\"ds-factor\">C/12</span><b>Coca Cola 600ML</b></div><div class=\"ds-fila-captura\"><div class=\"ds-cmp\"><small>PAQUETES</small><span>3</span></div><div class=\"ds-cmp\"><small>SUELTAS</small><span>4</span></div><div class=\"ds-visor\"><span>40</span><small>PIEZAS</small></div></div></div>",
-      "css": ".ds-fila { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #DCEFE5; border: 2px solid #2E9A69; border-radius: 12px; font-family: 'Barlow', system-ui, sans-serif; color: #14181B; } .ds-fila-cab { display: flex; gap: 8px; align-items: center; font-size: 17px; } .ds-factor { min-width: 60px; text-align: center; background: #0A6B4E; color: #fff; border-radius: 4px; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 800; font-size: 15px; } .ds-fila-captura { display: flex; gap: 8px; } .ds-cmp { flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0 8px; background: #fff; border-radius: 8px; } .ds-cmp small, .ds-visor small { font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 600; font-size: 12px; letter-spacing: 1px; } .ds-cmp span { font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 24px; } .ds-visor { width: 96px; min-height: 56px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 0 8px; background: #0A6B4E; color: #fff; border-radius: 8px; } .ds-visor span { font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 800; font-size: 34px; line-height: 36px; font-variant-numeric: tabular-nums; }"
+      "description": "Producto contado: fila azul suave, visor encendido y palomita en círculo verde.",
+      "html": "<div class=\"ds-fila\"><div class=\"ds-f-top\"><span class=\"ds-f-fac\">C/12</span><b>Coca Cola 600ML</b><i class=\"ds-f-ok\">✓</i></div><div class=\"ds-f-cap\"><span class=\"ds-f-cam\"><small>Paquetes</small>3</span><span class=\"ds-f-cam\"><small>Sueltas</small>4</span><span class=\"ds-f-vis\">40<small>piezas</small></span><span class=\"ds-f-cero\">0</span></div></div>",
+      "css": ".ds-fila { font-family: Manrope, system-ui, sans-serif; background: #EAF1FF; border: 1.5px solid #9DB8F6; border-radius: 20px; padding: 12px; display: grid; gap: 10px; box-shadow: 0px 1px 2px rgba(11,23,51,0.06), 0px 6px 16px rgba(16,42,110,0.07); } .ds-f-top { display: flex; gap: 8px; align-items: center; } .ds-f-top b { flex: 1; font-weight: 800; color: #0B1733; } .ds-f-fac { font-weight: 800; font-size: 14px; color: #fff; background: #1652F0; border-radius: 8px; padding: 2px 10px; } .ds-f-ok { font-style: normal; width: 24px; height: 24px; border-radius: 999px; background: #0B7A4E; color: #fff; display: grid; place-items: center; font-size: 13px; } .ds-f-cap { display: flex; gap: 8px; } .ds-f-cam { flex: 1; background: #fff; border-radius: 12px; padding: 6px 10px; text-align: right; font-weight: 800; font-size: 22px; color: #0B1733; } .ds-f-cam small, .ds-f-vis small { display: block; font-size: 12px; font-weight: 600; } .ds-f-vis { width: 96px; border-radius: 12px; padding: 6px 10px; text-align: right; font-weight: 800; font-size: 28px; color: #fff; background: linear-gradient(180deg, #2159F2, #0E3DBF); font-variant-numeric: tabular-nums; } .ds-f-cero { width: 56px; height: 56px; border-radius: 999px; border: 2px solid #74819A; display: grid; place-items: center; font-weight: 800; font-size: 22px; opacity: .3; align-self: center; }"
     },
     {
-      "name": "Tablero de teclado",
+      "name": "PIN",
       "kind": "custom",
-      "refersTo": "tablero-teclado",
-      "description": "Teclas de asfalto que se encienden en blanco; la de avance en verde vivo.",
-      "html": "<div class=\"ds-tablero\"><button class=\"ds-tecla\">7</button><button class=\"ds-tecla\">8</button><button class=\"ds-tecla\">9</button><button class=\"ds-tecla ds-avance\">Siguiente</button></div>",
-      "css": ".ds-tablero { display: grid; grid-template-columns: repeat(3, 1fr) 1.3fr; gap: 8px; padding: 12px; background: #171B1F; border-radius: 16px 16px 0 0; } .ds-tecla { min-height: 56px; border: 1px solid #394148; border-radius: 8px; background: #262C32; color: #fff; font-family: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif; font-weight: 700; font-size: 30px; cursor: pointer; } .ds-tecla:active { background: #fff; color: #14181B; border-color: #fff; } .ds-avance { background: #35C77E; border-color: #35C77E; color: #14181B; font-size: 22px; } .ds-avance:active { background: #0A6B4E; color: #fff; }"
+      "refersTo": "circulo-pin",
+      "description": "Cuatro círculos y teclas circulares sobre el cromo.",
+      "html": "<div class=\"ds-pin\"><div class=\"ds-p-c\"><i class=\"on\"></i><i class=\"on\"></i><i class=\"act\"></i><i></i></div><div class=\"ds-p-k\"><button>1</button><button>2</button><button>3</button></div></div>",
+      "css": ".ds-pin { font-family: Manrope, system-ui, sans-serif; background: linear-gradient(165deg, #133A9A, #0A2463 55%, #061233); padding: 24px; border-radius: 22px; display: grid; gap: 24px; } .ds-p-c { display: flex; gap: 20px; justify-content: center; } .ds-p-c i { width: 18px; height: 18px; border-radius: 999px; border: 2px solid rgba(175,196,240,.55); } .ds-p-c i.on { background: #fff; border-color: #fff; } .ds-p-c i.act { border: 2.5px solid #fff; transform: scale(1.18); } .ds-p-k { display: flex; gap: 24px; justify-content: center; } .ds-p-k button { font-family: Manrope, system-ui, sans-serif; width: 72px; height: 72px; border-radius: 999px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); color: #fff; font-weight: 600; font-size: 28px; } .ds-p-k button:active { background: #fff; color: #0A2463; transform: scale(.92); }"
     }
   ],
   "narrative": {
-    "northStar": "Señalamiento de Ruta",
-    "overview": "La app se lee como un letrero de carretera: de un vistazo, con prisa y bajo cualquier luz. El cromo es asfalto casi negro; el suelo de trabajo es concreto claro; las piezas son blancas como la lámina reflectiva de un letrero; y el color es señal, nunca adorno. El verde ruta dice \"avanza\" y \"ya quedó\", el amarillo preventivo dice \"atención\" (siempre con su rombo), el rojo dice \"alto\" (siempre con su octágono) y el gris dice \"no lleva\". Nada más lleva color.\n\nLa báscula de bodega sigue viva adentro de la fila de conteo: cada producto tiene su visor, hueco y punteado cuando falta la lectura, sólido cuando ya la tiene. Lo que cambió es el mundo alrededor: encabezados de asfalto a escuadra como un pórtico, un carril de avance cuyas marcas discontinuas se cubren de verde conforme se cuenta, placas de estado de esquina corta en mayúsculas condensadas, un escudo de ruta que identifica la ruta como identifica una carretera, y un teclado que es un tablero de asfalto acoplado abajo, con la tecla de avance en verde vivo.\n\nSe usa de pie en bodega con poca luz, en la camioneta y en la calle a pleno sol, con una mano. Por eso todo toque mide 56 como mínimo, las cifras son grandes, condensadas y tabulares, y cada captura responde al instante con un destello corto y háptica. Se rechazan el dashboard SaaS (tarjetas con sombra, degradados, KPIs decorativos, acento azul genérico) y el ERP gris tipo Handy (tablas densas, controles diminutos, teclado del sistema).",
+    "northStar": "El Instrumento Azul",
+    "overview": "Handy Conteo es la báscula de bodega hecha instrumento digital. El cromo es azul noche con luz: un degradado que baja de un azul encendido arriba a la noche profunda, con un halo azul en la esquina superior derecha como la luz sobre una báscula, y (solo en la entrada y el inicio) anillos concéntricos tenues como la carátula de un instrumento de medición. Encima de ese cromo se monta una superficie clara de niebla azulada con su borde redondeado de 28, y sobre ella flotan piezas blancas con sombra suave teñida de azul. La lectura de cada producto es un visor: hueco y punteado mientras falta, encendido en azul señal cuando ya tiene cifra.\n\nSe usa de pie en bodega con poca luz, en la camioneta y en la calle a pleno sol, con una mano. Por eso el azul es identidad pero nunca el único portador de un estado: cada estado lleva forma (visor hueco o encendido, palomita en círculo verde, rombo ámbar, octágono rojo) y texto. Todo toque mide 56 como mínimo, las cifras van en Manrope ExtraBold tabular, y cada captura responde al instante con un resorte, un destello corto y háptica. Se rechazan el asfalto negro como identidad, el dashboard SaaS de tarjetas iguales con KPIs decorativos y el ERP gris de controles diminutos.\n\nLa geometría es variada a propósito: rectángulos suaves para lo que contiene (12 a 22), la hoja de 28 que monta el héroe, cápsulas para estados, selectores y la barra de avance, y círculos para el PIN, los avatares, los íconos de tarea, el botón 0 y la palomita.",
     "keyCharacteristics": [
-      "Tres capas de color con un solo trabajo cada una: asfalto (cromo y mano), verde ruta (avanzar y ya quedó), señales de estado (preventivo, alto, no lleva).",
-      "Una sola familia tipográfica de señalamiento en dos cortes: Barlow para leer, Barlow Semi Condensed para títulos, placas y cifras.",
-      "Estado por forma además de color: visor hueco o sólido, rombo para aviso, octágono para error.",
-      "Esquinas cortas de letrero (4 a 12); las píldoras quedan solo donde un círculo es la forma natural.",
-      "Plano: sin sombras. La profundidad es tonal (asfalto contra concreto, blanco con contorno contra concreto).",
-      "Teclados propios en asfalto, objetivos de 56 (72 en tablet), acción principal abajo al alcance del pulgar.",
-      "Grado exterior: ningún texto baja de 4.5:1 ni de 12 px; ningún contorno de control baja de 3:1.",
-      "Solo modo claro para las pantallas de trabajo; el asfalto aporta los momentos oscuros (entrada, encabezados, teclados)."
+      "Cromo azul noche en degradado con halo; superficies blancas que flotan sobre niebla azulada.",
+      "Azul señal (#1652F0) como única voz de acción, selección y lectura encendida.",
+      "Una sola familia, Manrope, en cinco cortes; cifras ExtraBold tabulares.",
+      "Estado por forma + texto + color: visor hueco/encendido, palomita, rombo, octágono.",
+      "Geometría mixta: rectángulos suaves, hoja de 28, cápsulas y círculos.",
+      "Movimiento con resortes amortiguados y entradas escalonadas cortas; con \"Reducir movimiento\" se corta en seco."
     ],
     "rules": [
       {
-        "name": "The Tres Capas Rule",
-        "body": "Asfalto es cromo y mano, verde es avanzar y ya quedó, las señales son estado. Un color que no cabe en una de esas tres capas no entra.",
+        "name": "The Una Voz Azul Rule",
+        "body": "Azul Señal es lo que se toca para avanzar y lo que ya se leyó; un solo botón primario por pantalla u hoja. Lo demás va en secundario (blanco con texto azul hondo) o peligro.",
         "section": "colors"
       },
       {
-        "name": "The Lo Que Falta Va en Blanco Rule",
-        "body": "Una fila sin contar es el estado normal al abrir una carga: blanca, con visor hueco. Nunca amarilla; si lo que falta fuera aviso, la pantalla entera sería alarma.",
+        "name": "The Forma Antes Que Color Rule",
+        "body": "Ningún estado depende solo del color: el visor cambia de hueco a encendido, lo listo lleva palomita en círculo, el aviso rombo, el error octágono, y todos llevan su texto.",
         "section": "colors"
       },
       {
-        "name": "The Señal Con Forma Rule",
-        "body": "El amarillo nunca va sin rombo y el rojo nunca va sin octágono o texto. A pleno sol el color se lava; la forma no.",
+        "name": "The Luz No Es Texto Rule",
+        "body": "Azul Luminoso y Cian Luz son luz (avance, aros, halos); nunca se escriben con ellos.",
         "section": "colors"
       },
       {
-        "name": "The Familia Identifica Rule",
-        "body": "El color de familia solo tiñe la banda de su familia. Nunca entra en una fila.",
-        "section": "colors"
-      },
-      {
-        "name": "The Leyenda en Mayúsculas Rule",
-        "body": "Las mayúsculas condensadas con aire entre letras son la leyenda de un letrero: placas, rótulos de dato, campos de captura y bandas de familia. Títulos, botones y texto corrido van en minúsculas.",
+        "name": "The Minúsculas Rule",
+        "body": "Nada en mayúsculas gritadas: \"Paquetes\", \"Esperando contador\", \"Contó\". El peso separa el rótulo del dato.",
         "section": "typography"
       },
       {
-        "name": "The Cifras en Columna Rule",
-        "body": "Toda cantidad que se compara con otra usa dígitos tabulares.",
+        "name": "The Cifra Tabular Rule",
+        "body": "Toda cantidad que se compara lleva `tabular-nums` (`CIFRAS`): las columnas de números quedan alineadas al recorrer la lista.",
         "section": "typography"
       },
       {
-        "name": "The Texto que Crece Rule",
-        "body": "El texto sigue el tamaño del sistema; lo que vive en cajas de alto fijo (teclas, campos, visor) crece hasta 1.3× y los encabezados y placas hasta 1.5×.",
+        "name": "The Corte Por Fuente Rule",
+        "body": "El peso se elige con `FUENTE`, nunca con `fontWeight` (con fuente propia React Native lo ignora). Ningún texto baja de 12 px.",
         "section": "typography"
       },
       {
-        "name": "The Aire, No Divisores Rule",
-        "body": "Poco aire dentro de un grupo y mucho entre grupos. Si hace falta una línea, lo que está mal es el espaciado.",
-        "section": "layout"
-      },
-      {
-        "name": "The Plano Por Defecto Rule",
-        "body": "Nada lleva `shadow` ni `elevation`. Si algo necesita destacar, cambia de fondo o gana espacio.",
-        "section": "elevation & depth"
+        "name": "The Contorno Al Sol Rule",
+        "body": "Toda pieza blanca lleva además su contorno de 1 px (#D5DDEA): la sombra se pierde a pleno sol; el contorno no.",
+        "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** usar un solo botón verde por pantalla u hoja; lo demás va en secundario o peligro.",
-      "**Do** dibujar en asfalto el cromo y la mano: encabezados de trabajo, teclados, la fila que se teclea y lo seleccionado.",
-      "**Do** acompañar el amarillo con rombo y el rojo con octágono o texto.",
-      "**Do** dejar lo que falta en blanco con visor hueco; el verde aparece conforme se avanza.",
-      "**Do** escribir las leyendas de placa, rótulo y familia en mayúsculas condensadas con aire entre letras, y todo lo demás en minúsculas.",
-      "**Do** usar cifras tabulares condensadas en toda cantidad que se compara.",
+      "**Do** abrir cada pantalla con el héroe azul noche de `Encabezado` y dejar que la superficie clara lo monte.",
+      "**Do** usar un solo botón primario (azul señal en degradado) por pantalla u hoja.",
+      "**Do** acompañar cada estado con forma y texto: visor hueco/encendido, palomita en círculo, rombo ámbar, octágono rojo.",
+      "**Do** usar cifras Manrope ExtraBold con `CIFRAS` en toda cantidad que se compara.",
       "**Do** mantener 56 como toque mínimo (72 en teclas de tablet).",
-      "**Do** verificar cada par nuevo de texto sobre fondo en `contraste.spec.ts`.",
-      "**Do** elegir el corte con `FUENTE`, nunca con `fontWeight`.",
+      "**Do** dar a cada pieza blanca su contorno fino además de su sombra.",
+      "**Do** hundir lo tocable con `Pulsable escala` (resorte) y respetar \"Reducir movimiento\".",
+      "**Do** verificar cada par nuevo de texto sobre fondo (incluidas las paradas de un degradado) en `contraste.spec.ts`.",
       "**Do** ajustar la barra de estado con `useBarraEstado` en toda pantalla que no use `Encabezado`."
     ],
     "donts": [
-      "**Don't** usar sombras, degradados, brillos ni vidrio; la profundidad es tonal.",
-      "**Don't** usar el verde como decoración ni el asfalto como estado.",
-      "**Don't** hacer píldoras de las placas de estado ni redondear de más: esquinas de 4 a 16.",
-      "**Don't** meter el color de familia dentro de una fila de conteo.",
-      "**Don't** usar ámbar o amarillo para lo que simplemente falta contar.",
+      "**Don't** usar negro o asfalto como identidad; el oscuro de la app es azul noche.",
+      "**Don't** escribir con Azul Luminoso o Cian Luz, ni poner degradados en texto o en tarjetas de contenido.",
+      "**Don't** usar vidrio desenfocado, halos sin dirección, sombras gigantes o neumorfismo.",
+      "**Don't** convertir todo en cápsula: contenedores en rectángulo suave, cápsula para estados y selectores, círculo para lo que es uno solo.",
+      "**Don't** usar ámbar para lo que simplemente falta contar.",
       "**Don't** hacer del botón de peligro el dominante de una hoja.",
-      "**Don't** usar un carácter (↑, !, ‹, ›) como ícono; se dibuja en SVG de trazo 2 sobre cuadrícula de 24.",
+      "**Don't** usar un carácter (↑, !, ‹) como ícono; se dibuja en SVG de trazo 2 sobre cuadrícula de 24.",
       "**Don't** usar `Pressable` o `Modal` directo: `Pulsable`, `Hoja` y `PantallaModal`.",
-      "**Don't** escribir colores, radios ni espacios caso por caso; todo sale de `tokens.ts` o `colores-familia.ts`."
+      "**Don't** escribir colores, radios, sombras ni espacios caso por caso; todo sale de `tokens.ts` o `colores-familia.ts`."
     ]
   }
 }

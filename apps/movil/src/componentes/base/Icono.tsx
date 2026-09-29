@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
-import { CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
+import { CIFRAS, COLORES, DEGRADADOS, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TONOS, type ColorTono, type Tarea } from '../../theme/tokens';
 
 /**
  * Iconos en SVG, sin librerías: pocos, simples y del mismo trazo. Van en un
@@ -26,6 +26,7 @@ import { CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, TONOS, type C
  * - subir: guardado en el teléfono, falta que llegue al servidor.
  * - sinSenal: sin conexión.
  * - persona: quién hizo algo.
+ * - borrar: la tecla de borrar el último dígito.
  */
 export type NombreIcono =
   | 'lista'
@@ -43,7 +44,8 @@ export type NombreIcono =
   | 'camion'
   | 'subir'
   | 'sinSenal'
-  | 'persona';
+  | 'persona'
+  | 'borrar';
 
 /** Qué ícono lleva cada tarea. Todos en tinta: el color es de los estados. */
 export const ICONO_TAREA: Record<Tarea, NombreIcono> = {
@@ -56,11 +58,12 @@ export const ICONO_TAREA: Record<Tarea, NombreIcono> = {
   coloresFamilia: 'colores',
 };
 
-/** Círculo del estado vacío. */
+/** Círculo del estado vacío y el anillo de luz que lo rodea. */
 const TAMANO_VACIO = 72;
-const DIBUJO_VACIO = 36;
-/** Cuadro de una fila de menú. */
-const TAMANO_TAREA = 40;
+const TAMANO_ANILLO = 96;
+const DIBUJO_VACIO = 34;
+/** Círculo de una fila de menú. */
+const TAMANO_TAREA = 44;
 const DIBUJO_TAREA = 22;
 
 interface Props {
@@ -68,35 +71,37 @@ interface Props {
   tono?: ColorTono;
 }
 
-/** Placa de 72 px en el tinte del tono, con el dibujo grande en su color fuerte. */
+/**
+ * Círculo de 72 px en el tinte del tono, con el dibujo en su color fuerte y un
+ * anillo tenue alrededor: la geometría circular de la app, que dice de un
+ * vistazo si es buena noticia (verde), aviso (ámbar), error (rojo) o
+ * información (azul).
+ */
 export function Icono({ nombre, tono = 'marca' }: Props) {
-  // Informativo (marca): placa de asfalto con el pictograma en blanco, como en
-  // el menú. Un estado: su tinte con el dibujo en el color fuerte.
-  const { solido, fondo } = tono === 'marca' ? { solido: COLORES.textoSobreColor, fondo: COLORES.marca } : TONOS[tono];
+  const { solido, fondo } = TONOS[tono];
   return (
-    <View
-      style={[estilos.circulo, { backgroundColor: fondo }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Dibujo nombre={nombre} color={solido} tamano={DIBUJO_VACIO} />
+    <View style={estilos.anillo} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={[StyleSheet.absoluteFill, estilos.anilloTenue, { backgroundColor: fondo }]} />
+      <View style={[estilos.circulo, { backgroundColor: fondo }]}>
+        <Dibujo nombre={nombre} color={solido} tamano={DIBUJO_VACIO} />
+      </View>
     </View>
   );
 }
 
 /**
- * Cuadro de 40 px de una fila de menú: el pictograma de la tarea en blanco
- * sobre asfalto, como la placa de un servicio en carretera. `invertido` cuando
- * la fila está presionada (fondo de asfalto): la placa sube un tono.
+ * Círculo de 44 px de una fila de menú: el pictograma de la tarea en azul
+ * sobre azul suave. `invertido` cuando la fila está presionada: se enciende en
+ * azul sólido con el dibujo en blanco.
  */
 export function IconoTarea({ tarea, invertido = false }: { tarea: Tarea; invertido?: boolean }) {
   return (
     <View
-      style={[estilos.cuadro, { backgroundColor: invertido ? COLORES.marcaClara : COLORES.marca }]}
+      style={[estilos.cuadro, { backgroundColor: invertido ? COLORES.accion : COLORES.azulSuave }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Dibujo nombre={ICONO_TAREA[tarea]} color={COLORES.textoSobreColor} tamano={DIBUJO_TAREA} />
+      <Dibujo nombre={ICONO_TAREA[tarea]} color={invertido ? COLORES.textoSobreColor : COLORES.accion} tamano={DIBUJO_TAREA} />
     </View>
   );
 }
@@ -139,7 +144,7 @@ export function Flecha({ color, tamano = ESPACIADO.xl + ESPACIADO.sm }: { color:
   return (
     <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Svg width={tamano} height={tamano} viewBox="0 0 24 24" fill="none">
-        <Path d="M3.5 12h15.5M13 5.5l6.5 6.5-6.5 6.5" stroke={color} strokeWidth={2.75} strokeLinecap="square" strokeLinejoin="miter" />
+        <Path d="M4 12h15M13 5.5l6.5 6.5-6.5 6.5" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -305,6 +310,14 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
         </>
       );
       break;
+    case 'borrar':
+      contenido = (
+        <>
+          <Path d="M8.5 5.5h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-11L2.5 12z" {...trazo} />
+          <Path d="M11.5 9.5l5 5M16.5 9.5l-5 5" {...trazo} />
+        </>
+      );
+      break;
     case 'persona':
       contenido = (
         <>
@@ -322,11 +335,10 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
 }
 
 /**
- * Escudo de ruta, como el de las carreteras federales: identifica una ruta de
- * venta ("3") igual que el escudo identifica una carretera. Es un dato, no un
- * adorno: lleva el número de la ruta y nada más.
- * - claro: escudo blanco con contorno y número en tinta (sobre concreto o tarjeta).
- * - oscuro: escudo blanco sobre asfalto (en un encabezado).
+ * Escudo de ruta: identifica una ruta de venta ("3") como el escudo
+ * identifica una carretera. Es un dato, no un adorno: lleva el número de la
+ * ruta y nada más. Azul señal con el número en blanco; se lee sobre claro y
+ * sobre el héroe azul noche (lo rodea un filo blanco).
  */
 export function EscudoRuta({
   numero,
@@ -348,12 +360,11 @@ export function EscudoRuta({
     >
       <Svg width={ancho} height={alto} viewBox="0 0 44 50" style={StyleSheet.absoluteFill}>
         <Path
-          d="M4 3h36c1.1 0 2 .9 2 2v17c0 13-9 21.5-20 25C11 43.5 2 35 2 22V5c0-1.1.9-2 2-2z"
-          fill={COLORES.superficie}
-          stroke={COLORES.texto}
+          d="M7 3h30c2.8 0 5 2.2 5 5v14c0 13-9 21.5-20 25C11 43.5 2 35 2 22V8c0-2.8 2.2-5 5-5z"
+          fill={COLORES.accion}
+          stroke={COLORES.superficie}
           strokeWidth={2.5}
         />
-        <Path d="M6 7.5h32" stroke={COLORES.texto} strokeWidth={1.5} strokeLinecap="round" />
       </Svg>
       <Text
         style={[tamano === 'grande' ? estilos.numeroEscudoGrande : estilos.numeroEscudo, texto.length > 2 && estilos.numeroEscudoLargo]}
@@ -370,18 +381,42 @@ export function EscudoRuta({
 }
 
 /**
- * La marca provisional de la app: un escudo de ruta con la palomita de dos
- * trazos (dos conteos que coinciden). Asfalto sobre claro o blanco sobre asfalto.
+ * La marca de Handy Conteo: un cubo isométrico (la carga) dentro de una placa
+ * azul redondeada, con la cara de arriba encendida como la lectura de una
+ * báscula. `invertida` sobre el héroe azul noche: la placa lleva un filo de
+ * luz para despegarse del fondo.
  */
 export function MarcaApp({ tamano = ESPACIADO.xxl + ESPACIADO.sm, invertida = false }: { tamano?: number; invertida?: boolean }) {
-  const fondo = invertida ? COLORES.superficie : COLORES.marca;
-  const tinta = invertida ? COLORES.marca : COLORES.superficie;
+  const [inicio, fin] = DEGRADADOS.accion.colores;
   return (
-    <View style={{ width: tamano * 0.88, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Svg width={tamano * 0.88} height={tamano} viewBox="0 0 44 50">
-        <Path d="M4 3h36c1.1 0 2 .9 2 2v17c0 13-9 21.5-20 25C11 43.5 2 35 2 22V5c0-1.1.9-2 2-2z" fill={fondo} />
-        <Path d="M11 24.5l7 7L33 16" stroke={COLORES.accionViva} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <Path d="M11 24.5l7 7L33 16" stroke={tinta} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <View style={{ width: tamano, height: tamano }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg width={tamano} height={tamano} viewBox="0 0 48 48">
+        <Defs>
+          <LinearGradient id="marcaPlaca" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset={0} stopColor={COLORES.accionViva} />
+            <Stop offset={0.45} stopColor={inicio} />
+            <Stop offset={1} stopColor={fin} />
+          </LinearGradient>
+        </Defs>
+        <Rect
+          x={1}
+          y={1}
+          width={46}
+          height={46}
+          rx={14}
+          fill="url(#marcaPlaca)"
+          stroke={invertida ? 'rgba(255,255,255,0.35)' : 'none'}
+          strokeWidth={1.5}
+        />
+        <Path d="M24 11.5l11 6.25-11 6.25-11-6.25z" fill={COLORES.cian} fillOpacity={0.55} />
+        <Path
+          d="M24 11.5l11 6.25v12.5L24 36.5l-11-6.25v-12.5zM13 17.75L24 24l11-6.25M24 24v12.5"
+          stroke={COLORES.superficie}
+          strokeWidth={2.4}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          fill="none"
+        />
       </Svg>
     </View>
   );
@@ -392,36 +427,46 @@ const ALTO_ESCUDO_GRANDE = 52;
 
 const estilos = StyleSheet.create({
   numeroEscudo: {
-    marginTop: 2,
+    marginTop: -2,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 17,
+    fontSize: 16,
     lineHeight: 20,
-    color: COLORES.texto,
+    color: COLORES.textoSobreColor,
     ...CIFRAS,
   },
   numeroEscudoGrande: {
-    marginTop: 4,
+    marginTop: -2,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 24,
+    fontSize: 22,
     lineHeight: 28,
-    color: COLORES.texto,
+    color: COLORES.textoSobreColor,
     ...CIFRAS,
   },
   numeroEscudoLargo: {
     fontSize: 14,
+  },
+  anillo: {
+    width: TAMANO_ANILLO,
+    height: TAMANO_ANILLO,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  anilloTenue: {
+    borderRadius: RADIOS.completo,
+    opacity: 0.45,
   },
   circulo: {
     width: TAMANO_VACIO,
     height: TAMANO_VACIO,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.grande,
+    borderRadius: RADIOS.completo,
   },
   cuadro: {
     width: TAMANO_TAREA,
     height: TAMANO_TAREA,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.icono,
+    borderRadius: RADIOS.completo,
   },
 });

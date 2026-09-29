@@ -2,34 +2,51 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Line } from 'react-native-svg';
 
 import { useBarraEstado } from '../../theme/barra-estado';
-import { BORDES, COLORES, CURVA_SALIDA, ESCALA_TEXTO, ESPACIADO, MOVIMIENTO, RADIOS, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import {
+  BORDES,
+  COLORES,
+  CURVA_SALIDA,
+  DEGRADADOS,
+  ESCALA_PRESIONADO_CONTROL,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  MOVIMIENTO,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+} from '../../theme/tokens';
+import { Degradado } from './Degradado';
 import { Chevron } from './Icono';
 import { Pulsable } from './Pulsable';
 
 /** 44: el mínimo de iOS; con el hitSlop llega a los 56 de la app sin comerse el título. */
 const LADO_VOLVER = 44;
 
+/** Lo que la superficie clara de abajo monta sobre el héroe: su borde redondeado. */
+const ALTO_MONTURA = RADIOS.encabezado;
+
 interface Props {
   titulo: string;
   /** Bajo el título: la fecha de la carga, a quién pertenece. */
   subtitulo?: string | null;
-  /** Muestra un chevron de volver a la izquierda. */
+  /** Muestra un volver circular a la izquierda. */
   onVolver?: () => void;
   etiquetaVolver?: string;
   /** Slot a la derecha del título: la acción de la pantalla. */
   accion?: ReactNode;
   /**
-   * - marca: bloque de asfalto a todo el ancho, como el letrero de un pórtico
-   *   sobre la carretera. SOLO las pantallas de trabajo con contexto propio
-   *   (conteo, discrepancias, historial, autorizaciones, factores). Sube bajo
-   *   la barra de estado: la pantalla que lo usa no debe aplicar el margen
-   *   superior de área segura. Lo que vaya en `accion` e `inferior` debe
-   *   leerse sobre asfalto (`useSobreMarca`).
-   * - barra: sobre el fondo de pantalla, sin bloque (plantillas, familias…).
-   * - plano: dentro del contenido (un modal, un paso de un flujo).
+   * - marca: el héroe azul noche con su halo de luz, a todo el ancho. Las
+   *   pantallas de trabajo con contexto propio (conteo, discrepancias,
+   *   historial, autorizaciones) y su panel inferior (`inferior`).
+   * - barra: el mismo héroe, más compacto: administración (plantillas,
+   *   familias, días no laborables, cambiar PIN).
+   * - plano: dentro del contenido (una hoja, un paso de un flujo).
+   * En marca y barra el héroe sube bajo la barra de estado (la pantalla no
+   * aplica el margen superior de área segura) y termina en la montura: el
+   * borde redondeado de la superficie clara que sigue. Lo que vaya en
+   * `accion` e `inferior` debe leerse sobre azul (`useSobreMarca`).
    */
   variante?: 'marca' | 'barra' | 'plano';
   /** Por omisión, 1 en marca (que no se coma la pantalla) y 2 en las demás. */
@@ -38,6 +55,8 @@ interface Props {
   children?: ReactNode;
   /** A todo el ancho, bajo el título (en marca, normalmente un `PanelEncabezado`). */
   inferior?: ReactNode;
+  /** Color de la superficie que monta el héroe; por omisión, el fondo de pantalla. */
+  fondoInferior?: string;
 }
 
 export function Encabezado({
@@ -50,57 +69,50 @@ export function Encabezado({
   lineasTitulo,
   children,
   inferior,
+  fondoInferior = COLORES.fondo,
 }: Props) {
   const margenes = useSafeAreaInsets();
+  const heroe = variante !== 'plano';
   // Dentro de un modal (plano) la barra de estado no es suya.
-  useBarraEstado(variante === 'plano' ? null : variante === 'marca' ? 'light' : 'dark');
-  const sobreMarca = variante === 'marca';
-  const lineas = lineasTitulo ?? (sobreMarca ? 1 : 2);
-  const estiloContenedor =
-    variante === 'marca'
-      ? [estilos.barra, estilos.barraMarca, { paddingTop: margenes.top + ESPACIADO.md }]
-      : variante === 'barra'
-        ? estilos.barra
-        : estilos.plano;
+  useBarraEstado(heroe ? 'light' : null);
+  const lineas = lineasTitulo ?? (variante === 'marca' ? 1 : 2);
+
+  if (!heroe) {
+    return (
+      <View style={estilos.plano}>
+        <View style={estilos.fila}>
+          {onVolver && <BotonVolver onVolver={onVolver} etiqueta={etiquetaVolver} sobreMarca={false} />}
+          <View style={[estilos.titulos, onVolver && estilos.titulosConVolverPlano]}>
+            <Text style={estilos.tituloPlano} accessibilityRole="header" numberOfLines={lineas}>
+              {titulo}
+            </Text>
+            {subtitulo ? <Text style={estilos.subtituloPlano}>{subtitulo}</Text> : null}
+            {children}
+          </View>
+          {accion}
+        </View>
+        {inferior}
+      </View>
+    );
+  }
 
   return (
-    <ContextoMarca.Provider value={sobreMarca}>
-      <View style={estiloContenedor}>
+    <ContextoMarca.Provider value>
+      <View style={[estilos.heroe, { paddingTop: margenes.top + ESPACIADO.md }]}>
+        <Degradado degradado={DEGRADADOS.marca} halo />
         <View style={estilos.fila}>
-          {onVolver && (
-            <Pulsable
-              onPress={onVolver}
-              accessibilityRole="button"
-              accessibilityLabel={etiquetaVolver}
-              hitSlop={ESPACIADO.sm}
-              style={({ pressed }) => [
-                estilos.botonVolver,
-                sobreMarca ? estilos.botonVolverMarca : estilos.botonVolverClaro,
-                pressed && (sobreMarca ? estilos.botonVolverPresionadoMarca : estilos.botonVolverPresionado),
-              ]}
-            >
-              <Chevron
-                direccion="izquierda"
-                tamano={ESPACIADO.xl - ESPACIADO.xs}
-                color={sobreMarca ? COLORES.textoSobreColor : COLORES.texto}
-              />
-            </Pulsable>
-          )}
-          <View style={[estilos.titulos, onVolver && (sobreMarca ? estilos.titulosConVolver : estilos.titulosConVolverPlano)]}>
+          {onVolver && <BotonVolver onVolver={onVolver} etiqueta={etiquetaVolver} sobreMarca />}
+          <View style={[estilos.titulos, onVolver && estilos.titulosConVolver]}>
             <Text
-              style={[sobreMarca ? estilos.titulo : estilos.tituloPlano, sobreMarca && estilos.textoInvertido]}
+              style={estilos.titulo}
               accessibilityRole="header"
               numberOfLines={lineas}
-              maxFontSizeMultiplier={sobreMarca ? ESCALA_TEXTO.compacto : undefined}
+              maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
             >
               {titulo}
             </Text>
             {subtitulo ? (
-              // En la barra no debe crecer sin límite; dentro del contenido se lee completo.
-              <Text
-                style={[variante === 'plano' ? estilos.subtituloPlano : estilos.subtitulo, sobreMarca && estilos.subtituloMarca]}
-                numberOfLines={variante === 'plano' ? undefined : 2}
-              >
+              <Text style={estilos.subtitulo} numberOfLines={2}>
                 {subtitulo}
               </Text>
             ) : null}
@@ -109,58 +121,69 @@ export function Encabezado({
           {accion}
         </View>
         {inferior}
+        <View pointerEvents="none" style={[estilos.montura, { backgroundColor: fondoInferior }]} />
       </View>
     </ContextoMarca.Provider>
   );
 }
 
+function BotonVolver({ onVolver, etiqueta, sobreMarca }: { onVolver: () => void; etiqueta: string; sobreMarca: boolean }) {
+  return (
+    <Pulsable
+      onPress={onVolver}
+      accessibilityRole="button"
+      accessibilityLabel={etiqueta}
+      hitSlop={ESPACIADO.sm}
+      escala={ESCALA_PRESIONADO_CONTROL}
+      style={({ pressed }) => [
+        estilos.botonVolver,
+        sobreMarca ? estilos.botonVolverMarca : estilos.botonVolverClaro,
+        pressed && (sobreMarca ? estilos.botonVolverPresionadoMarca : estilos.botonVolverPresionado),
+      ]}
+    >
+      <Chevron direccion="izquierda" tamano={ESPACIADO.xl - ESPACIADO.xs} color={sobreMarca ? COLORES.textoSobreColor : COLORES.texto} />
+    </Pulsable>
+  );
+}
+
 /**
- * Segundo renglón del encabezado de asfalto: un panel un tono arriba que
- * agrupa el avance, el carril y el estado de envío.
+ * Segundo renglón del héroe: un panel translúcido que agrupa el avance, la
+ * barra y el estado de envío. Deja ver el degradado: es parte del cromo.
  */
 export function PanelEncabezado({ children }: { children: ReactNode }) {
   return <View style={estilos.panel}>{children}</View>;
 }
 
-const CURVA_CARRIL = Easing.bezier(...CURVA_SALIDA);
+const CURVA_AVANCE = Easing.bezier(...CURVA_SALIDA);
 
 /**
- * El carril de avance: lo que falta se ve como las marcas discontinuas de un
- * carril y lo contado lo cubre una línea verde continua, que se traza hasta su
- * nuevo largo en cada captura. Se lee de reojo sin quitarle alto a la lista.
- * Con "Reducir movimiento", Reanimated lo deja en su largo sin animar.
+ * La barra de avance: una cápsula honda donde lo contado se enciende en un
+ * degradado de azul a cian y crece hasta su nuevo largo en cada captura. Se
+ * lee de reojo sin quitarle alto a la lista. Con "Reducir movimiento",
+ * Reanimated la deja en su largo sin animar.
  */
 export function BarraAvance({ actual, total }: { actual: number; total: number }) {
   const avance = total > 0 ? Math.min(1, Math.max(0, actual / total)) : 0;
   const largo = useSharedValue(avance);
   useEffect(() => {
-    largo.value = withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_CARRIL });
+    largo.value = withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_AVANCE });
   }, [avance, largo]);
   const estiloRelleno = useAnimatedStyle(() => ({ width: `${largo.value * 100}%` }));
 
   return (
     <View style={estilos.canal} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: actual }}>
-      <Svg width="100%" height={ALTO_CARRIL} style={StyleSheet.absoluteFill}>
-        <Line
-          x1={ESPACIADO.sm}
-          y1={ALTO_CARRIL / 2}
-          x2="100%"
-          y2={ALTO_CARRIL / 2}
-          stroke={COLORES.carril}
-          strokeWidth={2}
-          strokeDasharray="10 8"
-        />
-      </Svg>
-      <Animated.View style={[estilos.relleno, estiloRelleno]} />
+      <Animated.View style={[estilos.relleno, estiloRelleno]}>
+        <Degradado degradado={DEGRADADOS.avance} radio={ALTO_BARRA / 2} />
+      </Animated.View>
     </View>
   );
 }
 
-const ALTO_CARRIL = 10;
+const ALTO_BARRA = 10;
 
 const ContextoMarca = createContext(false);
 
-/** Si el contenido va dentro de un encabezado de marca (asfalto): así elige colores que se lean. */
+/** Si el contenido va dentro del héroe azul: así elige colores que se lean. */
 export function useSobreMarca(): boolean {
   return useContext(ContextoMarca);
 }
@@ -176,36 +199,44 @@ export function NotaEncabezado({ children, lineas = 2 }: { children: ReactNode; 
 }
 
 const estilos = StyleSheet.create({
-  barra: {
-    gap: ESPACIADO.md,
+  // El héroe: la montura redondeada de abajo se suma a su relleno inferior.
+  heroe: {
+    gap: ESPACIADO.lg,
     paddingHorizontal: RITMO.margen,
-    paddingTop: ESPACIADO.md,
-    paddingBottom: ESPACIADO.md,
+    paddingBottom: ALTO_MONTURA + ESPACIADO.md,
+    overflow: 'hidden',
   },
-  // A todo el ancho y a escuadra: un pórtico, no una tarjeta.
-  barraMarca: {
-    paddingBottom: RITMO.margen,
-    backgroundColor: COLORES.marca,
+  montura: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -1,
+    height: ALTO_MONTURA + 1,
+    borderTopLeftRadius: RADIOS.encabezado,
+    borderTopRightRadius: RADIOS.encabezado,
   },
   plano: {
     gap: ESPACIADO.sm,
   },
   // Arriba, no al centro: con notas de contexto el volver se quedaba flotando a
-  // media altura. El título se centra ópticamente con el botón (ver titulosConVolver).
+  // media altura. El título se centra ópticamente con el botón.
   fila: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: ESPACIADO.md,
   },
+  // Círculo: la geometría de lo que se toca para moverse.
   botonVolver: {
     width: LADO_VOLVER,
     height: LADO_VOLVER,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIOS.icono,
+    borderRadius: RADIOS.completo,
   },
   botonVolverMarca: {
-    backgroundColor: COLORES.marcaClara,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    borderWidth: BORDES.fino,
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   botonVolverClaro: {
     backgroundColor: COLORES.superficie,
@@ -213,28 +244,25 @@ const estilos = StyleSheet.create({
     borderColor: COLORES.contornoTarjeta,
   },
   botonVolverPresionado: {
-    backgroundColor: COLORES.superficieHonda,
+    backgroundColor: COLORES.marcaTinte,
   },
   botonVolverPresionadoMarca: {
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
   },
-  textoInvertido: {
-    color: COLORES.textoSobreColor,
-  },
-  // Sin hueco: el interlineado ya separa título, subtítulo y notas.
   titulos: {
     flex: 1,
+    gap: 2,
   },
   // La primera línea del título, centrada con el botón de volver.
   titulosConVolver: {
-    paddingTop: (LADO_VOLVER - TIPOGRAFIA.tituloBarra.lineHeight) / 2,
+    paddingTop: (LADO_VOLVER - TIPOGRAFIA.titulo.lineHeight) / 2,
   },
   titulosConVolverPlano: {
     paddingTop: (LADO_VOLVER - TIPOGRAFIA.titulo.lineHeight) / 2,
   },
   titulo: {
-    ...TIPOGRAFIA.tituloBarra,
-    color: COLORES.texto,
+    ...TIPOGRAFIA.titulo,
+    color: COLORES.textoSobreColor,
   },
   tituloPlano: {
     ...TIPOGRAFIA.titulo,
@@ -242,14 +270,14 @@ const estilos = StyleSheet.create({
   },
   subtitulo: {
     ...TIPOGRAFIA.micro,
-    color: COLORES.textoSecundario,
-  },
-  subtituloMarca: {
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORES.marcaTenue,
   },
   subtituloPlano: {
     ...TIPOGRAFIA.subtitulo,
-    color: COLORES.texto,
+    fontFamily: TIPOGRAFIA.cuerpo.fontFamily,
+    color: COLORES.textoSecundario,
   },
   nota: {
     ...TIPOGRAFIA.micro,
@@ -260,23 +288,21 @@ const estilos = StyleSheet.create({
   },
   panel: {
     gap: ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.md,
+    paddingHorizontal: ESPACIADO.lg,
     paddingVertical: ESPACIADO.md,
-    backgroundColor: COLORES.marcaHonda,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: RADIOS.panel,
     borderWidth: BORDES.fino,
-    borderColor: COLORES.marcaClara,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
   },
   canal: {
-    height: ALTO_CARRIL,
-    justifyContent: 'center',
-    borderRadius: RADIOS.chico,
-    backgroundColor: COLORES.marcaProfunda,
+    height: ALTO_BARRA,
+    borderRadius: RADIOS.completo,
+    backgroundColor: 'rgba(6, 18, 51, 0.55)',
     overflow: 'hidden',
   },
   relleno: {
     height: '100%',
-    borderRadius: RADIOS.chico,
-    backgroundColor: COLORES.accionViva,
+    borderRadius: RADIOS.completo,
   },
 });

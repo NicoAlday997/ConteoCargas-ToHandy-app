@@ -39,7 +39,7 @@ import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import { formatearCifra } from '../../src/conteo/formato-cantidad';
 import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { sentir } from '../../src/theme/tacto';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { BARRA_INFERIOR, BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
  * Revisión de una carga que espera el visto bueno del supervisor. Como una
@@ -759,11 +759,11 @@ const estilos = StyleSheet.create({
     justifyContent: 'space-between',
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.lg,
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.azulSuave,
+    borderRadius: RADIOS.completo,
   },
   alternarPresionado: {
-    backgroundColor: COLORES.divisor,
+    backgroundColor: COLORES.marcaTinte,
   },
   textoAlternar: {
     flex: 1,
@@ -778,8 +778,8 @@ const estilos = StyleSheet.create({
     flex: 1,
     gap: 2,
     padding: ESPACIADO.md,
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.medio,
+    backgroundColor: COLORES.fondo,
+    borderRadius: RADIOS.control,
   },
   numeroEnvio: {
     ...TIPOGRAFIA.titulo,
@@ -797,13 +797,10 @@ const estilos = StyleSheet.create({
   botonPie: {
     marginTop: RITMO.interno,
   },
-  // Acciones fijas abajo, en blanco: siempre a la mano del pulgar.
+  // Acciones fijas abajo, en la barra inferior de la app: siempre a la mano del pulgar.
   barra: {
-    paddingHorizontal: RITMO.margen,
-    paddingVertical: ESPACIADO.md,
-    backgroundColor: COLORES.superficie,
-    borderTopWidth: 1,
-    borderTopColor: COLORES.contornoTarjeta,
+    ...BARRA_INFERIOR,
+    paddingBottom: ESPACIADO.md,
   },
   bandejaAcciones: {
     gap: RITMO.relacionado,

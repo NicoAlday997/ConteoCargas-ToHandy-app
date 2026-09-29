@@ -176,7 +176,7 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
   }
 
   return (
-    <SafeAreaView style={estilos.pantalla}>
+    <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <Encabezado
         titulo="Agregar productos"
         subtitulo={nombrePlantilla}
