@@ -139,7 +139,7 @@ export default function PantallaInicio() {
           <Degradado degradado={DEGRADADOS.marca} halo anillos />
           <View style={[estilos.columna, estilos.margenLateral, estilos.lineaMarca]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.sm} />
-            <Text style={estilos.nombreApp}>Handy Conteo</Text>
+            <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
           </View>
           <View style={[estilos.columna, estilos.identidad]}>
             <View style={estilos.textosIdentidad}>

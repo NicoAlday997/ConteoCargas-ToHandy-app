@@ -115,12 +115,12 @@ function BandaMarca({ titulo }: { titulo: string }) {
   const margenes = useSafeAreaInsets();
   return (
     <View style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.xl }]}>
-      <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Handy Conteo, la báscula de bodega">
+      <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Distribuidora Alday, control de cargas">
         <View style={estilos.placaMarca}>
           <MarcaApp invertida tamano={TAMANO_MARCA} />
         </View>
-        <Text style={estilos.nombreApp}>Handy Conteo</Text>
-        <Text style={estilos.lema}>La Báscula de Bodega</Text>
+        <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
+        <Text style={estilos.lema}>Control de cargas</Text>
       </View>
       <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
         {titulo}
