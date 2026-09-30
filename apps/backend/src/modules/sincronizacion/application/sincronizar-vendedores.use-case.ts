@@ -7,6 +7,7 @@ import {
   PRIMERA_PAGINA_HANDY,
   type UsuarioHandyDto,
 } from './handy.gateway';
+import { normalizarFotoHandy } from '../domain/foto-handy';
 
 /** Resultado de una sincronizacion completa de vendedores (docs/04 §1.3). */
 export interface ResultadoSincronizarVendedores {
@@ -54,6 +55,18 @@ export class SincronizarVendedoresUseCase {
       rolHandyId: usuario.role.id,
       rolHandyAuthority: usuario.role.authority,
       activo: usuario.enabled,
+      fotoUrl: this.fotoDe(usuario),
     };
+  }
+
+  /**
+   * Solo se actualiza la foto cuando Handy manda algo en `pictureUrl`: la foto
+   * real, o la silueta generica (el vendedor no tiene o la quito: `null`). Si
+   * el campo no llega (`undefined`/`null`), se conserva la guardada: perderla
+   * por un cambio de la API seria peor que mostrar una foto vieja.
+   */
+  private fotoDe(usuario: UsuarioHandyDto): string | null | undefined {
+    const url: unknown = usuario.pictureUrl;
+    return typeof url === 'string' ? normalizarFotoHandy(url) : undefined;
   }
 }

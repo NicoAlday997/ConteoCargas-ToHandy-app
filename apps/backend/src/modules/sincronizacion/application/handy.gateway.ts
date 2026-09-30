@@ -178,6 +178,18 @@ export interface UsuarioHandyDto {
   role: RolUsuarioHandy;
   /** ISO 8601 con `Z` (UTC). */
   lastUpdated: string;
+  /**
+   * Foto de perfil del vendedor: el `pictureUrl` de PRIMER NIVEL del usuario
+   * (`users[].pictureUrl`). El usuario de Handy trae otros dos anidados,
+   * `createdBy.pictureUrl` y `lastUpdatedBy.pictureUrl`, que son de QUIEN creo
+   * o edito la cuenta (un administrador), no del vendedor: leer uno de esos
+   * pondria a todos los vendedores la misma foto. Ya costo una confusion.
+   *
+   * Sin foto propia Handy manda una silueta generica (ver `foto-handy.ts`). El
+   * JSON podria omitir el campo si Handy cambia su API; en tiempo de ejecucion
+   * puede llegar `undefined`.
+   */
+  pictureUrl: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -268,7 +280,9 @@ export abstract class HandyGateway {
    *
    * @param pagina numero de pagina base 1.
    */
-  abstract listarVendedores(pagina: number): Promise<PaginaHandy<UsuarioHandyDto>>;
+  abstract listarVendedores(
+    pagina: number,
+  ): Promise<PaginaHandy<UsuarioHandyDto>>;
 
   /**
    * Consulta la ruta abierta actual del vendedor

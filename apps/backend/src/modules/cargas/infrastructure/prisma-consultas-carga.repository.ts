@@ -5,6 +5,7 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   ConsultasCargaRepository,
   type CargaConConflictos,
+  type CargaDelDia,
   type CargaPendienteVerificacion,
   type ContextoResolucion,
   type DiaRecargable,
@@ -54,6 +55,39 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
       orderBy: [{ fechaConteo: 'asc' }, { creadoEn: 'asc' }],
     });
     return rows.map((row) => this.aPendiente(row));
+  }
+
+  async listarCargasDeFecha(fechaOperativa: Date): Promise<CargaDelDia[]> {
+    const rows = await this.prisma.eventoCarga.findMany({
+      where: { fechaOperativa },
+      include: {
+        ruta: { select: { nombre: true } },
+        usuarioHandy: { select: { nombre: true } },
+        sesiones: {
+          where: { tipo: 'VENDEDOR' },
+          select: {
+            usuarioApp: { select: { nombreCompleto: true } },
+            _count: { select: { items: true } },
+          },
+        },
+      },
+      // Por ruta, y dentro de la ruta la INICIAL antes que sus recargas.
+      orderBy: [{ ruta: { nombre: 'asc' } }, { tipo: 'asc' }, { creadoEn: 'asc' }],
+    });
+    return rows.map((row) => {
+      const vendedor = row.sesiones[0];
+      return {
+        id: row.id,
+        rutaId: row.rutaId,
+        rutaNombre: row.ruta.nombre,
+        vendedorNombre:
+          vendedor?.usuarioApp.nombreCompleto ?? row.usuarioHandy.nombre ?? null,
+        tipo: row.tipo,
+        estado: row.estado,
+        fechaOperativa: row.fechaOperativa,
+        totalProductos: vendedor?._count.items ?? 0,
+      };
+    });
   }
 
   async listarConflictosDeParticipante(
@@ -246,6 +280,7 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
         vendedor?.usuarioApp.nombreCompleto ?? row.usuarioHandy.nombre ?? null,
       tipo: row.tipo,
       fechaConteo: row.fechaConteo,
+      fechaOperativa: row.fechaOperativa,
       totalProductos: vendedor?._count.items ?? 0,
       bloqueadaPorCorte: row.estado === 'BLOQUEADA_CORTE_PENDIENTE',
       fechaBloqueoCortePendiente: row.fechaBloqueoCortePendiente,

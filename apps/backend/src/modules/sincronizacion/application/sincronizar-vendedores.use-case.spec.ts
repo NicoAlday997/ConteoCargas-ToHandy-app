@@ -24,6 +24,7 @@ function usuarioHandy(over: Partial<UsuarioHandyDto> = {}): UsuarioHandyDto {
     enabled: true,
     role: { id: 4, authority: 'ROLE_SALES' },
     lastUpdated: '2026-09-01T10:00:00.000Z',
+    pictureUrl: 'https://cdn.handy.la/web-app/sales/user-profile.png',
     ...over,
   };
 }
@@ -84,10 +85,7 @@ describe('SincronizarVendedoresUseCase', () => {
   it('recorre las dos paginas y sincroniza todos los vendedores', async () => {
     const handy = new FakeHandyGateway([
       {
-        items: [
-          usuarioHandy({ id: 1 }),
-          usuarioHandy({ id: 2 }),
-        ],
+        items: [usuarioHandy({ id: 1 }), usuarioHandy({ id: 2 })],
         totalPaginas: 2,
         totalRegistros: 3,
       },
@@ -140,6 +138,7 @@ describe('SincronizarVendedoresUseCase', () => {
       rolHandyId: 4,
       rolHandyAuthority: 'ROLE_SALES',
       activo: false,
+      fotoUrl: null,
     });
   });
 
@@ -157,5 +156,53 @@ describe('SincronizarVendedoresUseCase', () => {
     await useCase.ejecutar();
 
     expect(catalogo.lotesVendedores[0][0].email).toBeNull();
+  });
+
+  describe('foto de perfil', () => {
+    const FOTO =
+      'https://handy-prod.s3.amazonaws.com/profile-pictures/42/ana.jpg';
+    const SILUETA = 'https://cdn.handy.la/web-app/sales/user-profile.png';
+
+    async function sincronizar(usuario: UsuarioHandyDto) {
+      const handy = new FakeHandyGateway([
+        { items: [usuario], totalPaginas: 1, totalRegistros: 1 },
+      ]);
+      const catalogo = new FakeCatalogoRepository();
+      await new SincronizarVendedoresUseCase(handy, catalogo).ejecutar();
+      return catalogo.lotesVendedores[0][0];
+    }
+
+    it('un vendedor con foto real la guarda', async () => {
+      const local = await sincronizar(usuarioHandy({ pictureUrl: FOTO }));
+      expect(local.fotoUrl).toBe(FOTO);
+    });
+
+    it('con la silueta generica de Handy guarda null', async () => {
+      const local = await sincronizar(
+        usuarioHandy({ pictureUrl: `${SILUETA}?v=2` }),
+      );
+      expect(local.fotoUrl).toBeNull();
+    });
+
+    it('lee el pictureUrl de primer nivel, no el de createdBy / lastUpdatedBy', async () => {
+      const usuario = {
+        ...usuarioHandy({ pictureUrl: FOTO }),
+        createdBy: { pictureUrl: SILUETA },
+        lastUpdatedBy: { pictureUrl: 'https://otra.foto/admin.jpg' },
+      } as UsuarioHandyDto;
+      const local = await sincronizar(usuario);
+      expect(local.fotoUrl).toBe(FOTO);
+    });
+
+    it('si Handy deja de mandar el campo, no toca la foto guardada', async () => {
+      const sinCampo: Partial<UsuarioHandyDto> = usuarioHandy();
+      delete sinCampo.pictureUrl;
+      expect(
+        (await sincronizar(sinCampo as UsuarioHandyDto)).fotoUrl,
+      ).toBeUndefined();
+      expect(
+        (await sincronizar(usuarioHandy({ pictureUrl: null }))).fotoUrl,
+      ).toBeUndefined();
+    });
   });
 });

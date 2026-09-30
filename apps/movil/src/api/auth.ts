@@ -13,12 +13,15 @@ export interface UsuarioSeleccionable {
   id: string | null;
   nombreCompleto: string | null;
   rolApp: RolApp | null;
+  /** Foto de perfil de Handy; solo la tienen vendedores. Puede faltar en respuestas viejas. */
+  fotoUrl?: string | null;
 }
 
 export interface UsuarioLogin {
   id: string | null;
   nombreCompleto: string | null;
   rolApp: RolApp | null;
+  fotoUrl?: string | null;
 }
 
 export interface RespuestaLogin {

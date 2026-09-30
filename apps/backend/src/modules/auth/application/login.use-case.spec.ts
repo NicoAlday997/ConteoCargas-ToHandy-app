@@ -94,6 +94,7 @@ function crearUsuario(
     activo: true,
     intentosFallidos: 0,
     bloqueadoHasta: null,
+    fotoUrl: null,
     ...overrides,
   };
 }
@@ -260,7 +261,18 @@ describe('LoginUseCase', () => {
       rolApp: RolApp.CONTADOR,
       usuarioHandyId: null,
       debeCambiarPin: false,
+      fotoUrl: null,
     });
+  });
+
+  it('8b. un vendedor con foto de Handy la recibe en el login', async () => {
+    const foto =
+      'https://handy-prod.s3.amazonaws.com/profile-pictures/42/ana.jpg';
+    repo.sembrar(crearUsuario({ fotoUrl: foto }));
+
+    const resultado = exigirExito(await useCase.ejecutar('u-1', '1234', AHORA));
+
+    expect(resultado.fotoUrl).toBe(foto);
   });
 
   it('9. en login exitoso persiste intentosFallidos en 0 y bloqueadoHasta en null', async () => {

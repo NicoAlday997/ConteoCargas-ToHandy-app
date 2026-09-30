@@ -16,6 +16,9 @@ class FakeConsultas implements ConsultasCargaRepository {
   async listarPendientesVerificacion() {
     return this.cargas.map((c) => ({ ...c }));
   }
+  async listarCargasDeFecha(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async listarConflictosDeParticipante(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
@@ -42,6 +45,7 @@ function carga(
     vendedorNombre: 'Vendedor Uno',
     tipo: 'INICIAL',
     fechaConteo: FECHA,
+    fechaOperativa: new Date('2026-09-26T00:00:00-06:00'),
     totalProductos: 40,
     bloqueadaPorCorte: false,
     fechaBloqueoCortePendiente: null,

@@ -32,6 +32,7 @@ export type ResultadoLogin =
       rolApp: RolApp;
       usuarioHandyId: number | null;
       debeCambiarPin: boolean;
+      fotoUrl: string | null;
     }
   | {
       exito: false;
@@ -125,6 +126,7 @@ export class LoginUseCase {
       rolApp: usuario.rolApp,
       usuarioHandyId: usuario.usuarioHandyId,
       debeCambiarPin: usuario.debeCambiarPin,
+      fotoUrl: usuario.fotoUrl,
     };
   }
 }

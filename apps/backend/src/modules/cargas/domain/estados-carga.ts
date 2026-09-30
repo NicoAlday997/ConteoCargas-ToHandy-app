@@ -173,14 +173,16 @@ export function permiteCambioFechaDelVendedor(estado: EstadoCarga): boolean {
 
 /**
  * `true` si el supervisor puede cambiar la fecha operativa. Todo salvo:
- * - ENVIADA: la ruta ya existe en Handy con esa fecha.
  * - CANCELADA: terminal; no hay salida que mover.
  * - ENVIO_INCIERTO: no se sabe si llego a Handy; primero se resuelve.
+ *
+ * ENVIADA SI se permite: `fechaOperativa` es contabilidad NUESTRA, no de
+ * Handy. La ruta en Handy se creo cuando se creo y sigue abierta; cambiar la
+ * fecha aqui corrige el registro (el historial y los dias de retraso que
+ * cuenta la regla del corte pendiente) y no toca Handy. Sin esto, una carga
+ * enviada con la fecha equivocada (p. ej. un dia que al final no se trabajo)
+ * quedaria mal registrada para siempre.
  */
 export function permiteCambioFechaDelSupervisor(estado: EstadoCarga): boolean {
-  return (
-    estado !== 'ENVIADA' &&
-    estado !== 'CANCELADA' &&
-    estado !== 'ENVIO_INCIERTO'
-  );
+  return estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
 }

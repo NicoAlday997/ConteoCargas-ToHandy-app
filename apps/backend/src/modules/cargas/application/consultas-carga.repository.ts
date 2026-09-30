@@ -9,7 +9,12 @@
  * vive en `infrastructure/`.
  */
 
-import type { EstadoSesion, TipoCarga, TipoSesion } from '@prisma/client';
+import type {
+  EstadoCarga,
+  EstadoSesion,
+  TipoCarga,
+  TipoSesion,
+} from '@prisma/client';
 
 import type { Discrepancia } from './carga.repository';
 import type { ModalidadVenta } from '../domain/conversion-empaque';
@@ -22,6 +27,12 @@ export interface CargaPendienteVerificacion {
   vendedorNombre: string | null;
   tipo: TipoCarga;
   fechaConteo: Date | null;
+  /**
+   * Dia para el que sale el camion. El contador lo tiene que ver con el mismo
+   * peso que la ruta: un vendedor equivocado de fecha pasaba por el contador y
+   * el supervisor sin que nadie lo notara.
+   */
+  fechaOperativa: Date;
   /** Productos que registro el primer conteo (solo el numero, nunca cantidades). */
   totalProductos: number;
   bloqueadaPorCorte: boolean;
@@ -103,7 +114,32 @@ export interface DiaRecargable {
   eventoInicialId: string;
 }
 
+/**
+ * Una carga de una fecha operativa, para decidir si se recorre el dia
+ * (`GET /admin/dias-no-laborables/:fecha/cargas`): ruta, vendedor, estado y
+ * cuantos productos lleva.
+ */
+export interface CargaDelDia {
+  id: string;
+  rutaId: string;
+  rutaNombre: string;
+  /** Nombre en la app de quien hizo el primer conteo; si no, el de Handy. */
+  vendedorNombre: string | null;
+  tipo: TipoCarga;
+  estado: EstadoCarga;
+  fechaOperativa: Date;
+  /** Productos que registro el primer conteo. */
+  totalProductos: number;
+}
+
 export abstract class ConsultasCargaRepository {
+  /**
+   * TODAS las cargas de esa fecha operativa (ya normalizada), en cualquier
+   * estado, ordenadas por ruta y tipo (la INICIAL antes que sus recargas).
+   * Quien llama decide cuales se mueven.
+   */
+  abstract listarCargasDeFecha(fechaOperativa: Date): Promise<CargaDelDia[]>;
+
   /**
    * Eventos en `EN_ESPERA_CONTADOR` o `BLOQUEADA_CORTE_PENDIENTE`, del mas
    * antiguo al mas reciente por `fechaConteo`.

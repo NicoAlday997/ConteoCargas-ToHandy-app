@@ -112,7 +112,7 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
           titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar el historial'}
           detalle={
             sinRed
-              ? 'El historial se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+              ? 'Para ver el historial necesitas señal: revísala y vuelve a intentarlo.'
               : consulta.error instanceof Error && consulta.error.message
                 ? consulta.error.message
                 : 'Intenta de nuevo en un momento.'

@@ -24,6 +24,13 @@ export interface CambioFechaSelector {
   productosContados: number;
   /** Supervisor: el motivo es obligatorio (mínimo `motivoMinimo` caracteres). */
   motivoMinimo: number | null;
+  /** Algo que hay que saber antes de confirmar; se muestra en la confirmación. */
+  aviso?: AvisoCambioFecha | null;
+}
+
+export interface AvisoCambioFecha {
+  titulo: string;
+  detalle: string;
 }
 
 /** Ya hay carga inicial de la ruta para ese día: se ofrece continuarla. */
@@ -136,7 +143,7 @@ function OpcionesDelServidor({
         titulo={sinRed ? 'Sin conexión' : 'No se pudieron consultar los días'}
         detalle={
           sinRed
-            ? 'Los días en que se puede cargar los da el servidor. Revisa tu señal y reintenta.'
+            ? 'Para ver los días en que se puede cargar necesitas señal. Revísala y reintenta.'
             : (fechas.error instanceof Error && fechas.error.message) || 'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}
@@ -352,6 +359,7 @@ function ContenidoCambio({
             {titulo}
           </Text>
           <Text style={estilos.detalle}>{cuerpo}</Text>
+          {cambio.aviso && <BloqueError tono="atencion" titulo={cambio.aviso.titulo} detalle={cambio.aviso.detalle} />}
           {motivoMinimo !== null && (
             <CampoTexto
               etiqueta="Motivo"

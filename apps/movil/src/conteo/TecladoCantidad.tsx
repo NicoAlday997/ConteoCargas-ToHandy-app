@@ -29,8 +29,6 @@ import { Chevron, Degradado, Glifo, Pulsable } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 import { formatearNombreProducto } from './formato-nombre';
 
-/** Cabe una cantidad de 4 dígitos a 30 px. */
-const ANCHO_VISOR = ESPACIADO.xxxl + ESPACIADO.xxl + ESPACIADO.sm;
 /** Controles del encabezado del teclado: 40 de alto y 8 de holgura arriba y abajo llegan a 56. */
 const ALTO_CONTROL_ENCABEZADO = ESPACIADO.xxl + ESPACIADO.sm;
 const HOLGURA_ENCABEZADO = { top: ESPACIADO.sm, bottom: ESPACIADO.sm, left: ESPACIADO.xs, right: ESPACIADO.xs };
@@ -46,7 +44,7 @@ const FILAS: readonly (readonly string[])[] = [
 interface Props {
   producto: ProductoConteo;
   campo: CampoCaptura;
-  /** Los campos que admite el producto, en orden. Con dos (y `onCambiarCampo`), el encabezado deja cambiar de uno a otro. */
+  /** Los campos que admite el producto, en orden. Con dos, los dos se ven con su valor; tocar el otro (con `onCambiarCampo`) pasa a él. */
   camposDisponibles?: readonly CampoCaptura[];
   /** Lo tecleado; vacío es "sin capturar". */
   texto: string;
@@ -134,55 +132,65 @@ export function TecladoCantidad({
         </Pulsable>
       </View>
 
-      <View style={estilos.lineaValor}>
-        {camposDisponibles.length > 1 && onCambiarCampo ? (
-          <View style={estilos.selector} accessibilityRole="tablist">
-            {camposDisponibles.map((c) => {
-              const activo = c === campo;
-              const rotulo = nombreCampo(producto, c);
-              return (
-                <Pulsable
-                  key={c}
-                  onPress={() => {
-                    if (!activo) onCambiarCampo(c);
-                  }}
-                  tacto="seleccion"
-                  hitSlop={HOLGURA_ENCABEZADO}
-                  accessibilityRole="tab"
-                  accessibilityLabel={`Capturar ${rotulo}`}
-                  accessibilityState={{ selected: activo }}
-                  style={[estilos.opcionCampo, activo && estilos.opcionCampoActiva]}
+      {/*
+        Los campos del producto, como en su fila: rótulo arriba y número abajo,
+        los dos a la derecha dentro del mismo bloque. El que recibe lo que se
+        teclea es el visor azul noche; el otro (si hay) se ve con su valor y se
+        toca para pasar a él.
+      */}
+      <View style={estilos.lineaValor} accessibilityRole={camposDisponibles.length > 1 ? 'tablist' : undefined}>
+        {camposDisponibles.map((c) => {
+          const rotulo = nombreCampo(producto, c);
+          if (c === campo) {
+            return (
+              <View
+                key={c}
+                style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
+                accessible
+                accessibilityRole={camposDisponibles.length > 1 ? 'tab' : undefined}
+                accessibilityState={camposDisponibles.length > 1 ? { selected: true } : undefined}
+                accessibilityLabel={`Capturando ${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
+              >
+                <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.control} />
+                <Text style={estilos.rotuloVisor} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+                  {rotulo}
+                </Text>
+                <Text
+                  style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.control}
                 >
-                  <Text
-                    style={[estilos.textoOpcion, activo && estilos.textoOpcionActiva]}
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={ESCALA_TEXTO.control}
-                  >
-                    {rotulo}
-                  </Text>
-                </Pulsable>
-              );
-            })}
-          </View>
-        ) : (
-          <Text style={estilos.campoUnico} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-            {etiquetaCampo}
-          </Text>
-        )}
-        <View
-          style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
-          accessible
-          accessibilityLabel={`${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
-        >
-          <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.control} />
-          <Text
-            style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
-            numberOfLines={1}
-            maxFontSizeMultiplier={ESCALA_TEXTO.control}
-          >
-            {texto === '' ? '—' : texto}
-          </Text>
-        </View>
+                  {texto === '' ? '—' : texto}
+                </Text>
+              </View>
+            );
+          }
+          const valor = captura[c];
+          return (
+            <Pulsable
+              key={c}
+              onPress={() => onCambiarCampo?.(c)}
+              disabled={!onCambiarCampo}
+              tacto="seleccion"
+              escala={ESCALA_PRESIONADO_CONTROL}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: false }}
+              accessibilityLabel={`Capturar ${rotulo}: ${valor === null ? 'sin capturar' : valor}`}
+              style={({ pressed }) => [estilos.campoInactivo, pressed && estilos.campoInactivoPresionado]}
+            >
+              <Text style={estilos.rotuloInactivo} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+                {rotulo}
+              </Text>
+              <Text
+                style={[estilos.valorInactivo, valor === null && estilos.valorInactivoVacio]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={ESCALA_TEXTO.control}
+              >
+                {valor === null ? '—' : valor}
+              </Text>
+            </Pulsable>
+          );
+        })}
       </View>
 
       {/* Avisa, no bloquea: a veces el paquete viene abierto. Altura reservada para que las teclas no se muevan. */}
@@ -349,60 +357,59 @@ const estilos = StyleSheet.create({
   },
   lineaValor: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     gap: ESPACIADO.sm,
   },
-  // Paquetes | Sueltas: control segmentado en cápsula; cuál se captura se ve
-  // por forma (la pieza blanca que flota) y no solo por el rótulo.
-  selector: {
-    flexDirection: 'row',
-    gap: ESPACIADO.xs,
-    padding: ESPACIADO.xs,
-    backgroundColor: COLORES.superficieHonda,
-    borderRadius: RADIOS.completo,
-  },
-  opcionCampo: {
-    minHeight: ALTO_CONTROL_ENCABEZADO - ESPACIADO.sm,
-    paddingHorizontal: ESPACIADO.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.completo,
-  },
-  opcionCampoActiva: {
-    backgroundColor: COLORES.superficie,
-    boxShadow: SOMBRAS.tecla,
-  },
-  textoOpcion: {
-    ...ROTULO,
-    fontFamily: FUENTE.negrita,
-    fontSize: TIPOGRAFIA.etiqueta.fontSize,
-    lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
-    color: COLORES.textoSecundario,
-  },
-  textoOpcionActiva: {
-    fontFamily: FUENTE.extraNegrita,
-    color: COLORES.accionHonda,
-  },
-  campoUnico: {
-    ...ROTULO,
-    fontFamily: FUENTE.negrita,
-    fontSize: TIPOGRAFIA.etiqueta.fontSize,
-    lineHeight: TIPOGRAFIA.etiqueta.lineHeight,
-    color: COLORES.textoSecundario,
-  },
-  // El visor de la báscula: azul noche con la lectura en blanco.
+  // El visor de la báscula: azul noche con la lectura en blanco. Rótulo y
+  // número juntos, a la derecha, como los campos de la fila.
   visor: {
-    minWidth: ANCHO_VISOR,
+    flex: 1,
     minHeight: ALTO_CONTROL_ENCABEZADO + ESPACIADO.xs,
+    alignItems: 'flex-end',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs,
     borderRadius: RADIOS.control,
     borderWidth: BORDES.medio,
     borderColor: COLORES.marca,
   },
   visorConAviso: {
     borderColor: COLORES.discrepancia,
+  },
+  rotuloVisor: {
+    ...ROTULO,
+    color: COLORES.marcaTenue,
+    textAlign: 'right',
+  },
+  // El otro campo del producto: bloque claro como en la fila, con su valor a la vista.
+  campoInactivo: {
+    flex: 1,
+    minHeight: ALTO_CONTROL_ENCABEZADO + ESPACIADO.xs,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: ESPACIADO.md,
+    paddingVertical: ESPACIADO.xs,
+    backgroundColor: COLORES.superficieHonda,
+    borderRadius: RADIOS.control,
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.superficieHonda,
+  },
+  campoInactivoPresionado: {
+    backgroundColor: COLORES.marcaTinte,
+    borderColor: COLORES.marcaTinte,
+  },
+  rotuloInactivo: {
+    ...ROTULO,
+    textAlign: 'right',
+  },
+  valorInactivo: {
+    ...TIPOGRAFIA.campo,
+    color: COLORES.texto,
+    textAlign: 'right',
+    ...CIFRAS,
+  },
+  valorInactivoVacio: {
+    fontFamily: FUENTE.regular,
+    color: COLORES.textoTerciario,
   },
   // Lo que se teclea domina el panel. Mismo alto de línea que un título: el
   // teclado no crece (los dígitos no tienen descendentes).

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useBarraEstado } from '../../theme/barra-estado';
@@ -18,6 +18,7 @@ import {
   TIPOGRAFIA,
 } from '../../theme/tokens';
 import { Degradado } from './Degradado';
+import { fraccionAvance } from './fraccion-avance';
 import { Chevron } from './Icono';
 import { Pulsable } from './Pulsable';
 
@@ -159,19 +160,35 @@ const CURVA_AVANCE = Easing.bezier(...CURVA_SALIDA);
 /**
  * La barra de avance: una cápsula honda donde lo contado se enciende en un
  * degradado de azul a cian y crece hasta su nuevo largo en cada captura. Se
- * lee de reojo sin quitarle alto a la lista. Con "Reducir movimiento",
- * Reanimated la deja en su largo sin animar.
+ * lee de reojo sin quitarle alto a la lista. Con "Reducir movimiento" salta a
+ * su largo sin animar.
+ *
+ * El ancho se anima en píxeles sobre el canal medido: un ancho en porcentaje
+ * animado no se aplicaba en el hilo de UI y el relleno se quedaba midiendo su
+ * contenido, siempre el mismo pedacito.
  */
 export function BarraAvance({ actual, total }: { actual: number; total: number }) {
-  const avance = total > 0 ? Math.min(1, Math.max(0, actual / total)) : 0;
+  const avance = fraccionAvance(actual, total);
+  const reducirMovimiento = useReducedMotion();
   const largo = useSharedValue(avance);
+  const anchoCanal = useSharedValue(0);
   useEffect(() => {
-    largo.value = withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_AVANCE });
-  }, [avance, largo]);
-  const estiloRelleno = useAnimatedStyle(() => ({ width: `${largo.value * 100}%` }));
+    largo.value = reducirMovimiento
+      ? avance
+      : withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_AVANCE });
+  }, [avance, largo, reducirMovimiento]);
+  const estiloRelleno = useAnimatedStyle(() => ({ width: largo.value * anchoCanal.value }));
+  const alMedirCanal = (e: LayoutChangeEvent) => {
+    anchoCanal.value = e.nativeEvent.layout.width;
+  };
 
   return (
-    <View style={estilos.canal} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: actual }}>
+    <View
+      style={estilos.canal}
+      onLayout={alMedirCanal}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: total, now: actual }}
+    >
       <Animated.View style={[estilos.relleno, estiloRelleno]}>
         <Degradado degradado={DEGRADADOS.avance} radio={ALTO_BARRA / 2} />
       </Animated.View>

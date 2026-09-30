@@ -115,7 +115,7 @@ function Lista() {
         titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las plantillas'}
         detalle={
           sinRed
-            ? 'Las plantillas se consultan en el servidor: revisa tu señal y vuelve a intentarlo.'
+            ? 'Para ver las plantillas necesitas señal: revísala y vuelve a intentarlo.'
             : (consulta.error instanceof Error && consulta.error.message) || 'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}

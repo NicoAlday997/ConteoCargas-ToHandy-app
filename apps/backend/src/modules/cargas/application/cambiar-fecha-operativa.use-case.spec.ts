@@ -28,7 +28,7 @@ import type {
  * reventaria) y de `HandyGateway`.
  *
  * Cubre: permisos por rol (vendedor solo lo suyo y en BORRADOR; supervisor con
- * motivo salvo ENVIADA/CANCELADA/ENVIO_INCIERTO; contador nunca), la fecha
+ * motivo salvo CANCELADA/ENVIO_INCIERTO, ENVIADA incluida; contador nunca), la fecha
  * nueva (no pasada, distinta), la unicidad de la INICIAL, la regla de recargas
  * contra Handy, el calendario laboral por rol, y que un rechazo no persiste
  * nada.
@@ -270,7 +270,7 @@ describe('CambiarFechaOperativaUseCase', () => {
   });
 
   describe('supervisor', () => {
-    const EXCLUIDOS: EstadoCarga[] = ['ENVIADA', 'CANCELADA', 'ENVIO_INCIERTO'];
+    const EXCLUIDOS: EstadoCarga[] = ['CANCELADA', 'ENVIO_INCIERTO'];
 
     it.each(TODOS_LOS_ESTADOS.filter((e) => !EXCLUIDOS.includes(e)))(
       'mueve una carga en %s con motivo',

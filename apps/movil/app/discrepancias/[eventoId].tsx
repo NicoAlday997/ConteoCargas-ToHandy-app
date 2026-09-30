@@ -50,6 +50,7 @@ import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { EtiquetaFactor, nombreCampo } from '../../src/conteo/FilaProducto';
 import { formatearEnPaquetes, formatearPiezas, formatearTotalPiezas } from '../../src/conteo/formato-cantidad';
 import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
+import { textoFranjaDiferencia } from '../../src/discrepancias/franja-diferencia';
 import { diaDesdeApi, diaNegocio, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
 import {
   candidatosConfirmar,
@@ -367,7 +368,7 @@ function Resolucion({ eventoId, desdeConteo }: { eventoId: string; desdeConteo: 
             titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las diferencias'}
             detalle={
               sinRed
-                ? 'Resolver diferencias necesita señal: cada paso se registra en el servidor.'
+                ? 'Resolver diferencias necesita señal: cada paso se guarda en cuanto lo haces.'
                 : consulta.error.message || 'Intenta de nuevo en un momento.'
             }
             tono={sinRed ? 'atencion' : 'error'}
@@ -599,7 +600,7 @@ function Paso({ numero, titulo, detalle }: { numero: string; titulo: string; det
 interface PropsTarjeta {
   discrepancia: Discrepancia;
   usuarioId: string | null;
-  /** La primera diferencia que falta: la única con la acción en azul. */
+  /** La primera diferencia que falta: su tarjeta se levanta y se enmarca en azul. */
   enFoco: boolean;
   /** Quiénes pueden confirmar en este teléfono (sin quien capturó). */
   candidatos: readonly Participante[];
@@ -641,14 +642,17 @@ function TarjetaDiscrepancia({
 }: PropsTarjeta) {
   const estado = estadoDe(d);
   const soyQuienCapturo = d.capturadaPor !== null && d.capturadaPor === usuarioId;
-  const variante = enFoco ? 'primario' : 'secundario';
   // Quien confirmaría si no soy yo: nombrarla dice a quién pasarle el teléfono.
   const otros = candidatos.filter((p) => p.id !== usuarioId);
   const otro = otros.length === 1 ? nombreCorto(otros[0].nombre) : null;
   const dondeInicio = rutaNombre ? `en su Inicio, en «Resolver diferencias» de ${rutaNombre}` : 'en su Inicio, en «Resolver diferencias»';
 
   return (
-    <Tarjeta conAcento={BANDA_ESTADO[estado]} style={estilos.tarjeta}>
+    <Tarjeta
+      conAcento={BANDA_ESTADO[estado]}
+      elevacion={enFoco ? 2 : 1}
+      style={[estilos.tarjeta, enFoco && estilos.tarjetaEnFoco]}
+    >
       <View style={estilos.lineaProducto}>
         <EtiquetaFactor producto={d.producto} />
         <Text style={estilos.nombreProducto} numberOfLines={2}>
@@ -667,7 +671,7 @@ function TarjetaDiscrepancia({
       {edicion ? (
         <EditorCantidad d={d} edicion={edicion} ocupado={ocupado} onAbrirCampo={onAbrirCampo} onGuardar={onGuardar} onCancelar={onCancelar} />
       ) : estado === 'sin-capturar' ? (
-        <Boton texto="Capturar cantidad final" variante={variante} onPress={onCapturar} deshabilitado={bloqueada} />
+        <Boton texto="Capturar cantidad final" variante="primario" onPress={onCapturar} deshabilitado={bloqueada} />
       ) : (
         <View style={estilos.final}>
           {d.cantidadFinal !== null && (
@@ -712,12 +716,12 @@ function TarjetaDiscrepancia({
                 />
                 {/* A quien capturó no se le ofrece confirmar él: sí pasar el teléfono. El servidor valida igual. */}
                 {puedeConfirmar(d, usuarioId) ? (
-                  <Boton texto="Confirmar con mi PIN" variante={variante} onPress={onConfirmar} deshabilitado={bloqueada} style={estilos.botonFila} />
+                  <Boton texto="Confirmar con mi PIN" variante={enFoco ? 'primario' : 'secundario'} onPress={onConfirmar} deshabilitado={bloqueada} style={estilos.botonFila} />
                 ) : (
                   otros.length > 0 && (
                     <Boton
                       texto={otro ? `Confirma ${otro} aquí` : 'Confirmar aquí'}
-                      variante={variante}
+                      variante={enFoco ? 'primario' : 'secundario'}
                       onPress={onConfirmar}
                       deshabilitado={bloqueada}
                       accessibilityHint="Pásale el teléfono: confirma con su propio PIN"
@@ -758,24 +762,35 @@ function LadoConteo({ etiqueta, lado, d }: { etiqueta: string; lado: ConteoLado;
 
 /**
  * La diferencia: franja ámbar con su rombo (la forma dice "atención" aunque el
- * sol lave el color), la cifra grande y, en palabras, quién contó más.
+ * sol lave el color), la cifra grande y, en palabras, quién contó más. Dos
+ * renglones en un bloque: arriba el rótulo y la cifra, abajo el detalle a todo
+ * el ancho. El rótulo nunca se parte; la cifra baja a dos líneas si no cabe.
  */
 function FranjaDiferencia({ d }: { d: Discrepancia }) {
-  const detalle = [quienContoMas(d), totalSecundario(diferencia(d), d)].filter(Boolean).join(' · ');
+  const { valor, detalle } = textoFranjaDiferencia(
+    diferencia(d),
+    factorEfectivo(d.producto),
+    unidadCompleta(d.producto),
+    quienContoMas(d),
+  );
   return (
     <View
       style={estilos.franjaDiferencia}
       accessible
       accessibilityLabel={`Diferencia: ${vozCantidad(diferencia(d), d)}. ${quienContoMas(d) ?? ''}`}
     >
-      <View style={estilos.circuloRombo}>
-        <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl - ESPACIADO.xs} />
+      <View style={estilos.renglonDiferencia}>
+        <View style={estilos.circuloRombo}>
+          <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.xl - ESPACIADO.xs} />
+        </View>
+        <Text style={estilos.rotuloDiferencia} numberOfLines={1}>
+          Diferencia
+        </Text>
+        <Text style={estilos.valorDiferencia} numberOfLines={2}>
+          {valor}
+        </Text>
       </View>
-      <View style={estilos.textosDiferencia}>
-        <Text style={estilos.rotuloDiferencia}>Diferencia</Text>
-        {detalle ? <Text style={estilos.detalleDiferencia}>{detalle}</Text> : null}
-      </View>
-      <Text style={estilos.valorDiferencia}>{enPaquetes(diferencia(d), d)}</Text>
+      {detalle ? <Text style={estilos.detalleDiferencia}>{detalle}</Text> : null}
     </View>
   );
 }
@@ -1093,7 +1108,7 @@ function ModalConfirmar({
             </Text>
           ) : aviso?.tipo === 'red' ? (
             <Text style={estilos.avisoRed} accessibilityRole="alert">
-              Sin conexión con el servidor: tu PIN no se llegó a revisar. Vuelve a teclearlo cuando haya señal.
+              Sin conexión: tu PIN no se llegó a revisar. Vuelve a teclearlo cuando haya señal.
             </Text>
           ) : null}
         </View>
@@ -1143,16 +1158,20 @@ const estilos = StyleSheet.create({
     ...CIFRAS,
   },
   franjaDiferencia: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO.md,
+    gap: ESPACIADO.xs,
     paddingVertical: ESPACIADO.sm + 2,
     paddingLeft: ESPACIADO.sm + 2,
     paddingRight: ESPACIADO.lg,
     backgroundColor: COLORES.discrepanciaFondo,
     borderWidth: BORDES.fino,
     borderColor: COLORES.discrepanciaHonda,
-    borderRadius: RADIOS.completo,
+    // Radio fijo: con el de pastilla, al crecer a lo alto se volvía un óvalo.
+    borderRadius: RADIOS.grande,
+  },
+  renglonDiferencia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO.md,
   },
   circuloRombo: {
     width: ESPACIADO.xxl + ESPACIADO.sm,
@@ -1162,20 +1181,21 @@ const estilos = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORES.superficie,
   },
-  textosDiferencia: {
-    flex: 1,
-  },
   rotuloDiferencia: {
+    flexShrink: 0,
     ...TIPOGRAFIA.etiqueta,
     fontFamily: FUENTE.extraNegrita,
     color: COLORES.discrepanciaTexto,
   },
+  // Bajo el rótulo, alineado con él (pasado el rombo), a todo el ancho que queda.
   detalleDiferencia: {
+    paddingLeft: ESPACIADO.xxl + ESPACIADO.sm + ESPACIADO.md,
     ...TIPOGRAFIA.micro,
     color: COLORES.discrepanciaTexto,
     ...CIFRAS,
   },
   valorDiferencia: {
+    flex: 1,
     flexShrink: 1,
     ...TIPOGRAFIA.titulo,
     fontSize: 20,
@@ -1336,6 +1356,11 @@ const estilos = StyleSheet.create({
   // Entre producto, conteos y resultado, aire de grupo: tres bloques sin líneas.
   tarjeta: {
     gap: RITMO.grupo,
+  },
+  // La diferencia que toca: más alta y enmarcada en azul. Los botones no cambian.
+  tarjetaEnFoco: {
+    borderWidth: BORDES.medio,
+    borderColor: COLORES.accion,
   },
   lineaProducto: {
     flexDirection: 'row',

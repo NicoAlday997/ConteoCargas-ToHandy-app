@@ -195,9 +195,15 @@ export function accionCancelacion(estado: EstadoCargaApi | null): AccionCancelac
 
 /**
  * `true` si el supervisor puede mover la carga a otro día. Mismo criterio que
- * el servidor: nunca una ya ENVIADA (la ruta existe en Handy con esa fecha),
- * una CANCELADA ni una con el envío sin confirmar.
+ * el servidor: nunca una CANCELADA ni una con el envío sin confirmar. Una
+ * ENVIADA sí: la fecha es nuestro registro; la ruta en Handy no se toca.
  */
 export function puedeCambiarFecha(estado: EstadoCargaApi | null): boolean {
-  return estado !== null && estado !== 'ENVIADA' && estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
+  return estado !== null && estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
 }
+
+/** Lo que se dice antes de confirmar el cambio de fecha de una carga ENVIADA. */
+export const AVISO_CAMBIO_FECHA_ENVIADA = {
+  titulo: 'Esta carga ya se envió a Handy.',
+  detalle: 'Cambiar la fecha corrige tu historial; la ruta en Handy no se modifica.',
+} as const;

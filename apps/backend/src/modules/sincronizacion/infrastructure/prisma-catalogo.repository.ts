@@ -98,6 +98,7 @@ export class PrismaCatalogoRepository extends CatalogoRepository {
             rolHandyId: v.rolHandyId,
             rolHandyAuthority: v.rolHandyAuthority,
             activo: v.activo,
+            fotoUrl: v.fotoUrl ?? null,
             ultimaSincronizacion: sincronizadoEn,
           },
           update: {
@@ -108,6 +109,8 @@ export class PrismaCatalogoRepository extends CatalogoRepository {
             // Igual que con productos: un vendedor deshabilitado en Handy se
             // marca inactivo, nunca se borra (preserva la trazabilidad).
             activo: v.activo,
+            // `undefined` (Handy no mando el campo): Prisma no toca la guardada.
+            fotoUrl: v.fotoUrl,
             ultimaSincronizacion: sincronizadoEn,
           },
         }),

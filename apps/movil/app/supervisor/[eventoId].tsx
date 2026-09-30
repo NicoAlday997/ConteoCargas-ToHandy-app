@@ -36,10 +36,24 @@ import {
   rechazosParaEnviar,
 } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
+import { diaNegocio, diaRelativo, formatearDia } from '../../src/conteo/fecha-operativa';
 import { formatearCifra } from '../../src/conteo/formato-cantidad';
 import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { sentir } from '../../src/theme/tacto';
-import { BARRA_INFERIOR, BORDES, CIFRAS, COLORES, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import {
+  BARRA_INFERIOR,
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  ONDA,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../src/theme/tokens';
 
 /**
  * Revisión de una carga que espera el visto bueno del supervisor. Como una
@@ -201,7 +215,8 @@ function Revision({ eventoId }: { eventoId: string }) {
 
   const enEspera = estado === 'EN_ESPERA_AUTORIZACION';
   const enviable = estado !== null && ESTADOS_ENVIABLES.has(estado);
-  const hayMasAcciones = enEspera || accionCancelacion(estado) !== null || puedeCambiarFecha(estado);
+  // Cambiar la fecha ya no vive aquí: va junto a la fecha, al frente (BloqueSalida).
+  const hayMasAcciones = enEspera || accionCancelacion(estado) !== null;
   const marcados = Object.keys(seleccion).length;
 
   const refrescar = () => {
@@ -335,6 +350,8 @@ function Revision({ eventoId }: { eventoId: string }) {
         refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
         ListHeaderComponent={
           <>
+            {/* Lo primero que se lee, antes de las cantidades: para qué día sale. */}
+            <BloqueSalida carga={carga} onSesionVencida={sesionVencida} />
             <ResumenCarga carga={carga} />
             <PanelEstado carga={carga} modo={modo} envio={envio} />
             {modo === 'revisar' && carga.totalProductos > 0 && (
@@ -379,11 +396,8 @@ function Revision({ eventoId }: { eventoId: string }) {
                 <Boton texto="Modificar cantidad" variante="secundario" onPress={() => cambiarModo('modificar')} style={estilos.botonFila} />
               </View>
             )}
-            {(accionCancelacion(estado) !== null || puedeCambiarFecha(estado)) && (
-              <View style={estilos.filaBotones}>
-                <CambiarFechaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
-                <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} style={estilos.botonFila} />
-              </View>
+            {accionCancelacion(estado) !== null && (
+              <CancelarCargaSupervisor carga={carga} onSesionVencida={sesionVencida} />
             )}
           </View>
         )}
@@ -412,7 +426,7 @@ function Revision({ eventoId }: { eventoId: string }) {
                 variante="secundario"
                 tacto="seleccion"
                 onPress={() => setMasAcciones((v) => !v)}
-                accessibilityHint={masAcciones ? 'Oculta las acciones de excepción' : 'Rechazar, modificar, cambiar fecha o cancelar'}
+                accessibilityHint={masAcciones ? 'Oculta las acciones de excepción' : 'Rechazar, modificar o cancelar'}
                 style={enEspera || enviable ? estilos.botonMas : estilos.botonFila}
               />
             )}
@@ -697,6 +711,28 @@ function BarraAcciones({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Para qué día sale el camión, al frente y en grande, con «Cambiar» ahí mismo.
+ * Un vendedor equivocado de fecha pasaba por el contador y por la
+ * autorización sin que nadie lo notara: aquí es lo primero que se lee.
+ */
+function BloqueSalida({ carga, onSesionVencida }: { carga: CargaDetalle; onSesionVencida: () => void }) {
+  const dia = carga.evento.dia;
+  if (!dia) return null;
+  const relativo = diaRelativo(dia, diaNegocio(new Date()));
+  return (
+    <Tarjeta style={estilos.salida}>
+      <View style={estilos.textosSalida} accessible accessibilityLabel={`Sale ${relativo ? `${relativo.toLowerCase()}, ` : ''}${formatearDia(dia)}`}>
+        <Text style={estilos.rotuloSalida}>{relativo ? `Sale ${relativo.toLowerCase()}` : 'Sale el'}</Text>
+        <Text style={estilos.diaSalida}>{formatearDia(dia)}</Text>
+      </View>
+      {puedeCambiarFecha(carga.evento.estado) && (
+        <CambiarFechaSupervisor carga={carga} onSesionVencida={onSesionVencida} texto="Cambiar" />
+      )}
+    </Tarjeta>
+  );
+}
+
 function Pantalla({ titulo, subtitulo, children }: { titulo: string; subtitulo?: string; children: ReactNode }) {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
@@ -760,7 +796,8 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.lg,
     backgroundColor: COLORES.azulSuave,
-    borderRadius: RADIOS.completo,
+    // Pastilla en un renglón; si el texto baja a dos, bloque redondeado y no óvalo.
+    borderRadius: TOQUE_MINIMO / 2,
   },
   alternarPresionado: {
     backgroundColor: COLORES.marcaTinte,
@@ -819,6 +856,22 @@ const estilos = StyleSheet.create({
   filaBotones: {
     flexDirection: 'row',
     gap: RITMO.relacionado,
+  },
+  salida: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: RITMO.relacionado,
+    // Mismo aire que deja el resumen arriba: la fecha va primero, no pegada.
+    marginTop: RITMO.margen,
+  },
+  textosSalida: {
+    flex: 1,
+    gap: 2,
+  },
+  rotuloSalida: ETIQUETA_DATO,
+  diaSalida: {
+    ...TIPOGRAFIA.titulo,
+    color: COLORES.texto,
   },
   botonFila: {
     flex: 1,

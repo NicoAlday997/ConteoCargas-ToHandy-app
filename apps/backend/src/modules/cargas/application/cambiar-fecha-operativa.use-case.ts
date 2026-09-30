@@ -36,9 +36,11 @@ import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
  *   opcional. Si pudiera mover la fecha despues de que el contador conto,
  *   tendria una escapatoria cuando el conteo no le cuadra; es la misma razon
  *   por la que solo puede cancelar en BORRADOR.
- * - SUPERVISOR: cualquier estado salvo ENVIADA, CANCELADA y ENVIO_INCIERTO
- *   (`permiteCambioFechaDelSupervisor`). Motivo OBLIGATORIO (minimo
- *   `MOTIVO_MINIMO_SUPERVISOR` caracteres), mismo criterio que al cancelar.
+ * - SUPERVISOR: cualquier estado salvo CANCELADA y ENVIO_INCIERTO
+ *   (`permiteCambioFechaDelSupervisor`). ENVIADA incluida: corrige nuestro
+ *   registro y no toca Handy (la ruta alla sigue como se creo). Motivo
+ *   OBLIGATORIO (minimo `MOTIVO_MINIMO_SUPERVISOR` caracteres), mismo
+ *   criterio que al cancelar.
  * - CONTADOR: nunca.
  *
  * Reglas de la fecha nueva (las mismas que al iniciar la carga):

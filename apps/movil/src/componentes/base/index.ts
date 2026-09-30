@@ -1,3 +1,4 @@
+export { Avatar } from './Avatar';
 export { BloqueError } from './BloqueError';
 export { Boton, type VarianteBoton } from './Boton';
 export { CampoTexto } from './CampoTexto';

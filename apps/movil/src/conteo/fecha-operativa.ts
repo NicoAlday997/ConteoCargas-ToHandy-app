@@ -95,6 +95,13 @@ export function formatearDia(dia: string): string {
   return `${DIAS_SEMANA[fecha.getUTCDay()]} ${fecha.getUTCDate()} de ${MESES[fecha.getUTCMonth()]}`;
 }
 
+/** "lunes 5": dentro de una frase ("¿Las recorres al lunes 5?"). */
+export function formatearDiaEnFrase(dia: string): string {
+  const fecha = desdeTexto(dia);
+  if (!fecha) return dia;
+  return `${DIAS_SEMANA[fecha.getUTCDay()].toLowerCase()} ${fecha.getUTCDate()}`;
+}
+
 /** "24 sep": para listas y tarjetas, donde la fecha larga se corta. */
 export function formatearFechaCorta(dia: string): string {
   const fecha = desdeTexto(dia);

@@ -205,6 +205,9 @@ model UsuarioHandy {
   rolHandyId           Int
   rolHandyAuthority    String
   activo               Boolean  @default(true)
+  /// Foto de perfil real del vendedor en Handy (`users[].pictureUrl` de primer
+  /// nivel). `null` si no tiene: la silueta generica de Handy no se guarda.
+  fotoUrl              String?
   ultimaSincronizacion DateTime @default(now())
 
   vendedores   UsuarioApp[]

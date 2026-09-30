@@ -245,6 +245,8 @@ export interface CargaPendienteApi {
   vendedorNombre: string | null;
   tipo: TipoCarga | null;
   fechaConteo: string | null;
+  /** Día de salida (ISO del inicio del día en México); se muestra con el peso de la ruta. */
+  fechaOperativa?: string | null;
   totalProductos: number | null;
   bloqueadaPorCorte: boolean | null;
   estadoVerificacion: EstadoVerificacion | null;

@@ -21,6 +21,7 @@ import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-
 import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
 import { obtenerToken } from '../src/api/token';
 import {
+  Avatar,
   AccionesHoja,
   BloqueError,
   BloqueEsqueleto,
@@ -154,10 +155,7 @@ export default function PantallaInicio() {
                 </View>
               )}
             </View>
-            <View style={estilos.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              <Degradado degradado={DEGRADADOS.accion} radio={TAMANO_AVATAR / 2} />
-              <Text style={estilos.iniciales}>{iniciales(nombre)}</Text>
-            </View>
+            <Avatar nombre={nombre} fotoUrl={usuario?.fotoUrl} tamano={TAMANO_AVATAR} style={estilos.avatar} />
           </View>
           <View pointerEvents="none" style={estilos.montura} />
         </View>
@@ -210,13 +208,6 @@ export default function PantallaInicio() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-/** "Irvin Alday" → "IA"; una sola palabra, su primera letra. */
-function iniciales(nombre: string): string {
-  const palabras = nombre.trim().split(/\s+/).filter(Boolean);
-  const letras = palabras.length > 1 ? [palabras[0], palabras[palabras.length - 1]] : palabras;
-  return letras.map((p) => p.charAt(0).toUpperCase()).join('') || '?';
 }
 
 /** La forma del inicio mientras se lee la sesión: la banda con el nombre y el bloque de acciones. */
@@ -332,8 +323,8 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
             {progreso.porEnviar > 0 && (
               <Text style={estilos.detalleModal}>
                 {progreso.porEnviar === 1
-                  ? '1 cambio todavía no llega al servidor: se enviará'
-                  : `${progreso.porEnviar} cambios todavía no llegan al servidor: se enviarán`}{' '}
+                  ? '1 cambio está guardado solo en este teléfono: se enviará'
+                  : `${progreso.porEnviar} cambios están guardados solo en este teléfono: se enviarán`}{' '}
                 cuando vuelvas a entrar y abras la carga con señal.
               </Text>
             )}
@@ -345,9 +336,9 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
 }
 
 const MENSAJE_SIN_RED_INICIAR =
-  'Sin conexión. Para iniciar una carga necesitas señal: el servidor la crea y te manda la lista de productos. Ya iniciada, puedes contar sin señal.';
+  'Sin conexión. Para iniciar una carga necesitas señal: así se crea y te llega la lista de productos. Ya iniciada, puedes contar sin señal.';
 const DETALLE_SIN_RED_INICIAR =
-  'Para iniciar una carga necesitas señal: el servidor la crea y te manda la lista de productos. Ya iniciada, puedes contar sin señal.';
+  'Para iniciar una carga necesitas señal: así se crea y te llega la lista de productos. Ya iniciada, puedes contar sin señal.';
 
 function irAConteo(carga: CargaAbierta) {
   router.push({
@@ -531,11 +522,11 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     try {
       const respuesta = await iniciar.mutateAsync({ tipo, fechaOperativa });
       const eventoId = respuesta?.evento?.id;
-      if (!eventoId) throw new Error('El servidor no devolvió la carga creada.');
+      if (!eventoId) throw new Error('No se pudo crear la carga. Intenta de nuevo.');
       // El backend ya abre la sesión del vendedor al crear el evento; solo si
       // no viniera se abre aparte (abrirla dos veces responde 409).
       const sesionId = respuesta?.sesion?.id ?? (await abrir.mutateAsync(eventoId))?.id;
-      if (!sesionId) throw new Error('El servidor no devolvió la sesión de conteo.');
+      if (!sesionId) throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
 
       await entrarAConteo({
         eventoId,
@@ -856,8 +847,8 @@ function AvisoConteoFinalizado({ datos, onCerrar }: { datos: ConteoFinalizado; o
   return (
     <BloqueError
       tono="exito"
-      titulo="Terminaste tu conteo"
-      detalle={`Tu conteo de ${tipo} (${datos.productos} productos) llegó al servidor. ${queSigue(datos.estado)}`}
+      titulo="Listo, terminaste tu conteo"
+      detalle={`Contaste ${datos.productos} productos de tu ${tipo}. Ya se guardó. ${queSigue(datos.estado)}`}
       secundaria={{ texto: 'Entendido', onPress: onCerrar }}
     />
   );
@@ -906,7 +897,7 @@ function AvisoCargaNoDisponible({ onCerrar }: { onCerrar: () => void }) {
     <BloqueError
       tono="atencion"
       titulo="Esa carga ya no está disponible"
-      detalle="Se canceló o se eliminó en el servidor, así que se quitó de este teléfono junto con lo que llevabas contado. Si todavía hay que contar, empieza de nuevo."
+      detalle="Se canceló o se eliminó, así que se quitó de este teléfono junto con lo que llevabas contado. Si todavía hay que contar, empieza de nuevo."
       secundaria={{ texto: 'Entendido', onPress: onCerrar }}
     />
   );
@@ -966,22 +957,11 @@ const estilos = StyleSheet.create({
     gap: RITMO.relacionado,
   },
   // Círculo en degradado azul con filo blanco: el gafete de quien está en sesión.
+  // El marco del gafete sobre el héroe; el contenido (iniciales o foto) lo pone Avatar.
   avatar: {
-    width: TAMANO_AVATAR,
-    height: TAMANO_AVATAR,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: RADIOS.completo,
     borderWidth: BORDES.medio,
     borderColor: 'rgba(255, 255, 255, 0.85)',
     boxShadow: '0px 8px 20px rgba(3, 10, 30, 0.35)',
-  },
-  iniciales: {
-    fontFamily: FUENTE.extraNegrita,
-    fontSize: 20,
-    lineHeight: 24,
-    letterSpacing: 0.2,
-    color: COLORES.textoSobreColor,
   },
   textosIdentidad: {
     flex: 1,

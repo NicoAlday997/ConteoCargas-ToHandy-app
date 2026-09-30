@@ -102,7 +102,7 @@ function detalleError(e: unknown): { titulo: string; detalle: string; sinRed: bo
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Los empaques se guardan en el servidor: revisa tu señal y vuelve a intentarlo.',
+      detalle: 'Para guardar los empaques necesitas señal: revísala y vuelve a intentarlo.',
       sinRed: true,
     };
   }
@@ -253,7 +253,7 @@ function ErrorLista({ consulta }: { consulta: ConsultaLista<unknown> }) {
         titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar los productos'}
         detalle={
           sinRed
-            ? 'La lista de empaques se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+            ? 'Para ver la lista de empaques necesitas señal: revísala y vuelve a intentarlo.'
             : consulta.error instanceof Error && consulta.error.message
               ? consulta.error.message
               : 'Intenta de nuevo en un momento.'

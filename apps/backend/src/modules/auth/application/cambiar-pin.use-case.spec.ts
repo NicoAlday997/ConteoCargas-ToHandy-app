@@ -77,6 +77,7 @@ function crearUsuario(
     activo: true,
     intentosFallidos: 0,
     bloqueadoHasta: null,
+    fotoUrl: null,
     ...overrides,
   };
 }

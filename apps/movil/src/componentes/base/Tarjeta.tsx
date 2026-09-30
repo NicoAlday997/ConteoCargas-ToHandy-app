@@ -144,7 +144,9 @@ const estilos = StyleSheet.create({
     flexShrink: 1,
     paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.xs,
-    borderRadius: RADIOS.completo,
+    // En un renglón se ve como pastilla (el radio se topa en la mitad del alto);
+    // si el título baja a dos, queda un bloque redondeado y no un óvalo.
+    borderRadius: RADIOS.control,
   },
   tituloBanda: PLACA,
   detalleBanda: {

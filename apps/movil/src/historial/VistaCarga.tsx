@@ -229,7 +229,7 @@ export function ErrorCarga({ error, onReintentar }: { error: unknown; onReintent
         titulo={sinRed ? 'Sin conexión' : 'No se pudo abrir la carga'}
         detalle={
           sinRed
-            ? 'El detalle se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+            ? 'Para ver el detalle necesitas señal: revísala y vuelve a intentarlo.'
             : error instanceof Error && error.message
               ? error.message
               : 'Intenta de nuevo en un momento.'
@@ -248,7 +248,7 @@ export function CargaIlegible({ onReintentar, reintentando }: { onReintentar: ()
     <View style={estilos.contenedorAviso}>
       <BloqueError
         titulo="No se pudo leer esta carga"
-        detalle="El servidor respondió algo que la app no entiende. Intenta de nuevo."
+        detalle="Llegó una respuesta que la app no entiende. Intenta de nuevo."
         onReintentar={onReintentar}
         reintentando={reintentando}
         secundaria={{ texto: 'Volver', onPress: volver }}

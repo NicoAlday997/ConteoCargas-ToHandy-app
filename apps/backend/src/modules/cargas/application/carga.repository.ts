@@ -139,6 +139,18 @@ export interface DatosCambiarFechaOperativa {
 }
 
 /**
+ * Recorrido en bloque de varias cargas a una misma fecha nueva, con un renglon
+ * de bitacora por carga y el mismo motivo para todas.
+ */
+export interface DatosRecorrerFechaOperativa {
+  eventos: { eventoId: string; fechaAnterior: Date }[];
+  /** Ya normalizada (`normalizarFechaOperativa`). */
+  fechaNueva: Date;
+  cambiadaPorId: string;
+  motivo: string;
+}
+
+/**
  * Item nuevo o actualizado dentro de una sesion. `cantidad` es el total en
  * piezas ya calculado por el caso de uso (`aPiezas` del dominio) a partir de
  * `paquetes` y `sueltas`; nunca viene del cliente.
@@ -318,6 +330,17 @@ export abstract class CargaRepository {
   abstract cambiarFechaOperativa(
     datos: DatosCambiarFechaOperativa,
   ): Promise<EventoCarga>;
+
+  /**
+   * Mueve TODAS las cargas recibidas a `fechaNueva` en UNA sola transaccion:
+   * o se mueven todas o ninguna. Por carga, actualiza `fechaOperativa` e
+   * inserta su renglon en la bitacora de cambios de fecha; NO toca sesiones ni
+   * items. Lanza `CargaInicialDuplicadaError` (y no mueve nada) si el indice
+   * parcial rechaza una segunda INICIAL de alguna ruta en esa fecha.
+   */
+  abstract recorrerFechaOperativa(
+    datos: DatosRecorrerFechaOperativa,
+  ): Promise<void>;
 
   /**
    * Crea una `SesionConteo` en estado `ABIERTA` para ese evento y usuario, y la

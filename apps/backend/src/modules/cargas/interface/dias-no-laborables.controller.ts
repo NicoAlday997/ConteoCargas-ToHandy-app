@@ -29,6 +29,7 @@ import {
   MOTIVO_MINIMO_DIA_NO_LABORABLE,
 } from '../application/marcar-dia-no-laborable.use-case';
 import { QuitarDiaNoLaborableUseCase } from '../application/quitar-dia-no-laborable.use-case';
+import { RecorrerCargasDeDiaUseCase } from '../application/recorrer-cargas-de-dia.use-case';
 import { diaTexto } from '../domain/calendario-laboral';
 import { normalizarFechaOperativa } from '../domain/fecha-operativa';
 import {
@@ -38,6 +39,7 @@ import {
   type ListarDiasNoLaborablesQueryDto,
   type MarcarDiaNoLaborableDto,
 } from './cargas.dto';
+import { aRespuestaCargaDelDia } from './carga-del-dia.respuesta';
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 /** Sin `hasta`, la lista cubre un año. */
@@ -66,6 +68,7 @@ export class DiasNoLaborablesController {
     private readonly diasNoLaborables: DiaNoLaborableRepository,
     private readonly marcarDiaNoLaborableUseCase: MarcarDiaNoLaborableUseCase,
     private readonly quitarDiaNoLaborableUseCase: QuitarDiaNoLaborableUseCase,
+    private readonly recorrerCargasDeDia: RecorrerCargasDeDiaUseCase,
   ) {}
 
   /** Dias marcados entre `desde` (por defecto hoy) y `hasta`, en orden. */
@@ -79,6 +82,26 @@ export class DiasNoLaborablesController {
       query.hasta ?? new Date(desde.getTime() + DIAS_LISTA_POR_DEFECTO * MS_POR_DIA);
     const dias = await this.diasNoLaborables.listarEntre(desde, hasta);
     return { dias: dias.map(aRespuesta) };
+  }
+
+  /**
+   * Previsualizacion antes de recorrer las cargas de ese dia: las que se
+   * moverian (ENVIADAS incluidas), las que se quedan (CANCELADA,
+   * ENVIO_INCIERTO) y el siguiente dia habil como destino sugerido. Sirve
+   * tambien para un dia que no esta marcado.
+   */
+  @Get(':fecha/cargas')
+  async cargasDelDia(
+    @Param('fecha', new ZodValidationPipe(DiaParamSchema)) fecha: Date,
+  ) {
+    const vista = await this.recorrerCargasDeDia.previsualizar(fecha, new Date());
+    return {
+      fecha: diaTexto(fecha),
+      cargas: vista.cargas.map(aRespuestaCargaDelDia),
+      excluidas: vista.excluidas.map(aRespuestaCargaDelDia),
+      destinoSugerido:
+        vista.destinoSugerido === null ? null : diaTexto(vista.destinoSugerido),
+    };
   }
 
   @Post()

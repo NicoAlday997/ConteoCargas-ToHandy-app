@@ -24,7 +24,7 @@ import {
 } from '../componentes/base';
 import type { CargaAbierta } from '../conteo/almacen-conteo';
 import { estaConectado } from '../conteo/cola-sincronizacion';
-import { horaNegocio } from '../conteo/fecha-operativa';
+import { diaDesdeApi, diaNegocio, horaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
 import {
   COLORES,
   SOMBRAS,
@@ -40,7 +40,7 @@ import {
 } from '../theme/tokens';
 
 const MENSAJE_SIN_RED =
-  'Para empezar a verificar necesitas señal: el servidor abre tu conteo y te manda la lista de productos. Ya abierto, puedes contar sin señal.';
+  'Para empezar a verificar necesitas señal: así se abre tu conteo y te llega la lista de productos. Ya abierto, puedes contar sin señal.';
 
 /** Fila ya validada: sin id no hay carga que abrir. */
 interface CargaEnCola {
@@ -49,6 +49,8 @@ interface CargaEnCola {
   vendedorNombre: string | null;
   tipo: TipoCarga | null;
   fechaConteo: Date | null;
+  /** `aaaa-mm-dd`: para qué día sale el camión. */
+  fechaOperativa: string | null;
   totalProductos: number | null;
   estado: 'lista' | 'propia' | 'bloqueada' | 'otro';
   miSesionId: string | null;
@@ -68,6 +70,7 @@ function normalizar(fila: CargaPendienteApi): CargaEnCola | null {
     vendedorNombre: fila.vendedorNombre?.trim() || null,
     tipo: fila.tipo,
     fechaConteo: fecha && !Number.isNaN(fecha.getTime()) ? fecha : null,
+    fechaOperativa: diaDesdeApi(fila.fechaOperativa),
     totalProductos: typeof fila.totalProductos === 'number' ? fila.totalProductos : null,
     estado,
     miSesionId: fila.miSesionId,
@@ -113,7 +116,13 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
     }
     // Ya la había empezado (quizá en otro dispositivo): se continúa, no se abre otra.
     if (carga.estado === 'propia' && carga.miSesionId) {
-      onAbrir({ eventoId: carga.id, sesionId: carga.miSesionId, tipo: carga.tipo, rutaNombre: carga.rutaNombre });
+      onAbrir({
+        eventoId: carga.id,
+        sesionId: carga.miSesionId,
+        tipo: carga.tipo,
+        rutaNombre: carga.rutaNombre,
+        fechaOperativa: carga.fechaOperativa,
+      });
       return;
     }
     if (!estaConectado(await NetInfo.fetch())) {
@@ -123,9 +132,15 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
     setAbriendo(carga.id);
     try {
       const sesion = await abrir.mutateAsync(carga.id);
-      if (!sesion?.id) throw new Error('El servidor no devolvió la sesión de conteo.');
+      if (!sesion?.id) throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
       setBloqueada(null);
-      onAbrir({ eventoId: carga.id, sesionId: sesion.id, tipo: carga.tipo, rutaNombre: carga.rutaNombre });
+      onAbrir({
+        eventoId: carga.id,
+        sesionId: sesion.id,
+        tipo: carga.tipo,
+        rutaNombre: carga.rutaNombre,
+        fechaOperativa: carga.fechaOperativa,
+      });
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 401) return onSesionVencida();
       if (e instanceof ErrorRed) return setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
@@ -163,7 +178,7 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
           titulo={sinRed ? 'Sin conexión' : 'No se pudo consultar la cola'}
           detalle={
             sinRed
-              ? 'La lista de cargas por verificar vive en el servidor: revisa tu señal.'
+              ? 'Para ver las cargas por verificar necesitas señal: revísala.'
               : consulta.error.message || 'Intenta de nuevo en un momento.'
           }
           tono={sinRed ? 'atencion' : 'error'}
@@ -258,6 +273,8 @@ function FilaCarga({
 }) {
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
   const hora = carga.fechaConteo ? horaNegocio(carga.fechaConteo) : null;
+  // Con el mismo peso que la ruta: una fecha equivocada pasaba por el contador sin que la notara.
+  const salida = carga.fechaOperativa ? textoSalidaCorta(carga.fechaOperativa, diaNegocio(new Date())) : null;
   const detalle = [
     carga.totalProductos !== null ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}` : null,
     hora ? `terminó a las ${hora}` : null,
@@ -287,8 +304,9 @@ function FilaCarga({
       break;
   }
 
-  // Un solo punto focal: la ruta. El tipo es su rótulo; abajo, separados por
-  // aire, quién contó y cuánto, como rótulo y dato; el estado, como bloque.
+  // Un solo punto focal: la ruta y su día de salida, con el mismo peso. El tipo
+  // es su rótulo; abajo, separados por aire, quién contó y cuánto, como rótulo
+  // y dato; el estado, como bloque.
   const contenido = (presionada: boolean) => (
     <>
       <View style={estilos.cuerpoFila}>
@@ -297,6 +315,11 @@ function FilaCarga({
           <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={1}>
             {carga.rutaNombre}
           </Text>
+          {salida && (
+            <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={2}>
+              {salida}
+            </Text>
+          )}
         </View>
         <Datos
           invertido={presionada}
@@ -325,7 +348,7 @@ function FilaCarga({
 
   if (!onPress) {
     return (
-      <View style={[estilos.fila, estilos.filaInactiva]} accessible accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${estado?.texto ?? ''}`}>
+      <View style={[estilos.fila, estilos.filaInactiva]} accessible accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${salida ? `${salida}. ` : ''}${estado?.texto ?? ''}`}>
         {contenido(false)}
       </View>
     );
@@ -337,7 +360,7 @@ function FilaCarga({
       disabled={deshabilitada}
       onda={ONDA.sobreColor}
       accessibilityRole="button"
-      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
+      accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${salida ? `${salida}. ` : ''}${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}
       style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada, deshabilitada && !abriendo && estilos.deshabilitado]}
     >
@@ -387,7 +410,7 @@ function PanelBloqueada({
       onError: (e) =>
         setResultado({
           tipo: 'error',
-          mensaje: e instanceof ErrorRed ? 'Sin conexión con el servidor. Revisa tu señal y reintenta.' : e.message || 'Intenta de nuevo en un momento.',
+          mensaje: e instanceof ErrorRed ? 'Sin conexión. Revisa tu señal y reintenta.' : e.message || 'Intenta de nuevo en un momento.',
         }),
     });
   };

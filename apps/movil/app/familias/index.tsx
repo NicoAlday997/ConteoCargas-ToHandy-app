@@ -147,7 +147,7 @@ function Lista() {
             titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las familias'}
             detalle={
               sinRed
-                ? 'Las familias se consultan en el servidor: revisa tu señal.'
+                ? 'Para ver las familias necesitas señal: revísala.'
                 : (consulta.error instanceof Error && consulta.error.message) || null
             }
             tono={sinRed ? 'atencion' : 'error'}

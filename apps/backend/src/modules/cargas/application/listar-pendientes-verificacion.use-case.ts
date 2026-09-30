@@ -33,6 +33,8 @@ export interface CargaEnColaVerificacion {
   vendedorNombre: string | null;
   tipo: TipoCarga;
   fechaConteo: Date | null;
+  /** Dia para el que sale el camion. */
+  fechaOperativa: Date;
   totalProductos: number;
   bloqueadaPorCorte: boolean;
   fechaBloqueoCortePendiente: Date | null;

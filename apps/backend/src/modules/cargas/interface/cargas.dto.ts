@@ -204,6 +204,17 @@ export const MarcarDiaNoLaborableSchema = z.object({
     .max(200, 'El motivo no puede pasar de 200 caracteres'),
 });
 
+/**
+ * Body de `POST /admin/cargas/recorrer`: todas las cargas de `fechaOrigen` a
+ * `fechaDestino`, con un solo motivo. El minimo del motivo y las reglas de las
+ * fechas las valida el caso de uso, para responder con un codigo claro.
+ */
+export const RecorrerCargasSchema = z.object({
+  fechaOrigen: DiaSchema,
+  fechaDestino: DiaSchema,
+  motivo: z.string().max(500, 'El motivo no puede pasar de 500 caracteres'),
+});
+
 export type IniciarCargaDto = z.infer<typeof IniciarCargaSchema>;
 export type GuardarItemsDto = z.infer<typeof GuardarItemsSchema>;
 export type FinalizarSesionDto = z.infer<typeof FinalizarSesionSchema>;
@@ -215,3 +226,4 @@ export type CancelarCargaDto = z.infer<typeof CancelarCargaSchema>;
 export type CambiarFechaOperativaDto = z.infer<typeof CambiarFechaOperativaSchema>;
 export type ListarDiasNoLaborablesQueryDto = z.infer<typeof ListarDiasNoLaborablesQuerySchema>;
 export type MarcarDiaNoLaborableDto = z.infer<typeof MarcarDiaNoLaborableSchema>;
+export type RecorrerCargasDto = z.infer<typeof RecorrerCargasSchema>;

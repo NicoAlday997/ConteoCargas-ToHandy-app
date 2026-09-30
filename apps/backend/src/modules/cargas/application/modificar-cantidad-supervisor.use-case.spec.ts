@@ -107,6 +107,12 @@ class FakeCargaRepository implements CargaRepository {
 
   }
 
+  async recorrerFechaOperativa(): Promise<never> {
+
+    throw new Error('no usado en estas pruebas');
+
+  }
+
   async reabrirDiscrepancia(
     eventoId: string,
     datos: DatosReabrirDiscrepancia,

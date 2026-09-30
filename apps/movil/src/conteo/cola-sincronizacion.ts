@@ -341,7 +341,7 @@ export class ColaSincronizacion {
 
   private fallo(error: unknown): void {
     if (esTransitorio(error)) {
-      this.fijar({ ultimoError: { tipo: 'red', mensaje: 'Sin conexión con el servidor' } });
+      this.fijar({ ultimoError: { tipo: 'red', mensaje: 'Sin conexión' } });
       this.programarReintento();
       return;
     }
@@ -350,7 +350,7 @@ export class ColaSincronizacion {
       return;
     }
 
-    const mensaje = error instanceof Error && error.message ? error.message : 'El servidor no aceptó el conteo.';
+    const mensaje = error instanceof Error && error.message ? error.message : 'No se pudo guardar tu conteo.';
     const items = { ...this.estado.items };
     let marcados = 0;
     for (const code of productosRechazados(error)) {

@@ -89,7 +89,7 @@ export class AuthController {
   /**
    * Lista de usuarios activos para la seleccion visual de la pantalla de login
    * (RF-01). Publico: no expone PIN ni datos sensibles (el repositorio hace un
-   * select explicito de id, nombre y rol).
+   * select explicito de id, nombre, rol y la foto de Handy del vendedor).
    */
   @Get('usuarios')
   async listarUsuarios() {
@@ -148,6 +148,7 @@ export class AuthController {
         id: resultado.usuarioAppId,
         nombreCompleto: resultado.nombreCompleto,
         rolApp: resultado.rolApp,
+        fotoUrl: resultado.fotoUrl,
       },
     };
   }

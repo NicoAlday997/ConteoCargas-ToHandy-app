@@ -31,6 +31,7 @@ import { ModificarCantidadSupervisorUseCase } from './application/modificar-cant
 import { ProductoConteoRepository } from './application/producto-conteo.repository';
 import { QuitarDiaNoLaborableUseCase } from './application/quitar-dia-no-laborable.use-case';
 import { RechazarProductosUseCase } from './application/rechazar-productos.use-case';
+import { RecorrerCargasDeDiaUseCase } from './application/recorrer-cargas-de-dia.use-case';
 import { VerificadorPin } from './application/verificador-pin.port';
 import { VerificarCortePendienteUseCase } from './application/verificar-corte-pendiente.use-case';
 import { LoginVerificadorPinAdapter } from './infrastructure/login-verificador-pin.adapter';
@@ -39,6 +40,7 @@ import { PrismaCargaRepository } from './infrastructure/prisma-carga.repository'
 import { PrismaConsultasCargaRepository } from './infrastructure/prisma-consultas-carga.repository';
 import { PrismaDiaNoLaborableRepository } from './infrastructure/prisma-dia-no-laborable.repository';
 import { PrismaProductoConteoRepository } from './infrastructure/prisma-producto-conteo.repository';
+import { AdminCargasController } from './interface/admin-cargas.controller';
 import { CargasController } from './interface/cargas.controller';
 import { DiasNoLaborablesController } from './interface/dias-no-laborables.controller';
 
@@ -54,7 +56,11 @@ import { DiasNoLaborablesController } from './interface/dias-no-laborables.contr
     // PIN con la misma politica de intentos y bloqueo que el login.
     AuthModule,
   ],
-  controllers: [CargasController, DiasNoLaborablesController],
+  controllers: [
+    CargasController,
+    DiasNoLaborablesController,
+    AdminCargasController,
+  ],
   providers: [
     // Binding de puertos a adaptadores de infraestructura. El dominio y la
     // aplicacion solo conocen los puertos abstractos.
@@ -223,6 +229,19 @@ import { DiasNoLaborablesController } from './interface/dias-no-laborables.contr
         diasNoLaborables: DiaNoLaborableRepository,
       ) => new CambiarFechaOperativaUseCase(cargas, handy, diasNoLaborables),
       inject: [CargaRepository, HandyGateway, DiaNoLaborableRepository],
+    },
+    {
+      provide: RecorrerCargasDeDiaUseCase,
+      useFactory: (
+        cargas: CargaRepository,
+        consultas: ConsultasCargaRepository,
+        diasNoLaborables: DiaNoLaborableRepository,
+      ) => new RecorrerCargasDeDiaUseCase(cargas, consultas, diasNoLaborables),
+      inject: [
+        CargaRepository,
+        ConsultasCargaRepository,
+        DiaNoLaborableRepository,
+      ],
     },
     {
       provide: CancelarRutaHandyUseCase,

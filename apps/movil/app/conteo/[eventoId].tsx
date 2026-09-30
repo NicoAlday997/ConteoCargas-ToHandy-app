@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { BackHandler, SectionList, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, SectionList, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -86,6 +86,8 @@ const ANCHO_TECLADO_LATERAL = 380;
 const ANCHO_MINIMO_FILA = 330;
 /** Tras cambiar el alto de la lista (se abre el teclado) hay que esperar al layout. */
 const RETRASO_SCROLL_MS = 60;
+/** Aire entre el renglón que se captura y el borde de la hoja: que no lo roce su sombra. */
+const HOLGURA_SOBRE_HOJA = ESPACIADO.sm;
 /**
  * Entre productos: el triple del aire que hay dentro de cada uno, así cada
  * renglón se lee como un bloque sin líneas. Lo que se agrega aquí sale de
@@ -431,22 +433,46 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   }, [secciones]);
 
   const lista = useRef<SectionList<ProductoConteo[], SeccionFamilia>>(null);
+  /**
+   * El renglón que se captura queda a la vista, justo arriba de la hoja: su
+   * borde de abajo sobre el borde de arriba de la hoja (en celular la hoja va
+   * bajo la lista y la encoge). Si el renglón no cabe, queda pegado a ese
+   * borde. Al abrir la hoja el alto de la lista cambia: se vuelve a desplazar
+   * cuando la lista termina de medirse, no con el alto de antes.
+   */
   const irAProducto = useCallback(
     (code: string) => {
       const ubicacion = ubicaciones.get(code);
       if (!ubicacion) return;
-      setTimeout(() => {
+      lista.current?.scrollToLocation({
+        ...ubicacion,
         // itemIndex + 1: en SectionList el índice 0 de cada sección es su encabezado.
-        lista.current?.scrollToLocation({ ...ubicacion, itemIndex: ubicacion.itemIndex + 1, viewPosition: 0.4 });
-      }, RETRASO_SCROLL_MS);
+        itemIndex: ubicacion.itemIndex + 1,
+        viewPosition: 1,
+        // Negativo: sube el renglón ese tanto sobre el borde de la hoja.
+        viewOffset: -HOLGURA_SOBRE_HOJA,
+      });
     },
     [ubicaciones],
   );
 
   const codeEditado = edicion?.code ?? null;
   useEffect(() => {
-    if (codeEditado) irAProducto(codeEditado);
+    if (!codeEditado) return;
+    const espera = setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS);
+    return () => clearTimeout(espera);
   }, [codeEditado, irAProducto]);
+  const altoLista = useRef(0);
+  const alMedirLista = useCallback(
+    (e: LayoutChangeEvent) => {
+      const alto = e.nativeEvent.layout.height;
+      if (alto === altoLista.current) return;
+      altoLista.current = alto;
+      const actual = edicionRef.current;
+      if (actual) irAProducto(actual.code);
+    },
+    [irAProducto],
+  );
 
   /** Lo que se ve en la fila: el conteo con lo que se está tecleando encima. */
   const capturaVisible = useCallback(
@@ -467,7 +493,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         <EstadoVacio
           icono="lista"
           titulo="Esta carga ya no está disponible"
-          detalle="Se canceló o se eliminó en el servidor. Vuelve al inicio para empezar de nuevo."
+          detalle="Se canceló o se eliminó. Vuelve al inicio para empezar de nuevo."
           accion={{ texto: 'Volver al inicio', onPress: volverAlInicio }}
         />
       </SafeAreaView>
@@ -610,6 +636,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             ref={lista}
             key={`columnas-${columnas}`}
             style={estilos.lista}
+            onLayout={alMedirLista}
             sections={secciones}
             keyExtractor={(fila) => fila.map((p) => p.code).join('|')}
             extraData={{ conteo, edicion, items: estadoCola.items }}
@@ -736,15 +763,15 @@ function razonNoFinalizar(faltan: number, bloqueo: BloqueoFinalizar): string | n
   if (faltan > 0) return faltan === 1 ? 'Falta 1 producto por contar.' : `Faltan ${faltan} productos por contar.`;
   switch (bloqueo) {
     case 'sin-conexion':
-      return 'Sin conexión: falta que tu conteo llegue al servidor.';
+      return 'Sin señal: lo que llevas está guardado en este teléfono y se manda solo cuando vuelva.';
     case 'por-enviar':
-      return 'Falta que tu conteo llegue al servidor.';
+      return 'Guardando lo que llevas contado…';
     case 'rechazados':
-      return 'El servidor rechazó productos: vuelve a capturarlos.';
+      return 'Hay productos que no se aceptaron: vuelve a capturarlos.';
     case 'sesion-expirada':
       return 'Tu sesión venció: entra de nuevo para finalizar.';
     case 'error':
-      return 'El servidor no aceptó el conteo.';
+      return 'No se pudo guardar tu conteo.';
     case null:
       return null;
   }
@@ -862,7 +889,7 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
     texto = pendientes > 0 ? `Sin conexión · ${pendientes} por enviar` : 'Sin conexión · todo enviado';
     tono = 'atencion';
   } else if (fallidos > 0) {
-    texto = `${fallidos} ${plural(fallidos, 'rechazado', 'rechazados')} por el servidor`;
+    texto = `${fallidos} ${plural(fallidos, 'producto no aceptado', 'productos no aceptados')}`;
     tono = 'error';
   } else if (ultimoError?.tipo === 'rechazo') {
     texto = `No se envió: ${ultimoError.mensaje}`;
@@ -1048,7 +1075,7 @@ function PanelBloqueo({
 }: PropsPanelBloqueo) {
   const { pendientes, sincronizando, ultimoError } = sincronizacion;
   const porqueServidor =
-    'La comparación con el otro conteo ocurre en el servidor y necesita que todo tu conteo haya llegado.';
+    'Para comparar tu conteo con el otro, primero tiene que guardarse completo.';
 
   let titulo: string;
   let detalle: string;
@@ -1059,17 +1086,17 @@ function PanelBloqueo({
       titulo = 'Sin conexión';
       detalle =
         (pendientes > 0
-          ? `Tu conteo está guardado en este teléfono, pero ${pendientes} ${plural(pendientes, 'cambio no ha', 'cambios no han')} llegado al servidor. `
-          : 'Tu conteo ya está en el servidor, pero finalizar también necesita señal. ') +
+          ? `Tu conteo está guardado en este teléfono, pero ${pendientes} ${plural(pendientes, 'cambio falta', 'cambios faltan')} por mandarse. `
+          : 'Tu conteo ya está guardado, pero finalizar también necesita señal. ') +
         `${porqueServidor} Acércate a donde haya señal: lo pendiente se envía solo.`;
       break;
     case 'por-enviar':
-      titulo = pendientes > 0 ? `Faltan ${pendientes} por llegar al servidor` : 'Comprobando con el servidor…';
+      titulo = pendientes > 0 ? `Faltan ${pendientes} por guardarse` : 'Revisando que todo esté guardado…';
       detalle = `${porqueServidor} ${sincronizando ? 'Enviando ahora…' : 'Se reintentará solo en unos segundos.'}`;
       if (!sincronizando) accion = { texto: 'Reintentar ahora', onPress: onReintentar };
       break;
     case 'rechazados':
-      titulo = `El servidor no aceptó ${rechazados.length} ${plural(rechazados.length, 'producto', 'productos')}`;
+      titulo = `No se ${plural(rechazados.length, 'aceptó', 'aceptaron')} ${rechazados.length} ${plural(rechazados.length, 'producto', 'productos')}`;
       detalle = 'Vuelve a capturarlos (por ejemplo, en piezas sueltas) para poder finalizar. Toca uno para ir a él.';
       break;
     case 'sesion-expirada':
@@ -1078,12 +1105,12 @@ function PanelBloqueo({
       accion = { texto: 'Entrar', onPress: () => router.replace('/login') };
       break;
     case 'error':
-      titulo = 'El servidor no aceptó el conteo';
+      titulo = 'No se pudo guardar tu conteo';
       detalle = ultimoError?.mensaje ?? 'Intenta de nuevo.';
       accion = { texto: 'Reintentar', onPress: onReintentar };
       break;
     case null:
-      titulo = 'Todo llegó al servidor';
+      titulo = 'Tu conteo está guardado';
       detalle = 'Ya puedes finalizar tu conteo.';
       accion = { texto: 'Continuar', onPress: onContinuar };
       break;
@@ -1221,8 +1248,8 @@ function PanelConfirmar({
           titulo={bloqueo === 'sin-conexion' ? 'Se perdió la conexión' : 'Falta enviar parte del conteo'}
           detalle={
             bloqueo === 'sin-conexion'
-              ? 'Para finalizar necesitas señal: la comparación de conteos ocurre en el servidor.'
-              : 'Espera a que todo el conteo llegue al servidor; se envía solo.'
+              ? 'Para finalizar necesitas señal: así se comparan los dos conteos.'
+              : 'Espera un momento: lo que contaste se está guardando solo.'
           }
         />
       )}
@@ -1365,7 +1392,9 @@ const estilos = StyleSheet.create({
     gap: ESPACIADO.xs,
     paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.xs + 2,
-    borderRadius: RADIOS.completo,
+    // En un renglón se ve como pastilla (el radio se topa en la mitad del alto);
+    // si el texto baja a dos, queda un bloque redondeado y no un óvalo.
+    borderRadius: RADIOS.control,
     backgroundColor: 'rgba(255, 255, 255, 0.10)',
   },
   pildoraAtencion: {

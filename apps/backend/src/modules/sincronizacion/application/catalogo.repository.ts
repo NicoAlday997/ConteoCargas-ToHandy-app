@@ -49,6 +49,12 @@ export interface VendedorHandyLocal {
   rolHandyId: number;
   rolHandyAuthority: string;
   activo: boolean;
+  /**
+   * Foto real del vendedor o `null` si no tiene (la silueta generica de Handy
+   * se guarda como `null`). `undefined`: Handy no mando el campo y se conserva
+   * la foto que ya estaba guardada.
+   */
+  fotoUrl?: string | null;
 }
 
 /**

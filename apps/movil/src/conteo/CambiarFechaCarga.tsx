@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { TipoCarga } from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useCambiarFechaOperativa } from '../api/hooks-cargas';
-import { SelectorFechaOperativa } from './SelectorFechaOperativa';
+import { SelectorFechaOperativa, type AvisoCambioFecha } from './SelectorFechaOperativa';
 
 interface Props {
   visible: boolean;
@@ -14,6 +14,8 @@ interface Props {
   productosContados: number;
   /** Supervisor: mínimo de caracteres del motivo. `null`: no se pide (vendedor). */
   motivoMinimo: number | null;
+  /** Se dice antes de confirmar (p. ej. la carga ya se envió a Handy). */
+  aviso?: AvisoCambioFecha | null;
   /** Ya quedó en el servidor; `dia` es el nuevo. */
   onCambiada: (dia: string) => void;
   onCerrar: () => void;
@@ -33,6 +35,7 @@ export function ModalCambiarFecha({
   diaActual,
   productosContados,
   motivoMinimo,
+  aviso = null,
   onCambiada,
   onCerrar,
   onSesionVencida,
@@ -50,7 +53,7 @@ export function ModalCambiarFecha({
     <SelectorFechaOperativa
       tipo={visible ? (tipo ?? 'INICIAL') : null}
       conflicto={null}
-      cambio={{ diaActual, productosContados, motivoMinimo }}
+      cambio={{ diaActual, productosContados, motivoMinimo, aviso }}
       ocupado={cambiar.isPending}
       error={error}
       onElegir={(dia, motivo) => {

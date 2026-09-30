@@ -35,7 +35,7 @@ export function avisoDeError(e: unknown, titulo: string): AvisoError | null {
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Las plantillas se guardan en el servidor: revisa tu señal y vuelve a intentarlo.',
+      detalle: 'Para guardar las plantillas necesitas señal: revísala y vuelve a intentarlo.',
       tono: 'atencion',
     };
   }

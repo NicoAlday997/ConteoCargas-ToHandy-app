@@ -12,6 +12,8 @@ export interface UsuarioSesion {
   nombreCompleto: string | null;
   rolApp: RolApp | null;
   debeCambiarPin: boolean;
+  /** Foto de Handy (vendedores). Falta en sesiones guardadas antes de existir: iniciales. */
+  fotoUrl?: string | null;
 }
 
 const CLAVE_USUARIO = 'conteo_cargas_usuario';

@@ -284,7 +284,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
     conPaquetes && captura.paquetes !== null ? `${nombreCampo(producto, 'paquetes')} ${captura.paquetes}` : null,
     conSueltas && captura.sueltas !== null ? `sueltas ${captura.sueltas}` : null,
     estado === 'con-cantidad' ? textoTotalAccesible(total, estado, unidadTotal) : null,
-    envio === 'por-enviar' ? 'por enviar' : envio === 'rechazado' ? `rechazado por el servidor: ${errorEnvio ?? 'revisa la cantidad'}` : null,
+    envio === 'por-enviar' ? 'por enviar' : envio === 'rechazado' ? `no se aceptó: ${errorEnvio ?? 'revisa la cantidad'}` : null,
     !producto.factorConfirmado ? 'empaque sin confirmar' : null,
     avisoSueltas ? 'las sueltas ya completan un paquete' : null,
   ]
@@ -424,7 +424,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         <Aviso texto={`${captura.sueltas} sueltas ya completan un paquete de ${factor}. ¿Venía abierto?`} />
       )}
       {envio === 'rechazado' && (
-        <Aviso texto={`El servidor no lo aceptó: ${errorEnvio ?? 'revisa la cantidad'}. Vuelve a capturarlo.`} error />
+        <Aviso texto={`No se aceptó: ${errorEnvio ?? 'revisa la cantidad'}. Vuelve a capturarlo.`} error />
       )}
     </View>
   );
@@ -471,7 +471,7 @@ function useDestello(estado: EstadoFila) {
 function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boolean }) {
   if (envio === null || envio === 'enviado') return null;
   const porEnviar = envio === 'por-enviar';
-  const accesible = porEnviar ? 'Guardado en el teléfono, por enviar' : 'Rechazado por el servidor';
+  const accesible = porEnviar ? 'Guardado en el teléfono, por enviar' : 'No se aceptó';
   const color = sobreMarca ? COLORES.textoSobreColor : porEnviar ? COLORES.textoSecundario : COLORES.error;
   return (
     <View accessible accessibilityLabel={accesible}>

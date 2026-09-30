@@ -5,6 +5,12 @@ export interface UsuarioParaSeleccion {
   id: string;
   nombreCompleto: string;
   rolApp: RolApp;
+  /**
+   * Foto de perfil de Handy, a traves del vendedor vinculado. Contador y
+   * supervisor no tienen cuenta en Handy: siempre `null`, y la app muestra
+   * las iniciales.
+   */
+  fotoUrl: string | null;
 }
 
 /** Datos completos que necesita el caso de uso de login. */
@@ -18,6 +24,8 @@ export interface UsuarioAutenticable {
   activo: boolean;
   intentosFallidos: number;
   bloqueadoHasta: Date | null;
+  /** Ver `UsuarioParaSeleccion.fotoUrl`. */
+  fotoUrl: string | null;
 }
 
 export interface ActualizacionAcceso {

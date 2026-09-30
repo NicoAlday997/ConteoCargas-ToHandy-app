@@ -94,7 +94,7 @@ export default function PantallaCambiarPin() {
             pinRef.current = '';
             setCantidad(0);
             setAviso({
-              titulo: 'Sin conexión con el servidor',
+              titulo: 'Sin conexión',
               detalle: 'Tu PIN no se cambió. Verifica la conexión y vuelve a confirmarlo.',
               tono: 'discrepancia',
             });

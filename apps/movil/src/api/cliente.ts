@@ -22,6 +22,8 @@ export interface CuerpoErrorApi {
   productos?: unknown;
   /** ISO 8601. */
   bloqueadoHasta?: string | null;
+  /** Solo en 409 `CONFLICTO_EN_DESTINO` al recorrer: las rutas que chocan. */
+  rutas?: unknown;
   /** Solo en 409 `YA_TIENE_CARGA_ABIERTA`: la carga inicial que ya existe. */
   eventoId?: string | null;
   /** Solo en 409 de `POST .../enviar` por inventario: "Productos rechazados: A, B". */
@@ -46,7 +48,7 @@ export class ErrorApi extends Error {
  */
 export class ErrorRed extends Error {
   constructor() {
-    super('No hay conexión con el servidor');
+    super('No hay conexión');
     this.name = 'ErrorRed';
   }
 }

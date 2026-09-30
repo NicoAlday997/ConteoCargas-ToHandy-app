@@ -17,7 +17,7 @@ export interface CargaAbierta {
   tipo: TipoCarga | null;
   /**
    * `aaaa-mm-dd`, para mostrar en el conteo para qué día es. Falta en cargas
-   * guardadas antes de existir y en las del contador: el conteo la pide al servidor.
+   * guardadas antes de existir: el conteo la pide al servidor. El contador la trae de su cola.
    */
   fechaOperativa?: string | null;
   /** Solo para mostrarla en el conteo (el contador cuenta rutas ajenas). Falta en las del vendedor. */

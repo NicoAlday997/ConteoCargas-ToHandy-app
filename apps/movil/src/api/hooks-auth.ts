@@ -32,7 +32,7 @@ export function useLogin() {
     mutationFn: async ({ usuarioAppId, pin }: VariablesLogin): Promise<RespuestaLogin> => {
       const respuesta = await login(usuarioAppId, pin);
       if (!respuesta?.accessToken) {
-        throw new Error('El servidor no devolvió un token de sesión');
+        throw new Error('No se pudo iniciar la sesión. Intenta de nuevo.');
       }
       return respuesta;
     },
@@ -43,6 +43,7 @@ export function useLogin() {
         nombreCompleto: respuesta.usuario?.nombreCompleto ?? null,
         rolApp: respuesta.usuario?.rolApp ?? null,
         debeCambiarPin: respuesta.debeCambiarPin === true,
+        fotoUrl: respuesta.usuario?.fotoUrl ?? null,
       });
     },
   });
@@ -89,7 +90,7 @@ export function clasificarErrorLogin(error: unknown): ErrorLogin {
       const intentos = cuerpo?.intentosRestantes;
       return { tipo: 'pin-incorrecto', intentosRestantes: typeof intentos === 'number' ? intentos : null };
     }
-    if (error.estado >= 500) return { tipo: 'otro', mensaje: 'El servidor tuvo un problema. Intenta de nuevo.' };
+    if (error.estado >= 500) return { tipo: 'otro', mensaje: 'Algo falló de nuestro lado. Intenta de nuevo en un momento.' };
   }
   return { tipo: 'otro', mensaje: error instanceof Error ? error.message : 'Ocurrió un error inesperado.' };
 }

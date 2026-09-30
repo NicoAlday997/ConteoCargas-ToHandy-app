@@ -7,6 +7,7 @@ import {
   UsuarioParaSeleccion,
   UsuarioRepository,
 } from '../application/usuario.repository';
+import { conFotoDeHandy } from './foto-usuario';
 
 /**
  * Adaptador de infraestructura del repositorio de usuarios.
@@ -20,14 +21,20 @@ export class PrismaUsuarioRepository extends UsuarioRepository {
   }
 
   async listarActivosParaSeleccion(): Promise<UsuarioParaSeleccion[]> {
-    return this.prisma.usuarioApp.findMany({
+    const registros = await this.prisma.usuarioApp.findMany({
       where: { activo: true },
       // Select EXPLICITO: este listado alimenta la pantalla publica de login
       // (RF-01). pinHash y cualquier otro campo sensible NUNCA deben salir de
       // aqui, por eso no se usa el select por defecto de Prisma.
-      select: { id: true, nombreCompleto: true, rolApp: true },
+      select: {
+        id: true,
+        nombreCompleto: true,
+        rolApp: true,
+        usuarioHandy: { select: { fotoUrl: true } },
+      },
       orderBy: { nombreCompleto: 'asc' },
     });
+    return registros.map(conFotoDeHandy);
   }
 
   async buscarPorId(id: string): Promise<UsuarioAutenticable | null> {
@@ -43,6 +50,7 @@ export class PrismaUsuarioRepository extends UsuarioRepository {
         activo: true,
         intentosFallidos: true,
         bloqueadoHasta: true,
+        usuarioHandy: { select: { fotoUrl: true } },
       },
     });
 
@@ -50,15 +58,14 @@ export class PrismaUsuarioRepository extends UsuarioRepository {
       return null;
     }
 
+    const usuario = conFotoDeHandy(registro);
     return {
-      ...registro,
+      ...usuario,
       // En la BD el id de Handy se guarda como texto (FK a usuarios_handy.idHandy);
       // el contrato de la capa de aplicacion lo maneja como numero. La conversion
       // es responsabilidad de la infraestructura.
       usuarioHandyId:
-        registro.usuarioHandyId === null
-          ? null
-          : Number(registro.usuarioHandyId),
+        usuario.usuarioHandyId === null ? null : Number(usuario.usuarioHandyId),
     };
   }
 

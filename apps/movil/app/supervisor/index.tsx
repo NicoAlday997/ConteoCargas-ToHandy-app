@@ -109,7 +109,7 @@ function Cola() {
         titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar la lista'}
         detalle={
           sinRed
-            ? 'Las cargas por autorizar se consultan en el servidor: revisa tu señal y vuelve a intentarlo.'
+            ? 'Para ver las cargas por autorizar necesitas señal: revísala y vuelve a intentarlo.'
             : (cola.error instanceof Error && cola.error.message) || 'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}

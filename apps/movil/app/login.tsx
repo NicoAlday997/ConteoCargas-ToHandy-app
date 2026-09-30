@@ -14,6 +14,7 @@ import {
 } from '../src/api/hooks-auth';
 import { recordarPinTemporal } from '../src/api/sesion';
 import {
+  Avatar,
   BloqueError,
   Chevron,
   Degradado,
@@ -155,7 +156,7 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
         <View style={[estilos.contenidoLista, relleno]}>
           <BloqueError
             titulo="No se pudo cargar la lista de usuarios"
-            detalle="La lista vive en el servidor. Revisa la conexión del dispositivo y vuelve a intentarlo."
+            detalle="Se necesita señal para traerla. Revisa la conexión del dispositivo y vuelve a intentarlo."
             tono="atencion"
             onReintentar={() => void consulta.refetch()}
             reintentando={consulta.isFetching}
@@ -215,12 +216,6 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
   );
 }
 
-/** Iniciales para el avatar: "María López Ruiz" → "ML". */
-function iniciales(nombre: string): string {
-  const partes = nombre.split(/\s+/).filter(Boolean);
-  return ((partes[0]?.[0] ?? '') + (partes[1]?.[0] ?? '')).toUpperCase() || '?';
-}
-
 function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: () => void }) {
   const nombre = usuario.nombreCompleto?.trim() || 'Usuario sin nombre';
   const rol = usuario.rolApp ? ETIQUETAS_ROL[usuario.rolApp] : null;
@@ -233,7 +228,7 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
       accessibilityLabel={rol ? `${nombre}, ${rol}` : nombre}
       style={[estilos.filaUsuario, estilos.filaUsuarioContenido]}
     >
-      <Avatar nombre={nombre} tamano={TAMANO_AVATAR} />
+      <Avatar nombre={nombre} fotoUrl={usuario.fotoUrl} tamano={TAMANO_AVATAR} />
       <View style={estilos.datosUsuario}>
         <Text style={estilos.nombreUsuario} numberOfLines={2}>
           {nombre}
@@ -244,16 +239,6 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
         <Chevron color={COLORES.accion} tamano={ESPACIADO.lg + ESPACIADO.xs} />
       </View>
     </Tarjeta>
-  );
-}
-
-/** Círculo en degradado azul con las iniciales: el gafete de quien entra. */
-function Avatar({ nombre, tamano }: { nombre: string; tamano: number }) {
-  return (
-    <View style={[estilos.avatar, { width: tamano, height: tamano }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Degradado degradado={DEGRADADOS.accion} radio={tamano / 2} />
-      <Text style={[estilos.textoAvatar, { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 }]}>{iniciales(nombre)}</Text>
-    </View>
   );
 }
 
@@ -386,7 +371,7 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
         style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}
       >
         <View style={estilos.quienEntra}>
-          <Avatar nombre={nombre} tamano={TAMANO_AVATAR_PIN} />
+          <Avatar nombre={nombre} fotoUrl={usuario.fotoUrl} tamano={TAMANO_AVATAR_PIN} />
           <Text style={estilos.nombrePin} accessibilityRole="header" numberOfLines={2}>
             {nombre}
           </Text>
@@ -461,7 +446,7 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
     case 'red':
       return (
         <View accessibilityRole="alert" style={estilos.recuadroRed}>
-          <Text style={[estilos.tituloAviso, { color: COLORES.discrepanciaTexto }]}>Sin conexión con el servidor</Text>
+          <Text style={[estilos.tituloAviso, { color: COLORES.discrepanciaTexto }]}>Sin conexión</Text>
           <Text style={estilos.detalleAviso}>Tu PIN no se llegó a revisar. Verifica la conexión y vuelve a teclearlo.</Text>
         </View>
       );
@@ -586,11 +571,6 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: RADIOS.completo,
-  },
-  textoAvatar: {
-    fontFamily: FUENTE.extraNegrita,
-    letterSpacing: 0.2,
-    color: COLORES.textoSobreColor,
   },
   datosUsuario: {
     flex: 1,

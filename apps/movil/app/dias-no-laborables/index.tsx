@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +23,7 @@ import {
   Hoja,
   Chevron,
 } from '../../src/componentes/base';
+import { HojaRecorrer } from '../../src/calendario/HojaRecorrer';
 import { DIAS_CABECERA, mesDe, moverMes, semanasDelMes, tituloMes, type Mes } from '../../src/calendario/modelo-calendario';
 import { diaNegocio, formatearDia } from '../../src/conteo/fecha-operativa';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
@@ -110,6 +111,10 @@ function Lista() {
   const [aQuitar, setAQuitar] = useState<DiaNoLaborable | null>(null);
   const [errorQuitar, setErrorQuitar] = useState<AvisoError | null>(null);
   const [refrescando, setRefrescando] = useState(false);
+  /** El día cuyas cargas se ofrece recorrer; `manual` si lo pidió el supervisor desde la lista. */
+  const [recorrido, setRecorrido] = useState<{ fecha: string; motivo: string; manual: boolean } | null>(null);
+  const [avisoRecorrido, setAvisoRecorrido] = useState<string | null>(null);
+  const cerrarRecorrido = useCallback(() => setRecorrido(null), []);
 
   const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
@@ -142,7 +147,7 @@ function Lista() {
             titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar los días'}
             detalle={
               sinRed
-                ? 'Los días no laborables se consultan en el servidor: revisa tu señal.'
+                ? 'Para ver los días no laborables necesitas señal: revísala.'
                 : (consulta.error instanceof Error && consulta.error.message) || null
             }
             tono={sinRed ? 'atencion' : 'error'}
@@ -171,6 +176,13 @@ function Lista() {
           />
         }
       >
+        {avisoRecorrido && (
+          <BloqueError
+            tono="exito"
+            titulo={avisoRecorrido}
+            secundaria={{ texto: 'Entendido', onPress: () => setAvisoRecorrido(null) }}
+          />
+        )}
         {dias.length === 0 ? (
           <EstadoVacio
             icono="calendario"
@@ -181,7 +193,13 @@ function Lista() {
         ) : (
           <View style={estilos.tarjeta}>
             {dias.map((dia, i) => (
-              <RenglonDia key={dia.fecha} dia={dia} primero={i === 0} onQuitar={() => setAQuitar(dia)} />
+              <RenglonDia
+                key={dia.fecha}
+                dia={dia}
+                primero={i === 0}
+                onQuitar={() => setAQuitar(dia)}
+                onRecorrer={() => setRecorrido({ fecha: dia.fecha, motivo: dia.motivo, manual: true })}
+              />
             ))}
           </View>
         )}
@@ -194,6 +212,22 @@ function Lista() {
         visible={marcando}
         marcados={dias.map((d) => d.fecha)}
         onCerrar={() => setMarcando(false)}
+        onMarcado={(fecha, motivo) => {
+          // Si ese día ya tiene cargas, se ofrece recorrerlas enseguida.
+          setAvisoRecorrido(null);
+          setRecorrido({ fecha, motivo, manual: false });
+        }}
+      />
+      <HojaRecorrer
+        key={recorrido ? `${recorrido.fecha}-${recorrido.manual}` : 'cerrada'}
+        fecha={recorrido?.fecha ?? null}
+        motivoInicial={recorrido?.motivo ?? ''}
+        manual={recorrido?.manual ?? false}
+        onCerrar={cerrarRecorrido}
+        onRecorridas={(aviso) => {
+          setRecorrido(null);
+          setAvisoRecorrido(aviso);
+        }}
       />
       <ModalConfirmacion
         visible={aQuitar !== null}
@@ -221,7 +255,17 @@ function Lista() {
   );
 }
 
-function RenglonDia({ dia, primero, onQuitar }: { dia: DiaNoLaborable; primero: boolean; onQuitar: () => void }) {
+function RenglonDia({
+  dia,
+  primero,
+  onQuitar,
+  onRecorrer,
+}: {
+  dia: DiaNoLaborable;
+  primero: boolean;
+  onQuitar: () => void;
+  onRecorrer: () => void;
+}) {
   const legible = formatearDia(dia.fecha);
   return (
     <View style={[estilos.renglon, !primero && estilos.renglonConDivisor]}>
@@ -230,6 +274,14 @@ function RenglonDia({ dia, primero, onQuitar }: { dia: DiaNoLaborable; primero: 
         <Text style={estilos.detalle}>{dia.motivo}</Text>
         {dia.creadoPorNombre && <Text style={estilos.quien}>Marcado por {dia.creadoPorNombre}</Text>}
       </View>
+      <Pulsable
+        onPress={onRecorrer}
+        accessibilityRole="button"
+        accessibilityLabel={`Ver y recorrer las cargas del ${legible}`}
+        style={({ pressed }) => [estilos.quitar, pressed && estilos.recorrerPresionado]}
+      >
+        <Text style={estilos.textoRecorrer}>Cargas</Text>
+      </Pulsable>
       <Pulsable
         onPress={onQuitar}
         accessibilityRole="button"
@@ -251,10 +303,13 @@ function ModalMarcar({
   visible,
   marcados,
   onCerrar,
+  onMarcado,
 }: {
   visible: boolean;
   marcados: readonly string[];
   onCerrar: () => void;
+  /** Ya quedó marcado: se revisa si ese día tenía cargas. */
+  onMarcado: (fecha: string, motivo: string) => void;
 }) {
   const marcar = useMarcarDiaNoLaborable();
   const hoy = diaNegocio(new Date());
@@ -281,13 +336,14 @@ function ModalMarcar({
     setIntento(true);
     if (dia === null || !motivoValido) return;
     setError(null);
-    marcar.mutate(
-      { fecha: dia, motivo: motivo.trim() },
-      {
-        onSuccess: cerrar,
-        onError: (e) => setError(avisoCalendario(e, 'No se pudo marcar el día')),
+    const marcado = { fecha: dia, motivo: motivo.trim() };
+    marcar.mutate(marcado, {
+      onSuccess: () => {
+        cerrar();
+        onMarcado(marcado.fecha, marcado.motivo);
       },
-    );
+      onError: (e) => setError(avisoCalendario(e, 'No se pudo marcar el día')),
+    });
   };
 
   return (
@@ -397,7 +453,7 @@ function avisoCalendario(e: unknown, titulo: string): AvisoError | null {
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Los días no laborables se guardan en el servidor: revisa tu señal y vuelve a intentarlo.',
+      detalle: 'Para guardar los días no laborables necesitas señal: revísala y vuelve a intentarlo.',
       tono: 'atencion',
     };
   }
@@ -460,6 +516,14 @@ const estilos = StyleSheet.create({
   },
   quitarPresionado: {
     backgroundColor: COLORES.errorFondo,
+  },
+  recorrerPresionado: {
+    backgroundColor: COLORES.marcaTinte,
+  },
+  textoRecorrer: {
+    ...TIPOGRAFIA.etiqueta,
+    fontFamily: FUENTE.negrita,
+    color: COLORES.accionHonda,
   },
   textoQuitar: {
     ...TIPOGRAFIA.etiqueta,

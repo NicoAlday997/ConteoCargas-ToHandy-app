@@ -191,8 +191,8 @@ describe('motivoCancelacionValido', () => {
 });
 
 describe('puedeCambiarFecha', () => {
-  it('nunca en ENVIADA, CANCELADA, ENVIO_INCIERTO ni sin estado', () => {
-    for (const estado of ['ENVIADA', 'CANCELADA', 'ENVIO_INCIERTO', null] as const) {
+  it('nunca en CANCELADA, ENVIO_INCIERTO ni sin estado', () => {
+    for (const estado of ['CANCELADA', 'ENVIO_INCIERTO', null] as const) {
       assert.equal(puedeCambiarFecha(estado), false, String(estado));
     }
   });
@@ -207,6 +207,8 @@ describe('puedeCambiarFecha', () => {
       'EN_ESPERA_AUTORIZACION',
       'LISTA_PARA_ENVIAR',
       'ERROR_ENVIO',
+      // Corrige nuestro registro; la ruta en Handy no se toca.
+      'ENVIADA',
     ] as const) {
       assert.equal(puedeCambiarFecha(estado), true, estado);
     }

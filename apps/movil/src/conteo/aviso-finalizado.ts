@@ -31,7 +31,7 @@ export function queSigue(estado: string | null): string {
     case 'EN_ESPERA_CONTADOR':
       return 'Sigue el contador: hace su conteo sin ver el tuyo.';
     case 'EN_COMPARACION':
-      return 'El servidor está comparando los dos conteos.';
+      return 'Se están comparando los dos conteos.';
     case 'EN_ESPERA_AUTORIZACION':
       return 'Los dos conteos coincidieron. Sigue la autorización del supervisor.';
     case 'CONFLICTOS_PENDIENTES':

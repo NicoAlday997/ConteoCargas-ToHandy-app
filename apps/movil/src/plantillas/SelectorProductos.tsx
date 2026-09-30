@@ -95,7 +95,7 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
           titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar el catálogo'}
           detalle={
             sinRed
-              ? 'El catálogo se consulta en el servidor: revisa tu señal y vuelve a intentarlo.'
+              ? 'Para ver el catálogo necesitas señal: revísala y vuelve a intentarlo.'
               : catalogo.error instanceof ErrorApi && catalogo.error.message
                 ? catalogo.error.message
                 : 'Intenta de nuevo en un momento.'

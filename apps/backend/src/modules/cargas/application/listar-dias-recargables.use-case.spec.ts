@@ -76,6 +76,9 @@ class FakeConsultas implements ConsultasCargaRepository {
   async listarPendientesVerificacion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async listarCargasDeFecha(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
   async listarConflictosDeParticipante(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }

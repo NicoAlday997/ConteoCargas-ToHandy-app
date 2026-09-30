@@ -966,7 +966,9 @@ export class CargasController {
    * Mueve la carga a otra fecha operativa sin perder lo contado: solo cambia
    * el dia y deja el cambio en la bitacora; sesiones e items no se tocan. El
    * vendedor solo mueve la suya y solo en BORRADOR; el supervisor cualquiera
-   * no enviada, con motivo obligatorio. El contador nunca.
+   * salvo cancelada o con envio incierto, con motivo obligatorio (una ENVIADA
+   * tambien: corrige nuestro registro, la ruta en Handy no se toca). El
+   * contador nunca.
    */
   @Patch(':id/fecha-operativa')
   @Roles(RolApp.VENDEDOR, RolApp.SUPERVISOR)
@@ -1009,7 +1011,7 @@ export class CargasController {
             mensaje:
               usuario.rolApp === RolApp.VENDEDOR
                 ? 'Ya no puedes cambiar la fecha: ya terminaste tu conteo. Si hay que moverla, pideselo a tu supervisor.'
-                : 'Esta carga ya no se puede mover de fecha: ya esta cancelada, ya se envio a Handy o su envio esta sin confirmar.',
+                : 'Esta carga ya no se puede mover de fecha: ya esta cancelada o su envio a Handy esta sin confirmar.',
           });
         case 'FECHA_OPERATIVA_INVALIDA':
           throw new BadRequestException({

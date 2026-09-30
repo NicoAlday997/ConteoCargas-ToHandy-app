@@ -299,13 +299,17 @@ describe('permiteCambioFechaDelVendedor', () => {
 });
 
 describe('permiteCambioFechaDelSupervisor', () => {
-  const EXCLUIDOS: EstadoCarga[] = ['ENVIADA', 'CANCELADA', 'ENVIO_INCIERTO'];
+  const EXCLUIDOS: EstadoCarga[] = ['CANCELADA', 'ENVIO_INCIERTO'];
 
-  it('false en ENVIADA, CANCELADA y ENVIO_INCIERTO; true en los demas', () => {
+  it('false en CANCELADA y ENVIO_INCIERTO; true en los demas', () => {
     for (const estado of TODOS_LOS_ESTADOS) {
       expect(permiteCambioFechaDelSupervisor(estado)).toBe(
         !EXCLUIDOS.includes(estado),
       );
     }
+  });
+
+  it('true en ENVIADA: corrige nuestro registro, la ruta en Handy no se toca', () => {
+    expect(permiteCambioFechaDelSupervisor('ENVIADA')).toBe(true);
   });
 });

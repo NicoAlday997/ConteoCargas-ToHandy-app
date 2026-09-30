@@ -92,7 +92,7 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
         titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las rutas'}
         detalle={
           sinRed
-            ? 'Las rutas se consultan en el servidor: revisa tu señal y vuelve a intentarlo.'
+            ? 'Para ver las rutas necesitas señal: revísala y vuelve a intentarlo.'
             : (consulta.error instanceof Error && consulta.error.message) || 'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}
