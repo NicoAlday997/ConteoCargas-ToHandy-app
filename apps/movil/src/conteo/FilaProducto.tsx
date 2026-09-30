@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Degradado, Glifo, Palomita, Pulsable } from '../componentes/base';
@@ -46,8 +46,24 @@ const ANCHO_VISOR = 96;
 const LADO_CERO = TOQUE_MINIMO;
 /** La palomita de "contado" va en un círculo verde: forma y color. */
 const LADO_PALOMITA = ESPACIADO.xl;
-/** Pastilla del factor: mismo ancho en todas las filas, así quedan en columna. */
-const ANCHO_FACTOR = 60;
+/**
+ * Pastilla del factor: mismo ancho en todas las filas, así quedan en columna.
+ * Caben cinco caracteres a tamaño completo ("C/100", "BOLSA", "PAQUE"): en
+ * Manrope ExtraBold con cifras tabulares el más ancho de esos mide ~3.5 em
+ * (C/100 3.1, BOLSA 3.4, PAQUE 3.5). El ancho escala con el texto del sistema
+ * hasta el mismo tope que la letra; sin eso, con el texto grande del teléfono
+ * "C/10" y "CAJA" ya no cabían y la letra se encogía.
+ */
+const EM_CINCO_CARACTERES = 3.5;
+const RELLENO_FACTOR = ESPACIADO.sm;
+
+function anchoFactor(tamanoLetra: number, escalaTexto: number): number {
+  const escala = Math.min(escalaTexto, ESCALA_TEXTO.control);
+  return Math.ceil(EM_CINCO_CARACTERES * tamanoLetra * escala) + 2 * RELLENO_FACTOR;
+}
+
+/** Unidad de un producto completo de más de 6 letras: sus primeras 5, sin puntos; el nombre está al lado. */
+const MAX_UNIDAD_FACTOR = 6;
 
 /** "Cajas" para lo que se vende completo; "Paquetes" / "Sueltas" para lo demás. */
 export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): string {
@@ -183,11 +199,13 @@ export function EtiquetaFactor({
   aspecto?: AspectoFila;
 }) {
   const factor = factorEfectivo(producto);
+  const { fontScale } = useWindowDimensions();
+  const ancho = anchoFactor(grande ? estilos.textoFactorGrande.fontSize : estilos.textoFactor.fontSize, fontScale);
   let texto: string;
   let accesible: string;
   if (seVendeCompleto(producto)) {
     const unidad = unidadEnSingular(producto.unidadDescripcion);
-    texto = unidad.toUpperCase();
+    texto = unidad.length > MAX_UNIDAD_FACTOR ? unidad.slice(0, 5).toUpperCase() : unidad.toUpperCase();
     accesible = `Se vende por ${unidad} completa`;
   } else if (factor !== null) {
     texto = `C/${factor}`;
@@ -215,14 +233,16 @@ export function EtiquetaFactor({
 
   return (
     <View
-      style={[estilos.factor, grande && estilos.factorGrande, { backgroundColor: fondo }]}
+      style={[estilos.factor, grande && estilos.factorGrande, { minWidth: ancho, backgroundColor: fondo }]}
       accessible
       accessibilityLabel={accesible}
     >
       <Text
         style={[grande ? estilos.textoFactorGrande : estilos.textoFactor, { color }]}
         numberOfLines={1}
+        // Solo red de seguridad: si hace falta encoger más que esto, el ancho está mal calculado.
         adjustsFontSizeToFit
+        minimumFontScale={0.9}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >
         {texto}
@@ -586,16 +606,16 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.capturadoHondo,
   },
   // La pastilla del empaque: esquina suave, del mismo ancho en todas las filas.
+  // Sin encogerse: el nombre al lado (flex: 1) no le quita ancho.
   factor: {
-    minWidth: ANCHO_FACTOR,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: ESPACIADO.sm,
+    paddingHorizontal: RELLENO_FACTOR,
     paddingVertical: 2,
     borderRadius: RADIOS.chico,
   },
   factorGrande: {
-    minWidth: ANCHO_FACTOR + ESPACIADO.xl,
     paddingVertical: ESPACIADO.xs,
   },
   textoFactor: {

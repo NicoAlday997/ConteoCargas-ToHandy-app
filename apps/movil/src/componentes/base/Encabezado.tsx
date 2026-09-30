@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -166,12 +166,26 @@ const CURVA_AVANCE = Easing.bezier(...CURVA_SALIDA);
  * El ancho se anima en píxeles sobre el canal medido: un ancho en porcentaje
  * animado no se aplicaba en el hilo de UI y el relleno se quedaba midiendo su
  * contenido, siempre el mismo pedacito.
+ *
+ * El degradado no se estira: se dibuja una sola vez al ancho completo del
+ * canal y el relleno animado lo descubre (overflow hidden). Estirado se
+ * quedaba con la medida de su primer layout, porque Reanimated mueve el ancho
+ * del padre fuera del render de React y el onLayout del Degradado no se
+ * dispara de forma confiable con esos cambios. Así sus colores además se
+ * quedan quietos mientras la barra avanza.
+ *
+ * Relleno = fraccionAvance(actual, total) × ancho del canal:
+ *   0 de 14  → 0    × canal = 0 px: no se ve.
+ *   7 de 14  → 0.5  × canal: exactamente la mitad.
+ *   14 de 14 → 1    × canal: el extremo derecho.
  */
 export function BarraAvance({ actual, total }: { actual: number; total: number }) {
   const avance = fraccionAvance(actual, total);
   const reducirMovimiento = useReducedMotion();
   const largo = useSharedValue(avance);
+  // Una sola medición, dos destinos: la animación (hilo de UI) y el ancho fijo del degradado.
   const anchoCanal = useSharedValue(0);
+  const [anchoDegradado, setAnchoDegradado] = useState(0);
   useEffect(() => {
     largo.value = reducirMovimiento
       ? avance
@@ -179,7 +193,9 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
   }, [avance, largo, reducirMovimiento]);
   const estiloRelleno = useAnimatedStyle(() => ({ width: largo.value * anchoCanal.value }));
   const alMedirCanal = (e: LayoutChangeEvent) => {
-    anchoCanal.value = e.nativeEvent.layout.width;
+    const ancho = e.nativeEvent.layout.width;
+    anchoCanal.value = ancho;
+    setAnchoDegradado(ancho);
   };
 
   return (
@@ -189,9 +205,13 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: total, now: actual }}
     >
-      <Animated.View style={[estilos.relleno, estiloRelleno]}>
-        <Degradado degradado={DEGRADADOS.avance} radio={ALTO_BARRA / 2} />
-      </Animated.View>
+      {anchoDegradado > 0 && (
+        <Animated.View style={[estilos.relleno, estiloRelleno]}>
+          <View style={[estilos.trazoAvance, { width: anchoDegradado }]}>
+            <Degradado degradado={DEGRADADOS.avance} radio={ALTO_BARRA / 2} />
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -318,8 +338,13 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(6, 18, 51, 0.55)',
     overflow: 'hidden',
   },
+  // overflow hidden: el degradado de ancho completo se sale sin él y la barra se ve siempre llena.
   relleno: {
     height: '100%',
     borderRadius: RADIOS.completo,
+    overflow: 'hidden',
+  },
+  trazoAvance: {
+    height: '100%',
   },
 });
