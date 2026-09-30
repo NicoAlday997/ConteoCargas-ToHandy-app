@@ -1,8 +1,4 @@
-import type {
-  CatalogoRepository,
-  ProductoLocal,
-  VendedorHandyLocal,
-} from './catalogo.repository';
+import { CatalogoEnMemoria } from './catalogo-en-memoria.fake-spec';
 import type {
   DatosConfirmarFactor,
   FactorEmpaqueRepository,
@@ -75,19 +71,6 @@ class FakeHandyGateway extends HandyGateway {
   }
 }
 
-/** Doble de `CatalogoRepository`: acumula todo lo que recibe cada upsert. */
-class FakeCatalogoRepository implements CatalogoRepository {
-  readonly lotesProductos: ProductoLocal[][] = [];
-
-  async upsertProductos(productos: ProductoLocal[]): Promise<void> {
-    this.lotesProductos.push(productos);
-  }
-
-  async upsertVendedores(_vendedores: VendedorHandyLocal[]): Promise<void> {
-    throw new Error('no usado en estas pruebas');
-  }
-}
-
 /**
  * Doble de `FactorEmpaqueRepository`: sirve los factores ya guardados que se
  * le siembran y un conteo fijo de pendientes.
@@ -142,7 +125,7 @@ describe('SincronizarCatalogoUseCase', () => {
         totalRegistros: 3,
       },
     ]);
-    const catalogo = new FakeCatalogoRepository();
+    const catalogo = new CatalogoEnMemoria();
     const useCase = new SincronizarCatalogoUseCase(
       handy,
       catalogo,
@@ -153,9 +136,11 @@ describe('SincronizarCatalogoUseCase', () => {
 
     expect(handy.paginasPedidasProductos).toEqual([1, 2]);
     expect(resultado).toEqual({
-      productosSincronizados: 3,
-      paginasProcesadas: 2,
-      factoresPendientesDeConfirmar: 0,
+      nuevos: 3,
+      actualizados: 0,
+      desactivados: 0,
+      sinConfirmarEmpaque: 0,
+      desactivacionRetenida: null,
     });
     // Un upsert por pagina, con los productos de esa pagina.
     expect(catalogo.lotesProductos.map((l) => l.map((p) => p.code))).toEqual([
@@ -180,7 +165,7 @@ describe('SincronizarCatalogoUseCase', () => {
         totalRegistros: 3,
       },
     ]);
-    const catalogo = new FakeCatalogoRepository();
+    const catalogo = new CatalogoEnMemoria();
     const useCase = new SincronizarCatalogoUseCase(
       handy,
       catalogo,
@@ -215,7 +200,7 @@ describe('SincronizarCatalogoUseCase', () => {
         totalRegistros: 1,
       },
     ]);
-    const catalogo = new FakeCatalogoRepository();
+    const catalogo = new CatalogoEnMemoria();
     const useCase = new SincronizarCatalogoUseCase(
       handy,
       catalogo,
@@ -256,7 +241,7 @@ describe('SincronizarCatalogoUseCase', () => {
         totalRegistros: 1,
       },
     ]);
-    const catalogo = new FakeCatalogoRepository();
+    const catalogo = new CatalogoEnMemoria();
     const useCase = new SincronizarCatalogoUseCase(
       handy,
       catalogo,
@@ -279,7 +264,7 @@ describe('SincronizarCatalogoUseCase', () => {
         totalRegistros: 1,
       },
     ]);
-    const catalogo = new FakeCatalogoRepository();
+    const catalogo = new CatalogoEnMemoria();
     const useCase = new SincronizarCatalogoUseCase(
       handy,
       catalogo,
@@ -289,11 +274,7 @@ describe('SincronizarCatalogoUseCase', () => {
     const resultado = await useCase.ejecutar();
 
     expect(handy.paginasPedidasProductos).toEqual([1]);
-    expect(resultado).toEqual({
-      productosSincronizados: 1,
-      paginasProcesadas: 1,
-      factoresPendientesDeConfirmar: 0,
-    });
+    expect(resultado.nuevos).toBe(1);
   });
   describe('factor de empaque', () => {
     function unaPagina(
@@ -306,7 +287,7 @@ describe('SincronizarCatalogoUseCase', () => {
       items: ProductoHandy[],
       factores = new FakeFactorEmpaqueRepository(),
     ) {
-      const catalogo = new FakeCatalogoRepository();
+      const catalogo = new CatalogoEnMemoria();
       const useCase = new SincronizarCatalogoUseCase(
         new FakeHandyGateway(unaPagina(...items)),
         catalogo,
@@ -390,13 +371,214 @@ describe('SincronizarCatalogoUseCase', () => {
       expect(propuestos.get('P-1')).toBeNull();
     });
 
-    it('devuelve cuantos productos quedaron pendientes de confirmar', async () => {
+    it('devuelve cuantos productos activos quedaron sin empaque confirmado', async () => {
       const factores = new FakeFactorEmpaqueRepository();
       factores.pendientes = 37;
 
       const { resultado } = await sincronizar([productoHandy()], factores);
 
-      expect(resultado.factoresPendientesDeConfirmar).toBe(37);
+      expect(resultado.sinConfirmarEmpaque).toBe(37);
+    });
+  });
+
+  describe('que cambio', () => {
+    /** Handy lista estos productos (una pagina, todos habilitados). */
+    async function sincronizar(
+      catalogo: CatalogoEnMemoria,
+      items: ProductoHandy[],
+      totalRegistros = items.length,
+    ) {
+      const useCase = new SincronizarCatalogoUseCase(
+        new FakeHandyGateway([{ items, totalPaginas: 1, totalRegistros }]),
+        catalogo,
+        new FakeFactorEmpaqueRepository(),
+      );
+      return useCase.ejecutar();
+    }
+
+    it('una segunda sincronizacion sin cambios en Handy no cuenta nada', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      const items = [
+        productoHandy({ code: 'P-1' }),
+        productoHandy({ code: 'P-2' }),
+      ];
+      await sincronizar(catalogo, items);
+
+      const resultado = await sincronizar(catalogo, items);
+
+      expect(resultado).toEqual(
+        expect.objectContaining({ nuevos: 0, actualizados: 0, desactivados: 0 }),
+      );
+    });
+
+    it('cuenta como nuevo lo que no estaba en el cache', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1', nombre: 'Producto 1' });
+
+      const resultado = await sincronizar(catalogo, [
+        productoHandy({ code: 'P-1' }),
+        productoHandy({ code: 'P-2' }),
+        productoHandy({ code: 'P-3' }),
+      ]);
+
+      expect(resultado.nuevos).toBe(2);
+      expect(resultado.actualizados).toBe(0);
+    });
+
+    it.each([
+      ['nombre', { description: 'Producto 1 NUEVO' }],
+      ['precio', { price: 80 }],
+      ['familia', { family: { description: 'Bebidas' } }],
+      ['unidad', { unit: { code: 'CJA', description: 'Caja' } }],
+    ])(
+      'cuenta como actualizado un cambio de %s',
+      async (_campo, cambio: Partial<ProductoHandy>) => {
+        const catalogo = new CatalogoEnMemoria();
+        catalogo.sembrarProducto({ code: 'P-1' });
+
+        const resultado = await sincronizar(catalogo, [
+          productoHandy({ code: 'P-1', ...cambio }),
+        ]);
+
+        expect(resultado).toEqual(
+          expect.objectContaining({ nuevos: 0, actualizados: 1 }),
+        );
+      },
+    );
+
+    it('solo cambiar lastUpdated en Handy no cuenta como actualizado', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1' });
+
+      const resultado = await sincronizar(catalogo, [
+        productoHandy({ code: 'P-1', lastUpdated: '2026-09-29T10:00:00.000Z' }),
+      ]);
+
+      expect(resultado.actualizados).toBe(0);
+    });
+
+    it('un producto que vuelve a estar habilitado cuenta como actualizado', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1', activo: false });
+
+      const resultado = await sincronizar(catalogo, [
+        productoHandy({ code: 'P-1' }),
+      ]);
+
+      expect(resultado.actualizados).toBe(1);
+      expect(catalogo.productos.get('P-1')?.activo).toBe(true);
+    });
+
+    it('cuenta como desactivado lo que Handy reporta deshabilitado', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1' });
+
+      const resultado = await sincronizar(catalogo, [
+        productoHandy({ code: 'P-1', enabled: false }),
+      ]);
+
+      expect(resultado).toEqual(
+        expect.objectContaining({ actualizados: 0, desactivados: 1 }),
+      );
+    });
+
+    it('desactiva lo activo que Handy ya no lista, sin borrarlo', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      for (let i = 1; i <= 10; i += 1) {
+        catalogo.sembrarProducto({ code: `P-${i}` });
+      }
+      // Un inactivo que tampoco viene: ya estaba desactivado, no cuenta.
+      catalogo.sembrarProducto({ code: 'VIEJO', activo: false });
+
+      const resultado = await sincronizar(
+        catalogo,
+        [1, 2, 3, 4, 5, 6, 7, 8].map((i) => productoHandy({ code: `P-${i}` })),
+      );
+
+      expect(resultado.desactivados).toBe(2);
+      expect(resultado.desactivacionRetenida).toBeNull();
+      expect(catalogo.productosDesactivados).toEqual(['P-9', 'P-10']);
+      expect(catalogo.productos.get('P-9')).toEqual(
+        expect.objectContaining({ activo: false }),
+      );
+    });
+
+    it('no desactiva nada si Handy no devolvio ningun producto', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1' });
+
+      const resultado = await sincronizar(catalogo, [], 0);
+
+      expect(resultado.desactivados).toBe(0);
+      expect(resultado.desactivacionRetenida).toEqual({
+        motivo: 'SIN_REGISTROS',
+        faltantes: 1,
+        activos: 1,
+      });
+      expect(catalogo.productosDesactivados).toEqual([]);
+    });
+
+    it('no desactiva nada si desaparece mas del 30 % de golpe', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      for (let i = 1; i <= 10; i += 1) {
+        catalogo.sembrarProducto({ code: `P-${i}` });
+      }
+
+      const resultado = await sincronizar(
+        catalogo,
+        [1, 2, 3, 4, 5, 6].map((i) => productoHandy({ code: `P-${i}` })),
+      );
+
+      expect(resultado.desactivados).toBe(0);
+      expect(resultado.desactivacionRetenida).toEqual(
+        expect.objectContaining({ motivo: 'DEMASIADOS_FALTANTES', faltantes: 4 }),
+      );
+      expect(catalogo.productosDesactivados).toEqual([]);
+    });
+
+    it('no desactiva nada si llegaron menos productos de los que Handy reporto', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      for (let i = 1; i <= 10; i += 1) {
+        catalogo.sembrarProducto({ code: `P-${i}` });
+      }
+
+      const resultado = await sincronizar(
+        catalogo,
+        [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => productoHandy({ code: `P-${i}` })),
+        10,
+      );
+
+      expect(resultado.desactivacionRetenida).toEqual(
+        expect.objectContaining({ motivo: 'PAGINACION_INCOMPLETA' }),
+      );
+      expect(catalogo.productosDesactivados).toEqual([]);
+    });
+
+    it('si una pagina falla no desactiva nada: el error se propaga', async () => {
+      const catalogo = new CatalogoEnMemoria();
+      catalogo.sembrarProducto({ code: 'P-1' });
+      catalogo.sembrarProducto({ code: 'P-2' });
+      class HandyQueFallaEnLaSegunda extends FakeHandyGateway {
+        async listarProductos(pagina: number) {
+          if (pagina === 2) throw new Error('Handy respondio 503');
+          return super.listarProductos(pagina);
+        }
+      }
+      const useCase = new SincronizarCatalogoUseCase(
+        new HandyQueFallaEnLaSegunda([
+          {
+            items: [productoHandy({ code: 'P-1' })],
+            totalPaginas: 2,
+            totalRegistros: 2,
+          },
+        ]),
+        catalogo,
+        new FakeFactorEmpaqueRepository(),
+      );
+
+      await expect(useCase.ejecutar()).rejects.toThrow('503');
+      expect(catalogo.productosDesactivados).toEqual([]);
+      expect(catalogo.productos.get('P-2')?.activo).toBe(true);
     });
   });
 });

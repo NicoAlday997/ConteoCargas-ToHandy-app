@@ -50,7 +50,7 @@ function Contenido({ nombre, foto, tamano }: { nombre: string | null; foto: stri
     <>
       {estado !== 'lista' && (
         <View style={[StyleSheet.absoluteFill, estilos.centro]}>
-          <Degradado degradado={DEGRADADOS.accion} radio={tamano / 2} />
+          <Degradado degradado={DEGRADADOS.accion} />
           <Text style={[estilos.iniciales, { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 }]}>{iniciales(nombre)}</Text>
         </View>
       )}

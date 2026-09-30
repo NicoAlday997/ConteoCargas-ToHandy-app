@@ -13,7 +13,11 @@ interface Props {
    * medición: solo en los fondos de la entrada, donde no hay contenido denso.
    */
   anillos?: boolean;
-  /** Radio de las esquinas: el dibujo se redondea solo, sin recortar al padre (la sombra sigue viva). */
+  /**
+   * Solo si el padre tiene sombra (recortarlo la mataría): el redondeo
+   * INTERIOR del padre, siempre `radioInterior(radio, borde)`. Si el padre no
+   * tiene sombra, se le pone `overflow: 'hidden'` y esto se omite.
+   */
   radio?: number;
   style?: StyleProp<ViewStyle>;
 }

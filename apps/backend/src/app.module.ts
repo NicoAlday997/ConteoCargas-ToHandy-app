@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
@@ -17,6 +18,8 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // Trabajos programados (la sincronizacion diaria con Handy a las 5:00).
+    ScheduleModule.forRoot(),
     PrismaModule,
     // Global: registra la JwtStrategy y deja Passport/JWT disponibles para el
     // JwtAuthGuard y el RolesGuard de cualquier modulo.

@@ -206,6 +206,8 @@ GET /api/v2/product?enabled=true&filterWithDate=lastUpdated&start={ts}&end={ts} 
 GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 ```
 
+**Deshabilitados: se detectan por ausencia.** Verificado contra la API real (2026-09-30): sin el parámetro `enabled`, Handy aplica `enabled=true` por omisión (misma respuesta, ningún registro deshabilitado). `enabled=false` sí devuelve deshabilitados, pero en productos la paginación viene rota (`totalCount: 0`, `totalPages: 0` y aun así un registro), así que no es confiable recorrerla. Por eso lo activo en el cache que ya no viene en la lista de habilitados se marca `activo=false` (nunca se borra), con tres candados (`domain/desactivacion-por-ausencia.ts`): (1) solo si la paginación completa terminó sin ningún error; (2) nunca si vinieron 0 registros o menos de los que Handy reportó en `totalCount`; (3) nunca si desactivaría más del 30 % de lo activo de golpe. Si un candado se activa no se desactiva nada y se registra una alerta: es más barato un catálogo viejo que uno vacío a las 6 de la mañana. Si algún día Handy acepta pedir todo (habilitado y no), conviene leer `enabled` de cada registro en vez de deducirlo.
+
 ### 4.2 Notas de comportamiento de Handy relevantes al diseño
 - `dateForDelivery` aplica solo a pedidos de preventa (`salesOrders`); no controla cuándo "abre" operativamente una ruta de autoventa.
 - Una ruta creada queda en estatus "Abierta" hasta que el vendedor la acepta desde la app móvil oficial de Handy — esto permite contar la carga la noche anterior sin distorsionar el día operativo real.
@@ -241,6 +243,19 @@ GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 - Verificación híbrida: on-demand al abrir la cola del contador, más un job en background cada 15-30 minutos.
 - Escalamiento: si el bloqueo persiste más de 3-4 horas, la alerta sube de urgencia media a alta.
 
+### 4.6 Sincronización automática diaria
+- Un trabajo programado (`@nestjs/schedule`, `SincronizacionDiaria`) corre **todos los días a las 5:00 (America/Mexico_City)** la misma sincronización que el botón "Sincronizar con Handy" del supervisor (`POST /admin/sincronizacion`): el mismo caso de uso, `SincronizarConHandyUseCase`. Si el botón y el automático tuvieran lógica propia, un día darían resultados distintos y nadie sabría por qué.
+- **Por qué a las 5:00:** el primer vendedor llega a contar a las 6. A las 5 el catálogo, las fotos y los vendedores dados de alta el día anterior ya están frescos, y queda una hora de margen para que el supervisor confirme el empaque de lo nuevo antes de que alguien lo necesite contar. Más temprano no aporta nada (en la noche nadie cambia el catálogo); más tarde se encima con los primeros conteos.
+- **Por qué no reintenta:** si Handy no responde a las 5, lo más probable es que siga caído unos minutos después; reintentar en bucle gasta el límite de peticiones (500/min) y no arregla nada. La corrida registra el fallo en el log y en una alerta, y espera al día siguiente. El botón sigue disponible para forzarla en cuanto Handy vuelva.
+- Corre sin usuario: no pide rol ni token de la app; el token de Handy vive en el servidor, como siempre.
+- Orden: productos y luego vendedores. Si productos falla, vendedores no corre.
+- Alertas que deja (el automático no puede ser mudo):
+  - Productos activos sin empaque confirmado al terminar → **media**, con el conteo. Un producto nuevo sin confirmar es una carga trabada en la bodega a las 6.
+  - Fallo de Handy → **baja** (**alta** si el token es inválido, como en la tabla de la sección 6).
+  - Desactivación retenida por un candado (sección 4.1) → **media**. Esta también la deja el botón.
+- Se apaga con `SINCRONIZACION_AUTOMATICA=false` (encendida por omisión). En desarrollo local estorba.
+- La "última sincronización" que ve la app es el máximo entre `Producto.ultimaSincronizacionLocal` y `UsuarioHandy.ultimaSincronizacion`; no hay tabla propia.
+
 ## 5. Seguridad
 
 - **Token de Handy:** exclusivamente en variables de entorno del backend; nunca en el cliente, el código fuente ni el repositorio. Rotación recomendada cada 6-12 meses.
@@ -263,14 +278,16 @@ GET /api/v2/user?role={id_rol_vendedor}&enabled=true
 | Corte de venta pendiente (escalable a alta) | Media → Alta | Centro de alertas / Push |
 | Liquidación rezagada (ruta del ciclo anterior aún abierta, dentro de la tolerancia) | Baja | Centro de alertas |
 | Validación de inventario forzada en recarga | Media | Centro de alertas |
-| Fallo de sincronización | Baja | Centro de alertas |
+| Fallo de sincronización (corrida automática; alta si el token es inválido) | Baja | Centro de alertas |
+| Sincronización automática deja productos sin empaque confirmado | Media | Centro de alertas |
+| Desactivación por ausencia retenida por un candado | Media | Centro de alertas |
 
 ## 7. Riesgos técnicos y mitigaciones
 
 | Riesgo | Mitigación |
 |---|---|
 | Duplicación de rutas por reintento tras timeout | Verificación obligatoria de `route/current` antes de cualquier reintento. |
-| Desfase entre catálogo local y Handy | Sincronización incremental automática + botón de sincronización completa manual. |
+| Desfase entre catálogo local y Handy | Sincronización completa automática diaria a las 5:00 + botón de sincronización manual (sección 4.6). La app marca la fecha de la última sincronización en color de aviso si tiene más de 3 días. |
 | El doble conteo y la confirmación cruzada no detectan colusión | Compensado por historial completo auditable + revisión de supervisor + fase futura de detección de anomalías. |
 | Dependencia de comportamiento no documentado de Handy (ej. mensaje exacto de error por ruta duplicada) | Validar directamente contra el ambiente de pruebas de Handy o soporte antes de definir el manejo de error final. |
 

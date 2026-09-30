@@ -16,6 +16,7 @@ import {
   MOVIMIENTO,
   OPACIDAD,
   RADIOS,
+  radioInterior,
   ROTULO,
   SOMBRAS,
   TIPOGRAFIA,
@@ -40,26 +41,25 @@ import { formatearNombreProducto } from './formato-nombre';
 /** Un destello corto: confirma el toque sin hacer esperar al siguiente. */
 const DURACION_DESTELLO_MS = MOVIMIENTO.destello;
 const OPACIDAD_DESTELLO = 0.3;
-/** El visor cabe "9999" en la lectura y "NO LLEVA" en su rótulo. */
+/** Ancho mínimo del visor: "9999" en la lectura y "NO LLEVA" en su rótulo; lo más largo lo ensancha. */
 const ANCHO_VISOR = 96;
 /** El 0 es un círculo del toque mínimo: la forma dice "un solo toque, nada que capturar". */
 const LADO_CERO = TOQUE_MINIMO;
 /** La palomita de "contado" va en un círculo verde: forma y color. */
 const LADO_PALOMITA = ESPACIADO.xl;
 /**
- * Pastilla del factor: mismo ancho en todas las filas, así quedan en columna.
- * Caben cinco caracteres a tamaño completo ("C/100", "BOLSA", "PAQUE"): en
- * Manrope ExtraBold con cifras tabulares el más ancho de esos mide ~3.5 em
- * (C/100 3.1, BOLSA 3.4, PAQUE 3.5). El ancho escala con el texto del sistema
- * hasta el mismo tope que la letra; sin eso, con el texto grande del teléfono
- * "C/10" y "CAJA" ya no cabían y la letra se encogía.
+ * Ancho MÍNIMO de la pastilla del factor, para que quede en columna al
+ * recorrer la lista: cuatro caracteres ("C/10", "CAJA") con holgura a tamaño
+ * completo, escalado con el texto del sistema hasta el mismo tope que la letra.
+ * Es un mínimo, no un tope: si el texto no cabe, la pastilla se ensancha; la
+ * letra nunca se encoge.
  */
-const EM_CINCO_CARACTERES = 3.5;
+const EM_CUATRO_CARACTERES = 3.5;
 const RELLENO_FACTOR = ESPACIADO.sm;
 
 function anchoFactor(tamanoLetra: number, escalaTexto: number): number {
   const escala = Math.min(escalaTexto, ESCALA_TEXTO.control);
-  return Math.ceil(EM_CINCO_CARACTERES * tamanoLetra * escala) + 2 * RELLENO_FACTOR;
+  return Math.ceil(EM_CUATRO_CARACTERES * tamanoLetra * escala) + 2 * RELLENO_FACTOR;
 }
 
 /** Unidad de un producto completo de más de 6 letras: sus primeras 5, sin puntos; el nombre está al lado. */
@@ -240,9 +240,6 @@ export function EtiquetaFactor({
       <Text
         style={[grande ? estilos.textoFactorGrande : estilos.textoFactor, { color }]}
         numberOfLines={1}
-        // Solo red de seguridad: si hace falta encoger más que esto, el ancho está mal calculado.
-        adjustsFontSizeToFit
-        minimumFontScale={0.9}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >
         {texto}
@@ -329,7 +326,7 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         else if (accion === 'noLleva') onCero(producto.code);
       }}
     >
-      {aspecto === 'tecleando' && <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.pieza - BORDES_FILA} />}
+      {aspecto === 'tecleando' && <Degradado degradado={DEGRADADOS.marca} radio={radioInterior(RADIOS.pieza, BORDES_FILA)} />}
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, estilos.destello, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}
@@ -386,11 +383,10 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           accessible
           accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}
         >
-          {aspecto === 'contado' && <Degradado degradado={DEGRADADOS.visor} radio={RADIOS.medio} />}
+          {aspecto === 'contado' && <Degradado degradado={DEGRADADOS.visor} />}
           <Text
             style={[estilos.numeroTotal, { color: colores.total }, estado === 'sin-capturar' && estilos.numeroVacio]}
             numberOfLines={1}
-            adjustsFontSizeToFit={estado !== 'sin-capturar'}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {total === null ? '—' : total}
@@ -398,7 +394,6 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           <Text
             style={[estilos.unidadTotal, { color: colores.unidad }, estado === 'sin-capturar' && estilos.unidadVacia]}
             numberOfLines={1}
-            adjustsFontSizeToFit={estado !== 'sin-capturar'}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {estado === 'en-cero' && aspecto !== 'tecleando' ? 'No lleva' : unidadTotal}
@@ -549,13 +544,12 @@ function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProd
         pressed && !activo && estilos.campoPresionado,
       ]}
     >
-      <Text style={[estilos.etiquetaCampo, { color }]} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+      <Text style={[estilos.etiquetaCampo, { color }]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
         {etiqueta}
       </Text>
       <Text
         style={[estilos.valorCampo, { color }, valor === null && estilos.valorVacio]}
         numberOfLines={1}
-        adjustsFontSizeToFit={valor !== null}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >
         {valor === null ? '—' : valor}
@@ -583,7 +577,7 @@ const estilos = StyleSheet.create({
     boxShadow: SOMBRAS.elevada,
   },
   destello: {
-    borderRadius: RADIOS.pieza - BORDES_FILA,
+    borderRadius: radioInterior(RADIOS.pieza, BORDES_FILA),
   },
   encabezado: {
     flexDirection: 'row',
@@ -683,14 +677,19 @@ const estilos = StyleSheet.create({
   },
   // La lectura de la báscula. No es tocable y no debe parecerlo: sin chevron ni
   // relieve; es un bloque de dato, como el visor de una báscula de piso.
+  // Ancho mínimo, sin tope: un total o una unidad que no caben ensanchan el
+  // visor (los campos al lado ceden), nunca se encoge la letra.
   visor: {
-    width: ANCHO_VISOR,
+    minWidth: ANCHO_VISOR,
+    flexShrink: 0,
     minHeight: ALTO_CONTROL,
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.sm + 2,
     borderRadius: RADIOS.medio,
     borderWidth: BORDES.medio,
+    // Sin sombra: recorta su degradado y el borde nunca se desincroniza.
+    overflow: 'hidden',
   },
   visorVacio: {
     borderStyle: 'dashed',

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, PLACA, RADIOS, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type ColorTono } from '../../theme/tokens';
+import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, PLACA, RADIOS, TIPOGRAFIA, TONOS, type ColorTono } from '../../theme/tokens';
 
 /**
  * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
@@ -33,12 +33,26 @@ interface Props {
   tono?: TonoEtiqueta;
   relleno?: RellenoEtiqueta;
   tamano?: TamanoEtiqueta;
-  /** Mismo ancho mínimo en todas las filas: las etiquetas quedan alineadas en columna. */
+  /**
+   * Mismo ancho mínimo en todas las filas: las etiquetas quedan alineadas en
+   * columna. Es un mínimo, no un tope: un texto más largo ensancha la pastilla.
+   */
   anchoFijo?: boolean;
-  /** Reduce la letra si no cabe, en vez de cortarla. Para textos cortos que no pueden perderse. */
-  ajustar?: boolean;
   accessibilityLabel?: string;
 }
+
+/**
+ * Ancho mínimo con `anchoFijo`: cuatro caracteres ("C/10", "CAJA") con
+ * holgura a tamaño completo, más el relleno lateral. Solo empareja la
+ * columna; si un texto no cabe, la pastilla se ensancha.
+ */
+const EM_CUATRO_CARACTERES = 3.5;
+const LETRA_DESTACADA = 17;
+const ANCHO_MINIMO: Record<TamanoEtiqueta, number> = {
+  normal: Math.ceil(EM_CUATRO_CARACTERES * PLACA.fontSize) + 2 * ESPACIADO.md,
+  destacada: Math.ceil(EM_CUATRO_CARACTERES * LETRA_DESTACADA) + 2 * ESPACIADO.md,
+  grande: Math.ceil(EM_CUATRO_CARACTERES * TIPOGRAFIA.titulo.fontSize) + 2 * ESPACIADO.md,
+};
 
 /** Sólido, fondo tintado y texto sobre ese fondo, por tono. */
 const COLORES_TONO: Record<TonoEtiqueta, { solido: string; fondo: string; texto: string }> = {
@@ -54,7 +68,6 @@ export function Etiqueta({
   relleno = 'tintada',
   tamano = 'normal',
   anchoFijo = false,
-  ajustar = false,
   accessibilityLabel,
 }: Props) {
   const colores = COLORES_TONO[tono];
@@ -80,13 +93,13 @@ export function Etiqueta({
       style={[
         estilos.etiqueta,
         estilos[tamano],
-        anchoFijo && (tamano === 'normal' ? estilos.anchoFijo : estilos.anchoFijoGrande),
+        anchoFijo ? [estilos.anchoFijo, { minWidth: ANCHO_MINIMO[tamano] }] : estilos.acotada,
         apariencia,
       ]}
       accessible={accessibilityLabel !== undefined}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text style={[estilos[`texto_${tamano}`], { color: colorTexto }]} numberOfLines={1} adjustsFontSizeToFit={ajustar} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+      <Text style={[estilos[`texto_${tamano}`], { color: colorTexto }]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
         {texto}
       </Text>
     </View>
@@ -96,7 +109,6 @@ export function Etiqueta({
 const estilos = StyleSheet.create({
   // Sin alignSelf: va dentro de una fila y toma la alineación de esa fila.
   etiqueta: {
-    maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: ESPACIADO.md,
@@ -119,11 +131,14 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     borderRadius: RADIOS.control,
   },
-  anchoFijo: {
-    minWidth: TOQUE_MINIMO,
+  // Sin ancho fijo, la pastilla no pasa del ancho de su fila.
+  acotada: {
+    maxWidth: '100%',
   },
-  anchoFijoGrande: {
-    minWidth: TOQUE_MINIMO + ESPACIADO.xl,
+  // Con ancho fijo no hay tope: el nombre al lado no la comprime y, si el texto
+  // no cabe en el mínimo, crece la pastilla, nunca se encoge la letra.
+  anchoFijo: {
+    flexShrink: 0,
   },
   contorno: {
     backgroundColor: COLORES.superficie,
@@ -137,7 +152,7 @@ const estilos = StyleSheet.create({
   texto_destacada: {
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.extraNegrita,
-    fontSize: 17,
+    fontSize: LETRA_DESTACADA,
     ...CIFRAS,
   },
   texto_grande: {

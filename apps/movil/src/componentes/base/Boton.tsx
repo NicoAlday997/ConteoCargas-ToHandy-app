@@ -13,6 +13,7 @@ import {
   FUENTE,
   OPACIDAD,
   RADIOS,
+  radioInterior,
   SOMBRAS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
@@ -109,7 +110,8 @@ export function Boton({
           variante === 'primario' ? (
             <Degradado
               degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion}
-              radio={grande ? RADIOS.grande : RADIOS.control}
+              // Con sombra no se recorta: radio interior; el primario no lleva borde.
+              radio={radioInterior(grande ? RADIOS.grande : RADIOS.control, 0)}
             />
           ) : null;
         if (grande) {

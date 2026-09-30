@@ -13,6 +13,7 @@ import {
   FUENTE,
   ONDA,
   RADIOS,
+  radioInterior,
   ROTULO,
   SOMBRAS,
   TIPOGRAFIA,
@@ -34,6 +35,8 @@ const ALTO_CONTROL_ENCABEZADO = ESPACIADO.xxl + ESPACIADO.sm;
 const HOLGURA_ENCABEZADO = { top: ESPACIADO.sm, bottom: ESPACIADO.sm, left: ESPACIADO.xs, right: ESPACIADO.xs };
 /** La columna de acciones es más ancha que la de un dígito: "Siguiente" cabe sin encogerse. */
 const PESO_COLUMNA_ACCIONES = 1.3;
+/** La tecla de avance no lleva borde: el degradado y su sombra la dibujan. */
+const BORDE_TECLA_AVANCE = 0;
 
 const FILAS: readonly (readonly string[])[] = [
   ['1', '2', '3'],
@@ -41,8 +44,21 @@ const FILAS: readonly (readonly string[])[] = [
   ['7', '8', '9'],
 ];
 
+/** El lugar de un producto en su familia; `posicion` empieza en 1. */
+export interface UbicacionProducto {
+  familia: string;
+  posicion: number;
+  total: number;
+}
+
 interface Props {
   producto: ProductoConteo;
+  /**
+   * Dónde está el producto: su familia y su lugar en ella ("Abarrotes · 1 de 2").
+   * Va bajo el nombre: con el teclado abierto la lista de atrás no se lee, y la
+   * hoja es lo único que dice qué se cuenta.
+   */
+  ubicacion?: UbicacionProducto | null;
   campo: CampoCaptura;
   /** Los campos que admite el producto, en orden. Con dos, los dos se ven con su valor; tocar el otro (con `onCambiarCampo`) pasa a él. */
   camposDisponibles?: readonly CampoCaptura[];
@@ -83,6 +99,7 @@ interface Props {
  */
 export function TecladoCantidad({
   producto,
+  ubicacion = null,
   campo,
   camposDisponibles = [campo],
   texto,
@@ -107,15 +124,32 @@ export function TecladoCantidad({
   const altoTecla = teclasGrandes ? ALTO_TECLA_GRANDE : TOQUE_MINIMO;
   const etiquetaCampo = nombreCampo(producto, campo);
   const nombre = formatearNombreProducto(producto.nombre);
+  const contexto = ubicacion ? `${ubicacion.familia} · ${ubicacion.posicion} de ${ubicacion.total}` : null;
 
   return (
     <View style={[estilos.panel, lateral && estilos.panelLateral, { paddingBottom: (lateral ? ESPACIADO.lg : ESPACIADO.md) + (areaSegura ? margenes.bottom : 0) }]}>
       <View style={estilos.encabezado}>
-        <View style={estilos.lineaProducto} accessible accessibilityLabel={`Capturando ${nombre}`} accessibilityLiveRegion="polite">
+        <View
+          style={estilos.lineaProducto}
+          accessible
+          accessibilityLabel={
+            ubicacion
+              ? `Capturando ${nombre}, ${ubicacion.familia}, producto ${ubicacion.posicion} de ${ubicacion.total}`
+              : `Capturando ${nombre}`
+          }
+          accessibilityLiveRegion="polite"
+        >
           <EtiquetaFactor producto={producto} grande={lateral} />
-          <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-            {nombre}
-          </Text>
+          <View style={estilos.textosProducto}>
+            <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              {nombre}
+            </Text>
+            {contexto ? (
+              <Text style={estilos.contexto} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                {contexto}
+              </Text>
+            ) : null}
+          </View>
         </View>
         <Pulsable
           onPress={onListo}
@@ -151,7 +185,7 @@ export function TecladoCantidad({
                 accessibilityState={camposDisponibles.length > 1 ? { selected: true } : undefined}
                 accessibilityLabel={`Capturando ${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
               >
-                <Degradado degradado={DEGRADADOS.marca} radio={RADIOS.control} />
+                <Degradado degradado={DEGRADADOS.marca} />
                 <Text style={estilos.rotuloVisor} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
                   {rotulo}
                 </Text>
@@ -279,7 +313,12 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
     >
       {({ pressed }) => (
         <View style={estilos.contenidoTecla}>
-          {avance && <Degradado degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion} radio={RADIOS.control} />}
+          {avance && (
+            <Degradado
+              degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion}
+              radio={radioInterior(RADIOS.control, BORDE_TECLA_AVANCE)}
+            />
+          )}
           <Text
             style={[
               variante === 'digito' ? estilos.textoDigito : estilos.textoSecundario,
@@ -331,11 +370,18 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO.sm,
   },
-  nombre: {
+  textosProducto: {
     flex: 1,
+  },
+  nombre: {
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.extraNegrita,
     color: COLORES.texto,
+  },
+  // Se retira frente al nombre: lo ubica, no compite con él.
+  contexto: {
+    ...TIPOGRAFIA.etiqueta,
+    color: COLORES.textoSecundario,
   },
   // Solo cierra: la más callada del panel. Una pastilla azul suave.
   botonListo: {
@@ -371,6 +417,8 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.control,
     borderWidth: BORDES.medio,
     borderColor: COLORES.marca,
+    // Sin sombra: recorta su degradado y el borde nunca se desincroniza.
+    overflow: 'hidden',
   },
   visorConAviso: {
     borderColor: COLORES.discrepancia,
@@ -498,7 +546,7 @@ const estilos = StyleSheet.create({
   // La acción del panel: azul luminoso en degradado con su sombra azul.
   teclaAvance: {
     paddingHorizontal: 0,
-    borderWidth: 0,
+    borderWidth: BORDE_TECLA_AVANCE,
     backgroundColor: 'transparent',
     boxShadow: SOMBRAS.accion,
   },

@@ -1,16 +1,20 @@
 import { Module } from '@nestjs/common';
 
 import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
+import { AlertaRepository } from './application/alerta.repository';
 import { CatalogoRepository } from './application/catalogo.repository';
 import { ConfirmarFactorEmpaqueUseCase } from './application/confirmar-factor-empaque.use-case';
 import { FactorEmpaqueRepository } from './application/factor-empaque.repository';
 import { HandyGateway } from './application/handy.gateway';
 import { SincronizarCatalogoUseCase } from './application/sincronizar-catalogo.use-case';
+import { SincronizarConHandyUseCase } from './application/sincronizar-con-handy.use-case';
 import { SincronizarVendedoresUseCase } from './application/sincronizar-vendedores.use-case';
 import { HandyHttpGateway } from './infrastructure/handy-http.gateway';
+import { PrismaAlertaRepository } from './infrastructure/prisma-alerta.repository';
 import { PrismaCatalogoRepository } from './infrastructure/prisma-catalogo.repository';
 import { PrismaFactorEmpaqueRepository } from './infrastructure/prisma-factor-empaque.repository';
 import { SincronizacionController } from './interface/sincronizacion.controller';
+import { SincronizacionDiaria } from './interface/sincronizacion-diaria';
 
 @Module({
   // AuthSharedModule ya es @Global (aporta la JwtStrategy); se importa de forma
@@ -22,6 +26,7 @@ import { SincronizacionController } from './interface/sincronizacion.controller'
     // aplicacion solo conocen los puertos abstractos.
     { provide: HandyGateway, useClass: HandyHttpGateway },
     { provide: CatalogoRepository, useClass: PrismaCatalogoRepository },
+    { provide: AlertaRepository, useClass: PrismaAlertaRepository },
     {
       provide: FactorEmpaqueRepository,
       useClass: PrismaFactorEmpaqueRepository,
@@ -43,6 +48,21 @@ import { SincronizacionController } from './interface/sincronizacion.controller'
         new SincronizarVendedoresUseCase(handy, catalogo),
       inject: [HandyGateway, CatalogoRepository],
     },
+    // El boton del supervisor y la corrida de las 5:00 usan esta misma instancia.
+    {
+      provide: SincronizarConHandyUseCase,
+      useFactory: (
+        catalogo: SincronizarCatalogoUseCase,
+        vendedores: SincronizarVendedoresUseCase,
+        alertas: AlertaRepository,
+      ) => new SincronizarConHandyUseCase(catalogo, vendedores, alertas),
+      inject: [
+        SincronizarCatalogoUseCase,
+        SincronizarVendedoresUseCase,
+        AlertaRepository,
+      ],
+    },
+    SincronizacionDiaria,
     {
       provide: ConfirmarFactorEmpaqueUseCase,
       useFactory: (factores: FactorEmpaqueRepository) =>

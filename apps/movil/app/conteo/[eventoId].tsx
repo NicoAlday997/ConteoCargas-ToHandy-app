@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { BackHandler, SectionList, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { BackHandler, Pressable, SectionList, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -53,7 +54,7 @@ import {
 } from '../../src/conteo/estado-conteo';
 import { EtiquetaFactor, FilaProducto, type EnvioFila } from '../../src/conteo/FilaProducto';
 import { formatearNombreFamilia, formatearNombreProducto } from '../../src/conteo/formato-nombre';
-import { TecladoCantidad } from '../../src/conteo/TecladoCantidad';
+import { TecladoCantidad, type UbicacionProducto } from '../../src/conteo/TecladoCantidad';
 import { diaDesdeApi, diaNegocio, esDia, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
 import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
@@ -71,6 +72,7 @@ import {
   FAMILIA,
   ETIQUETA_DATO,
   FUENTE,
+  MOVIMIENTO,
   RADIOS,
   RITMO,
   SOMBRAS,
@@ -86,7 +88,7 @@ const ANCHO_TECLADO_LATERAL = 380;
 const ANCHO_MINIMO_FILA = 330;
 /** Tras cambiar el alto de la lista (se abre el teclado) hay que esperar al layout. */
 const RETRASO_SCROLL_MS = 60;
-/** Aire entre el renglón que se captura y el borde de la hoja: que no lo roce su sombra. */
+/** Aire entre el renglón que se captura y el borde del panel lateral: que no lo roce su sombra. */
 const HOLGURA_SOBRE_HOJA = ESPACIADO.sm;
 /**
  * Entre productos: el triple del aire que hay dentro de cada uno, así cada
@@ -432,36 +434,75 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     return mapa;
   }, [secciones]);
 
+  /** Familia y lugar en ella de cada producto, para el encabezado del teclado. */
+  const ubicacionesFamilia = useMemo(() => {
+    const mapa = new Map<string, UbicacionProducto>();
+    familias.forEach((f) => {
+      const familia = formatearNombreFamilia(f.familia ?? 'Sin familia');
+      f.productos.forEach((p, i) => mapa.set(p.code, { familia, posicion: i + 1, total: f.productos.length }));
+    });
+    return mapa;
+  }, [familias]);
+
   const lista = useRef<SectionList<ProductoConteo[], SeccionFamilia>>(null);
+  /** El último producto al que se desplazó la lista: si el intento falla, se reintenta con él. */
+  const destinoScroll = useRef<{ code: string; posicion: number } | null>(null);
   /**
-   * El renglón que se captura queda a la vista, justo arriba de la hoja: su
-   * borde de abajo sobre el borde de arriba de la hoja (en celular la hoja va
-   * bajo la lista y la encoge). Si el renglón no cabe, queda pegado a ese
-   * borde. Al abrir la hoja el alto de la lista cambia: se vuelve a desplazar
-   * cuando la lista termina de medirse, no con el alto de antes.
+   * Lleva un renglón a la vista. `posicion` es la de SectionList: 1 lo deja
+   * con su borde de abajo sobre el borde de abajo de la lista, 0.5 al centro.
    */
   const irAProducto = useCallback(
-    (code: string) => {
+    (code: string, posicion = 1) => {
       const ubicacion = ubicaciones.get(code);
       if (!ubicacion) return;
+      destinoScroll.current = { code, posicion };
       lista.current?.scrollToLocation({
         ...ubicacion,
         // itemIndex + 1: en SectionList el índice 0 de cada sección es su encabezado.
         itemIndex: ubicacion.itemIndex + 1,
-        viewPosition: 1,
-        // Negativo: sube el renglón ese tanto sobre el borde de la hoja.
-        viewOffset: -HOLGURA_SOBRE_HOJA,
+        viewPosition: posicion,
+        // Negativo: sube el renglón ese tanto sobre el borde de abajo.
+        viewOffset: posicion === 1 ? -HOLGURA_SOBRE_HOJA : 0,
       });
     },
     [ubicaciones],
   );
 
+  /*
+   * Con el teclado en panel lateral (tablet), la lista sigue a la vista junto
+   * a él: el renglón que se captura se mantiene visible.
+   *
+   * Con el teclado en hoja (celular), la hoja es la única que dice qué se
+   * cuenta y la lista de atrás va bajo un velo: no se desplaza mientras se
+   * teclea. Al cerrar, si con «Siguiente» (o desde pendientes) se llegó a otro
+   * producto, la lista se centra en el último: se ve lo que se acaba de contar.
+   */
   const codeEditado = edicion?.code ?? null;
+  /** Hoja abierta: el producto con el que se abrió (`null` si se abrió desde pendientes) y el último editado. */
+  const recorridoHoja = useRef<{ abiertaEn: string | null; ultimo: string } | null>(null);
+  /** `irAPendiente` abre la hoja en un producto que puede no estar a la vista. */
+  const abiertaDesdePendientes = useRef(false);
   useEffect(() => {
-    if (!codeEditado) return;
-    const espera = setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS);
+    if (tecladoLateral) {
+      recorridoHoja.current = null;
+      if (!codeEditado) return;
+      const espera = setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS);
+      return () => clearTimeout(espera);
+    }
+    if (codeEditado) {
+      recorridoHoja.current = recorridoHoja.current
+        ? { ...recorridoHoja.current, ultimo: codeEditado }
+        : { abiertaEn: abiertaDesdePendientes.current ? null : codeEditado, ultimo: codeEditado };
+      abiertaDesdePendientes.current = false;
+      return;
+    }
+    const recorrido = recorridoHoja.current;
+    recorridoHoja.current = null;
+    if (!recorrido || recorrido.ultimo === recorrido.abiertaEn) return;
+    // Al cerrar, la lista recupera el alto de la hoja: se desplaza ya medida.
+    const espera = setTimeout(() => irAProducto(recorrido.ultimo, 0.5), RETRASO_SCROLL_MS);
     return () => clearTimeout(espera);
-  }, [codeEditado, irAProducto]);
+  }, [codeEditado, tecladoLateral, irAProducto]);
   const altoLista = useRef(0);
   const alMedirLista = useCallback(
     (e: LayoutChangeEvent) => {
@@ -469,9 +510,9 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       if (alto === altoLista.current) return;
       altoLista.current = alto;
       const actual = edicionRef.current;
-      if (actual) irAProducto(actual.code);
+      if (actual && tecladoLateral) irAProducto(actual.code);
     },
-    [irAProducto],
+    [irAProducto, tecladoLateral],
   );
 
   /** Lo que se ve en la fila: el conteo con lo que se está tecleando encima. */
@@ -557,6 +598,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const irAPendiente = (producto: ProductoConteo) => {
     setPanel('ninguno');
+    abiertaDesdePendientes.current = true;
     abrirCampo(producto.code, primerCampo(producto));
   };
 
@@ -566,6 +608,7 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     edicion && productoEditado ? (
       <TecladoCantidad
         producto={productoEditado}
+        ubicacion={ubicacionesFamilia.get(productoEditado.code) ?? null}
         campo={edicion.campo}
         camposDisponibles={camposDe(productoEditado)}
         texto={edicion.texto}
@@ -583,6 +626,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         onListo={cerrarTeclado}
       />
     ) : null;
+  /** Hoja del teclado abierta en celular: la lista de atrás va bajo el velo. */
+  const listaVelada = teclado !== null && !tecladoLateral;
 
   const razon = razonNoFinalizar(pendientes.length, bloqueo);
   const quienCuenta = usuario?.nombre
@@ -637,6 +682,9 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             key={`columnas-${columnas}`}
             style={estilos.lista}
             onLayout={alMedirLista}
+            // Bajo el velo tampoco se lee en voz alta: la hoja dice qué se cuenta.
+            accessibilityElementsHidden={listaVelada}
+            importantForAccessibility={listaVelada ? 'no-hide-descendants' : 'auto'}
             sections={secciones}
             keyExtractor={(fila) => fila.map((p) => p.code).join('|')}
             extraData={{ conteo, edicion, items: estadoCola.items }}
@@ -645,7 +693,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[estilos.contenidoLista, esTablet && !tecladoLateral && estilos.contenidoListaMedio]}
             onScrollToIndexFailed={() => {
-              if (codeEditado) setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS * 4);
+              const destino = destinoScroll.current;
+              if (destino) setTimeout(() => irAProducto(destino.code, destino.posicion), RETRASO_SCROLL_MS * 4);
             }}
             renderSectionHeader={({ section }) => <EncabezadoFamilia seccion={section} conteo={conteo} />}
             renderSectionFooter={() => <View style={estilos.pieFamilia} />}
@@ -668,6 +717,24 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             )}
           />
           {(tecladoLateral || !teclado) && barraFinalizar}
+          {/*
+            Con la hoja abierta la lista se apaga: se intuye, no se lee. Sin
+            filas a medias que parezcan la que se teclea. Tocarlo cierra la hoja.
+          */}
+          {listaVelada && (
+            <Animated.View
+              entering={FadeIn.duration(MOVIMIENTO.rapido)}
+              exiting={FadeOut.duration(MOVIMIENTO.rapido)}
+              style={[StyleSheet.absoluteFill, estilos.velo]}
+            >
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={cerrarTeclado}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar teclado"
+              />
+            </Animated.View>
+          )}
         </View>
 
         {tecladoLateral ? (
@@ -1426,6 +1493,9 @@ const estilos = StyleSheet.create({
   },
   columnaLista: {
     flex: 1,
+  },
+  velo: {
+    backgroundColor: COLORES.velo,
   },
   lista: {
     flex: 1,

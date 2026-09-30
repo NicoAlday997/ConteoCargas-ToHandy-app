@@ -1,7 +1,15 @@
+import {
+  decidirDesactivacion,
+  type MotivoRetencion,
+} from '../domain/desactivacion-por-ausencia';
 import { extraerFactorDeNombre } from '../domain/factor-empaque';
 import { desdeIsoHandy } from '../domain/fecha-handy';
 import { aCentavos } from '../domain/precio';
-import { CatalogoRepository, type ProductoLocal } from './catalogo.repository';
+import {
+  CatalogoRepository,
+  type ProductoGuardado,
+  type ProductoLocal,
+} from './catalogo.repository';
 import {
   FactorEmpaqueRepository,
   type FactorGuardado,
@@ -12,15 +20,41 @@ import {
   type ProductoHandy,
 } from './handy.gateway';
 
-/** Resultado de una sincronizacion completa del catalogo (RF, docs/04 §1.3). */
+/**
+ * Retencion de la desactivacion por ausencia (ver
+ * `domain/desactivacion-por-ausencia.ts`): no se desactivo nada y hay que
+ * avisar.
+ */
+export interface DesactivacionRetenida {
+  motivo: MotivoRetencion;
+  /** Activos del cache que no vinieron en la lista de Handy. */
+  faltantes: number;
+  /** Activos del cache antes de sincronizar. */
+  activos: number;
+}
+
+/**
+ * Que cambio en el cache con una sincronizacion (docs/04 §1.3). Cuenta
+ * cambios, no registros procesados: "104 sincronizados" no dice si hubo algo
+ * nuevo.
+ */
 export interface ResultadoSincronizarCatalogo {
-  productosSincronizados: number;
-  paginasProcesadas: number;
+  /** No existian en el cache. */
+  nuevos: number;
   /**
-   * Productos activos cuyo factor de empaque aun no confirma un supervisor
-   * (incluye los que no traen factor en el nombre y hay que capturar a mano).
+   * Existian y cambio algun campo real (nombre, precio, familia, unidad) o
+   * volvieron a estar activos. Si nada cambio no cuentan.
    */
-  factoresPendientesDeConfirmar: number;
+  actualizados: number;
+  /** Estaban activos aqui y Handy ya no los lista como habilitados. */
+  desactivados: number;
+  /**
+   * Activos con `factorConfirmado = false`: NO se pueden contar hasta que un
+   * supervisor diga como se venden.
+   */
+  sinConfirmarEmpaque: number;
+  /** `null` salvo que un candado haya impedido desactivar. */
+  desactivacionRetenida: DesactivacionRetenida | null;
 }
 
 /**
@@ -30,14 +64,18 @@ export interface ResultadoSincronizarCatalogo {
  * `desdeIsoHandy`), nunca de infraestructura.
  *
  * Recorre TODAS las paginas de Handy (`max=100` por pagina) hasta agotar
- * `totalPaginas`, convierte cada producto al formato local y lo entrega al
- * repositorio en bloques de una pagina.
+ * `totalPaginas`, convierte cada producto al formato local, lo compara con lo
+ * guardado para clasificarlo (nuevo, actualizado, desactivado o sin cambio) y
+ * lo entrega al repositorio en bloques de una pagina. Al terminar el
+ * recorrido, lo activo que Handy ya no lista se desactiva (con candados, ver
+ * `domain/desactivacion-por-ausencia.ts`). Si una pagina falla, el error se
+ * propaga y no se desactiva nada.
  *
  * Factor de empaque: a un producto SIN factor guardado se le propone el que
  * trae su nombre ("C/12" -> 12), sin confirmar. Un factor ya guardado no se
  * toca aunque el nombre cambie: si esta confirmado, la confirmacion humana
  * manda sobre la extraccion automatica; si solo esta propuesto, sigue a la
- * espera de que un supervisor lo revise.
+ * espera de que un supervisor lo revise. `modalidadVenta` nunca se toca.
  */
 export class SincronizarCatalogoUseCase {
   constructor(
@@ -47,36 +85,79 @@ export class SincronizarCatalogoUseCase {
   ) {}
 
   async ejecutar(): Promise<ResultadoSincronizarCatalogo> {
+    const activosAntes = new Set(
+      await this.catalogo.listarCodesProductosActivos(),
+    );
+    const vistos = new Set<string>();
+    let totalReportado = 0;
+    let nuevos = 0;
+    let actualizados = 0;
+    let desactivados = 0;
+
     let pagina = PRIMERA_PAGINA_HANDY;
     // Se ajusta al valor real tras leer la primera pagina.
     let totalPaginas = PRIMERA_PAGINA_HANDY;
-    let productosSincronizados = 0;
-    let paginasProcesadas = 0;
-
     do {
       const respuesta = await this.handy.listarProductos(pagina);
       totalPaginas = respuesta.totalPaginas;
+      if (pagina === PRIMERA_PAGINA_HANDY) {
+        totalReportado = respuesta.totalRegistros;
+      }
 
-      const guardados = await this.factores.buscarFactores(
-        respuesta.items.map((p) => p.code),
-      );
+      const codes = respuesta.items.map((p) => p.code);
+      const [guardados, factoresGuardados] = await Promise.all([
+        this.catalogo.buscarProductos(codes),
+        this.factores.buscarFactores(codes),
+      ]);
       const locales = respuesta.items.map((p) =>
-        this.aProductoLocal(p, guardados.get(p.code)),
+        this.aProductoLocal(p, factoresGuardados.get(p.code)),
       );
-      await this.catalogo.upsertProductos(locales);
 
-      productosSincronizados += locales.length;
-      paginasProcesadas += 1;
+      for (const local of locales) {
+        vistos.add(local.code);
+        switch (clasificar(guardados.get(local.code), local)) {
+          case 'NUEVO':
+            nuevos += 1;
+            break;
+          case 'ACTUALIZADO':
+            actualizados += 1;
+            break;
+          case 'DESACTIVADO':
+            desactivados += 1;
+            break;
+        }
+      }
+      await this.catalogo.upsertProductos(locales);
       pagina += 1;
     } while (pagina <= totalPaginas);
 
-    const factoresPendientesDeConfirmar =
-      await this.factores.contarPendientes();
+    const faltantes = [...activosAntes].filter((code) => !vistos.has(code));
+    const decision = decidirDesactivacion({
+      recibidos: vistos.size,
+      totalReportado,
+      activos: activosAntes.size,
+      faltantes: faltantes.length,
+    });
+    let desactivacionRetenida: DesactivacionRetenida | null = null;
+    if (decision.tipo === 'APLICAR') {
+      if (faltantes.length > 0) {
+        await this.catalogo.desactivarProductos(faltantes);
+        desactivados += faltantes.length;
+      }
+    } else {
+      desactivacionRetenida = {
+        motivo: decision.motivo,
+        faltantes: faltantes.length,
+        activos: activosAntes.size,
+      };
+    }
 
     return {
-      productosSincronizados,
-      paginasProcesadas,
-      factoresPendientesDeConfirmar,
+      nuevos,
+      actualizados,
+      desactivados,
+      sinConfirmarEmpaque: await this.factores.contarPendientes(),
+      desactivacionRetenida,
     };
   }
 
@@ -109,4 +190,23 @@ export class SincronizarCatalogoUseCase {
         : null,
     };
   }
+}
+
+type Clasificacion = 'NUEVO' | 'ACTUALIZADO' | 'DESACTIVADO' | 'SIN_CAMBIO';
+
+/** Como cuenta un producto recibido de Handy frente a lo guardado. */
+function clasificar(
+  guardado: ProductoGuardado | undefined,
+  local: ProductoLocal,
+): Clasificacion {
+  if (guardado === undefined) return 'NUEVO';
+  if (guardado.activo && !local.activo) return 'DESACTIVADO';
+  const cambio =
+    guardado.nombre !== local.nombre ||
+    guardado.precioCentavos !== local.precioCentavos ||
+    guardado.familia !== local.familia ||
+    guardado.unidadCode !== local.unidadCode ||
+    guardado.unidadDescripcion !== local.unidadDescripcion ||
+    guardado.activo !== local.activo;
+  return cambio ? 'ACTUALIZADO' : 'SIN_CAMBIO';
 }

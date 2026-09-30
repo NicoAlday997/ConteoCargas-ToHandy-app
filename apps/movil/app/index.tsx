@@ -54,6 +54,7 @@ import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operat
 import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { AccesoFactores } from '../src/factores/AccesoFactores';
+import { AccesoSincronizacion } from '../src/sincronizacion/AccesoSincronizacion';
 import { AccesoAutorizaciones } from '../src/supervisor/AccesoAutorizaciones';
 import { ModalConfirmacion } from '../src/supervisor/ModalConfirmacion';
 import { ColaVerificacion } from '../src/verificacion/ColaVerificacion';
@@ -176,6 +177,7 @@ export default function PantallaInicio() {
           )}
           <Animated.View entering={entradaBloque(1)}>
             <GrupoMenu>
+              {usuario?.rolApp === 'SUPERVISOR' && <AccesoSincronizacion />}
               {usuario?.rolApp === 'SUPERVISOR' && (
                 <FilaMenu
                   tarea="plantillas"

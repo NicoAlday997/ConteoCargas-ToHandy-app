@@ -22,12 +22,13 @@ import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import {
   HandyErrorServidorError,
   HandyRespuestaNoOkError,
+  HandySinRespuestaError,
   HandyTokenInvalidoError,
 } from '../infrastructure/handy-http.gateway';
+import { CatalogoRepository } from '../application/catalogo.repository';
 import { ConfirmarFactorEmpaqueUseCase } from '../application/confirmar-factor-empaque.use-case';
 import { FactorEmpaqueRepository } from '../application/factor-empaque.repository';
-import { SincronizarCatalogoUseCase } from '../application/sincronizar-catalogo.use-case';
-import { SincronizarVendedoresUseCase } from '../application/sincronizar-vendedores.use-case';
+import { SincronizarConHandyUseCase } from '../application/sincronizar-con-handy.use-case';
 import {
   CodeProductoSchema,
   ConfirmarFactorSchema,
@@ -35,8 +36,8 @@ import {
 } from './sincronizacion.dto';
 
 /**
- * Sincronizacion manual del cache local contra Handy (docs/04-api-interna.md
- * §1.3). Toda la seccion es exclusiva del rol Supervisor: los guards se aplican
+ * Sincronizacion del cache local contra Handy (docs/04-api-interna.md §1.3);
+ * la misma que corre sola cada dia a las 5:00 (`SincronizacionDiaria`). Toda la seccion es exclusiva del rol Supervisor: los guards se aplican
  * a nivel de clase, asi que todos los endpoints exigen JWT valido y rol
  * SUPERVISOR. Incluye la revision del factor de empaque (piezas por paquete)
  * que la sincronizacion propone desde el nombre de cada producto.
@@ -51,32 +52,59 @@ import {
 @Roles(RolApp.SUPERVISOR)
 export class SincronizacionController {
   constructor(
-    private readonly sincronizarCatalogoUseCase: SincronizarCatalogoUseCase,
-    private readonly sincronizarVendedoresUseCase: SincronizarVendedoresUseCase,
+    private readonly sincronizarConHandyUseCase: SincronizarConHandyUseCase,
+    private readonly catalogoRepository: CatalogoRepository,
     private readonly factorEmpaqueRepository: FactorEmpaqueRepository,
     private readonly confirmarFactorEmpaqueUseCase: ConfirmarFactorEmpaqueUseCase,
   ) {}
 
-  /** Fuerza una sincronizacion completa del catalogo de productos. */
-  @Post('productos')
+  /**
+   * Sincronizacion completa con Handy: productos y luego vendedores. Es el
+   * mismo caso de uso que corre solo a las 5:00. Responde que cambio (nuevos,
+   * actualizados, desactivados) y cuantos productos quedaron sin empaque
+   * confirmado. Si los productos pasan y los vendedores fallan, responde 200
+   * con `vendedores: null` y `errorVendedores` con el motivo.
+   */
+  @Post()
   @HttpCode(200)
-  async sincronizarProductos() {
+  async sincronizar() {
+    let resultado;
     try {
-      return await this.sincronizarCatalogoUseCase.ejecutar();
+      resultado = await this.sincronizarConHandyUseCase.ejecutar('MANUAL');
     } catch (error) {
       throw this.traducirErrorHandy(error);
     }
+    const { productos, vendedores } = resultado;
+    return {
+      productos: {
+        nuevos: productos.nuevos,
+        actualizados: productos.actualizados,
+        desactivados: productos.desactivados,
+        sinConfirmarEmpaque: productos.sinConfirmarEmpaque,
+      },
+      vendedores: vendedores && {
+        nuevos: vendedores.nuevos,
+        actualizados: vendedores.actualizados,
+        desactivados: vendedores.desactivados,
+      },
+      ...(vendedores === null && {
+        errorVendedores: this.mensajeErrorHandy(resultado.errorVendedores),
+      }),
+      sincronizadoEn: resultado.sincronizadoEn,
+    };
   }
 
-  /** Fuerza una sincronizacion completa de los usuarios vendedores de Handy. */
-  @Post('usuarios-handy')
-  @HttpCode(200)
-  async sincronizarUsuariosHandy() {
-    try {
-      return await this.sincronizarVendedoresUseCase.ejecutar();
-    } catch (error) {
-      throw this.traducirErrorHandy(error);
-    }
+  /**
+   * Cuando fue la ultima sincronizacion y como quedo el cache. La ultima vez
+   * es la marca mas reciente entre productos y vendedores (sin tabla propia).
+   */
+  @Get('estado')
+  async estado() {
+    const [resumen, sinConfirmarEmpaque] = await Promise.all([
+      this.catalogoRepository.resumen(),
+      this.factorEmpaqueRepository.contarPendientes(),
+    ]);
+    return { ...resumen, sinConfirmarEmpaque };
   }
 
   /**
@@ -169,42 +197,63 @@ export class SincronizacionController {
 
   /**
    * Convierte los errores del `HandyGateway` en un 502 con cuerpo estandar
-   * `{ statusCode, mensaje, detalle }`. El `mensaje` es generico y en español;
-   * el `detalle` lleva el texto tecnico (sin token) solo para depuracion.
-   * Cualquier otro error se relanza sin tocar para que lo gestione el filtro
-   * global.
+   * `{ statusCode, codigo, mensaje, detalle }`. El `mensaje` es generico y en
+   * español; el `detalle` lleva el texto tecnico (sin token) solo para
+   * depuracion. `codigo` deja a la app distinguir el token invalido (no se
+   * arregla reintentando) de Handy caido (si). Cualquier otro error se
+   * relanza sin tocar para que lo gestione el filtro global.
    */
   private traducirErrorHandy(error: unknown): unknown {
+    const falla = this.clasificarErrorHandy(error);
+    if (falla === null) {
+      return error;
+    }
+    return new BadGatewayException({
+      statusCode: 502,
+      codigo: falla.codigo,
+      mensaje: falla.mensaje,
+      detalle: (error as Error).message,
+    });
+  }
+
+  /** El motivo en palabras, para `errorVendedores`. */
+  private mensajeErrorHandy(error: unknown): string {
+    return (
+      this.clasificarErrorHandy(error)?.mensaje ??
+      'No se pudieron sincronizar los vendedores por un error interno.'
+    );
+  }
+
+  private clasificarErrorHandy(
+    error: unknown,
+  ): { codigo: string; mensaje: string } | null {
     if (error instanceof HandyTokenInvalidoError) {
-      return new BadGatewayException({
-        statusCode: 502,
+      return {
+        codigo: 'HANDY_TOKEN_INVALIDO',
         mensaje:
           'El token de integracion con Handy no es valido o expiro. Se requiere ' +
           'intervencion del administrador para regenerarlo.',
-        detalle: error.message,
-      });
+      };
     }
-
-    if (error instanceof HandyErrorServidorError) {
-      return new BadGatewayException({
-        statusCode: 502,
+    if (
+      error instanceof HandyErrorServidorError ||
+      error instanceof HandySinRespuestaError
+    ) {
+      return {
+        codigo: 'HANDY_NO_DISPONIBLE',
         mensaje:
           'Handy no esta disponible en este momento. Vuelve a intentar la ' +
           'sincronizacion en unos minutos.',
-        detalle: error.message,
-      });
+      };
     }
-
     if (error instanceof HandyRespuestaNoOkError) {
-      return new BadGatewayException({
-        statusCode: 502,
+      return {
+        codigo: 'HANDY_RESPUESTA_INESPERADA',
         mensaje:
           'Handy respondio de forma inesperada y no se pudo completar la ' +
           'sincronizacion.',
-        detalle: error.message,
-      });
+      };
     }
-
-    return error;
+    return null;
   }
 }

@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   CatalogoRepository,
+  type ProductoGuardado,
   type ProductoLocal,
+  type ResumenCache,
+  type VendedorGuardado,
   type VendedorHandyLocal,
 } from '../application/catalogo.repository';
 
@@ -116,5 +119,109 @@ export class PrismaCatalogoRepository extends CatalogoRepository {
         }),
       ),
     );
+  }
+
+  async buscarProductos(
+    codes: string[],
+  ): Promise<Map<string, ProductoGuardado>> {
+    if (codes.length === 0) {
+      return new Map();
+    }
+    const filas = await this.prisma.producto.findMany({
+      where: { code: { in: codes } },
+      select: {
+        code: true,
+        nombre: true,
+        precioCentavos: true,
+        unidadCode: true,
+        unidadDescripcion: true,
+        familia: true,
+        activo: true,
+      },
+    });
+    return new Map(filas.map((f) => [f.code, f]));
+  }
+
+  async buscarVendedores(ids: number[]): Promise<Map<number, VendedorGuardado>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+    const filas = await this.prisma.usuarioHandy.findMany({
+      where: { idHandy: { in: ids } },
+      select: {
+        idHandy: true,
+        nombre: true,
+        email: true,
+        rolHandyId: true,
+        rolHandyAuthority: true,
+        activo: true,
+        fotoUrl: true,
+      },
+    });
+    return new Map(filas.map((f) => [f.idHandy, f]));
+  }
+
+  async listarCodesProductosActivos(): Promise<string[]> {
+    const filas = await this.prisma.producto.findMany({
+      where: { activo: true },
+      select: { code: true },
+    });
+    return filas.map((f) => f.code);
+  }
+
+  async listarIdsVendedoresActivos(): Promise<number[]> {
+    const filas = await this.prisma.usuarioHandy.findMany({
+      where: { activo: true },
+      select: { idHandy: true },
+    });
+    return filas.map((f) => f.idHandy);
+  }
+
+  // Solo la bandera y la marca de sincronizacion: el factor de empaque y la
+  // modalidad de venta no se tocan.
+  async desactivarProductos(codes: string[]): Promise<void> {
+    if (codes.length === 0) {
+      return;
+    }
+    await this.prisma.producto.updateMany({
+      where: { code: { in: codes } },
+      data: { activo: false, ultimaSincronizacionLocal: new Date() },
+    });
+  }
+
+  async desactivarVendedores(ids: number[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.prisma.usuarioHandy.updateMany({
+      where: { idHandy: { in: ids } },
+      data: { activo: false, ultimaSincronizacion: new Date() },
+    });
+  }
+
+  async resumen(): Promise<ResumenCache> {
+    const [productos, vendedores, productosActivos, vendedoresActivos] =
+      await Promise.all([
+        this.prisma.producto.aggregate({
+          _max: { ultimaSincronizacionLocal: true },
+        }),
+        this.prisma.usuarioHandy.aggregate({
+          _max: { ultimaSincronizacion: true },
+        }),
+        this.prisma.producto.count({ where: { activo: true } }),
+        this.prisma.usuarioHandy.count({ where: { activo: true } }),
+      ]);
+    const marcas = [
+      productos._max.ultimaSincronizacionLocal,
+      vendedores._max.ultimaSincronizacion,
+    ].filter((d): d is Date => d !== null);
+    return {
+      ultimaSincronizacion:
+        marcas.length === 0
+          ? null
+          : new Date(Math.max(...marcas.map((d) => d.getTime()))),
+      productosActivos,
+      vendedoresActivos,
+    };
   }
 }

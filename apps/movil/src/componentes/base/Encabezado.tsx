@@ -208,7 +208,7 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
       {anchoDegradado > 0 && (
         <Animated.View style={[estilos.relleno, estiloRelleno]}>
           <View style={[estilos.trazoAvance, { width: anchoDegradado }]}>
-            <Degradado degradado={DEGRADADOS.avance} radio={ALTO_BARRA / 2} />
+            <Degradado degradado={DEGRADADOS.avance} />
           </View>
         </Animated.View>
       )}

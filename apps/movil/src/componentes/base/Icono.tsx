@@ -27,6 +27,7 @@ import { CIFRAS, COLORES, DEGRADADOS, ESCALA_TEXTO, ESPACIADO, FUENTE, RADIOS, T
  * - sinSenal: sin conexión.
  * - persona: quién hizo algo.
  * - borrar: la tecla de borrar el último dígito.
+ * - sincronizar: traer de Handy el catálogo y los vendedores.
  */
 export type NombreIcono =
   | 'lista'
@@ -45,7 +46,8 @@ export type NombreIcono =
   | 'subir'
   | 'sinSenal'
   | 'persona'
-  | 'borrar';
+  | 'borrar'
+  | 'sincronizar';
 
 /** Qué ícono lleva cada tarea. Todos en tinta: el color es de los estados. */
 export const ICONO_TAREA: Record<Tarea, NombreIcono> = {
@@ -56,6 +58,7 @@ export const ICONO_TAREA: Record<Tarea, NombreIcono> = {
   personas: 'personas',
   diasNoLaborables: 'calendario',
   coloresFamilia: 'colores',
+  sincronizar: 'sincronizar',
 };
 
 /** Círculo del estado vacío y el anillo de luz que lo rodea. */
@@ -298,6 +301,9 @@ function Dibujo({ nombre, color, tamano }: { nombre: NombreIcono; color: string;
           <Circle cx={17} cy={18} r={1.75} {...trazo} />
         </>
       );
+      break;
+    case 'sincronizar':
+      contenido = <Path d="M19.5 10.5A7.5 7.5 0 0 0 6.2 6.8M4.5 13.5a7.5 7.5 0 0 0 13.3 3.7M6 3v4h4M18 21v-4h-4" {...trazo} />;
       break;
     case 'subir':
       contenido = <Path d="M12 19V6M6.5 11.5L12 6l5.5 5.5" {...trazo} strokeWidth={2.5} />;

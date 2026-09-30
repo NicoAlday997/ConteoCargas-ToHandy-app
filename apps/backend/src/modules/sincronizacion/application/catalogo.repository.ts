@@ -58,12 +58,52 @@ export interface VendedorHandyLocal {
 }
 
 /**
+ * Lo que el cache ya tiene de un producto: los campos que la sincronizacion
+ * compara para saber si Handy trajo un cambio real. El factor de empaque no
+ * esta aqui a proposito: la sincronizacion no lo compara ni lo sobrescribe.
+ */
+export type ProductoGuardado = Pick<
+  ProductoLocal,
+  | 'code'
+  | 'nombre'
+  | 'precioCentavos'
+  | 'unidadCode'
+  | 'unidadDescripcion'
+  | 'familia'
+  | 'activo'
+>;
+
+/** Lo que el cache ya tiene de un vendedor, para comparar. */
+export interface VendedorGuardado {
+  idHandy: number;
+  nombre: string;
+  email: string | null;
+  rolHandyId: number;
+  rolHandyAuthority: string;
+  activo: boolean;
+  fotoUrl: string | null;
+}
+
+/** Cifras del cache para el estado de la sincronizacion (docs/04 §1.3). */
+export interface ResumenCache {
+  /**
+   * La marca mas reciente entre productos y vendedores. `null` si el cache
+   * esta vacio (nunca se ha sincronizado).
+   */
+  ultimaSincronizacion: Date | null;
+  productosActivos: number;
+  vendedoresActivos: number;
+}
+
+/**
  * Puerto: que necesita la sincronizacion de la persistencia, no como se hace.
  */
 export abstract class CatalogoRepository {
   /**
    * Inserta o actualiza (upsert por `code`) los productos recibidos. No elimina
-   * los que ya no vengan: los deshabilitados llegan con `activo = false`.
+   * los que ya no vengan: los deshabilitados se marcan con
+   * `desactivarProductos`. NUNCA toca `modalidadVenta` ni `piezasPorPaquete`
+   * de un producto con el factor confirmado.
    */
   abstract upsertProductos(productos: ProductoLocal[]): Promise<void>;
 
@@ -71,4 +111,32 @@ export abstract class CatalogoRepository {
    * Inserta o actualiza (upsert por `idHandy`) los vendedores recibidos.
    */
   abstract upsertVendedores(vendedores: VendedorHandyLocal[]): Promise<void>;
+
+  /** Los productos del cache con esos codigos; los que no existen no aparecen. */
+  abstract buscarProductos(
+    codes: string[],
+  ): Promise<Map<string, ProductoGuardado>>;
+
+  /** Los vendedores del cache con esos ids; los que no existen no aparecen. */
+  abstract buscarVendedores(
+    ids: number[],
+  ): Promise<Map<number, VendedorGuardado>>;
+
+  /** Codigos de los productos activos en el cache. */
+  abstract listarCodesProductosActivos(): Promise<string[]>;
+
+  /** Ids de los vendedores activos en el cache. */
+  abstract listarIdsVendedoresActivos(): Promise<number[]>;
+
+  /**
+   * Marca `activo = false` (nunca borra: el historial los referencia). Solo
+   * cambia esa bandera y la marca de sincronizacion; el factor de empaque no
+   * se toca.
+   */
+  abstract desactivarProductos(codes: string[]): Promise<void>;
+
+  /** Marca `activo = false` a esos vendedores; nunca los borra. */
+  abstract desactivarVendedores(ids: number[]): Promise<void>;
+
+  abstract resumen(): Promise<ResumenCache>;
 }

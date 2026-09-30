@@ -83,14 +83,42 @@ Días sueltos o periodos que no se trabajan (festivos, paros, clima, Navidad), e
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | `/productos?ruta=&q=` | Vendedor, Contador, Supervisor | Catálogo activo, ordenado por frecuencia de uso de la ruta indicada; `q` filtra por búsqueda de texto. |
-| POST | `/admin/sincronizacion/productos` | Supervisor (admin) | Fuerza sincronización completa del catálogo. |
-| POST | `/admin/sincronizacion/usuarios-handy` | Supervisor (admin) | Fuerza sincronización de usuarios vendedores. |
+| POST | `/admin/sincronizacion` | Supervisor (admin) | Sincronización completa con Handy: productos y luego vendedores. Es el mismo caso de uso que corre solo cada día a las 5:00 (docs/02 §4.6). Ver detalle abajo. |
+| GET | `/admin/sincronizacion/estado` | Supervisor (admin) | Cuándo fue la última sincronización y cómo quedó el cache. Ver detalle abajo. |
 | GET | `/admin/sincronizacion/factores-pendientes` | Supervisor (admin) | Productos activos sin factor de empaque confirmado: `[{ code, nombre, familia, modalidadVenta, piezasPorPaqueteSugerido }]`. `modalidadVenta` (`COMPLETO` \| `POR_PIEZA`) es la guardada hoy, aún sin confirmar. El sugerido sale del nombre (`C/12`, `X 12`, `12 pack`) o es `null` si hay que capturarlo; solo aplica si el producto se vende por pieza (en un dulce, `c/70` NO es factor). |
 | GET | `/admin/sincronizacion/factores` | Supervisor (admin) | Todos los productos activos con su empaque actual, confirmado o no (para corregir confirmaciones equivocadas): `[{ code, nombre, familia, modalidadVenta, piezasPorPaquete, factorConfirmado, confirmadoPor, fechaConfirmacionFactor }]`. Sin confirmar, `piezasPorPaquete` es solo la propuesta; `confirmadoPor` es el nombre de quien hizo la última confirmación. |
 | GET | `/admin/sincronizacion/productos/:code/factor/cargas-en-curso` | Supervisor (admin) | `{ cargasEnCurso }`: cuántas cargas aún no enviadas a Handy (cualquier estado distinto de `ENVIADA`) tienen conteos del producto. Se consulta antes de cambiar el empaque: esos conteos se calcularon con el factor actual y no se recalculan. |
 | PATCH | `/admin/sincronizacion/productos/:code/factor` | Supervisor (admin) | Confirma o corrige cómo se vende el producto y, si aplica, sus piezas por paquete. Body: `{ modalidadVenta: "COMPLETO" }` (el paquete es la unidad de venta: cuenta 1 a 1 y el factor queda en `null`) o `{ modalidadVenta: "POR_PIEZA", piezasPorPaquete }` (entero 1–500). Guarda quién y cuándo en el producto y registra cada cambio (valor anterior y nuevo, aunque ya estuviera confirmado) en la bitácora `cambios_factor_empaque`; desde ahí la sincronización ya no lo modifica. Responde el producto más `cargasEnCurso` (no bloquea el cambio). |
 
-`POST /admin/sincronizacion/productos` devuelve además `factoresPendientesDeConfirmar`: cuántos productos activos siguen sin factor confirmado.
+#### `POST /admin/sincronizacion`
+
+Sin body. Puede tardar varios segundos (varias páginas contra Handy). Responde qué **cambió**, no cuántos registros se procesaron:
+
+```json
+{
+  "productos":  { "nuevos": 3, "actualizados": 1, "desactivados": 0, "sinConfirmarEmpaque": 2 },
+  "vendedores": { "nuevos": 0, "actualizados": 1, "desactivados": 0 },
+  "sincronizadoEn": "2026-09-30T21:00:00.000Z"
+}
+```
+
+- `nuevos`: no existían en el cache local.
+- `actualizados`: existían y cambió algún campo real (productos: nombre, precio, familia, unidad; vendedores: nombre, email, rol, foto) o volvieron a estar habilitados. Si nada cambió no cuentan.
+- `desactivados`: estaban activos aquí y Handy ya no los lista como habilitados (se detectan por ausencia, con candados: docs/02 §4.1). Nunca se borran.
+- `sinConfirmarEmpaque`: productos activos con `factorConfirmado = false`. **No se pueden contar** hasta que un supervisor confirme cómo se venden.
+- La sincronización nunca modifica `modalidadVenta` ni `piezasPorPaquete` de un producto con el empaque confirmado.
+- Orden: primero productos, luego vendedores. Si productos falla, vendedores no corre y responde el error. Si productos pasa y vendedores falla, responde **200** con `"vendedores": null` y `"errorVendedores": "<motivo en palabras>"`.
+- Errores de Handy → **502** `{ statusCode, codigo, mensaje, detalle }`: `HANDY_NO_DISPONIBLE` (5xx, timeout o sin red: reintentar en un momento), `HANDY_TOKEN_INVALIDO` (401: no se arregla reintentando, lo resuelve el administrador en el servidor), `HANDY_RESPUESTA_INESPERADA`. `detalle` es solo para depuración y nunca contiene el token.
+
+Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion/usuarios-handy`, que se retiraron: con un solo punto de entrada el botón y la corrida automática no pueden divergir.
+
+#### `GET /admin/sincronizacion/estado`
+
+```json
+{ "ultimaSincronizacion": "2026-09-30T11:00:00.000Z", "productosActivos": 104, "vendedoresActivos": 5, "sinConfirmarEmpaque": 2 }
+```
+
+`ultimaSincronizacion` es el máximo entre `Producto.ultimaSincronizacionLocal` y `UsuarioHandy.ultimaSincronizacion` (`null` si nunca se ha sincronizado). No hay tabla propia.
 
 ### 1.4 Cargas (inicial y recarga)
 

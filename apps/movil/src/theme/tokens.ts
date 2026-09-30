@@ -229,7 +229,8 @@ export type Tarea =
   | 'historial'
   | 'personas'
   | 'diasNoLaborables'
-  | 'coloresFamilia';
+  | 'coloresFamilia'
+  | 'sincronizar';
 
 export const ESPACIADO = {
   xs: 4,
@@ -402,6 +403,18 @@ export const BORDES = {
   medio: 2,
   grueso: 3,
 } as const;
+
+/**
+ * Radio del redondeo INTERIOR de una vista con borde: el borde se come su
+ * grosor del radio de afuera. Lo usa lo que se dibuja dentro de un padre con
+ * sombra y no puede recortarse con `overflow: 'hidden'` (mataría la sombra):
+ * un <Degradado>, un destello. Con el radio de afuera tal cual, el relleno se
+ * sale por las esquinas. Si el padre no tiene sombra, que recorte él
+ * (`overflow: 'hidden'`) y el relleno no lleva radio.
+ */
+export function radioInterior(radio: number, borde: number): number {
+  return Math.max(0, radio - borde);
+}
 
 /**
  * Elevación: fondo, contorno fino y sombra suave azulada.
