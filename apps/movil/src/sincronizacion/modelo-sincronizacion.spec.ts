@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  AVISO_SINCRONIZACION_RECIENTE,
   falloSincronizacion,
+  quienConfirma,
+  remateSinPermiso,
   resumirSincronizacion,
   textoSinConfirmar,
   textoUltimaSincronizacion,
@@ -113,5 +116,50 @@ describe('falloSincronizacion', () => {
 
   it('sin red', () => {
     assert.equal(falloSincronizacion({ sinRed: true }).titulo, 'Sin conexión');
+  });
+
+  it('429 del candado: informativo, sin reintento inmediato', () => {
+    const fallo = falloSincronizacion({ sinRed: false, estado: 429, codigo: 'SINCRONIZACION_RECIENTE' });
+    assert.equal(fallo.detalle, 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.');
+    assert.equal(fallo.detalle, AVISO_SINCRONIZACION_RECIENTE);
+    assert.equal(fallo.informativo, true);
+    assert.equal(fallo.reintentable, false);
+  });
+
+  it('los errores de verdad no son informativos', () => {
+    assert.equal(falloSincronizacion({ sinRed: false, estado: 502 }).informativo, false);
+  });
+});
+
+describe('remateSinPermiso', () => {
+  it('vendedor con productos nuevos: no los puede contar y a quién avisarle', () => {
+    assert.equal(
+      remateSinPermiso('VENDEDOR', 3, 'Saúl Pérez'),
+      'Llegaron 3 productos nuevos, pero todavía no los puedes contar. Saúl Pérez tiene que confirmar cómo se venden y agregarlos a tu ruta.',
+    );
+  });
+
+  it('singular', () => {
+    assert.equal(
+      remateSinPermiso('VENDEDOR', 1, 'Un supervisor'),
+      'Llegó 1 producto nuevo, pero todavía no lo puedes contar. Un supervisor tiene que confirmar cómo se vende y agregarlo a tu ruta.',
+    );
+  });
+
+  it('el contador no tiene ruta propia', () => {
+    assert.match(remateSinPermiso('CONTADOR', 2, 'Un supervisor') ?? '', /agregarlos a las rutas\.$/);
+  });
+
+  it('sin productos nuevos, o para el supervisor: nada', () => {
+    assert.equal(remateSinPermiso('VENDEDOR', 0, 'Saúl'), null);
+    assert.equal(remateSinPermiso('SUPERVISOR', 3, 'Saúl'), null);
+  });
+});
+
+describe('quienConfirma', () => {
+  it('uno: su nombre; varios o ninguno: "Un supervisor"', () => {
+    assert.equal(quienConfirma(['Saúl Pérez']), 'Saúl Pérez');
+    assert.equal(quienConfirma(['Saúl', 'Marta']), 'Un supervisor');
+    assert.equal(quienConfirma([]), 'Un supervisor');
   });
 });

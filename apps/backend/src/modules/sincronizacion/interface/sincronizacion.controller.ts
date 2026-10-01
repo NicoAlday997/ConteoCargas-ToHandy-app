@@ -5,13 +5,17 @@ import {
   Controller,
   Get,
   HttpCode,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { RolApp } from '@prisma/client';
+import type { Response } from 'express';
 
 import { JwtAuthGuard } from '../../../shared/auth/jwt-auth.guard';
 import type { UsuarioAutenticado } from '../../../shared/auth/jwt.strategy';
@@ -28,7 +32,7 @@ import {
 import { CatalogoRepository } from '../application/catalogo.repository';
 import { ConfirmarFactorEmpaqueUseCase } from '../application/confirmar-factor-empaque.use-case';
 import { FactorEmpaqueRepository } from '../application/factor-empaque.repository';
-import { SincronizarConHandyUseCase } from '../application/sincronizar-con-handy.use-case';
+import { SincronizarConCandadoUseCase } from '../application/sincronizar-con-candado.use-case';
 import {
   CodeProductoSchema,
   ConfirmarFactorSchema,
@@ -37,10 +41,12 @@ import {
 
 /**
  * Sincronizacion del cache local contra Handy (docs/04-api-interna.md §1.3);
- * la misma que corre sola cada dia a las 5:00 (`SincronizacionDiaria`). Toda la seccion es exclusiva del rol Supervisor: los guards se aplican
- * a nivel de clase, asi que todos los endpoints exigen JWT valido y rol
- * SUPERVISOR. Incluye la revision del factor de empaque (piezas por paquete)
- * que la sincronizacion propone desde el nombre de cada producto.
+ * la misma que corre sola cada dia a las 5:00 (`SincronizacionDiaria`). Los
+ * guards van a nivel de clase (todo exige JWT valido) y cada handler declara
+ * sus roles: sincronizar y consultar el estado son de los TRES roles (decision
+ * del dueño; el candado de 2 minutos protege a Handy de once dispositivos);
+ * la revision del factor de empaque (piezas por paquete) sigue siendo solo
+ * del Supervisor.
  *
  * Los fallos de Handy se traducen a 502 Bad Gateway con un `mensaje` en español
  * apto para el usuario final; el texto crudo de Handy solo viaja en `detalle`,
@@ -49,10 +55,9 @@ import {
  */
 @Controller('admin/sincronizacion')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolApp.SUPERVISOR)
 export class SincronizacionController {
   constructor(
-    private readonly sincronizarConHandyUseCase: SincronizarConHandyUseCase,
+    private readonly sincronizarConCandadoUseCase: SincronizarConCandadoUseCase,
     private readonly catalogoRepository: CatalogoRepository,
     private readonly factorEmpaqueRepository: FactorEmpaqueRepository,
     private readonly confirmarFactorEmpaqueUseCase: ConfirmarFactorEmpaqueUseCase,
@@ -64,16 +69,45 @@ export class SincronizacionController {
    * actualizados, desactivados) y cuantos productos quedaron sin empaque
    * confirmado. Si los productos pasan y los vendedores fallan, responde 200
    * con `vendedores: null` y `errorVendedores` con el motivo.
+   *
+   * Candado global: si la ultima sincronizacion (de quien sea, incluida la de
+   * las 5:00) empezo hace menos de 2 minutos, responde 429 con `reintentarEn`
+   * (y `Retry-After` en segundos) SIN llamar a Handy. Queda registrado quien
+   * sincronizo y cuando; `usuarioAppId` sale del JWT.
    */
   @Post()
   @HttpCode(200)
-  async sincronizar() {
-    let resultado;
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async sincronizar(
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Res({ passthrough: true }) respuesta: Response,
+  ) {
+    let salida;
     try {
-      resultado = await this.sincronizarConHandyUseCase.ejecutar('MANUAL');
+      salida = await this.sincronizarConCandadoUseCase.ejecutarManual(
+        usuario.usuarioAppId,
+      );
     } catch (error) {
       throw this.traducirErrorHandy(error);
     }
+    if (!salida.exito) {
+      const segundos = Math.max(
+        1,
+        Math.ceil((salida.reintentarEn.getTime() - Date.now()) / 1000),
+      );
+      respuesta.setHeader('Retry-After', String(segundos));
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          codigo: salida.motivo,
+          mensaje:
+            'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.',
+          reintentarEn: salida.reintentarEn.toISOString(),
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    const resultado = salida.resultado;
     const { productos, vendedores } = resultado;
     return {
       productos: {
@@ -99,6 +133,7 @@ export class SincronizacionController {
    * es la marca mas reciente entre productos y vendedores (sin tabla propia).
    */
   @Get('estado')
+  @Roles(RolApp.VENDEDOR, RolApp.CONTADOR, RolApp.SUPERVISOR)
   async estado() {
     const [resumen, sinConfirmarEmpaque] = await Promise.all([
       this.catalogoRepository.resumen(),
@@ -113,6 +148,7 @@ export class SincronizacionController {
    * (`null` si hay que capturarlo; solo aplica si se vende por pieza).
    */
   @Get('factores-pendientes')
+  @Roles(RolApp.SUPERVISOR)
   async listarFactoresPendientes() {
     return this.factorEmpaqueRepository.listarPendientes();
   }
@@ -123,6 +159,7 @@ export class SincronizacionController {
    * confirmacion equivocada.
    */
   @Get('factores')
+  @Roles(RolApp.SUPERVISOR)
   async listarFactores() {
     return this.factorEmpaqueRepository.listarTodos();
   }
@@ -133,6 +170,7 @@ export class SincronizacionController {
    * con el factor actual y no se recalculan.
    */
   @Get('productos/:code/factor/cargas-en-curso')
+  @Roles(RolApp.SUPERVISOR)
   async contarCargasEnCurso(
     @Param('code', new ZodValidationPipe(CodeProductoSchema)) code: string,
   ) {
@@ -159,6 +197,7 @@ export class SincronizacionController {
    */
   @Patch('productos/:code/factor')
   @HttpCode(200)
+  @Roles(RolApp.SUPERVISOR)
   async confirmarFactor(
     @Param('code', new ZodValidationPipe(CodeProductoSchema)) code: string,
     @Body(new ZodValidationPipe(ConfirmarFactorSchema)) dto: ConfirmarFactorDto,

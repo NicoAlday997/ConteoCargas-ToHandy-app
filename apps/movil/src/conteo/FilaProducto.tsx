@@ -2,13 +2,12 @@ import { memo, useEffect, useRef } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
-import { Degradado, Glifo, Palomita, Pulsable } from '../componentes/base';
+import { Glifo, Palomita, Pulsable } from '../componentes/base';
 import {
   ALTO_CONTROL,
   BORDES,
   CIFRAS,
   COLORES,
-  DEGRADADOS,
   ESCALA_PRESIONADO_CONTROL,
   ESCALA_TEXTO,
   ESPACIADO,
@@ -130,7 +129,7 @@ const COLORES_ASPECTO: Record<AspectoFila, ColoresAspecto> = {
     visorBorde: COLORES.bordeSinContar,
     visorPunteado: true,
   },
-  // Contado: la fila se tiñe de azul suave y el visor se enciende (degradado azul).
+  // Contado: la fila se tiñe de azul suave y el visor se enciende (azul señal plano).
   contado: {
     fondo: COLORES.azulSuave,
     borde: BORDE_CONTADO,
@@ -326,7 +325,6 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         else if (accion === 'noLleva') onCero(producto.code);
       }}
     >
-      {aspecto === 'tecleando' && <Degradado degradado={DEGRADADOS.marca} radio={radioInterior(RADIOS.pieza, BORDES_FILA)} />}
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, estilos.destello, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}
@@ -383,7 +381,6 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           accessible
           accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}
         >
-          {aspecto === 'contado' && <Degradado degradado={DEGRADADOS.visor} />}
           <Text
             style={[estilos.numeroTotal, { color: colores.total }, estado === 'sin-capturar' && estilos.numeroVacio]}
             numberOfLines={1}
@@ -688,7 +685,7 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.sm + 2,
     borderRadius: RADIOS.medio,
     borderWidth: BORDES.medio,
-    // Sin sombra: recorta su degradado y el borde nunca se desincroniza.
+    // Fondo plano por estado (`visorFondo`), sin degradado: el total blanco no depende de un hijo pintado.
     overflow: 'hidden',
   },
   visorVacio: {

@@ -16,7 +16,7 @@ function reintentar(fallos: number, error: unknown): boolean {
   return fallos < 2;
 }
 
-/** `habilitado` = solo con sesión de supervisor: a los demás el servidor responde 403. */
+/** Los tres roles pueden consultarlo; `habilitado` = con sesión iniciada. */
 export function useEstadoSincronizacion(habilitado: boolean) {
   return useQuery({
     queryKey: clavesSincronizacion.estado,

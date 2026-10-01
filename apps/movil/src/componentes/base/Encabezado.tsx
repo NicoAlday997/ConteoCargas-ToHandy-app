@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -148,8 +148,8 @@ function BotonVolver({ onVolver, etiqueta, sobreMarca }: { onVolver: () => void;
 }
 
 /**
- * Segundo renglón del héroe: un panel translúcido que agrupa el avance, la
- * barra y el estado de envío. Deja ver el degradado: es parte del cromo.
+ * Segundo renglón del héroe: un panel azul hondo que agrupa el avance, la
+ * barra y el estado de envío. Fondo sólido: lleva texto blanco.
  */
 export function PanelEncabezado({ children }: { children: ReactNode }) {
   return <View style={estilos.panel}>{children}</View>;
@@ -158,21 +158,19 @@ export function PanelEncabezado({ children }: { children: ReactNode }) {
 const CURVA_AVANCE = Easing.bezier(...CURVA_SALIDA);
 
 /**
- * La barra de avance: una cápsula honda donde lo contado se enciende en un
- * degradado de azul a cian y crece hasta su nuevo largo en cada captura. Se
- * lee de reojo sin quitarle alto a la lista. Con "Reducir movimiento" salta a
- * su largo sin animar.
+ * La barra de avance: una cápsula honda donde lo contado se enciende en azul
+ * vivo y crece hasta su nuevo largo en cada captura. Se lee de reojo sin
+ * quitarle alto a la lista. Con "Reducir movimiento" salta a su largo sin
+ * animar.
  *
  * El ancho se anima en píxeles sobre el canal medido: un ancho en porcentaje
  * animado no se aplicaba en el hilo de UI y el relleno se quedaba midiendo su
- * contenido, siempre el mismo pedacito.
+ * contenido, siempre el mismo pedacito. La medida va a un valor compartido de
+ * Reanimated (hilo de UI), nunca a estado de React.
  *
- * El degradado no se estira: se dibuja una sola vez al ancho completo del
- * canal y el relleno animado lo descubre (overflow hidden). Estirado se
- * quedaba con la medida de su primer layout, porque Reanimated mueve el ancho
- * del padre fuera del render de React y el onLayout del Degradado no se
- * dispara de forma confiable con esos cambios. Así sus colores además se
- * quedan quietos mientras la barra avanza.
+ * El relleno es color plano, sin degradado: fue el primero de los cuatro bugs
+ * del degradado que se medía a sí mismo (ver la regla junto a DEGRADADOS en
+ * tokens.ts).
  *
  * Relleno = fraccionAvance(actual, total) × ancho del canal:
  *   0 de 14  → 0    × canal = 0 px: no se ve.
@@ -183,9 +181,7 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
   const avance = fraccionAvance(actual, total);
   const reducirMovimiento = useReducedMotion();
   const largo = useSharedValue(avance);
-  // Una sola medición, dos destinos: la animación (hilo de UI) y el ancho fijo del degradado.
   const anchoCanal = useSharedValue(0);
-  const [anchoDegradado, setAnchoDegradado] = useState(0);
   useEffect(() => {
     largo.value = reducirMovimiento
       ? avance
@@ -193,9 +189,7 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
   }, [avance, largo, reducirMovimiento]);
   const estiloRelleno = useAnimatedStyle(() => ({ width: largo.value * anchoCanal.value }));
   const alMedirCanal = (e: LayoutChangeEvent) => {
-    const ancho = e.nativeEvent.layout.width;
-    anchoCanal.value = ancho;
-    setAnchoDegradado(ancho);
+    anchoCanal.value = e.nativeEvent.layout.width;
   };
 
   return (
@@ -205,13 +199,7 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: total, now: actual }}
     >
-      {anchoDegradado > 0 && (
-        <Animated.View style={[estilos.relleno, estiloRelleno]}>
-          <View style={[estilos.trazoAvance, { width: anchoDegradado }]}>
-            <Degradado degradado={DEGRADADOS.avance} />
-          </View>
-        </Animated.View>
-      )}
+      <Animated.View style={[estilos.relleno, estiloRelleno]} />
     </View>
   );
 }
@@ -237,7 +225,10 @@ export function NotaEncabezado({ children, lineas = 2 }: { children: ReactNode; 
 
 const estilos = StyleSheet.create({
   // El héroe: la montura redondeada de abajo se suma a su relleno inferior.
+  // El azul noche va EN EL ESTILO: el texto blanco del héroe se lee aunque el
+  // degradado (decoración) no llegue a pintarse.
   heroe: {
+    backgroundColor: COLORES.marca,
     gap: ESPACIADO.lg,
     paddingHorizontal: RITMO.margen,
     paddingBottom: ALTO_MONTURA + ESPACIADO.md,
@@ -323,11 +314,14 @@ const estilos = StyleSheet.create({
   notaMarca: {
     color: COLORES.marcaTenue,
   },
+  // Fondo SÓLIDO, no translúcido: lleva el número blanco del avance ("0 de 9
+  // resueltas") y no puede depender de que el degradado pinte detrás. Azul
+  // hondo: el más cercano al velo blanco del 8 % sobre el azul noche que tenía.
   panel: {
     gap: ESPACIADO.sm,
     paddingHorizontal: ESPACIADO.lg,
     paddingVertical: ESPACIADO.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: COLORES.marcaHonda,
     borderRadius: RADIOS.panel,
     borderWidth: BORDES.fino,
     borderColor: 'rgba(255, 255, 255, 0.14)',
@@ -338,13 +332,10 @@ const estilos = StyleSheet.create({
     backgroundColor: 'rgba(6, 18, 51, 0.55)',
     overflow: 'hidden',
   },
-  // overflow hidden: el degradado de ancho completo se sale sin él y la barra se ve siempre llena.
+  // Azul vivo plano: el color sólido más cercano al degradado azul → cian que tenía.
   relleno: {
     height: '100%',
     borderRadius: RADIOS.completo,
-    overflow: 'hidden',
-  },
-  trazoAvance: {
-    height: '100%',
+    backgroundColor: COLORES.accionViva,
   },
 });

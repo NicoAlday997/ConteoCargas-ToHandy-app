@@ -2,7 +2,7 @@ import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 
-import { SincronizarConHandyUseCase } from '../application/sincronizar-con-handy.use-case';
+import { SincronizarConCandadoUseCase } from '../application/sincronizar-con-candado.use-case';
 
 /** 5:00 todos los dias: el catalogo ya esta fresco cuando llega el primer vendedor a las 6. */
 export const CRON_SINCRONIZACION_DIARIA = '0 5 * * *';
@@ -23,7 +23,8 @@ export function sincronizacionAutomaticaEncendida(
  * Disparador de la sincronizacion automatica diaria (docs/02 seccion 4.6).
  * Corre sin usuario: no pide rol ni token de app (el de Handy vive en el
  * servidor). Toda la logica, incluidas las alertas y la politica de no
- * reintentar, esta en `SincronizarConHandyUseCase.ejecutarAutomatica`: aqui
+ * reintentar, esta en `SincronizarConHandyUseCase.ejecutarAutomatica` (via
+ * `SincronizarConCandadoUseCase`, que deja la corrida en la bitacora): aqui
  * solo se programa y se registra en el log.
  */
 @Injectable()
@@ -32,7 +33,7 @@ export class SincronizacionDiaria implements OnModuleInit {
   private readonly encendida: boolean;
 
   constructor(
-    private readonly sincronizar: SincronizarConHandyUseCase,
+    private readonly sincronizar: SincronizarConCandadoUseCase,
     config: ConfigService,
   ) {
     this.encendida = sincronizacionAutomaticaEncendida(

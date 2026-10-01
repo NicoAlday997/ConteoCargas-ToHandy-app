@@ -1467,7 +1467,9 @@ const estilos = StyleSheet.create({
     // En un renglón se ve como pastilla (el radio se topa en la mitad del alto);
     // si el texto baja a dos, queda un bloque redondeado y no un óvalo.
     borderRadius: RADIOS.control,
-    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    // Sólido (no un velo translúcido): lleva texto blanco ("Guardado"). El azul
+    // más cercano al velo blanco del 10 % sobre el panel azul hondo que tenía.
+    backgroundColor: COLORES.carril,
   },
   pildoraAtencion: {
     backgroundColor: COLORES.discrepanciaFondo,

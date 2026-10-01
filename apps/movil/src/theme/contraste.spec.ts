@@ -70,20 +70,50 @@ describe('contraste: botones', () => {
   comprobar([['contorno del peligro', 'error', 'superficie']], MINIMO_GRANDE);
 });
 
-describe('contraste: degradados con texto blanco encima', () => {
+describe('contraste: el único degradado con texto encima (héroe, login, inicio)', () => {
   // El texto se lee sobre cualquier punto del degradado: se revisa cada parada.
-  for (const nombre of ['marca', 'accion', 'accionPresionada', 'visor'] as const) {
-    for (const color of DEGRADADOS[nombre].colores) {
-      it(`blanco sobre ${nombre} (${color}) ≥ ${MINIMO_TEXTO}:1`, () => {
-        assert.ok(razonContraste(COLORES.textoSobreColor, color) >= MINIMO_TEXTO, razonContraste(COLORES.textoSobreColor, color).toFixed(2));
-      });
-    }
-  }
   for (const color of DEGRADADOS.marca.colores) {
+    it(`blanco sobre marca (${color}) ≥ ${MINIMO_TEXTO}:1`, () => {
+      assert.ok(razonContraste(COLORES.textoSobreColor, color) >= MINIMO_TEXTO, razonContraste(COLORES.textoSobreColor, color).toFixed(2));
+    });
     it(`azul tenue (subtítulos) sobre el héroe (${color}) ≥ ${MINIMO_TEXTO}:1`, () => {
       assert.ok(razonContraste(COLORES.marcaTenue, color) >= MINIMO_TEXTO, razonContraste(COLORES.marcaTenue, color).toFixed(2));
     });
   }
+});
+
+/**
+ * Los controles que dejaron el degradado por color plano (regla junto a
+ * DEGRADADOS en tokens.ts) y los fondos sólidos que ahora garantizan el texto
+ * blanco aunque el degradado no pinte.
+ */
+describe('contraste: fondos sólidos bajo texto blanco', () => {
+  comprobar(
+    [
+      ['campo activo del teclado: número blanco sobre azul noche plano', 'textoSobreColor', 'marca'],
+      ['campo activo del teclado: rótulo', 'marcaTenue', 'marca'],
+      ['tecla de avance', 'textoSobreColor', 'accion'],
+      ['tecla de avance presionada', 'textoSobreColor', 'accionHonda'],
+      ['botón principal', 'textoSobreColor', 'accion'],
+      ['botón principal presionado', 'textoSobreColor', 'accionHonda'],
+      ['visor de lo contado', 'textoSobreColor', 'accion'],
+      ['iniciales del Avatar', 'textoSobreColor', 'accion'],
+      ['panel del avance: el número ("0")', 'textoSobreColor', 'marcaHonda'],
+      ['panel del avance: "de 9 resueltas"', 'marcaTenue', 'marcaHonda'],
+      ['pastilla del rol en el inicio', 'textoSobreColor', 'marcaHonda'],
+      ['pastilla "Guardado" del conteo', 'textoSobreColor', 'carril'],
+      // Si hasta el héroe fallara, su color plano sigue sosteniendo el texto.
+      ['título del héroe sobre su color plano', 'textoSobreColor', 'marca'],
+    ],
+    MINIMO_TEXTO,
+  );
+  // El velo del canal (rgba(6, 18, 51, 0.55)) sobre el panel azul hondo da #0E2155.
+  comprobar([['relleno plano de la barra sobre el canal del panel', 'accionViva', '#0E2155']], MINIMO_GRANDE);
+
+  it('panel del avance: el número y su texto se distinguen entre sí (blanco más claro que el azul tenue)', () => {
+    // Además van en tamaños y pesos distintos (36 px ExtraBold contra 14 px).
+    assert.ok(razonContraste(COLORES.textoSobreColor, COLORES.marcaTenue) > 1.5);
+  });
 });
 
 describe('contraste: héroe azul noche y fila que se teclea', () => {

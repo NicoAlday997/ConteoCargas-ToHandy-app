@@ -5,7 +5,6 @@ import {
   ALTO_CONTROL,
   BORDES,
   COLORES,
-  DEGRADADOS,
   ESCALA_PRESIONADO,
   ESCALA_PRESIONADO_CONTROL,
   ESCALA_TEXTO,
@@ -13,19 +12,18 @@ import {
   FUENTE,
   OPACIDAD,
   RADIOS,
-  radioInterior,
   SOMBRAS,
   TIPOGRAFIA,
   TOQUE_MINIMO,
   ONDA,
 } from '../../theme/tokens';
-import { Degradado } from './Degradado';
 import { Flecha } from './Icono';
 import { Pulsable } from './Pulsable';
 
 /**
  * - primario: la acción que se espera. Una por pantalla o por modal. Azul
- *   señal en degradado, con la sombra teñida del mismo azul: se ve encendido.
+ *   señal plano, con la sombra teñida del mismo azul: se ve encendido. Sin
+ *   degradado (regla de controles chicos, ver DEGRADADOS en tokens.ts).
  * - secundario: volver, cancelar, alternativas. Pieza blanca con texto azul.
  * - peligro: la acción no se puede deshacer. NUNCA es el botón dominante:
  *   contorno y texto en rojo; el sólido de ese modal es la salida segura
@@ -104,22 +102,13 @@ export function Boton({
         style,
       ]}
     >
-      {({ pressed }) => {
+      {() => {
         const colorContenido = COLOR_CONTENIDO[variante];
-        const relleno =
-          variante === 'primario' ? (
-            <Degradado
-              degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion}
-              // Con sombra no se recorta: radio interior; el primario no lleva borde.
-              radio={radioInterior(grande ? RADIOS.grande : RADIOS.control, 0)}
-            />
-          ) : null;
         if (grande) {
           // La acción principal de un inicio: se lee como un renglón (qué y
           // para cuándo) y la flecha en su círculo dice que lleva a otra pantalla.
           return (
             <>
-              {relleno}
               <View style={estilos.textosGrande}>
                 <View style={estilos.linea}>
                   {cargando && <ActivityIndicator color={colorContenido} />}
@@ -145,7 +134,6 @@ export function Boton({
         }
         return (
           <>
-            {relleno}
             <View style={estilos.linea}>
               {cargando && <ActivityIndicator color={colorContenido} />}
               <Text
@@ -203,11 +191,14 @@ const estilos = StyleSheet.create({
     flex: 1,
     gap: ESPACIADO.xs,
   },
-  // El degradado va dibujado dentro; la sombra toma el azul del botón.
+  // Color plano del estilo: el texto blanco nunca depende de que un hijo pinte el fondo.
+  // La sombra toma el azul del botón.
   primario: {
+    backgroundColor: COLORES.accion,
     boxShadow: SOMBRAS.accion,
   },
   primarioPresionado: {
+    backgroundColor: COLORES.accionHonda,
     boxShadow: 'none',
   },
   // Pieza blanca con contorno fino y sombra: a pleno sol no se funde con el fondo.

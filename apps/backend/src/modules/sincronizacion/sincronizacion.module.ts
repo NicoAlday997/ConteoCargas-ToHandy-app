@@ -6,13 +6,16 @@ import { CatalogoRepository } from './application/catalogo.repository';
 import { ConfirmarFactorEmpaqueUseCase } from './application/confirmar-factor-empaque.use-case';
 import { FactorEmpaqueRepository } from './application/factor-empaque.repository';
 import { HandyGateway } from './application/handy.gateway';
+import { RegistroSincronizacionRepository } from './application/registro-sincronizacion.repository';
 import { SincronizarCatalogoUseCase } from './application/sincronizar-catalogo.use-case';
+import { SincronizarConCandadoUseCase } from './application/sincronizar-con-candado.use-case';
 import { SincronizarConHandyUseCase } from './application/sincronizar-con-handy.use-case';
 import { SincronizarVendedoresUseCase } from './application/sincronizar-vendedores.use-case';
 import { HandyHttpGateway } from './infrastructure/handy-http.gateway';
 import { PrismaAlertaRepository } from './infrastructure/prisma-alerta.repository';
 import { PrismaCatalogoRepository } from './infrastructure/prisma-catalogo.repository';
 import { PrismaFactorEmpaqueRepository } from './infrastructure/prisma-factor-empaque.repository';
+import { PrismaRegistroSincronizacionRepository } from './infrastructure/prisma-registro-sincronizacion.repository';
 import { SincronizacionController } from './interface/sincronizacion.controller';
 import { SincronizacionDiaria } from './interface/sincronizacion-diaria';
 
@@ -30,6 +33,10 @@ import { SincronizacionDiaria } from './interface/sincronizacion-diaria';
     {
       provide: FactorEmpaqueRepository,
       useClass: PrismaFactorEmpaqueRepository,
+    },
+    {
+      provide: RegistroSincronizacionRepository,
+      useClass: PrismaRegistroSincronizacionRepository,
     },
     // Los casos de uso son clases planas (sin @Injectable): se construyen a mano
     // inyectando los puertos ya resueltos.
@@ -61,6 +68,16 @@ import { SincronizacionDiaria } from './interface/sincronizacion-diaria';
         SincronizarVendedoresUseCase,
         AlertaRepository,
       ],
+    },
+    // Puerta de entrada del boton y de la corrida diaria: registra quien y
+    // cuando, y aplica el candado de 2 minutos a las pedidas desde la app.
+    {
+      provide: SincronizarConCandadoUseCase,
+      useFactory: (
+        sincronizar: SincronizarConHandyUseCase,
+        registros: RegistroSincronizacionRepository,
+      ) => new SincronizarConCandadoUseCase(sincronizar, registros),
+      inject: [SincronizarConHandyUseCase, RegistroSincronizacionRepository],
     },
     SincronizacionDiaria,
     {

@@ -1,3 +1,4 @@
+import type { RolApp } from '../api/auth';
 import type { ResultadoSincronizacionApi } from '../api/sincronizacion';
 import { diaNegocio, formatearFechaCorta, sumarDias } from '../conteo/fecha-operativa.ts';
 
@@ -81,15 +82,45 @@ export function textoSinConfirmar(n: number): string {
     : `${n} productos no se pueden contar hasta que confirmes cómo se venden.`;
 }
 
+/**
+ * El remate para vendedor y contador cuando llegaron productos nuevos. Ellos
+ * no pueden confirmar el empaque ni armar la plantilla, así que lo útil es
+ * saber que el producto ya existe y a quién avisarle. `null` si no llegó nada
+ * nuevo o si es supervisor (a él se le ofrece "Confirmar ahora").
+ */
+export function remateSinPermiso(
+  rol: RolApp | null | undefined,
+  productosNuevos: number,
+  supervisor: string,
+): string | null {
+  if (rol === 'SUPERVISOR' || productosNuevos <= 0) return null;
+  // El contador no tiene ruta propia: el producto se agrega a las rutas.
+  const destino = rol === 'VENDEDOR' ? 'tu ruta' : 'las rutas';
+  return productosNuevos === 1
+    ? `Llegó 1 producto nuevo, pero todavía no lo puedes contar. ${supervisor} tiene que confirmar cómo se vende y agregarlo a ${destino}.`
+    : `Llegaron ${productosNuevos} productos nuevos, pero todavía no los puedes contar. ${supervisor} tiene que confirmar cómo se venden y agregarlos a ${destino}.`;
+}
+
+/** A quién avisarle: el supervisor activo por su nombre; si hay varios (o ninguno), "Un supervisor". */
+export function quienConfirma(supervisoresActivos: readonly string[]): string {
+  const nombres = supervisoresActivos.map((n) => n.trim()).filter(Boolean);
+  return nombres.length === 1 ? nombres[0] : 'Un supervisor';
+}
+
+/** El 429 del candado de 2 minutos: no es un error, alguien más ya trajo lo nuevo. */
+export const AVISO_SINCRONIZACION_RECIENTE = 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.';
+
 export interface FalloSincronizacion {
   titulo: string;
   detalle: string;
   /** El token inválido no se arregla reintentando. */
   reintentable: boolean;
+  /** No es un error (el candado de 2 minutos): se dice sin alarma, sin bloque rojo. */
+  informativo: boolean;
 }
 
 /**
- * Lo que se le dice al supervisor si la sincronización no pasa. `estado` y
+ * Lo que se le dice a quien sincronizó si no pasa. `estado` y
  * `codigo` vienen del error de la API; `sinRed` si ni siquiera llegó al servidor.
  */
 export function falloSincronizacion(error: { sinRed: boolean; estado?: number; codigo?: string | null; mensaje?: string }): FalloSincronizacion {
@@ -98,7 +129,11 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
       titulo: 'Sin conexión',
       detalle: 'Para sincronizar necesitas señal: revísala y vuelve a intentarlo. No se perdió nada.',
       reintentable: true,
+      informativo: false,
     };
+  }
+  if (error.estado === 429) {
+    return { titulo: 'Alguien acaba de sincronizar', detalle: AVISO_SINCRONIZACION_RECIENTE, reintentable: false, informativo: true };
   }
   if (error.codigo === 'HANDY_TOKEN_INVALIDO') {
     return {
@@ -106,6 +141,7 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
       detalle:
         'El token de integración con Handy no es válido o ya venció. No se arregla desde la app ni reintentando: avisa al administrador para que lo renueve en el servidor.',
       reintentable: false,
+      informativo: false,
     };
   }
   if (error.estado === 502) {
@@ -113,11 +149,13 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
       titulo: 'Handy no respondió',
       detalle: 'Vuelve a intentarlo en un momento; no se perdió nada.',
       reintentable: true,
+      informativo: false,
     };
   }
   return {
     titulo: 'No se pudo sincronizar',
     detalle: error.mensaje || 'Vuelve a intentarlo en un momento; no se perdió nada.',
     reintentable: true,
+    informativo: false,
   };
 }

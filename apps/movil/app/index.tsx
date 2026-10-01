@@ -128,7 +128,7 @@ export default function PantallaInicio() {
   const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
   // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones, los empaques y las plantillas. El
-  // historial es para los tres: qué ve cada quien lo decide el servidor.
+  // historial y la sincronización con Handy son para los tres: qué ve cada quien lo decide el servidor.
   // Densidad generosa: son pocas acciones y cada una importa. Arriba, en una
   // banda tintada de marca a todo el ancho, quién está en sesión con sus
   // iniciales y el nombre grande; debajo, las acciones separadas por aire;
@@ -177,7 +177,8 @@ export default function PantallaInicio() {
           )}
           <Animated.View entering={entradaBloque(1)}>
             <GrupoMenu>
-              {usuario?.rolApp === 'SUPERVISOR' && <AccesoSincronizacion />}
+              {/* Los tres roles: mismo botón; el remate cambia según lo que cada quien puede hacer. */}
+              {usuario && <AccesoSincronizacion rol={usuario.rolApp} />}
               {usuario?.rolApp === 'SUPERVISOR' && (
                 <FilaMenu
                   tarea="plantillas"
@@ -192,6 +193,14 @@ export default function PantallaInicio() {
                   texto="Colores de familias"
                   detalle="Para ubicar cada familia más rápido al contar"
                   onPress={() => router.push('/familias')}
+                />
+              )}
+              {usuario?.rolApp === 'SUPERVISOR' && (
+                <FilaMenu
+                  tarea="personas"
+                  texto="Personas"
+                  detalle="Quién usa la app: altas, bajas y PIN"
+                  onPress={() => router.push('/personas')}
                 />
               )}
               {usuario?.rolApp === 'SUPERVISOR' && (
@@ -916,7 +925,9 @@ const estilos = StyleSheet.create({
   // A todo el ancho y en azul noche: quién está en sesión, la portada del
   // producto. El margen lateral lo pone la columna de adentro: en tablet el
   // saludo queda alineado con las piezas de abajo.
+  // El azul noche va en el estilo: el nombre en blanco se lee aunque el degradado no pinte.
   bandaIdentidad: {
+    backgroundColor: COLORES.marca,
     paddingTop: ESPACIADO.lg,
     paddingBottom: RADIOS.encabezado + ESPACIADO.xl,
     gap: ESPACIADO.xl,
@@ -958,7 +969,7 @@ const estilos = StyleSheet.create({
     alignItems: 'flex-end',
     gap: RITMO.relacionado,
   },
-  // Círculo en degradado azul con filo blanco: el gafete de quien está en sesión.
+  // Círculo azul (foto o iniciales) con filo blanco: el gafete de quien está en sesión.
   // El marco del gafete sobre el héroe; el contenido (iniciales o foto) lo pone Avatar.
   avatar: {
     borderWidth: BORDES.medio,
@@ -990,7 +1001,9 @@ const estilos = StyleSheet.create({
     paddingHorizontal: ESPACIADO.md,
     paddingVertical: ESPACIADO.xs,
     borderRadius: RADIOS.completo,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    // Sólido (no un velo translúcido): lleva texto blanco. Azul hondo, el más
+    // cercano al velo blanco del 12 % sobre el azul noche que tenía.
+    backgroundColor: COLORES.marcaHonda,
     borderWidth: BORDES.fino,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },

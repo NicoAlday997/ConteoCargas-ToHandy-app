@@ -6,14 +6,12 @@ import {
   BORDES,
   CIFRAS,
   COLORES,
-  DEGRADADOS,
   ESCALA_PRESIONADO_CONTROL,
   ESCALA_TEXTO,
   ESPACIADO,
   FUENTE,
   ONDA,
   RADIOS,
-  radioInterior,
   ROTULO,
   SOMBRAS,
   TIPOGRAFIA,
@@ -26,7 +24,7 @@ import {
   type CapturaProducto,
   type ProductoConteo,
 } from './estado-conteo';
-import { Chevron, Degradado, Glifo, Pulsable } from '../componentes/base';
+import { Chevron, Glifo, Pulsable } from '../componentes/base';
 import { EtiquetaFactor, nombreCampo } from './FilaProducto';
 import { formatearNombreProducto } from './formato-nombre';
 
@@ -35,7 +33,7 @@ const ALTO_CONTROL_ENCABEZADO = ESPACIADO.xxl + ESPACIADO.sm;
 const HOLGURA_ENCABEZADO = { top: ESPACIADO.sm, bottom: ESPACIADO.sm, left: ESPACIADO.xs, right: ESPACIADO.xs };
 /** La columna de acciones es más ancha que la de un dígito: "Siguiente" cabe sin encogerse. */
 const PESO_COLUMNA_ACCIONES = 1.3;
-/** La tecla de avance no lleva borde: el degradado y su sombra la dibujan. */
+/** La tecla de avance no lleva borde: su color plano y su sombra la dibujan. */
 const BORDE_TECLA_AVANCE = 0;
 
 const FILAS: readonly (readonly string[])[] = [
@@ -93,7 +91,7 @@ interface Props {
  * con 73 productos casi iguales, perder el hilo es el error más caro.
  *
  * El ritmo manda. La tecla que avanza es la acción de la pantalla (azul
- * luminoso en degradado, doble alto, abajo a la derecha donde descansa el
+ * señal plano, doble alto, abajo a la derecha donde descansa el
  * pulgar); "No lleva" vive junto a ella porque es la captura más repetida del
  * día; "Listo" solo cierra y por eso es la más callada. La lectura va en un
  * visor azul noche: la pantalla de la báscula.
@@ -191,7 +189,6 @@ export function TecladoCantidad({
                 accessibilityState={camposDisponibles.length > 1 ? { selected: true } : undefined}
                 accessibilityLabel={`Capturando ${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
               >
-                <Degradado degradado={DEGRADADOS.marca} />
                 <Text style={estilos.rotuloVisor} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
                   {rotulo}
                 </Text>
@@ -319,12 +316,6 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
     >
       {({ pressed }) => (
         <View style={estilos.contenidoTecla}>
-          {avance && (
-            <Degradado
-              degradado={pressed ? DEGRADADOS.accionPresionada : DEGRADADOS.accion}
-              radio={radioInterior(RADIOS.control, BORDE_TECLA_AVANCE)}
-            />
-          )}
           <Text
             style={[
               variante === 'digito' ? estilos.textoDigito : estilos.textoSecundario,
@@ -431,8 +422,11 @@ const estilos = StyleSheet.create({
     borderRadius: RADIOS.control,
     borderWidth: BORDES.medio,
     borderColor: COLORES.marca,
-    // Sin sombra: recorta su degradado y el borde nunca se desincroniza.
-    overflow: 'hidden',
+    // Color plano EN EL ESTILO, sin degradado: es lo que garantiza que el
+    // número blanco se lea. Con un degradado que se medía a sí mismo, al pasar
+    // de dos campos a uno el visor quedaba medio azul y medio blanco, y lo
+    // tecleado desaparecía sobre la mitad blanca (ver DEGRADADOS en tokens.ts).
+    backgroundColor: COLORES.marca,
   },
   visorConAviso: {
     borderColor: COLORES.discrepancia,
@@ -557,14 +551,16 @@ const estilos = StyleSheet.create({
     backgroundColor: COLORES.pendiente,
     borderColor: COLORES.pendiente,
   },
-  // La acción del panel: azul luminoso en degradado con su sombra azul.
+  // La acción del panel: azul señal plano con su sombra azul. El fondo va en
+  // el estilo: el texto blanco nunca depende de que un hijo lo pinte.
   teclaAvance: {
     paddingHorizontal: 0,
     borderWidth: BORDE_TECLA_AVANCE,
-    backgroundColor: 'transparent',
+    backgroundColor: COLORES.accion,
     boxShadow: SOMBRAS.accion,
   },
   teclaAvancePresionada: {
+    backgroundColor: COLORES.accionHonda,
     boxShadow: 'none',
   },
   // Se enciende en azul al presionar: se nota aun con poca luz.

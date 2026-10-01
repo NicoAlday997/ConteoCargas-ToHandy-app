@@ -40,7 +40,9 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 | POST | `/admin/usuarios` | Supervisor (admin) | Alta de usuario. Body: `{ nombreCompleto, rolApp, usuarioHandyId? }`. Devuelve PIN temporal. |
 | PATCH | `/admin/usuarios/:id` | Supervisor (admin) | Editar nombre, rol, `usuarioHandyId`, o `activo`. |
 | POST | `/admin/usuarios/:id/restablecer-pin` | Supervisor (admin) | Genera PIN temporal nuevo; marca `debeCambiarPin = true`. |
-| GET | `/admin/usuarios-handy` | Supervisor (admin) | Lista de usuarios vendedores sincronizados desde Handy, para vincular en el alta. |
+| GET | `/admin/usuarios-handy` | Supervisor (admin) | Cuentas de vendedor sincronizadas desde Handy, para vincular en el alta: `[{ idHandy, nombre, fotoUrl, activa, vinculadaA }]`, por nombre. `activa = false` si Handy ya no la lista. `vinculadaA` es `{ id, nombreCompleto }` del usuario **activo** que la ocupa, o `null` si está libre: un usuario dado de baja no la ocupa (cuando un vendedor se va, su cuenta —su ruta— pasa al usuario nuevo de quien llega). La app solo ofrece las activas y libres. |
+
+En `POST /admin/usuarios`, `usuarioHandyId` es obligatorio si `rolApp = VENDEDOR` y prohibido para cualquier otro rol (400). La respuesta `{ usuario, pinTemporal }` y la de `POST /admin/usuarios/:id/restablecer-pin` (`{ pinTemporal }`) son la **única** vez que el PIN temporal existe en claro: el servidor solo guarda su hash y la app no lo persiste. Los rechazos de `PATCH /admin/usuarios/:id` responden `409` con `mensaje` listo para mostrarse tal cual: autodesactivación, cambio del propio rol, o dejar el sistema sin supervisor activo.
 
 ### 1.2.1 Plantillas de carga
 
@@ -83,8 +85,8 @@ Días sueltos o periodos que no se trabajan (festivos, paros, clima, Navidad), e
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | `/productos?ruta=&q=` | Vendedor, Contador, Supervisor | Catálogo activo, ordenado por frecuencia de uso de la ruta indicada; `q` filtra por búsqueda de texto. |
-| POST | `/admin/sincronizacion` | Supervisor (admin) | Sincronización completa con Handy: productos y luego vendedores. Es el mismo caso de uso que corre solo cada día a las 5:00 (docs/02 §4.6). Ver detalle abajo. |
-| GET | `/admin/sincronizacion/estado` | Supervisor (admin) | Cuándo fue la última sincronización y cómo quedó el cache. Ver detalle abajo. |
+| POST | `/admin/sincronizacion` | Vendedor, Contador, Supervisor | Sincronización completa con Handy: productos y luego vendedores. Es el mismo caso de uso que corre solo cada día a las 5:00 (docs/02 §4.6). Candado global de 2 minutos (429). Ver detalle abajo. |
+| GET | `/admin/sincronizacion/estado` | Vendedor, Contador, Supervisor | Cuándo fue la última sincronización y cómo quedó el cache. Ver detalle abajo. |
 | GET | `/admin/sincronizacion/factores-pendientes` | Supervisor (admin) | Productos activos sin factor de empaque confirmado: `[{ code, nombre, familia, modalidadVenta, piezasPorPaqueteSugerido }]`. `modalidadVenta` (`COMPLETO` \| `POR_PIEZA`) es la guardada hoy, aún sin confirmar. El sugerido sale del nombre (`C/12`, `X 12`, `12 pack`) o es `null` si hay que capturarlo; solo aplica si el producto se vende por pieza (en un dulce, `c/70` NO es factor). |
 | GET | `/admin/sincronizacion/factores` | Supervisor (admin) | Todos los productos activos con su empaque actual, confirmado o no (para corregir confirmaciones equivocadas): `[{ code, nombre, familia, modalidadVenta, piezasPorPaquete, factorConfirmado, confirmadoPor, fechaConfirmacionFactor }]`. Sin confirmar, `piezasPorPaquete` es solo la propuesta; `confirmadoPor` es el nombre de quien hizo la última confirmación. |
 | GET | `/admin/sincronizacion/productos/:code/factor/cargas-en-curso` | Supervisor (admin) | `{ cargasEnCurso }`: cuántas cargas aún no enviadas a Handy (cualquier estado distinto de `ENVIADA`) tienen conteos del producto. Se consulta antes de cambiar el empaque: esos conteos se calcularon con el factor actual y no se recalculan. |
@@ -110,6 +112,25 @@ Sin body. Puede tardar varios segundos (varias páginas contra Handy). Responde 
 - Orden: primero productos, luego vendedores. Si productos falla, vendedores no corre y responde el error. Si productos pasa y vendedores falla, responde **200** con `"vendedores": null` y `"errorVendedores": "<motivo en palabras>"`.
 - Errores de Handy → **502** `{ statusCode, codigo, mensaje, detalle }`: `HANDY_NO_DISPONIBLE` (5xx, timeout o sin red: reintentar en un momento), `HANDY_TOKEN_INVALIDO` (401: no se arregla reintentando, lo resuelve el administrador en el servidor), `HANDY_RESPUESTA_INESPERADA`. `detalle` es solo para depuración y nunca contiene el token.
 
+**Quién puede sincronizar (cambio de 2026-09-30).** Los tres roles, por decisión del dueño (antes solo Supervisor). Los endpoints del factor de empaque (`factores`, `factores-pendientes`, `productos/:code/factor…`) siguen siendo **solo Supervisor**: sincronizar no desbloquea nada a vendedor ni contador (confirmar el empaque y armar la plantilla son del supervisor); el botón les sirve para saber que un producto ya llegó y a quién avisarle.
+
+**Candado de 2 minutos.** Si la última sincronización —de quien sea, incluida la automática de las 5:00, y aunque haya fallado— **empezó** hace menos de 2 minutos, responde sin llamar a Handy:
+
+```json
+HTTP/1.1 429 Too Many Requests
+Retry-After: 110
+
+{ "statusCode": 429, "codigo": "SINCRONIZACION_RECIENTE", "mensaje": "Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.", "reintentarEn": "2026-09-30T16:02:00.000Z" }
+```
+
+- Es **global**, no por usuario: lo que se protege es la API de Handy, y con once dispositivos alguien ansioso podría golpearla decenas de veces por minuto.
+- Cuenta desde el **inicio**: una sincronización en curso ya bloquea a la siguiente. Leer la última y registrar la nueva ocurre de forma atómica (`pg_advisory_xact_lock`), así que dos peticiones simultáneas no pasan las dos.
+- Un intento rechazado con 429 no se registra ni alarga el candado.
+- La corrida automática de las 5:00 no se frena por el candado, pero se registra y cuenta para él.
+- Para la app no es un error: lo muestra como aviso, sin alarma.
+
+**Bitácora.** Cada sincronización deja una fila en `registros_sincronizacion`: `origen` (`MANUAL` | `AUTOMATICA`), `usuarioAppId` (quién la pidió, del JWT; `null` en la automática), `iniciadaEn`, `terminadaEn` y `exito`.
+
 Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion/usuarios-handy`, que se retiraron: con un solo punto de entrada el botón y la corrida automática no pueden divergir.
 
 #### `GET /admin/sincronizacion/estado`
@@ -118,7 +139,7 @@ Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion
 { "ultimaSincronizacion": "2026-09-30T11:00:00.000Z", "productosActivos": 104, "vendedoresActivos": 5, "sinConfirmarEmpaque": 2 }
 ```
 
-`ultimaSincronizacion` es el máximo entre `Producto.ultimaSincronizacionLocal` y `UsuarioHandy.ultimaSincronizacion` (`null` si nunca se ha sincronizado). No hay tabla propia.
+`ultimaSincronizacion` es el máximo entre `Producto.ultimaSincronizacionLocal` y `UsuarioHandy.ultimaSincronizacion` (`null` si nunca se ha sincronizado): la última que **trajo** datos. El candado no la usa: se basa en la bitácora `registros_sincronizacion`, que también registra los intentos fallidos.
 
 ### 1.4 Cargas (inicial y recarga)
 

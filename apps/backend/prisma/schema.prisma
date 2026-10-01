@@ -175,6 +175,7 @@ model UsuarioApp {
   cambiosFechaOperativa       CambioFechaOperativa[]         @relation("CambioFechaOperativaPor")
   coloresFamiliaAsignados     ColorFamilia[]                 @relation("ColorFamiliaAsignadoPor")
   diasNoLaborablesMarcados    DiaNoLaborable[]               @relation("DiaNoLaborableCreadoPor")
+  sincronizacionesPedidas     RegistroSincronizacion[]
 
   @@index([usuarioHandyId])
   @@map("usuarios_app")
@@ -565,6 +566,31 @@ model RevisionSupervisor {
 
   @@unique([comparacionCargaId, productoCode])
   @@map("revisiones_supervisor")
+}
+
+/// Quien pidio la sincronizacion con Handy: alguien desde la app o la corrida de las 5:00.
+enum OrigenSincronizacion {
+  MANUAL
+  AUTOMATICA
+}
+
+/// Bitacora de cada sincronizacion con Handy: quien la pidio y cuando. Es
+/// tambien el candado global de 2 minutos (docs/04 §1.3): la fila se crea al
+/// EMPEZAR, asi que una corrida en curso ya bloquea a la siguiente.
+model RegistroSincronizacion {
+  id           String               @id @default(cuid())
+  origen       OrigenSincronizacion
+  /// `null` en la corrida automatica.
+  usuarioAppId String?
+  iniciadaEn   DateTime             @default(now())
+  /// `null` mientras corre (o si el proceso murio a media corrida).
+  terminadaEn  DateTime?
+  exito        Boolean?
+
+  usuarioApp UsuarioApp? @relation(fields: [usuarioAppId], references: [id])
+
+  @@index([iniciadaEn])
+  @@map("registros_sincronizacion")
 }
 
 // ---------------------------------------------------------------------------

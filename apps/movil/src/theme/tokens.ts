@@ -12,8 +12,9 @@ import type { TextStyle, ViewStyle } from 'react-native';
  *
  * CAPAS DE COLOR, CADA UNA CON SU TRABAJO.
  *   - AZUL NOCHE (`marca`): el cromo. Héroes, encabezados, el teclado del PIN,
- *     la fila que se teclea y el visor del teclado. Siempre en degradado con
- *     un halo de luz (DEGRADADOS.marca).
+ *     la fila que se teclea y el visor del teclado. En degradado con halo
+ *     (DEGRADADOS.marca) solo en el héroe y los fondos de login e inicio; en
+ *     lo demás, plano (ver la regla junto a DEGRADADOS).
  *   - AZUL SEÑAL (`accion`): lo que se toca para avanzar. Una acción principal
  *     por pantalla, la tecla de avance, lo seleccionado y la lectura de lo ya
  *     contado. Es la identidad de la app.
@@ -132,10 +133,43 @@ export const COLORES = {
 export type ClaveColor = keyof typeof COLORES;
 
 /**
- * Degradados. Dan profundidad e identidad, no decoran: solo el cromo azul
- * noche (héroes, encabezados, teclado del PIN), la acción principal y el
- * relleno del avance. Nunca en una tarjeta de contenido ni en un texto.
- * `angulo` en grados como en CSS (180 = de arriba hacia abajo).
+ * Degradados. Dan profundidad e identidad, no decoran. Nunca en una tarjeta de
+ * contenido ni en un texto. `angulo` en grados como en CSS (180 = de arriba
+ * hacia abajo).
+ *
+ * REGLA: SOLO EN SUPERFICIES GRANDES QUE NO CAMBIAN DE TAMAÑO.
+ *   Llevan degradado: el héroe del encabezado (`Encabezado`), el fondo del
+ *   login y la banda del inicio de cada rol. Nada más.
+ *   Todo control chico va en COLOR PLANO de COLORES: el botón principal
+ *   (`accion` / `accionHonda` presionado), la tecla de avance (igual), el
+ *   campo activo del teclado (`marca`), la fila que se teclea (`marca`), el
+ *   visor de lo contado (`accion`), el relleno de la barra de avance
+ *   (`accionViva`) y el Avatar (`accion`). En 54 px de alto un degradado no
+ *   se percibe, pero arrastra todo el riesgo: donde el adorno no se nota y el
+ *   riesgo sí, gana el color plano.
+ *
+ * Y SIEMPRE: todo contenedor con texto en `textoSobreColor` lleva su
+ *   `backgroundColor` sólido EN SU ESTILO, aunque además tenga degradado
+ *   encima. El degradado es decoración; el color de fondo es el que garantiza
+ *   que se lea. Nada de texto blanco cuyo fondo dependa de un hijo pintado (ni
+ *   de un velo translúcido en una pastilla).
+ *
+ * POR QUÉ EXISTE (cuatro bugs, una sola causa). `<Degradado>` medía su propio
+ * tamaño con onLayout, lo guardaba en estado de React y dibujaba el SVG con
+ * esa medida. Cada vez que el contenedor cambiaba de tamaño, el dibujo se
+ * quedaba con la medida vieja hasta el siguiente render, que llegaba tarde o
+ * no llegaba:
+ *   1. La barra de avance no crecía: se quedaba con el ancho de su primer layout.
+ *   2. Los degradados se salían por las esquinas redondeadas de su contenedor.
+ *   3. El campo activo del teclado quedaba MEDIO AZUL Y MEDIO BLANCO al pasar,
+ *      contando rápido, de un producto con dos campos (Paquetes/Sueltas) a uno
+ *      de un solo campo a todo el ancho; el número blanco se volvía INVISIBLE
+ *      sobre la mitad blanca: se tecleaba y no se veía.
+ *   4. En Diferencias, el panel del avance no pintaba su azul y el "0" blanco
+ *      de "0 de 9 resueltas" desaparecía sobre fondo claro.
+ * Arreglo: `<Degradado>` ya no se mide (SVG al 100 %, se estira en el lado
+ * nativo en el mismo cuadro), los controles chicos dejaron el degradado y los
+ * fondos sólidos van en el estilo. No reintroduzcas ninguna de las tres cosas.
  */
 export interface Degradado {
   colores: readonly string[];
@@ -145,16 +179,13 @@ export interface Degradado {
 }
 
 export const DEGRADADOS = {
-  /** Cromo azul noche: de un azul con luz arriba a la noche profunda abajo. */
+  /** Cromo azul noche: de un azul con luz arriba a la noche profunda abajo. Su color plano: `marca`. */
   marca: { colores: ['#133A9A', '#0A2463', '#061233'], paradas: [0, 0.55, 1], angulo: 165 },
-  /** Acción principal: azul brillante que baja a azul señal. */
+  /**
+   * Azul señal de la marca de la app (el logo, `MarcaApp`, un SVG de tamaño
+   * fijo sin texto). Su color plano, el del botón principal: `accion`.
+   */
   accion: { colores: ['#2B63F6', '#1446DB'], angulo: 180 },
-  /** Acción presionada: un tono más hondo. */
-  accionPresionada: { colores: ['#1446DB', '#0E3DBF'], angulo: 180 },
-  /** Relleno de la barra de avance: azul que se enciende en cian. */
-  avance: { colores: ['#3F86FF', '#7FD8FF'], angulo: 90 },
-  /** Visor de lo contado: la lectura encendida. */
-  visor: { colores: ['#2159F2', '#0E3DBF'], angulo: 180 },
 } as const satisfies Record<string, Degradado>;
 
 /** El halo de luz del cromo: un resplandor azul arriba a la derecha, como la luz sobre la báscula. */
@@ -408,9 +439,10 @@ export const BORDES = {
  * Radio del redondeo INTERIOR de una vista con borde: el borde se come su
  * grosor del radio de afuera. Lo usa lo que se dibuja dentro de un padre con
  * sombra y no puede recortarse con `overflow: 'hidden'` (mataría la sombra):
- * un <Degradado>, un destello. Con el radio de afuera tal cual, el relleno se
- * sale por las esquinas. Si el padre no tiene sombra, que recorte él
- * (`overflow: 'hidden'`) y el relleno no lleva radio.
+ * un destello. Con el radio de afuera tal cual, el relleno se sale por las
+ * esquinas. Si el padre no tiene sombra, que recorte él (`overflow: 'hidden'`)
+ * y el relleno no lleva radio. (`<Degradado>` ya no lleva radio: solo va en
+ * superficies que recortan.)
  */
 export function radioInterior(radio: number, borde: number): number {
   return Math.max(0, radio - borde);

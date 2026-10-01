@@ -1,8 +1,9 @@
 import { peticion } from './cliente';
 
 /**
- * Sincronización con Handy (docs/04 §1.3). Solo Supervisor. La app nunca habla
- * con Handy: pide al backend que sincronice y le pregunta cómo quedó.
+ * Sincronización con Handy (docs/04 §1.3). Los tres roles; con candado global
+ * de 2 minutos (429 `SINCRONIZACION_RECIENTE`). La app nunca habla con Handy:
+ * pide al backend que sincronice y le pregunta cómo quedó.
  */
 
 /** Qué cambió, no cuántos se procesaron. */

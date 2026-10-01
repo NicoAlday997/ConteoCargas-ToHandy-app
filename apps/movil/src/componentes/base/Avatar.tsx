@@ -2,8 +2,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { COLORES, DEGRADADOS, FUENTE, RADIOS } from '../../theme/tokens';
-import { Degradado } from './Degradado';
+import { COLORES, FUENTE, RADIOS } from '../../theme/tokens';
 import { iniciales } from './iniciales';
 
 interface Props {
@@ -16,8 +15,9 @@ interface Props {
 }
 
 /**
- * El gafete de una persona: un círculo en degradado azul con sus iniciales,
- * o su foto de Handy si tiene.
+ * El gafete de una persona: un círculo azul señal plano con sus iniciales,
+ * o su foto de Handy si tiene. Sin degradado: es un control chico (ver la
+ * regla junto a DEGRADADOS en tokens.ts).
  *
  * Las iniciales se ven siempre hasta que la foto termina de cargar, y vuelven
  * si la foto falla (sin señal, URL muerta): nunca un hueco ni un ícono roto,
@@ -50,7 +50,6 @@ function Contenido({ nombre, foto, tamano }: { nombre: string | null; foto: stri
     <>
       {estado !== 'lista' && (
         <View style={[StyleSheet.absoluteFill, estilos.centro]}>
-          <Degradado degradado={DEGRADADOS.accion} />
           <Text style={[estilos.iniciales, { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 }]}>{iniciales(nombre)}</Text>
         </View>
       )}
@@ -76,9 +75,11 @@ const estilos = StyleSheet.create({
   recorte: {
     overflow: 'hidden',
   },
+  // El fondo va en el estilo: las iniciales blancas nunca quedan al aire.
   centro: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORES.accion,
   },
   iniciales: {
     fontFamily: FUENTE.extraNegrita,
