@@ -1,0 +1,9 @@
+# Generado o de terceros: prettier no debe tocarlo.
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+coverage/
+package-lock.json

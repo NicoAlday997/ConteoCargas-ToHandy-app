@@ -227,10 +227,10 @@ export class UsuariosController {
     @Param('id', new ZodValidationPipe(IdUsuarioSchema)) id: string,
     @UsuarioActual() admin: UsuarioAutenticado,
   ) {
-    const resultado = await this.restablecerPinUseCase.ejecutar(
-      id,
-      admin.usuarioAppId,
-    );
+    const resultado = await this.restablecerPinUseCase.ejecutar(id, {
+      origen: 'SUPERVISOR',
+      restablecidoPor: admin.usuarioAppId,
+    });
 
     if (!resultado.exito) {
       throw new NotFoundException({

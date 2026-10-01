@@ -329,11 +329,16 @@ Notas:
 
 ## 12. Recuperación de acceso (emergencia)
 
-> **Solo cuando no hay otro supervisor disponible.** Lo normal es que un supervisor quite el bloqueo o restablezca el PIN desde la app (**Personas** → la persona → **Quitar bloqueo** o **Restablecer PIN**), y que eso quede registrado. Esto de aquí es para el caso en que el único supervisor es justamente quien está bloqueado, o no hay ninguno a la mano.
->
-> **Lo que hagas aquí no queda en el historial de la app.** La app no se entera de quién cambió la base ni por qué. Antes de empezar, anota en papel o en un mensaje para ti: fecha y hora, a quién desbloqueaste, por qué, y quién lo pidió.
+> **⚠️ Quien tenga la contraseña de Render puede restablecer el PIN de cualquiera, incluido el supervisor.** Con ella se entra a la base, y con la base se entra a la app como quien sea. Esa contraseña es el verdadero control del sistema, más que cualquier PIN. Debe vivir en un administrador de contraseñas (1Password, Bitwarden, el Llavero de iCloud) y la cuenta de Render debe tener la **verificación en dos pasos** activada (**Account Settings** → **Security**). No la compartas, no la anotes en papel y no la reutilices en ningún otro lado.
 
-No hay ninguna otra puerta de emergencia: ni PIN maestro, ni enlace por correo, ni código por SMS. Es a propósito. El único acceso de emergencia es este, por la base de datos, y lo protege la contraseña de tu cuenta de Render. (El *seed* de 3.1 no sirve para esto: solo crea un supervisor si la base no tiene ninguno.)
+> **Solo cuando no hay otro supervisor disponible.** Lo normal es que un supervisor quite el bloqueo o restablezca el PIN desde la app (**Personas** → la persona → **Quitar bloqueo** o **Restablecer PIN**), y que eso quede registrado con su nombre. Esto de aquí es para el caso en que el único supervisor es justamente quien está bloqueado o olvidó su PIN, o no hay ninguno a la mano.
+
+Hay dos casos:
+
+- **Recuerda su PIN, pero está bloqueada** por intentos fallidos → quita el bloqueo con SQL (12.1 a 12.3). **Esto no queda en el historial de la app:** antes de empezar, anota en papel o en un mensaje para ti la fecha y hora, a quién desbloqueaste, por qué y quién lo pidió.
+- **Olvidó su PIN** → restablécelo con el comando `npm run reestablecer-pin` (12.4). Quitar el bloqueo no basta, porque para entrar necesita su PIN. El comando **sí** deja un renglón en el historial, marcado como hecho por línea de comandos y con el motivo que escribas.
+
+No hay ninguna otra puerta de emergencia: ni PIN maestro, ni enlace por correo, ni código por SMS, ni un endpoint de recuperación. Es a propósito. El único acceso de emergencia es este, por la base de datos. (El *seed* de 3.1 no sirve para esto: solo crea un supervisor si la base no tiene ninguno.)
 
 ### 12.1 Conectarte a la base
 
@@ -379,22 +384,50 @@ WHERE id = 'PEGA_AQUI_EL_ID';
 
 Debe responder `UPDATE 1`. Si dice `UPDATE 0`, el id está mal copiado: no cambió nada; repite 12.2. La persona ya puede entrar con su PIN de siempre.
 
-### 12.4 Obligarla a cambiar su PIN en el siguiente ingreso
+### 12.4 Restablecer el PIN (olvidó su PIN)
 
-Úsalo si crees que alguien más vio su PIN. Al entrar, la app le pide uno nuevo antes de dejarla hacer cualquier cosa. Así no hace falta escribir un PIN (ni su hash) a mano en la base, que es fácil de hacer mal.
+El comando hace lo mismo que **Restablecer PIN** en la app: le pone un PIN temporal aleatorio de 4 dígitos, la obliga a cambiarlo al entrar y le quita el bloqueo. No necesita que el servidor esté prendido; solo la cadena de conexión de la base. Si la persona recuerda su PIN y solo está bloqueada, no uses esto: con 12.3 basta.
 
-```sql
-UPDATE usuarios_app
-SET "debeCambiarPin" = true, "intentosFallidos" = 0, "bloqueadoHasta" = NULL, "actualizadoEn" = NOW()
-WHERE id = 'PEGA_AQUI_EL_ID';
-```
+**El motivo es obligatorio** (mínimo 10 caracteres) y **queda en el historial para siempre**. Desde la línea de comandos no hay sesión: la app nunca va a saber quién corrió el comando. El renglón dirá "Restablecido por línea de comandos" y tu motivo, y **es la única traza que va a existir de esta intervención**. Escríbelo para alguien que lo lea dentro de seis meses sin saber nada: quién lo pidió, por qué y quién lo hizo. Por ejemplo: `"Irvin olvidó su PIN y es el único supervisor; lo pidió por teléfono, lo hizo Cristian"`.
 
-Debe responder `UPDATE 1`.
+Lo que necesitas una sola vez: este repositorio en tu Mac, con Node 24 (ver `docs/03-guia-entorno-desarrollo.md`) y las dependencias del backend instaladas (`npm install` dentro de `apps/backend`).
 
-> **Ojo:** para entrar y cambiarlo necesita saber su PIN **actual**. Si lo olvidó, esto no basta: la salida es que otro supervisor se lo restablezca desde la app. Mientras sea el único supervisor, la mejor prevención es dar de alta un segundo (la pantalla Personas lo recuerda).
+1. Haz los pasos **1 a 5 de 12.1**: tu IP en **Access Control** y copia la **External Database URL**. (No hace falta `psql`.)
+2. En la Terminal, entra a la carpeta del backend:
+   ```bash
+   cd ~/Developer/ConteoCargas-ToHandy-app/apps/backend
+   ```
+3. Carga la cadena de conexión sin que quede en el historial de la Terminal. Escribe esto, da Enter, pega la URL (no se ve mientras la pegas) y da Enter otra vez:
+   ```bash
+   read -s "DATABASE_URL?Pega la External Database URL y da Enter: "; export DATABASE_URL; echo
+   ```
+4. Corre el comando con el nombre completo de la persona y el motivo, los dos entre comillas:
+   ```bash
+   npm run reestablecer-pin -- --usuario "Nombre Completo" --motivo "Quién lo pidió, por qué y quién lo hizo"
+   ```
+   Antes de cambiar nada te muestra a qué base se conectó, a quién encontró (nombre y rol) y el motivo. Revisa que la **Base** termine en `render.com/handy_conteo` (si dice `localhost`, no estás en producción) y que sea la persona correcta.
+5. Para confirmar, escribe **otra vez su nombre completo** y da Enter. (Los acentos y las mayúsculas no importan; un pedazo del nombre no basta.)
+6. Te muestra el **PIN temporal** una sola vez. No se guarda en ningún lado: ni en la base (solo su hash) ni en ningún registro. Anótalo y dáselo a la persona en persona o por teléfono; no lo mandes por chat.
+7. Borra la cadena de conexión de la Terminal:
+   ```bash
+   unset DATABASE_URL
+   ```
+8. La persona entra en la app como siempre, pero con el PIN temporal. La app le pide uno nuevo antes de dejarla hacer cualquier cosa; lo escribe dos veces y listo.
+
+Si el comando se detiene, **no cambió nada**. Los avisos posibles:
+
+| Dice | Qué hacer |
+|---|---|
+| `Falta --motivo …` | El motivo falta o tiene menos de 10 caracteres. Escríbelo completo, entre comillas. |
+| `Falta DATABASE_URL …` | Repite el paso 3 en la misma ventana de la Terminal. |
+| `No hay nadie cuyo nombre contenga …` | Prueba con un pedazo del nombre, por ejemplo solo el apellido. |
+| `Hay N personas que coinciden …` | Te las lista con su `id`. Vuelve a correrlo con `--usuario "EL_ID"` de la correcta. |
+| `… esta INACTIVA …` | Esa persona está dada de baja: aunque tuviera PIN no podría entrar. |
+| `El nombre no coincide.` | Lo que escribiste para confirmar no es su nombre completo. Vuelve a correrlo. |
+| `Can't reach database server …` | Tu IP no está en **Access Control** (paso 1), o cambió: repítelo. |
 
 ### 12.5 Cerrar
 
-1. Escribe `\q` y Enter para salir de `psql`.
+1. Si usaste `psql`, escribe `\q` y Enter para salir.
 2. Vuelve a **Access Control** en Render y **borra tu IP**.
-3. Termina tu nota (12, arriba) con la hora en que acabaste.
+3. Si quitaste un bloqueo con SQL, termina tu nota (12, arriba) con la hora en que acabaste.

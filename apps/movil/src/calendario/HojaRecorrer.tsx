@@ -18,6 +18,7 @@ import {
 } from '../componentes/base';
 import { formatearDia } from '../conteo/fecha-operativa';
 import { bandaDeEstado } from '../historial/ComponentesHistorial';
+import { MOTIVO_MINIMO_CANCELACION } from '../supervisor/modelo-supervisor';
 import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   preguntaRecorrer,
@@ -28,7 +29,7 @@ import {
 } from './recorrer-cargas';
 
 /** El mismo mínimo que valida el servidor: mueve trabajo de otros. */
-const MOTIVO_MINIMO = 5;
+const MOTIVO_MINIMO = MOTIVO_MINIMO_CANCELACION;
 
 interface Props {
   /** `aaaa-mm-dd` del día que no se trabajó; `null` = cerrada. */

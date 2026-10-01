@@ -170,10 +170,18 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     datos: RegistroRestablecimientoPin,
   ): Promise<void> {
     await this.prisma.historialRestablecimientoPin.create({
-      data: {
-        usuarioAppId: datos.usuarioAppId,
-        restablecidoPor: datos.restablecidoPor,
-      },
+      data:
+        datos.origen === 'SUPERVISOR'
+          ? {
+              usuarioAppId: datos.usuarioAppId,
+              origen: 'SUPERVISOR',
+              restablecidoPor: datos.restablecidoPor,
+            }
+          : {
+              usuarioAppId: datos.usuarioAppId,
+              origen: 'LINEA_COMANDOS',
+              motivo: datos.motivo,
+            },
     });
   }
 

@@ -186,14 +186,33 @@ model UsuarioApp {
   @@map("usuarios_app")
 }
 
-model HistorialRestablecimientoPin {
-  id              String   @id @default(cuid())
-  usuarioAppId    String
-  restablecidoPor String
-  fecha           DateTime @default(now())
+/// Por donde se restablecio un PIN: un supervisor desde la app, o alguien con
+/// la cadena de conexion de la base desde `npm run reestablecer-pin`.
+enum OrigenRestablecimiento {
+  SUPERVISOR
+  LINEA_COMANDOS
+}
 
-  usuarioApp UsuarioApp @relation("RestablecimientoUsuario", fields: [usuarioAppId], references: [id])
-  admin      UsuarioApp @relation("RestablecimientoAdmin", fields: [restablecidoPor], references: [id])
+// Cada restablecimiento de PIN (RF-10). O sabemos quien, o sabemos por que:
+// SUPERVISOR lleva `restablecidoPor` (sale del JWT); LINEA_COMANDOS no tiene
+// sesion, asi que nunca sabremos quien fue y lleva en cambio `motivo`
+// (minimo 10 caracteres). Lo garantizan dos CHECK creados con SQL manual en
+// la migracion `restablecimiento_origen_motivo` (Prisma no soporta CHECK en
+// el esquema; no los dejes borrar).
+model HistorialRestablecimientoPin {
+  id              String                 @id @default(cuid())
+  usuarioAppId    String
+  origen          OrigenRestablecimiento @default(SUPERVISOR)
+  // Nulo solo cuando origen = LINEA_COMANDOS.
+  restablecidoPor String?
+  // Obligatorio solo cuando origen = LINEA_COMANDOS.
+  motivo          String?
+  fecha           DateTime               @default(now())
+
+  usuarioApp UsuarioApp  @relation("RestablecimientoUsuario", fields: [usuarioAppId], references: [id])
+  // Restrict explicito: en una relacion opcional Prisma pondria SetNull, y
+  // borrar al supervisor dejaria la fila sin quien ni por que.
+  admin      UsuarioApp? @relation("RestablecimientoAdmin", fields: [restablecidoPor], references: [id], onDelete: Restrict)
 
   @@index([usuarioAppId])
   @@map("historiales_restablecimiento_pin")
@@ -460,7 +479,7 @@ model CambioFechaOperativa {
   fechaAnterior DateTime
   fechaNueva    DateTime
   cambiadaPorId String
-  // Obligatorio (minimo 5 caracteres) si cambia un supervisor; opcional si es
+  // Obligatorio (minimo 10 caracteres) si cambia un supervisor; opcional si es
   // el vendedor. Lo exige el caso de uso, no el esquema.
   motivo        String?
   creadoEn      DateTime @default(now())

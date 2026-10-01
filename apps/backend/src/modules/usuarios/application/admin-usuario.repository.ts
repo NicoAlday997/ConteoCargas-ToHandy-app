@@ -51,11 +51,13 @@ export interface DatosActualizarUsuario {
   bloqueadoHasta?: Date | null;
 }
 
-/** Traza de un restablecimiento de PIN (RF-10). */
-export interface RegistroRestablecimientoPin {
-  usuarioAppId: string;
-  restablecidoPor: string;
-}
+/**
+ * Traza de un restablecimiento de PIN (RF-10): o quien (supervisor), o por que
+ * (linea de comandos). La base lo garantiza con dos CHECK.
+ */
+export type RegistroRestablecimientoPin =
+  | { usuarioAppId: string; origen: 'SUPERVISOR'; restablecidoPor: string }
+  | { usuarioAppId: string; origen: 'LINEA_COMANDOS'; motivo: string };
 
 /** Traza de un desbloqueo manual: a quien, quien y cuanto le faltaba. */
 export interface RegistroDesbloqueo {

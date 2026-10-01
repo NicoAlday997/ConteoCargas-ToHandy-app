@@ -101,7 +101,8 @@ Usuario_App
 - activo (nunca se elimina un usuario, solo se desactiva)
 
 Historial_Restablecimiento_PIN
-- usuario_app_id, restablecido_por (usuario_app_id del admin), fecha
+- usuario_app_id, origen (SUPERVISOR | LINEA_COMANDOS), restablecido_por (usuario_app_id del admin; nulo solo si origen = LINEA_COMANDOS), motivo (obligatorio, mínimo 10 caracteres, solo si origen = LINEA_COMANDOS), fecha
+- O se sabe quién, o se sabe por qué: lo garantizan dos CHECK de la base (SQL manual, ver migración `restablecimiento_origen_motivo`). LINEA_COMANDOS es `npm run reestablecer-pin` (docs/07 §12), que no tiene sesión.
 
 Usuario_Handy (cache local, solo lectura)
 - id_handy, nombre, rol_handy, activo, ultima_sincronizacion
@@ -163,7 +164,7 @@ Dispositivo_Push
 - **Nunca se borra un `Evento_Carga`.** Una carga abierta por error (fecha o ruta equivocada, sin querer) se marca `CANCELADA` con `cancelada_por`, `fecha_cancelacion` y `motivo_cancelacion`, y sus sesiones abiertas se cierran en la misma transacción. Las canceladas quedan fuera de las colas (verificación, conflictos, autorización) y de la búsqueda de "ya hay carga inicial de ese día", pero **sí** aparecen en el historial, que es donde se auditan.
   - Se puede cancelar desde cualquier estado previo al envío, salvo `ENVIO_INCIERTO` (no se sabe si llegó a Handy: primero se resuelve y vuelve a `LISTA_PARA_ENVIAR`).
   - **Vendedor:** solo su propia carga y solo en `BORRADOR`, motivo opcional. Una vez que finaliza, el contador puede estar contando; poder cancelar ahí sería una salida cuando el conteo no cuadra ("cancelo, vuelvo a contar y ahora sí coincidimos").
-  - **Supervisor:** cualquier carga no enviada, con motivo obligatorio (mínimo 5 caracteres).
+  - **Supervisor:** cualquier carga no enviada, con motivo obligatorio (mínimo 10 caracteres).
   - **Contador:** nunca.
   - `ENVIADA → CANCELADA` solo existe vía cancelación en Handy (`DELETE /route/{id}`, ver 4.1): si Handy la rechaza, la carga sigue `ENVIADA` y no cambia nada.
 - La unicidad "una `INICIAL` por ruta y `fecha_operativa`" es un índice único parcial (`WHERE tipo = 'INICIAL' AND estado <> 'CANCELADA'`) creado con SQL manual (migraciones `fecha_operativa` e `indice_inicial_sin_canceladas`); Prisma no soporta índices parciales en el esquema.

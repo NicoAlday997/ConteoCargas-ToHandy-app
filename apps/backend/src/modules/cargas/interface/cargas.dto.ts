@@ -154,7 +154,7 @@ export const ModificarCantidadSchema = z.object({
 /**
  * Body de `POST /eventos-carga/:id/cancelar` y `.../cancelar-en-handy`. El
  * motivo es opcional en el esquema porque para el vendedor lo es; que el
- * supervisor lo de (minimo 5 caracteres) lo decide el caso de uso, que es quien
+ * supervisor lo de (minimo 10 caracteres) lo decide el caso de uso, que es quien
  * conoce el rol.
  */
 export const CancelarCargaSchema = z.object({

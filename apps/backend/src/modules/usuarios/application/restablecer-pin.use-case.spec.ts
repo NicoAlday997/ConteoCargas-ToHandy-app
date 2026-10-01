@@ -10,6 +10,7 @@ import type {
   UsuarioAdmin,
 } from './admin-usuario.repository';
 import {
+  type AutorRestablecimiento,
   RestablecerPinUseCase,
   type ResultadoRestablecerPin,
 } from './restablecer-pin.use-case';
@@ -130,6 +131,11 @@ function exigirExito(
   return resultado;
 }
 
+const SUPERVISOR_1: AutorRestablecimiento = {
+  origen: 'SUPERVISOR',
+  restablecidoPor: 'admin-1',
+};
+
 describe('RestablecerPinUseCase', () => {
   let repo: FakeAdminUsuarioRepository;
   let hasher: FakeHasher;
@@ -142,7 +148,7 @@ describe('RestablecerPinUseCase', () => {
   });
 
   it('1. devuelve USUARIO_NO_ENCONTRADO si el usuario no existe y no toca nada', async () => {
-    const resultado = await useCase.ejecutar('desconocido', 'admin-1');
+    const resultado = await useCase.ejecutar('desconocido', SUPERVISOR_1);
 
     expect(resultado).toEqual({
       exito: false,
@@ -156,7 +162,7 @@ describe('RestablecerPinUseCase', () => {
   it('2. en un restablecimiento exitoso devuelve un PIN temporal de 4 digitos', async () => {
     repo.sembrar(crearUsuario());
 
-    const resultado = exigirExito(await useCase.ejecutar('u-1', 'admin-1'));
+    const resultado = exigirExito(await useCase.ejecutar('u-1', SUPERVISOR_1));
 
     expect(resultado.pinTemporal).toMatch(/^\d{4}$/);
   });
@@ -164,7 +170,7 @@ describe('RestablecerPinUseCase', () => {
   it('3. persiste solo el hash del PIN nuevo, fuerza debeCambiarPin y levanta el bloqueo', async () => {
     repo.sembrar(crearUsuario({ debeCambiarPin: false }));
 
-    const resultado = exigirExito(await useCase.ejecutar('u-1', 'admin-1'));
+    const resultado = exigirExito(await useCase.ejecutar('u-1', SUPERVISOR_1));
 
     expect(hasher.hashInvocaciones).toEqual([resultado.pinTemporal]);
     expect(repo.actualizaciones).toEqual([
@@ -184,10 +190,58 @@ describe('RestablecerPinUseCase', () => {
   it('4. deja traza del restablecimiento con el usuario afectado y quien lo ejecuto (RF-10)', async () => {
     repo.sembrar(crearUsuario());
 
-    await useCase.ejecutar('u-1', 'admin-99');
+    await useCase.ejecutar('u-1', {
+      origen: 'SUPERVISOR',
+      restablecidoPor: 'admin-99',
+    });
 
     expect(repo.restablecimientos).toEqual([
-      { usuarioAppId: 'u-1', restablecidoPor: 'admin-99' },
+      { usuarioAppId: 'u-1', origen: 'SUPERVISOR', restablecidoPor: 'admin-99' },
     ]);
+  });
+
+  describe('por linea de comandos (sin sesion: o quien, o por que)', () => {
+    it('5. deja traza con origen LINEA_COMANDOS y el motivo limpio, sin autor', async () => {
+      repo.sembrar(crearUsuario());
+
+      const resultado = exigirExito(
+        await useCase.ejecutar('u-1', {
+          origen: 'LINEA_COMANDOS',
+          motivo: '  Unico supervisor olvido su PIN  ',
+        }),
+      );
+
+      expect(resultado.pinTemporal).toMatch(/^\d{4}$/);
+      expect(repo.actualizaciones[0]?.datos).toEqual({
+        pinHash: `HASH:${resultado.pinTemporal}`,
+        debeCambiarPin: true,
+        intentosFallidos: 0,
+        bloqueadoHasta: null,
+      });
+      expect(repo.restablecimientos).toEqual([
+        {
+          usuarioAppId: 'u-1',
+          origen: 'LINEA_COMANDOS',
+          motivo: 'Unico supervisor olvido su PIN',
+        },
+      ]);
+    });
+
+    it.each(['', '    ', 'olvido', '  abcdefghi  '])(
+      '6. sin motivo de al menos 10 caracteres (%p) no toca nada',
+      async (motivo) => {
+        repo.sembrar(crearUsuario());
+
+        const resultado = await useCase.ejecutar('u-1', {
+          origen: 'LINEA_COMANDOS',
+          motivo,
+        });
+
+        expect(resultado).toEqual({ exito: false, motivo: 'MOTIVO_REQUERIDO' });
+        expect(repo.actualizaciones).toHaveLength(0);
+        expect(repo.restablecimientos).toHaveLength(0);
+        expect(hasher.hashInvocaciones).toHaveLength(0);
+      },
+    );
   });
 });

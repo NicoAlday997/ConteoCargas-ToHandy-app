@@ -30,17 +30,11 @@ import type { CargaRepository, EventoCarga } from './carga.repository';
  */
 
 /**
- * Largo minimo del motivo cuando un supervisor cancela, cancela en Handy o
- * cambia la fecha de trabajo ajeno. Igual que la app: con cinco letras cabe
- * «error», que no explica nada en el historial.
+ * Largo minimo del motivo cuando un supervisor cancela, cancela en Handy,
+ * cambia la fecha de trabajo ajeno o recorre las cargas de un dia. Igual que
+ * la app: con cinco letras cabe «error», que no explica nada en el historial.
  */
 export const MOTIVO_MINIMO_SUPERVISOR = 10;
-
-/**
- * Largo minimo del motivo al recorrer todas las cargas de un dia. Se queda en
- * 5 porque la hoja de recorrer de la app pide 5; si se sube, subir los dos.
- */
-export const MOTIVO_MINIMO_RECORRER = 5;
 
 /** Datos que el controlador extrae del request y del JWT. */
 export interface EntradaCancelarCarga {

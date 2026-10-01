@@ -168,8 +168,8 @@ export function nombresDeProductos(codes: readonly string[], carga: CargaDetalle
 // ---------------------------------------------------------------------------
 
 /**
- * Cancelar (o mover de día) trabajo ajeno exige decir por qué, y que se
- * entienda después en el historial. Más exigente que el servidor (5): con
+ * Cancelar, mover de día o recorrer trabajo ajeno exige decir por qué, y que
+ * se entienda después en el historial. El mismo mínimo que el servidor: con
  * cinco letras cabe «error», que no explica nada.
  */
 export const MOTIVO_MINIMO_CANCELACION = 10;

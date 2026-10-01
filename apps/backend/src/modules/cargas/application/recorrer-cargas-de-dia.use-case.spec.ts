@@ -326,9 +326,9 @@ describe('RecorrerCargasDeDiaUseCase', () => {
     });
   });
 
-  it('motivo obligatorio de al menos 5 caracteres', async () => {
+  it('motivo obligatorio de al menos 10 caracteres', async () => {
     tabla.sembrar({ id: 'ev-1', rutaId: 'ruta-1' });
-    for (const motivo of ['', '   ', 'frio']) {
+    for (const motivo of ['', '   ', 'frio', 'nevo mal', '  abcdefghi  ']) {
       const resultado = await useCase.ejecutar(entrada({ motivo }), AHORA);
       expect(resultado).toEqual({ exito: false, motivo: 'MOTIVO_REQUERIDO' });
     }
