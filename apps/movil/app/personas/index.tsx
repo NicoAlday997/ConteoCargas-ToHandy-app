@@ -15,15 +15,26 @@ import {
   NotaEncabezado,
   Pulsable,
   Seccion,
+  Tarjeta,
   TarjetaEsqueleto,
 } from '../../src/componentes/base';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import { AltaPersona } from '../../src/personas/AltaPersona';
 import { DetallePersona } from '../../src/personas/DetallePersona';
-import { agruparPersonas, detalleGrupo, normalizarPersonas, type Persona } from '../../src/personas/modelo-personas';
+import {
+  agruparPersonas,
+  AVISO_UN_SOLO_SUPERVISOR,
+  bloqueoVigente,
+  detalleGrupo,
+  hayUnSoloSupervisor,
+  normalizarPersonas,
+  textoBloqueo,
+  type Persona,
+} from '../../src/personas/modelo-personas';
 import { sesionVencida } from '../../src/plantillas/ComponentesPlantillas';
+import { useAhora } from '../../src/supervisor/ComponentesSupervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ELEVACION, ESPACIADO, OPACIDAD, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import { COLORES, ELEVACION, ESPACIADO, FUENTE, OPACIDAD, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
 
 /**
  * Personas (solo Supervisor): quién usa la app. Dar de alta a alguien nuevo,
@@ -89,6 +100,8 @@ function Lista() {
   const [creando, setCreando] = useState(false);
   const [abiertaId, setAbiertaId] = useState<string | null>(null);
   const [refrescando, setRefrescando] = useState(false);
+  // Los minutos de bloqueo bajan solos, y el que vence se apaga sin refrescar.
+  const ahora = useAhora();
 
   const vencida = [consulta.error, cuentas.error].some((e) => e instanceof ErrorApi && e.estado === 401);
   useEffect(() => {
@@ -142,6 +155,12 @@ function Lista() {
   return (
     <Pantalla>
       <ScrollView contentContainerStyle={estilos.contenido} refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}>
+        {/* Informa, no bloquea nada: arriba para que se vea cada vez que se entra. */}
+        {hayUnSoloSupervisor(personas) && (
+          <Tarjeta tintada="discrepancia" elevacion={0} compacta>
+            <Text style={estilos.aviso}>{AVISO_UN_SOLO_SUPERVISOR}</Text>
+          </Tarjeta>
+        )}
         <Boton texto="Dar de alta a alguien" onPress={() => setCreando(true)} accessibilityHint="Nombre, rol y, si es vendedor, su cuenta de Handy" />
         {grupos.length === 0 ? (
           <EstadoVacio icono="personas" titulo="Todavía no hay nadie" detalle="Da de alta a la primera persona." enLinea />
@@ -150,7 +169,7 @@ function Lista() {
             <Seccion key={g.rol} texto={g.titulo} detalle={detalleGrupo(g.personas)}>
               <View style={estilos.tarjeta}>
                 {g.personas.map((p) => (
-                  <RenglonPersona key={p.id} persona={p} onPress={() => setAbiertaId(p.id)} />
+                  <RenglonPersona key={p.id} persona={p} ahora={ahora} onPress={() => setAbiertaId(p.id)} />
                 ))}
               </View>
             </Seccion>
@@ -158,19 +177,21 @@ function Lista() {
         )}
       </ScrollView>
       <AltaPersona visible={creando} onCerrar={() => setCreando(false)} />
-      <DetallePersona persona={abierta} cuentaHandy={cuentaAbierta} onCerrar={() => setAbiertaId(null)} />
+      <DetallePersona persona={abierta} cuentaHandy={cuentaAbierta} ahora={ahora} onCerrar={() => setAbiertaId(null)} />
     </Pantalla>
   );
 }
 
-function RenglonPersona({ persona, onPress }: { persona: Persona; onPress: () => void }) {
+function RenglonPersona({ persona, ahora, onPress }: { persona: Persona; ahora: number; onPress: () => void }) {
   const rol = ETIQUETAS_ROL[persona.rol];
   const pinPendiente = persona.activo && persona.pinPendiente;
+  const bloqueo = bloqueoVigente(persona, ahora);
+  const bloqueado = bloqueo ? textoBloqueo(bloqueo, ahora) : null;
   return (
     <Pulsable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[persona.nombre, rol, persona.activo ? 'activo' : 'inactivo', pinPendiente ? 'aún no cambia su PIN temporal' : null]
+      accessibilityLabel={[persona.nombre, rol, bloqueado ?? (persona.activo ? 'activo' : 'inactivo'), pinPendiente ? 'aún no cambia su PIN temporal' : null]
         .filter(Boolean)
         .join(', ')}
       accessibilityHint="Abrir su ficha"
@@ -186,7 +207,14 @@ function RenglonPersona({ persona, onPress }: { persona: Persona; onPress: () =>
           <Text style={estilos.detalle}>{pinPendiente ? `${rol} · Aún no pone su PIN` : rol}</Text>
         </View>
       </View>
-      {persona.activo ? <Etiqueta texto="Activo" tono="capturado" /> : <Etiqueta texto="Inactivo" tono="referencia" />}
+      {/* Bloqueado manda sobre Activo: es lo que el supervisor tiene que resolver. */}
+      {bloqueado ? (
+        <Etiqueta texto={bloqueado} tono="error" />
+      ) : persona.activo ? (
+        <Etiqueta texto="Activo" tono="capturado" />
+      ) : (
+        <Etiqueta texto="Inactivo" tono="referencia" />
+      )}
     </Pulsable>
   );
 }
@@ -239,5 +267,10 @@ const estilos = StyleSheet.create({
   detalle: {
     ...TIPOGRAFIA.micro,
     color: COLORES.textoTerciario,
+  },
+  aviso: {
+    ...TIPOGRAFIA.cuerpo,
+    fontFamily: FUENTE.semiNegrita,
+    color: COLORES.discrepanciaTexto,
   },
 });

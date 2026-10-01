@@ -22,8 +22,10 @@ import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AdminUsuarioRepository } from '../application/admin-usuario.repository';
 import { CrearUsuarioUseCase } from '../application/crear-usuario.use-case';
 import type { RechazoCuentaHandyYaAsignada } from '../application/cuenta-handy-libre';
+import { DesbloquearUsuarioUseCase } from '../application/desbloquear-usuario.use-case';
 import { EditarUsuarioUseCase } from '../application/editar-usuario.use-case';
 import { RestablecerPinUseCase } from '../application/restablecer-pin.use-case';
+import { vistaUsuarioAdmin } from '../application/vista-usuario-admin';
 import {
   CrearUsuarioSchema,
   EditarUsuarioSchema,
@@ -64,12 +66,19 @@ export class UsuariosController {
     private readonly crearUsuarioUseCase: CrearUsuarioUseCase,
     private readonly restablecerPinUseCase: RestablecerPinUseCase,
     private readonly editarUsuarioUseCase: EditarUsuarioUseCase,
+    private readonly desbloquearUsuarioUseCase: DesbloquearUsuarioUseCase,
   ) {}
 
-  /** Lista completa, incluidos los inactivos (RF-11). Nunca expone `pinHash`. */
+  /**
+   * Lista completa, incluidos los inactivos (RF-11). Nunca expone `pinHash`.
+   * Cada usuario trae `bloqueo` (`null` o `{ desde, hasta }`) para que el
+   * panel muestre quien esta bloqueado ahora mismo.
+   */
   @Get()
   async listar() {
-    return this.adminUsuarioRepository.listarTodos();
+    const ahora = new Date();
+    const usuarios = await this.adminUsuarioRepository.listarTodos();
+    return usuarios.map((u) => vistaUsuarioAdmin(u, ahora));
   }
 
   /**
@@ -105,7 +114,10 @@ export class UsuariosController {
       }
     }
 
-    return { usuario: resultado.usuario, pinTemporal: resultado.pinTemporal };
+    return {
+      usuario: vistaUsuarioAdmin(resultado.usuario, new Date()),
+      pinTemporal: resultado.pinTemporal,
+    };
   }
 
   /**
@@ -148,8 +160,9 @@ export class UsuariosController {
         case 'ULTIMO_SUPERVISOR':
           throw new ConflictException({
             statusCode: 409,
+            codigo: 'ULTIMO_SUPERVISOR',
             mensaje:
-              'Esta accion dejaria el sistema sin ningun supervisor activo. Asigna el rol de supervisor a otra persona antes de continuar.',
+              'Es la única persona activa con rol de supervisor: sin ella nadie podría autorizar cargas ni administrar personas. Da de alta o asigna otro supervisor antes de continuar.',
           });
         case 'CUENTA_HANDY_YA_ASIGNADA':
           throw cuentaHandyYaAsignada(resultado);
@@ -157,7 +170,50 @@ export class UsuariosController {
     }
 
     // Convencion docs/04 §1.7: toda mutacion devuelve el recurso completo.
-    return resultado.usuario;
+    return vistaUsuarioAdmin(resultado.usuario, new Date());
+  }
+
+  /**
+   * Quita al instante el bloqueo por intentos fallidos (RF-03) y deja traza
+   * de quien y cuando. `desbloqueadoPor` sale del JWT, nunca del body.
+   */
+  @Post(':id/desbloquear')
+  @HttpCode(200)
+  async desbloquear(
+    @Param('id', new ZodValidationPipe(IdUsuarioSchema)) id: string,
+    @UsuarioActual() admin: UsuarioAutenticado,
+  ) {
+    const ahora = new Date();
+    const resultado = await this.desbloquearUsuarioUseCase.ejecutar(
+      id,
+      admin.usuarioAppId,
+      ahora,
+    );
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'USUARIO_NO_ENCONTRADO':
+          throw new NotFoundException({
+            statusCode: 404,
+            mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
+          });
+        case 'AUTODESBLOQUEO_PROHIBIDO':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: resultado.motivo,
+            mensaje:
+              'No puedes quitarte tu propio bloqueo. Lo tiene que hacer otro supervisor; si no hay ninguno disponible, sigue el procedimiento de recuperación de acceso.',
+          });
+        case 'NO_BLOQUEADO':
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: resultado.motivo,
+            mensaje: 'Esta persona ya no está bloqueada.',
+          });
+      }
+    }
+
+    return vistaUsuarioAdmin(resultado.usuario, ahora);
   }
 
   /**

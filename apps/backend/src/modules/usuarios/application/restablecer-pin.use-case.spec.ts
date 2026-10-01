@@ -5,6 +5,7 @@ import type {
   AdminUsuarioRepository,
   DatosActualizarUsuario,
   DatosCrearUsuario,
+  RegistroDesbloqueo,
   RegistroRestablecimientoPin,
   UsuarioAdmin,
 } from './admin-usuario.repository';
@@ -72,6 +73,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     this.restablecimientos.push(datos);
   }
 
+  registrarDesbloqueo(_datos: RegistroDesbloqueo): Promise<void> {
+    throw new Error('no usado en estas pruebas');
+  }
+
   contarSupervisoresActivos(): Promise<number> {
     throw new Error('no usado en estas pruebas');
   }
@@ -108,6 +113,7 @@ function crearUsuario(overrides: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
     activo: true,
     debeCambiarPin: false,
     fechaUltimoCambioPin: new Date('2026-08-01T12:00:00-06:00'),
+    bloqueadoHasta: null,
     creadoEn: new Date('2026-07-01T12:00:00-06:00'),
     actualizadoEn: new Date('2026-08-01T12:00:00-06:00'),
     ...overrides,

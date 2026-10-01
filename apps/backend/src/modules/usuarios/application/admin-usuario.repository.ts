@@ -14,6 +14,12 @@ export interface UsuarioAdmin {
   activo: boolean;
   debeCambiarPin: boolean;
   fechaUltimoCambioPin: Date | null;
+  /**
+   * Fin del bloqueo por intentos fallidos (RF-03), tal como esta en la base:
+   * puede ser una fecha ya pasada. Para saber si sigue bloqueado, ver
+   * `bloqueoVigente`.
+   */
+  bloqueadoHasta: Date | null;
   creadoEn: Date;
   actualizadoEn: Date;
 }
@@ -51,6 +57,13 @@ export interface RegistroRestablecimientoPin {
   restablecidoPor: string;
 }
 
+/** Traza de un desbloqueo manual: a quien, quien y cuanto le faltaba. */
+export interface RegistroDesbloqueo {
+  usuarioAppId: string;
+  desbloqueadoPor: string;
+  bloqueadoHasta: Date;
+}
+
 /** El usuario activo que ya ocupa una cuenta de Handy. */
 export interface OcupanteCuentaHandy {
   id: string;
@@ -71,6 +84,20 @@ export class CuentaHandyYaAsignadaError extends Error {
 }
 
 /**
+ * Lo lanza `actualizar` cuando, despues de aplicar el cambio y dentro de la
+ * misma transaccion, ya no queda ningun supervisor activo; el cambio se
+ * revierte. Los casos de uso validan antes con `politica-supervisores`, asi
+ * que esto solo pasa en una carrera (dos supervisores desactivandose el uno
+ * al otro al mismo tiempo); se traduce al mismo rechazo `ULTIMO_SUPERVISOR`.
+ */
+export class SinSupervisorActivoError extends Error {
+  constructor() {
+    super('El cambio dejaria el sistema sin ningun supervisor activo');
+    this.name = 'SinSupervisorActivoError';
+  }
+}
+
+/**
  * Puerto: que se necesita de la persistencia para administrar usuarios, no como
  * se hace. El adaptador Prisma vive en infrastructure/.
  */
@@ -78,6 +105,11 @@ export abstract class AdminUsuarioRepository {
   /** Lista completa, INCLUIDOS los inactivos (RF-11 preserva la trazabilidad). */
   abstract listarTodos(): Promise<UsuarioAdmin[]>;
   abstract crear(datos: DatosCrearUsuario): Promise<UsuarioAdmin>;
+  /**
+   * Si `datos` toca `activo` o `rolApp`, el adaptador revisa el estado
+   * DESPUES del cambio y lanza `SinSupervisorActivoError` (sin aplicar nada)
+   * si no queda ningun supervisor activo.
+   */
   abstract actualizar(
     id: string,
     datos: DatosActualizarUsuario,
@@ -86,6 +118,7 @@ export abstract class AdminUsuarioRepository {
   abstract registrarRestablecimientoPin(
     datos: RegistroRestablecimientoPin,
   ): Promise<void>;
+  abstract registrarDesbloqueo(datos: RegistroDesbloqueo): Promise<void>;
   /**
    * Cuenta los `UsuarioApp` con `rolApp = SUPERVISOR` y `activo = true`. Lo usa
    * `politica-supervisores.ts` para impedir que una desactivacion o un cambio

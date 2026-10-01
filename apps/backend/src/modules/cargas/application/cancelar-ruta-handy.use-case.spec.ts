@@ -267,7 +267,7 @@ describe('CancelarRutaHandyUseCase', () => {
     expect(handy.llamadas).toEqual([]);
   });
 
-  it.each([undefined, '', 'abcd'])(
+  it.each([undefined, '', 'abcd', 'abcdefghi'])(
     'MOTIVO_REQUERIDO con motivo %p, ANTES de tocar Handy',
     async (motivo) => {
       cargas.sembrarEvento(nuevoEvento());

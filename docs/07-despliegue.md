@@ -324,3 +324,77 @@ Notas:
 - [ ] Primer export descargado y guardado fuera de Render (6.2)
 - [ ] La app móvil apunta a Render y permite iniciar sesión (8)
 - [ ] Tu IP quitada de Access Control (7.1)
+
+---
+
+## 12. Recuperación de acceso (emergencia)
+
+> **Solo cuando no hay otro supervisor disponible.** Lo normal es que un supervisor quite el bloqueo o restablezca el PIN desde la app (**Personas** → la persona → **Quitar bloqueo** o **Restablecer PIN**), y que eso quede registrado. Esto de aquí es para el caso en que el único supervisor es justamente quien está bloqueado, o no hay ninguno a la mano.
+>
+> **Lo que hagas aquí no queda en el historial de la app.** La app no se entera de quién cambió la base ni por qué. Antes de empezar, anota en papel o en un mensaje para ti: fecha y hora, a quién desbloqueaste, por qué, y quién lo pidió.
+
+No hay ninguna otra puerta de emergencia: ni PIN maestro, ni enlace por correo, ni código por SMS. Es a propósito. El único acceso de emergencia es este, por la base de datos, y lo protege la contraseña de tu cuenta de Render. (El *seed* de 3.1 no sirve para esto: solo crea un supervisor si la base no tiene ninguno.)
+
+### 12.1 Conectarte a la base
+
+Es lo mismo de la sección 7.1, paso a paso:
+
+1. En tu Mac abre la app **Terminal**.
+2. Averigua tu IP pública:
+   ```bash
+   curl -s https://api.ipify.org
+   ```
+   Te responde algo como `201.141.10.20`.
+3. Entra a <https://dashboard.render.com> con tu cuenta. Abre la base **`conteo-cargas-db`** (no el servicio `conteo-cargas-backend`).
+4. En la pestaña **Info**, baja a **Access Control** → **Add source** → pega tu IP con `/32` al final (por ejemplo `201.141.10.20/32`) → guarda.
+5. En la misma pestaña **Info**, en **Connections**, copia **External Database URL**. Empieza con `postgresql://` y termina en `.render.com/handy_conteo`. Trae la contraseña adentro: no la pegues en chats ni la guardes en notas.
+6. En la Terminal escribe `psql "` (con la comilla), pega la URL, cierra la comilla y da Enter:
+   ```bash
+   psql "postgresql://…render.com/handy_conteo"
+   ```
+   Si dice `command not found: psql`, instálalo una vez con `brew install libpq && brew link --force libpq` y vuelve a intentar.
+7. Sabes que entraste cuando ves `handy_conteo=>`. Ahí pegas los comandos de abajo, uno a la vez, cada uno con su `;` al final.
+
+### 12.2 Buscar a la persona
+
+Cambia `ana` por una parte del nombre. No importan mayúsculas, pero los acentos sí: si no aparece, prueba con un pedazo sin acento (`%rami%` en vez de `%ramírez%`).
+
+```sql
+SELECT id, "nombreCompleto", "rolApp", activo, "intentosFallidos", "bloqueadoHasta"
+FROM usuarios_app
+WHERE "nombreCompleto" ILIKE '%ana%';
+```
+
+Te muestra una tabla. Busca el renglón correcto y copia su `id` (algo como `cmg1x2y3z0000abcd1234efgh`). Si `bloqueadoHasta` tiene una fecha, está bloqueada (las fechas salen en hora UTC: 6 horas más que la de México).
+
+Todo lo que sigue usa el **id**, no el nombre: así es imposible tocar a dos personas por error.
+
+### 12.3 Quitar el bloqueo
+
+```sql
+UPDATE usuarios_app
+SET "intentosFallidos" = 0, "bloqueadoHasta" = NULL, "actualizadoEn" = NOW()
+WHERE id = 'PEGA_AQUI_EL_ID';
+```
+
+Debe responder `UPDATE 1`. Si dice `UPDATE 0`, el id está mal copiado: no cambió nada; repite 12.2. La persona ya puede entrar con su PIN de siempre.
+
+### 12.4 Obligarla a cambiar su PIN en el siguiente ingreso
+
+Úsalo si crees que alguien más vio su PIN. Al entrar, la app le pide uno nuevo antes de dejarla hacer cualquier cosa. Así no hace falta escribir un PIN (ni su hash) a mano en la base, que es fácil de hacer mal.
+
+```sql
+UPDATE usuarios_app
+SET "debeCambiarPin" = true, "intentosFallidos" = 0, "bloqueadoHasta" = NULL, "actualizadoEn" = NOW()
+WHERE id = 'PEGA_AQUI_EL_ID';
+```
+
+Debe responder `UPDATE 1`.
+
+> **Ojo:** para entrar y cambiarlo necesita saber su PIN **actual**. Si lo olvidó, esto no basta: la salida es que otro supervisor se lo restablezca desde la app. Mientras sea el único supervisor, la mejor prevención es dar de alta un segundo (la pantalla Personas lo recuerda).
+
+### 12.5 Cerrar
+
+1. Escribe `\q` y Enter para salir de `psql`.
+2. Vuelve a **Access Control** en Render y **borra tu IP**.
+3. Termina tu nota (12, arriba) con la hora en que acabaste.

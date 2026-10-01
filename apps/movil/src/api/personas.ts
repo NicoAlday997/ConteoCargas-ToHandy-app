@@ -15,6 +15,8 @@ export interface UsuarioAdminApi {
   usuarioHandyId: number | null;
   activo: boolean | null;
   debeCambiarPin: boolean | null;
+  /** Bloqueo por intentos fallidos vigente al leer (ISO 8601); `null` si puede entrar. */
+  bloqueo?: { desde: string | null; hasta: string | null } | null;
 }
 
 /** Fila de `GET /admin/usuarios-handy`. */
@@ -56,6 +58,11 @@ export function crearPersona(datos: DatosAlta): Promise<{ usuario: UsuarioAdminA
 
 export function editarPersona(id: string, datos: DatosEdicion): Promise<UsuarioAdminApi | null> {
   return peticion(`${base}/${encodeURIComponent(id)}`, { method: 'PATCH', cuerpo: datos });
+}
+
+/** Quita el bloqueo por intentos fallidos sin tocar el PIN. Nunca el propio. */
+export function desbloquearPersona(id: string): Promise<UsuarioAdminApi | null> {
+  return peticion(`${base}/${encodeURIComponent(id)}/desbloquear`, { method: 'POST' });
 }
 
 export function restablecerPinPersona(id: string): Promise<{ pinTemporal: string | null } | null> {

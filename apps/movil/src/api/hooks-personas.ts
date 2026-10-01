@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorApi } from './cliente';
 import {
   crearPersona,
+  desbloquearPersona,
   editarPersona,
   listarCuentasHandy,
   listarPersonas,
@@ -23,10 +24,23 @@ function reintentar(fallos: number, error: unknown): boolean {
   return fallos < 2;
 }
 
-/** `habilitado` = solo con sesión de supervisor. */
-export function usePersonas(habilitado: boolean) {
-  return useQuery({ queryKey: clavesPersonas.lista, queryFn: listarPersonas, enabled: habilitado, staleTime: 0, retry: reintentar });
+/**
+ * `habilitado` = solo con sesión de supervisor. `vigilar`: se vuelve a leer
+ * cada minuto, para que el aviso de bloqueos del inicio aparezca solo, sin
+ * que el supervisor tenga que salir y volver.
+ */
+export function usePersonas(habilitado: boolean, vigilar = false) {
+  return useQuery({
+    queryKey: clavesPersonas.lista,
+    queryFn: listarPersonas,
+    enabled: habilitado,
+    staleTime: 0,
+    retry: reintentar,
+    refetchInterval: vigilar ? INTERVALO_VIGILANCIA_MS : false,
+  });
 }
+
+const INTERVALO_VIGILANCIA_MS = 60_000;
 
 export function useCuentasHandy(habilitado: boolean) {
   return useQuery({
@@ -66,4 +80,13 @@ export function useEditarPersona() {
 export function useRestablecerPin() {
   const refrescar = useRefrescarPersonas();
   return useMutation({ mutationFn: (id: string) => restablecerPinPersona(id), onSuccess: refrescar });
+}
+
+/**
+ * Un 409 (`NO_BLOQUEADO`: venció mientras tanto) también refresca: la lista
+ * tiene que dejar de mostrarlo bloqueado.
+ */
+export function useDesbloquearPersona() {
+  const refrescar = useRefrescarPersonas();
+  return useMutation({ mutationFn: (id: string) => desbloquearPersona(id), onSettled: refrescar });
 }

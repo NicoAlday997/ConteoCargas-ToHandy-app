@@ -164,6 +164,8 @@ model UsuarioApp {
   sesionesConteo              SesionConteo[]
   restablecimientosRecibidos  HistorialRestablecimientoPin[] @relation("RestablecimientoUsuario")
   restablecimientosRealizados HistorialRestablecimientoPin[] @relation("RestablecimientoAdmin")
+  desbloqueosRecibidos        HistorialDesbloqueo[]          @relation("DesbloqueoUsuario")
+  desbloqueosRealizados       HistorialDesbloqueo[]          @relation("DesbloqueoAdmin")
   discrepanciasCapturadas     DiscrepanciaResuelta[]         @relation("DiscrepanciaCapturadaPor")
   discrepanciasConfirmadas    DiscrepanciaResuelta[]         @relation("DiscrepanciaConfirmadaPor")
   comparacionesComoVendedor   ComparacionCarga[]             @relation("ComparacionVendedor")
@@ -195,6 +197,22 @@ model HistorialRestablecimientoPin {
 
   @@index([usuarioAppId])
   @@map("historiales_restablecimiento_pin")
+}
+
+// Quien quito a mano el bloqueo por intentos fallidos de quien, y cuando.
+// `bloqueadoHasta` es el que tenia en ese momento (cuanto le faltaba).
+model HistorialDesbloqueo {
+  id              String   @id @default(cuid())
+  usuarioAppId    String
+  desbloqueadoPor String
+  bloqueadoHasta  DateTime
+  fecha           DateTime @default(now())
+
+  usuarioApp UsuarioApp @relation("DesbloqueoUsuario", fields: [usuarioAppId], references: [id])
+  admin      UsuarioApp @relation("DesbloqueoAdmin", fields: [desbloqueadoPor], references: [id])
+
+  @@index([usuarioAppId])
+  @@map("historiales_desbloqueo")
 }
 
 // ---------------------------------------------------------------------------
@@ -642,10 +660,10 @@ model DispositivoPush {
 // (domain/calendario-laboral). Lo administra el supervisor (docs/01 §6).
 model DiaNoLaborable {
   // Normalizada al inicio del dia de negocio (America/Mexico_City).
-  fecha       DateTime  @id
+  fecha       DateTime @id
   motivo      String
   creadoPorId String?
-  creadoEn    DateTime  @default(now())
+  creadoEn    DateTime @default(now())
 
   creadoPor UsuarioApp? @relation("DiaNoLaborableCreadoPor", fields: [creadoPorId], references: [id])
 

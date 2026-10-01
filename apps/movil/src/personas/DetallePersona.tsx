@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ETIQUETAS_ROL } from '../api/auth';
-import { ErrorRed } from '../api/cliente';
-import { useEditarPersona, useRestablecerPin } from '../api/hooks-personas';
+import { ErrorApi, ErrorRed } from '../api/cliente';
+import { useDesbloquearPersona, useEditarPersona, useRestablecerPin } from '../api/hooks-personas';
+import { obtenerUsuarioSesion } from '../api/sesion';
 import {
   AccionesHoja,
   Avatar,
@@ -21,7 +22,7 @@ import {
   type Dato,
 } from '../componentes/base';
 import { ANCHO_MAXIMO_LISTA, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
-import { CONSEJO_DESACTIVAR, type Persona } from './modelo-personas';
+import { bloqueoVigente, CONSEJO_DESACTIVAR, textoBloqueo, textoInicioBloqueo, type Persona } from './modelo-personas';
 import { PantallaPin, type PinTemporal } from './PantallaPin';
 
 const TAMANO_AVATAR = 64;
@@ -30,7 +31,8 @@ type Confirmacion = 'desactivar' | 'restablecer' | null;
 
 /**
  * Ficha de una persona: cambiar su nombre, darla de baja o de alta otra vez,
- * y restablecer su PIN. El rol y la cuenta de Handy no se cambian aquí.
+ * restablecer su PIN y, si está bloqueada por intentos fallidos, quitarle el
+ * bloqueo. El rol y la cuenta de Handy no se cambian aquí.
  *
  * Los rechazos del servidor (no puedes desactivarte a ti mismo, no puedes
  * dejar el sistema sin supervisor…) se muestran tal cual: ya vienen escritos
@@ -39,11 +41,14 @@ type Confirmacion = 'desactivar' | 'restablecer' | null;
 export function DetallePersona({
   persona,
   cuentaHandy,
+  ahora,
   onCerrar,
 }: {
   persona: Persona | null;
   /** Nombre de la cuenta de Handy vinculada (solo vendedores). */
   cuentaHandy: string | null;
+  /** La hora que avanza sola en la lista: el bloqueo se ve bajar y vencer. */
+  ahora: number;
   onCerrar: () => void;
 }) {
   const [pin, setPin] = useState<PinTemporal | null>(null);
@@ -58,43 +63,67 @@ export function DetallePersona({
         (pin ? (
           <PantallaPin datos={pin} onListo={() => setPin(null)} />
         ) : (
-          <Ficha key={persona.id} persona={persona} cuentaHandy={cuentaHandy} onCerrar={terminar} onPin={setPin} />
+          <Ficha key={persona.id} persona={persona} cuentaHandy={cuentaHandy} ahora={ahora} onCerrar={terminar} onPin={setPin} />
         ))}
     </PantallaModal>
   );
 }
 
+/** El id de quien tiene la sesión: su propio bloqueo no lo puede quitar. */
+function useMiId(): string | null {
+  const [id, setId] = useState<string | null>(null);
+  useEffect(() => {
+    let vigente = true;
+    void obtenerUsuarioSesion().then((sesion) => {
+      if (vigente) setId(sesion?.id ?? null);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, []);
+  return id;
+}
+
 function Ficha({
   persona,
   cuentaHandy,
+  ahora,
   onCerrar,
   onPin,
 }: {
   persona: Persona;
   cuentaHandy: string | null;
+  ahora: number;
   onCerrar: () => void;
   onPin: (pin: PinTemporal) => void;
 }) {
   const editar = useEditarPersona();
   const restablecer = useRestablecerPin();
+  const desbloquear = useDesbloquearPersona();
+  const miId = useMiId();
   const [nombre, setNombre] = useState(persona.nombre);
   const [confirmar, setConfirmar] = useState<Confirmacion>(null);
+  const bloqueo = bloqueoVigente(persona, ahora);
+  const esYo = miId !== null && miId === persona.id;
 
   const nombreNuevo = nombre.trim();
   const cambioNombre = nombreNuevo.length > 0 && nombreNuevo !== persona.nombre;
 
   const guardarNombre = () => {
     restablecer.reset();
+    desbloquear.reset();
     editar.mutate({ id: persona.id, datos: { nombreCompleto: nombreNuevo } });
   };
 
   const cambiarActivo = (activo: boolean) => {
     restablecer.reset();
+    desbloquear.reset();
     editar.mutate({ id: persona.id, datos: { activo } }, { onSettled: () => setConfirmar(null) });
   };
 
   const restablecerPin = () => {
     editar.reset();
+    desbloquear.reset();
     restablecer.mutate(persona.id, {
       onSuccess: (respuesta) => {
         setConfirmar(null);
@@ -104,7 +133,17 @@ function Ficha({
     });
   };
 
-  const fallo = editar.error ?? restablecer.error;
+  const quitarBloqueo = () => {
+    editar.reset();
+    restablecer.reset();
+    desbloquear.mutate(persona.id);
+  };
+
+  // Si el bloqueo venció justo antes del toque, el resultado es el mismo: ya puede entrar.
+  const yaNoEstaba = desbloquear.error instanceof ErrorApi && desbloquear.error.estado === 409;
+  const desbloqueado = desbloquear.isSuccess || yaNoEstaba;
+
+  const fallo = editar.error ?? restablecer.error ?? (yaNoEstaba ? null : desbloquear.error);
   const textoFallo = fallo
     ? fallo instanceof ErrorRed
       ? 'Sin conexión: no se guardó nada. Revisa la señal y vuelve a intentarlo.'
@@ -119,6 +158,10 @@ function Ficha({
   ];
   if (persona.rol === 'VENDEDOR') datos.push({ rotulo: 'Cuenta de Handy', valor: cuentaHandy, ausente: 'Sin cuenta' });
   if (persona.activo && persona.pinPendiente) datos.push({ rotulo: 'PIN', valor: 'Temporal: aún no pone el suyo' });
+  if (bloqueo) {
+    datos.push({ rotulo: 'Acceso', valor: textoBloqueo(bloqueo, ahora) });
+    datos.push({ rotulo: 'Se bloqueó', valor: textoInicioBloqueo(bloqueo, ahora) });
+  }
 
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
@@ -153,8 +196,36 @@ function Ficha({
           />
         </View>
 
+        {/* Solo mientras está bloqueado: un botón que no hace nada no se muestra. */}
+        {bloqueo && (
+          <View style={estilos.bloque}>
+            <TituloSeccion texto="Bloqueo" nivel="grupo" detalle="Se equivocó de PIN 5 veces seguidas." />
+            {esYo ? (
+              <Text style={estilos.nota}>
+                No puedes quitarte tu propio bloqueo: lo tiene que hacer otro supervisor. Si no hay ninguno, sigue el procedimiento de recuperación de acceso.
+              </Text>
+            ) : (
+              <>
+                <Text style={estilos.nota}>Si recuerda su PIN, quítale el bloqueo y que vuelva a intentar. Si no lo recuerda, mejor restablécelo: eso también quita el bloqueo.</Text>
+                <Boton
+                  texto="Quitar bloqueo"
+                  onPress={quitarBloqueo}
+                  deshabilitado={editar.isPending || restablecer.isPending}
+                  cargando={desbloquear.isPending}
+                  textoCargando="Quitando…"
+                />
+              </>
+            )}
+          </View>
+        )}
+        {!bloqueo && desbloqueado && (
+          <Tarjeta tintada="capturado" elevacion={0} compacta>
+            <Text style={estilos.listo}>Listo: ya puede entrar con su PIN.</Text>
+          </Tarjeta>
+        )}
+
         <View style={estilos.bloque}>
-          <TituloSeccion texto="PIN" nivel="grupo" detalle="Si lo olvidó o se bloqueó por intentos fallidos." />
+          <TituloSeccion texto="PIN" nivel="grupo" detalle="Si lo olvidó. También le quita el bloqueo por intentos fallidos." />
           <Boton
             texto="Restablecer PIN"
             variante="secundario"
@@ -258,5 +329,10 @@ const estilos = StyleSheet.create({
   nota: {
     ...TIPOGRAFIA.micro,
     color: COLORES.textoSecundario,
+  },
+  listo: {
+    ...TIPOGRAFIA.cuerpo,
+    fontFamily: FUENTE.semiNegrita,
+    color: COLORES.capturadoTexto,
   },
 });

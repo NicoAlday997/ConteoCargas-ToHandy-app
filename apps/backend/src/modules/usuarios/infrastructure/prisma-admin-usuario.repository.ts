@@ -5,9 +5,11 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   AdminUsuarioRepository,
   CuentaHandyYaAsignadaError,
+  SinSupervisorActivoError,
   type DatosActualizarUsuario,
   type DatosCrearUsuario,
   type OcupanteCuentaHandy,
+  type RegistroDesbloqueo,
   type RegistroRestablecimientoPin,
   type UsuarioAdmin,
 } from '../application/admin-usuario.repository';
@@ -17,6 +19,13 @@ import {
  * `20261001120000_cuenta_handy_unica_activa` (Prisma no los modela).
  */
 const INDICE_CUENTA_HANDY_ACTIVA = 'usuarios_app_usuarioHandyId_activo_key';
+
+/**
+ * Llave del candado de Postgres que serializa los cambios de `activo` y
+ * `rolApp`. Un numero fijo y propio de este uso: solo tiene que no chocar con
+ * otro `pg_advisory_*` (sincronizacion usa 4_726_301).
+ */
+const LLAVE_CANDADO_SUPERVISORES = 4_726_302;
 
 /**
  * `true` si el error de Prisma es la violacion de ese indice. Prisma reporta
@@ -60,6 +69,7 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     activo: true,
     debeCambiarPin: true,
     fechaUltimoCambioPin: true,
+    bloqueadoHasta: true,
     creadoEn: true,
     actualizadoEn: true,
   } satisfies Prisma.UsuarioAppSelect;
@@ -95,29 +105,55 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     return this.aDominio(registro);
   }
 
+  /**
+   * Si el cambio toca `activo` o `rolApp`, va en una transaccion que primero
+   * toma `pg_advisory_xact_lock`, aplica el cambio y cuenta los supervisores
+   * activos que QUEDAN: si son cero, lanza y la transaccion se revierte. El
+   * candado hace que dos cambios simultaneos se vean: sin el, dos
+   * supervisores desactivandose el uno al otro contarian cada uno al otro
+   * todavia activo y los dos pasarian.
+   */
   async actualizar(
     id: string,
     datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin> {
+    const data = {
+      // `undefined` = Prisma no toca el campo; asi un PATCH parcial solo
+      // modifica lo que realmente vino en el body.
+      nombreCompleto: datos.nombreCompleto,
+      rolApp: datos.rolApp,
+      usuarioHandyId: datos.usuarioHandyId,
+      activo: datos.activo,
+      debeCambiarPin: datos.debeCambiarPin,
+      pinHash: datos.pinHash,
+      intentosFallidos: datos.intentosFallidos,
+      bloqueadoHasta: datos.bloqueadoHasta,
+    } satisfies Prisma.UsuarioAppUncheckedUpdateInput;
+    const tocaSupervisores =
+      datos.activo !== undefined || datos.rolApp !== undefined;
+
     const registro = await this.traducirCuentaOcupada(
       datos.usuarioHandyId ?? null,
       () =>
-        this.prisma.usuarioApp.update({
-          where: { id },
-          data: {
-            // `undefined` = Prisma no toca el campo; asi un PATCH parcial solo
-            // modifica lo que realmente vino en el body.
-            nombreCompleto: datos.nombreCompleto,
-            rolApp: datos.rolApp,
-            usuarioHandyId: datos.usuarioHandyId,
-            activo: datos.activo,
-            debeCambiarPin: datos.debeCambiarPin,
-            pinHash: datos.pinHash,
-            intentosFallidos: datos.intentosFallidos,
-            bloqueadoHasta: datos.bloqueadoHasta,
-          },
-          select: PrismaAdminUsuarioRepository.SELECT,
-        }),
+        tocaSupervisores
+          ? this.prisma.$transaction(async (tx) => {
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LLAVE_CANDADO_SUPERVISORES})`;
+              const actualizado = await tx.usuarioApp.update({
+                where: { id },
+                data,
+                select: PrismaAdminUsuarioRepository.SELECT,
+              });
+              const quedan = await tx.usuarioApp.count({
+                where: { rolApp: 'SUPERVISOR', activo: true },
+              });
+              if (quedan === 0) throw new SinSupervisorActivoError();
+              return actualizado;
+            })
+          : this.prisma.usuarioApp.update({
+              where: { id },
+              data,
+              select: PrismaAdminUsuarioRepository.SELECT,
+            }),
     );
     return this.aDominio(registro);
   }
@@ -137,6 +173,16 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
       data: {
         usuarioAppId: datos.usuarioAppId,
         restablecidoPor: datos.restablecidoPor,
+      },
+    });
+  }
+
+  async registrarDesbloqueo(datos: RegistroDesbloqueo): Promise<void> {
+    await this.prisma.historialDesbloqueo.create({
+      data: {
+        usuarioAppId: datos.usuarioAppId,
+        desbloqueadoPor: datos.desbloqueadoPor,
+        bloqueadoHasta: datos.bloqueadoHasta,
       },
     });
   }
@@ -192,6 +238,7 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     activo: boolean;
     debeCambiarPin: boolean;
     fechaUltimoCambioPin: Date | null;
+    bloqueadoHasta: Date | null;
     creadoEn: Date;
     actualizadoEn: Date;
   }): UsuarioAdmin {

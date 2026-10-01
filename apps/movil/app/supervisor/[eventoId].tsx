@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -7,7 +7,7 @@ import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useDetalleHistorial } from '../../src/api/hooks-historial';
 import { useAutorizarCarga, useRechazarProductos } from '../../src/api/hooks-supervisor';
 import { cerrarSesion } from '../../src/api/sesion';
-import { Boton, CampoTexto, Chevron, EstadoVacio, Glifo, Palomita, Pulsable, Tarjeta } from '../../src/componentes/base';
+import { Boton, CampoTexto, Chevron, EstadoVacio, Glifo, Palomita, Pulsable, Tarjeta, useListaConFormulario } from '../../src/componentes/base';
 import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
 import { estadoDeCarga, type CargaDetalle, type ProductoDetalle } from '../../src/historial/modelo-historial';
 import {
@@ -163,6 +163,11 @@ function Revision({ eventoId }: { eventoId: string }) {
   /** Lo que coincidió se colapsa: el camino feliz no pide leer, pero está a un toque. */
   const [verTodo, setVerTodo] = useState(false);
   const lista = useRef<SectionList<ProductoDetalle, SeccionFamilia>>(null);
+  // Al rechazar, el motivo de cada producto abre el teclado sobre la barra
+  // fija: la lista crece abajo lo que tapa el teclado y el renglón enfocado
+  // sube arriba de él. La barra no se mueve.
+  const desplazarA = useCallback((y: number) => lista.current?.getScrollResponder()?.scrollTo({ y, animated: true }), []);
+  const teclado = useListaConFormulario(desplazarA);
 
   const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
@@ -336,55 +341,61 @@ function Revision({ eventoId }: { eventoId: string }) {
 
   return (
     <Pantalla {...titulosCarga(carga)}>
-      <SectionList<ProductoDetalle, SeccionFamilia>
-        ref={lista}
-        style={estilosVistaCarga.lista}
-        contentContainerStyle={estilosVistaCarga.contenidoLista}
-        sections={seccionesVisibles}
-        extraData={{ modo, seleccion, intentoRechazo, verTodo }}
-        keyExtractor={(p) => p.code}
-        stickySectionHeadersEnabled
-        initialNumToRender={30}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
-        ListHeaderComponent={
-          <>
-            {/* Lo primero que se lee, antes de las cantidades: para qué día sale. */}
-            <BloqueSalida carga={carga} onSesionVencida={sesionVencida} />
-            <ResumenCarga carga={carga} />
-            <PanelEstado carga={carga} modo={modo} envio={envio} />
-            {modo === 'revisar' && carga.totalProductos > 0 && (
+      <teclado.Proveedor value={teclado.mostrarCampo}>
+        <View style={estilos.marcoLista} {...teclado.propsMarco}>
+          <SectionList<ProductoDetalle, SeccionFamilia>
+            ref={lista}
+            {...teclado.propsLista}
+            style={estilosVistaCarga.lista}
+            contentContainerStyle={[
+              estilosVistaCarga.contenidoLista,
+              teclado.rellenoInferior > 0 && { paddingBottom: ESPACIADO.xxxl + teclado.rellenoInferior },
+            ]}
+            sections={seccionesVisibles}
+            extraData={{ modo, seleccion, intentoRechazo, verTodo }}
+            keyExtractor={(p) => p.code}
+            stickySectionHeadersEnabled
+            initialNumToRender={30}
+            refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+            ListHeaderComponent={
               <>
-                <Lectura carga={carga} />
-                {conCambio.map((p) => (
-                  <TarjetaProducto key={p.code} producto={p} />
-                ))}
-                {nCoincidieron > 0 && (
-                  <AlternarLista
-                    abierta={!colapsado}
-                    cantidad={nCoincidieron}
-                    todos={conCambio.length === 0}
-                    onPress={() => setVerTodo((v) => !v)}
-                  />
+                {/* Lo primero que se lee, antes de las cantidades: para qué día sale. */}
+                <BloqueSalida carga={carga} onSesionVencida={sesionVencida} />
+                <ResumenCarga carga={carga} />
+                <PanelEstado carga={carga} modo={modo} envio={envio} />
+                {modo === 'revisar' && carga.totalProductos > 0 && (
+                  <>
+                    <Lectura carga={carga} />
+                    {conCambio.map((p) => (
+                      <TarjetaProducto key={p.code} producto={p} />
+                    ))}
+                    {nCoincidieron > 0 && (
+                      <AlternarLista
+                        abierta={!colapsado}
+                        cantidad={nCoincidieron}
+                        todos={conCambio.length === 0}
+                        onPress={() => setVerTodo((v) => !v)}
+                      />
+                    )}
+                  </>
                 )}
               </>
-            )}
-          </>
-        }
-        ListEmptyComponent={
-          carga.totalProductos === 0 ? (
-            <EstadoVacio
-              icono="caja"
-              titulo="Sin productos"
-              detalle="Esta carga no trae productos contados. Actualiza; si sigue así, no la autorices y revisa con quien la contó."
-              enLinea
-            />
-          ) : null
-        }
-        renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
-        renderItem={({ item }) => renderProducto(item)}
-      />
+            }
+            ListEmptyComponent={
+              carga.totalProductos === 0 ? (
+                <EstadoVacio
+                  icono="caja"
+                  titulo="Sin productos"
+                  detalle="Esta carga no trae productos contados. Actualiza; si sigue así, no la autorices y revisa con quien la contó."
+                  enLinea
+                />
+              ) : null
+            }
+            renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
+            renderItem={({ item }) => renderProducto(item)}
+          />
+        </View>
+      </teclado.Proveedor>
 
       <BarraAcciones>
         {/* Lo que se espera va solo y grande; lo demás, tras «Más acciones». */}
@@ -745,6 +756,9 @@ function Pantalla({ titulo, subtitulo, children }: { titulo: string; subtitulo?:
 const TAMANO_CAJA = ESPACIADO.xl + ESPACIADO.xs;
 
 const estilos = StyleSheet.create({
+  marcoLista: {
+    flex: 1,
+  },
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondo,

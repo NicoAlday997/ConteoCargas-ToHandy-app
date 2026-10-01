@@ -286,8 +286,8 @@ describe('CancelarCargaUseCase', () => {
       },
     );
 
-    it.each([undefined, '', '    ', 'abcd', '  ab  '])(
-      'MOTIVO_REQUERIDO con motivo %p (minimo 5 caracteres)',
+    it.each([undefined, '', '    ', 'abcd', '  ab  ', 'abcdefghi', '  abcdefghi  '])(
+      'MOTIVO_REQUERIDO con motivo %p (minimo 10 caracteres)',
       async (motivo) => {
         cargas.sembrarEvento(nuevoEvento({ estado: 'EN_ESPERA_AUTORIZACION' }));
 
@@ -298,10 +298,10 @@ describe('CancelarCargaUseCase', () => {
       },
     );
 
-    it('acepta un motivo de exactamente 5 caracteres', async () => {
+    it('acepta un motivo de exactamente 10 caracteres', async () => {
       cargas.sembrarEvento(nuevoEvento());
 
-      const resultado = await useCase.ejecutar(comoSupervisor({ motivo: 'abcde' }), AHORA);
+      const resultado = await useCase.ejecutar(comoSupervisor({ motivo: 'abcdefghij' }), AHORA);
 
       expect(resultado.exito).toBe(true);
     });

@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type KeyboardEvent,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -35,7 +36,7 @@ const RELLENO_TECLADO = ESPACIADO.xl;
 /** Si el teclado ya estaba abierto (se pasó de un campo a otro) no llega `keyboardDidShow`. */
 const ESPERA_SIN_EVENTO_MS = 350;
 
-type Medible = Pick<View, 'measureLayout'>;
+type Medible = Pick<View, 'measureLayout' | 'measureInWindow'>;
 
 /** Lo usa `CampoTexto`: al recibir el foco, pide que lo desplacen a la vista. */
 const ContextoFormulario = createContext<((campo: Medible) => void) | null>(null);
@@ -74,6 +75,52 @@ function useDesfaseEnPantalla() {
     });
   }, []);
   return { marco, desfase, medir };
+}
+
+/**
+ * Dónde empieza el teclado en la pantalla (`screenY`, lo mismo que compara
+ * `KeyboardAvoidingView`); `null` con el teclado cerrado. Junto con el desfase
+ * de arriba da cuánto tapa el teclado de una vista: su borde de abajo en la
+ * pantalla menos este tope.
+ */
+function useTopeTeclado() {
+  const [tope, setTope] = useState<number | null>(null);
+  useEffect(() => {
+    const mostrar = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => setTope(e.endCoordinates.screenY));
+    const ocultar = Keyboard.addListener('keyboardDidHide', () => setTope(null));
+    return () => {
+      mostrar.remove();
+      ocultar.remove();
+    };
+  }, []);
+  return tope;
+}
+
+/**
+ * Lo que recibe `CampoTexto` al enfocarse: espera a que el teclado llegue (y
+ * a que el relleno ya se haya aplicado) y entonces llama a `llevarALaVista`.
+ * Si el teclado ya estaba abierto (de un campo a otro) no hay evento, y basta
+ * un momento.
+ */
+function useMostrarCampoTrasTeclado(llevarALaVista: (campo: Medible) => void) {
+  return useCallback(
+    (campo: Medible) => {
+      let hecho = false;
+      let sub: { remove: () => void } | null = null;
+      let reserva: ReturnType<typeof setTimeout> | null = null;
+      const medirAhora = () => {
+        if (hecho) return;
+        hecho = true;
+        sub?.remove();
+        if (reserva !== null) clearTimeout(reserva);
+        // Un cuadro más: el relleno del teclado se aplica en el mismo evento.
+        requestAnimationFrame(() => llevarALaVista(campo));
+      };
+      sub = Keyboard.addListener('keyboardDidShow', medirAhora);
+      reserva = setTimeout(medirAhora, Keyboard.isVisible() ? 0 : ESPERA_SIN_EVENTO_MS);
+    },
+    [llevarALaVista],
+  );
 }
 
 interface Props {
@@ -143,26 +190,8 @@ export function PantallaConFormulario({
     );
   }, []);
 
-  // Se mide cuando el teclado ya llegó y la vista ya se encogió; si ya estaba
-  // abierto (de un campo a otro) no hay evento, y basta un momento.
-  const mostrarCampo = useCallback(
-    (campo: Medible) => {
-      let hecho = false;
-      let sub: { remove: () => void } | null = null;
-      let reserva: ReturnType<typeof setTimeout> | null = null;
-      const medirAhora = () => {
-        if (hecho) return;
-        hecho = true;
-        sub?.remove();
-        if (reserva !== null) clearTimeout(reserva);
-        // Un cuadro más: el relleno del teclado se aplica en el mismo evento.
-        requestAnimationFrame(() => llevarALaVista(campo));
-      };
-      sub = Keyboard.addListener('keyboardDidShow', medirAhora);
-      reserva = setTimeout(medirAhora, Keyboard.isVisible() ? 0 : ESPERA_SIN_EVENTO_MS);
-    },
-    [llevarALaVista],
-  );
+  // Se mide cuando el teclado ya llegó y la vista ya se encogió.
+  const mostrarCampo = useMostrarCampoTrasTeclado(llevarALaVista);
 
   const alDesplazar = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     posicion.current = e.nativeEvent.contentOffset.y;
@@ -207,6 +236,75 @@ export function PantallaConFormulario({
       )}
     </ContextoFormulario.Provider>
   );
+}
+
+/**
+ * Lo mismo que `PantallaConFormulario`, para una lista larga (FlatList o
+ * SectionList) con campos dentro y una barra de acciones fija abajo que NO
+ * debe moverse. En vez de encoger la vista, la lista crece su relleno de abajo
+ * en lo que el teclado le tapa mientras está abierto (así hasta el último
+ * renglón se alcanza sin tocar la barra), y el campo que recibe el foco se
+ * desplaza arriba del teclado. Misma medición que la pantalla: el desfase en
+ * pantalla y el tope del teclado, como `KeyboardAvoidingView`.
+ *
+ * Uso: `propsMarco` en una `View` con `flex: 1` que envuelve la lista,
+ * `propsLista` y `rellenoInferior` en la lista, y `Proveedor` alrededor para
+ * que `CampoTexto` pida que lo muestren.
+ */
+export function useListaConFormulario(desplazarA: (y: number) => void) {
+  const { marco, desfase, medir } = useDesfaseEnPantalla();
+  const [alto, setAlto] = useState(0);
+  const tope = useTopeTeclado();
+  const posicion = useRef(0);
+  // El campo se mide fuera del render: lee lo último por referencia.
+  const medidas = useRef({ desfase, alto, tope });
+  useEffect(() => {
+    medidas.current = { desfase, alto, tope };
+  }, [desfase, alto, tope]);
+
+  const tapado = tope === null ? 0 : Math.max(0, desfase + alto - tope);
+
+  const llevarALaVista = useCallback(
+    (campo: Medible) => {
+      campo.measureInWindow((_x, y, _ancho, altoCampo) => {
+        if (!Number.isFinite(y)) return;
+        const m = medidas.current;
+        const bordeLista = m.desfase + m.alto;
+        const visibleArriba = m.desfase + MARGEN_FOCO;
+        const visibleAbajo = Math.min(bordeLista, m.tope ?? bordeLista) - MARGEN_FOCO;
+        const abajo = y + altoCampo;
+        // Si no cabe completo, manda que se vea el principio (donde está el cursor al entrar).
+        if (abajo > visibleAbajo) desplazarA(posicion.current + Math.min(abajo - visibleAbajo, y - visibleArriba));
+        else if (y < visibleArriba) desplazarA(Math.max(0, posicion.current - (visibleArriba - y)));
+      });
+    },
+    [desplazarA],
+  );
+  const mostrarCampo = useMostrarCampoTrasTeclado(llevarALaVista);
+
+  return {
+    Proveedor: ContextoFormulario.Provider,
+    mostrarCampo,
+    /** Súmalo al `paddingBottom` del contenido de la lista. */
+    rellenoInferior: tapado > 0 ? tapado + RELLENO_TECLADO : 0,
+    propsMarco: {
+      ref: marco,
+      onLayout: (e: LayoutChangeEvent) => {
+        setAlto(e.nativeEvent.layout.height);
+        medir();
+      },
+    },
+    propsLista: {
+      onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        posicion.current = e.nativeEvent.contentOffset.y;
+      },
+      scrollEventThrottle: 32,
+      keyboardShouldPersistTaps: 'handled' as const,
+      keyboardDismissMode: 'none' as const,
+      // El relleno ya descuenta el teclado: iOS no debe sumarlo otra vez.
+      automaticallyAdjustKeyboardInsets: false,
+    },
+  };
 }
 
 const estilos = StyleSheet.create({

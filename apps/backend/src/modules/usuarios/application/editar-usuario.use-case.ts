@@ -7,6 +7,7 @@ import {
 } from '../domain/politica-supervisores';
 import {
   AdminUsuarioRepository,
+  SinSupervisorActivoError,
   type UsuarioAdmin,
 } from './admin-usuario.repository';
 import {
@@ -109,13 +110,23 @@ export class EditarUsuarioUseCase {
       if (rechazo !== null) return rechazo;
     }
 
-    const actualizado = await escribirOCuentaOcupada(
-      this.usuarios,
-      cuentaFinal,
-      id,
-      () => this.usuarios.actualizar(id, datos),
-    );
-    if ('motivo' in actualizado) return actualizado;
-    return { exito: true, usuario: actualizado };
+    // Lo de arriba da el mensaje; la garantia es `actualizar`, que revisa el
+    // estado DESPUES del cambio en la misma transaccion (dos supervisores
+    // desactivandose el uno al otro a la vez pasarian los dos la validacion).
+    try {
+      const actualizado = await escribirOCuentaOcupada(
+        this.usuarios,
+        cuentaFinal,
+        id,
+        () => this.usuarios.actualizar(id, datos),
+      );
+      if ('motivo' in actualizado) return actualizado;
+      return { exito: true, usuario: actualizado };
+    } catch (error) {
+      if (error instanceof SinSupervisorActivoError) {
+        return { exito: false, motivo: 'ULTIMO_SUPERVISOR' };
+      }
+      throw error;
+    }
   }
 }

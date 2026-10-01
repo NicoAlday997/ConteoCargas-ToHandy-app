@@ -6,6 +6,7 @@ import { Argon2HasherAdapter } from '../auth/infrastructure/argon2-hasher.adapte
 import { AdminUsuarioRepository } from './application/admin-usuario.repository';
 import { CuentaHandyRepository } from './application/cuenta-handy.repository';
 import { CrearUsuarioUseCase } from './application/crear-usuario.use-case';
+import { DesbloquearUsuarioUseCase } from './application/desbloquear-usuario.use-case';
 import { EditarUsuarioUseCase } from './application/editar-usuario.use-case';
 import { RestablecerPinUseCase } from './application/restablecer-pin.use-case';
 import { PrismaAdminUsuarioRepository } from './infrastructure/prisma-admin-usuario.repository';
@@ -42,6 +43,12 @@ import { UsuariosController } from './interface/usuarios.controller';
       provide: EditarUsuarioUseCase,
       useFactory: (usuarios: AdminUsuarioRepository) =>
         new EditarUsuarioUseCase(usuarios),
+      inject: [AdminUsuarioRepository],
+    },
+    {
+      provide: DesbloquearUsuarioUseCase,
+      useFactory: (usuarios: AdminUsuarioRepository) =>
+        new DesbloquearUsuarioUseCase(usuarios),
       inject: [AdminUsuarioRepository],
     },
   ],

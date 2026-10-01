@@ -15,7 +15,7 @@ import { Roles } from '../../../shared/auth/roles.decorator';
 import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
-import { MOTIVO_MINIMO_SUPERVISOR } from '../application/cancelar-carga.use-case';
+import { MOTIVO_MINIMO_RECORRER } from '../application/cancelar-carga.use-case';
 import { RecorrerCargasDeDiaUseCase } from '../application/recorrer-cargas-de-dia.use-case';
 import { SinDiasHabilesError } from '../domain/calendario-laboral';
 import { aRespuestaCargaDelDia } from './carga-del-dia.respuesta';
@@ -73,7 +73,7 @@ export class AdminCargasController {
           throw new BadRequestException({
             statusCode: 400,
             codigo: 'MOTIVO_REQUERIDO',
-            mensaje: `Escribe por qué recorres las cargas (mínimo ${MOTIVO_MINIMO_SUPERVISOR} caracteres).`,
+            mensaje: `Escribe por qué recorres las cargas (mínimo ${MOTIVO_MINIMO_RECORRER} caracteres).`,
           });
         case 'FECHA_DESTINO_INVALIDA':
           throw new BadRequestException({

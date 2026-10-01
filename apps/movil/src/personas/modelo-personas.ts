@@ -1,5 +1,6 @@
 import type { RolApp } from '../api/auth';
 import type { CuentaHandyApi, UsuarioAdminApi } from '../api/personas';
+import { diaNegocio, formatearDia, horaNegocio } from '../conteo/fecha-operativa.ts';
 
 /**
  * Reglas y textos de la pantalla de Personas. Puro (sin React) para poder
@@ -16,6 +17,17 @@ export interface Persona {
   fotoUrl: string | null;
   /** Aún no cambia su PIN temporal: no ha entrado nunca, o se le restableció. */
   pinPendiente: boolean;
+  /**
+   * Bloqueado por intentos fallidos de PIN, según el servidor al leer la
+   * lista. Puede vencer mientras la pantalla está abierta: para mostrarlo,
+   * pasar siempre por `bloqueoVigente` con la hora actual.
+   */
+  bloqueo: Bloqueo | null;
+}
+
+export interface Bloqueo {
+  desde: Date;
+  hasta: Date;
 }
 
 export interface GrupoPersonas {
@@ -53,10 +65,81 @@ export function normalizarPersonas(usuarios: UsuarioAdminApi[] | null, cuentas: 
         usuarioHandyId,
         fotoUrl: usuarioHandyId !== null ? (fotos.get(usuarioHandyId) ?? null) : null,
         pinPendiente: u.debeCambiarPin === true,
+        bloqueo: leerBloqueo(u.bloqueo),
       },
     ];
   });
 }
+
+function leerBloqueo(api: UsuarioAdminApi['bloqueo']): Bloqueo | null {
+  if (!api?.desde || !api.hasta) return null;
+  const desde = new Date(api.desde);
+  const hasta = new Date(api.hasta);
+  if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) return null;
+  return { desde, hasta };
+}
+
+// ---------------------------------------------------------------------------
+// Bloqueo por intentos fallidos
+// ---------------------------------------------------------------------------
+
+/** El bloqueo de la persona si sigue corriendo a esta hora; `null` si ya puede entrar. */
+export function bloqueoVigente(persona: Persona, ahora: number): Bloqueo | null {
+  if (!persona.activo || !persona.bloqueo) return null;
+  return persona.bloqueo.hasta.getTime() > ahora ? persona.bloqueo : null;
+}
+
+/** Minutos que le faltan, redondeados hacia arriba: con 20 segundos dice «1 min», nunca «0 min». */
+export function minutosRestantes(bloqueo: Bloqueo, ahora: number): number {
+  return Math.max(1, Math.ceil((bloqueo.hasta.getTime() - ahora) / 60_000));
+}
+
+/** «Bloqueado · 12 min». */
+export function textoBloqueo(bloqueo: Bloqueo, ahora: number): string {
+  return `Bloqueado · ${minutosRestantes(bloqueo, ahora)} min`;
+}
+
+/** «Hoy, 05:57» o «Jueves 24 de septiembre, 23:58»: cuándo se bloqueó, en la hora del negocio. */
+export function textoInicioBloqueo(bloqueo: Bloqueo, ahora: number): string {
+  const dia = diaNegocio(bloqueo.desde);
+  const cuando = dia === diaNegocio(new Date(ahora)) ? 'Hoy' : formatearDia(dia);
+  return `${cuando}, ${horaNegocio(bloqueo.desde)}`;
+}
+
+/** Quiénes están bloqueados a esta hora, el que más le falta primero. */
+export function personasBloqueadas(personas: readonly Persona[], ahora: number): Persona[] {
+  return personas
+    .filter((p) => bloqueoVigente(p, ahora) !== null)
+    .sort((a, b) => (b.bloqueo?.hasta.getTime() ?? 0) - (a.bloqueo?.hasta.getTime() ?? 0));
+}
+
+/** El aviso del inicio: «Carlos Ruiz no puede entrar» o «3 personas no pueden entrar». */
+export function tituloAvisoBloqueados(bloqueadas: readonly Persona[]): string {
+  if (bloqueadas.length === 1) return `${bloqueadas[0].nombre} no puede entrar`;
+  return `${bloqueadas.length} personas no pueden entrar`;
+}
+
+/** Debajo del título: por qué, cuánto falta (si es una) y qué hacer. */
+export function detalleAvisoBloqueados(bloqueadas: readonly Persona[], ahora: number): string {
+  const primera = bloqueadas[0];
+  const bloqueo = primera ? bloqueoVigente(primera, ahora) : null;
+  if (bloqueadas.length === 1 && bloqueo) {
+    return `Se equivocó de PIN 5 veces: le faltan ${minutosRestantes(bloqueo, ahora)} min de bloqueo. Quítaselo desde Personas.`;
+  }
+  return 'Se equivocaron de PIN 5 veces. Quítales el bloqueo desde Personas.';
+}
+
+// ---------------------------------------------------------------------------
+// Un solo supervisor
+// ---------------------------------------------------------------------------
+
+/** `true` si hay exactamente un supervisor activo: si se bloquea, nadie puede autorizar cargas. */
+export function hayUnSoloSupervisor(personas: readonly Persona[]): boolean {
+  return personas.filter((p) => p.rol === 'SUPERVISOR' && p.activo).length === 1;
+}
+
+export const AVISO_UN_SOLO_SUPERVISOR =
+  'Solo hay un supervisor activo. Si se bloquea o no está, nadie puede autorizar cargas ni quitar bloqueos. Conviene dar de alta a un segundo supervisor.';
 
 /**
  * Vendedores, contadores y supervisores, en ese orden y solo los grupos con

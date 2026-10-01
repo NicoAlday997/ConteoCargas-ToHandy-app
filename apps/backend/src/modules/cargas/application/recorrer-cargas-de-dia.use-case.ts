@@ -9,7 +9,7 @@ import {
   normalizarFechaOperativa,
 } from '../domain/fecha-operativa';
 import {
-  MOTIVO_MINIMO_SUPERVISOR,
+  MOTIVO_MINIMO_RECORRER,
   normalizarMotivo,
 } from './cancelar-carga.use-case';
 import { diasNoLaborablesDesde } from './calendario';
@@ -45,7 +45,7 @@ import type { DiaNoLaborableRepository } from './dia-no-laborable.repository';
  * Reglas:
  * - `fechaDestino` posterior a `fechaOrigen`, nunca un dia pasado, y dia
  *   HABIL (`esFechaPermitidaPorCalendario` con 'SUPERVISOR').
- * - Motivo obligatorio (minimo `MOTIVO_MINIMO_SUPERVISOR`), el mismo para
+ * - Motivo obligatorio (minimo `MOTIVO_MINIMO_RECORRER`), el mismo para
  *   todas; queda en la bitacora de cada carga.
  * - Una INICIAL por ruta y fecha: si alguna INICIAL que se mueve choca con
  *   otra que ya esta en el destino, NO se mueve NINGUNA y se responde
@@ -142,7 +142,7 @@ export class RecorrerCargasDeDiaUseCase {
     ahora: Date,
   ): Promise<ResultadoRecorrerCargasDeDia> {
     const motivo = normalizarMotivo(entrada.motivo);
-    if (motivo === null || motivo.length < MOTIVO_MINIMO_SUPERVISOR) {
+    if (motivo === null || motivo.length < MOTIVO_MINIMO_RECORRER) {
       return { exito: false, motivo: 'MOTIVO_REQUERIDO' };
     }
 

@@ -1,12 +1,14 @@
 import { RolApp } from '@prisma/client';
 
-import type {
-  AdminUsuarioRepository,
-  DatosActualizarUsuario,
-  DatosCrearUsuario,
-  OcupanteCuentaHandy,
-  RegistroRestablecimientoPin,
-  UsuarioAdmin,
+import {
+  SinSupervisorActivoError,
+  type AdminUsuarioRepository,
+  type DatosActualizarUsuario,
+  type DatosCrearUsuario,
+  type OcupanteCuentaHandy,
+  type RegistroDesbloqueo,
+  type RegistroRestablecimientoPin,
+  type UsuarioAdmin,
 } from './admin-usuario.repository';
 import {
   EditarUsuarioUseCase,
@@ -28,6 +30,8 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   /** Se fija a mano en cada prueba; cuenta las llamadas para verificar el cacheo. */
   totalSupervisoresActivos = 0;
   consultasDeConteo = 0;
+  /** Simula que otra peticion simultanea dejo sin supervisores: la revision posterior al cambio lo rechaza. */
+  quedariaSinSupervisores = false;
 
   sembrar(usuario: UsuarioAdmin): void {
     this.usuarios.set(usuario.id, usuario);
@@ -45,6 +49,7 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     id: string,
     datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin> {
+    if (this.quedariaSinSupervisores) throw new SinSupervisorActivoError();
     this.actualizaciones.push({ id, datos });
     const actual = this.usuarios.get(id);
     if (actual === undefined) {
@@ -72,6 +77,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   async registrarRestablecimientoPin(
     _datos: RegistroRestablecimientoPin,
   ): Promise<void> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  registrarDesbloqueo(_datos: RegistroDesbloqueo): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
 
@@ -107,6 +116,7 @@ function crearUsuario(overrides: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
     activo: true,
     debeCambiarPin: false,
     fechaUltimoCambioPin: new Date('2026-08-01T12:00:00-06:00'),
+    bloqueadoHasta: null,
     creadoEn: new Date('2026-07-01T12:00:00-06:00'),
     actualizadoEn: new Date('2026-08-01T12:00:00-06:00'),
     ...overrides,
@@ -285,6 +295,21 @@ describe('EditarUsuarioUseCase', () => {
 
     expect(resultado.usuario.rolApp).toBe(RolApp.CONTADOR);
     expect(repo.consultasDeConteo).toBe(0);
+  });
+
+  it('si la revision posterior al cambio no deja supervisores (carrera), rechaza ULTIMO_SUPERVISOR', async () => {
+    // Dos supervisores se desactivan el uno al otro a la vez: los dos ven
+    // "hay 2" en la validacion previa; el adaptador lo detecta al escribir.
+    repo.sembrar(crearUsuario({ id: 'sup-1' }));
+    repo.totalSupervisoresActivos = 2;
+    repo.quedariaSinSupervisores = true;
+
+    const resultado = exigirFallo(
+      await useCase.ejecutar('sup-1', 'sup-2', { activo: false }),
+    );
+
+    expect(resultado.motivo).toBe('ULTIMO_SUPERVISOR');
+    expect(repo.actualizaciones).toHaveLength(0);
   });
 
   describe('una cuenta de Handy, un solo usuario activo', () => {

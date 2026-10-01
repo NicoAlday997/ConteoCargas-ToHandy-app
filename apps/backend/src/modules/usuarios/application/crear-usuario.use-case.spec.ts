@@ -7,6 +7,7 @@ import {
   type DatosActualizarUsuario,
   type DatosCrearUsuario,
   type OcupanteCuentaHandy,
+  type RegistroDesbloqueo,
   type RegistroRestablecimientoPin,
   type UsuarioAdmin,
 } from './admin-usuario.repository';
@@ -57,6 +58,7 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
       activo: true,
       debeCambiarPin: true,
       fechaUltimoCambioPin: null,
+      bloqueadoHasta: null,
       creadoEn: ahora,
       actualizadoEn: ahora,
     };
@@ -78,6 +80,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   registrarRestablecimientoPin(
     _datos: RegistroRestablecimientoPin,
   ): Promise<void> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  registrarDesbloqueo(_datos: RegistroDesbloqueo): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
 
@@ -115,6 +121,7 @@ function usuarioPrevio(overrides: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
     activo: true,
     debeCambiarPin: false,
     fechaUltimoCambioPin: null,
+    bloqueadoHasta: null,
     creadoEn: fecha,
     actualizadoEn: fecha,
     ...overrides,

@@ -301,7 +301,7 @@ describe('CambiarFechaOperativaUseCase', () => {
       expect(cargas.cambios).toEqual([]);
     });
 
-    it.each([undefined, '', '    ', 'abcd', '  ab  '])(
+    it.each([undefined, '', '    ', 'abcd', '  ab  ', 'abcdefghi'])(
       'MOTIVO_REQUERIDO con motivo %p',
       async (motivo) => {
         cargas.sembrarEvento(nuevoEvento());
