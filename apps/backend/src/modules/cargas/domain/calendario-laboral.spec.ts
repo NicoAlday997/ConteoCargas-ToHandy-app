@@ -4,6 +4,7 @@ import {
   diaTexto,
   esDiaHabil,
   etiquetaFechaOperativa,
+  fechaEnPalabras,
   MAXIMO_DIAS_BUSQUEDA,
   opcionesFechaOperativa,
   SinDiasHabilesError,
@@ -274,5 +275,18 @@ describe('etiquetaFechaOperativa', () => {
     expect(
       etiquetaFechaOperativa(dia('2026-09-26'), new Date('2026-09-27T02:00:00Z')),
     ).toBe('Hoy, sábado 26 de septiembre');
+  });
+});
+
+describe('fechaEnPalabras', () => {
+  it('nombra el dia sin "hoy" ni "mañana": "sábado 3 de octubre"', () => {
+    expect(fechaEnPalabras(dia('2026-10-03'))).toBe('sábado 3 de octubre');
+  });
+
+  it('usa el dia de negocio, no el de UTC', () => {
+    // 23:30 del miercoles en Mexico ya es jueves en UTC.
+    expect(fechaEnPalabras(new Date('2026-09-30T23:30:00-06:00'))).toBe(
+      'miércoles 30 de septiembre',
+    );
   });
 });

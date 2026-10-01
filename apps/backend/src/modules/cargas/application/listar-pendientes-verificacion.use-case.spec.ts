@@ -33,6 +33,8 @@ class FakeConsultas implements ConsultasCargaRepository {
   }
   async buscarInicialEnviadaPorIdHandy(): Promise<never> {
     throw new Error('no usado en estas pruebas');
+  }  async buscarInicialSinTerminarPorRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
   }
 }
 

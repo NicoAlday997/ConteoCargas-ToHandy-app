@@ -16,7 +16,9 @@ import type {
 } from './asignacion.repository';
 import {
   CargaInicialDuplicadaError,
+  CargaInicialSinTerminarError,
   type CargaRepository,
+  type DatosCambiarFechaOperativa,
   type DatosCrearEvento,
   type Discrepancia,
   type DatosActualizarDiscrepancia,
@@ -27,9 +29,15 @@ import {
   type SesionConteo,
 } from './carga.repository';
 import type {
+  ConsultasCargaRepository,
+  InicialSinTerminar,
+} from './consultas-carga.repository';
+import type {
   DiaNoLaborable,
   DiaNoLaborableRepository,
 } from './dia-no-laborable.repository';
+import { CambiarFechaOperativaUseCase } from './cambiar-fecha-operativa.use-case';
+import { CancelarCargaUseCase } from './cancelar-carga.use-case';
 import {
   IniciarCargaUseCase,
   type ResultadoIniciarCarga,
@@ -75,6 +83,13 @@ class FakeCargaRepository implements CargaRepository {
    * nuestro y la base de datos rechaza el alta por el indice unico.
    */
   ganadorDeCarrera: EventoCarga | null = null;
+  /** Que indice "salto" en la carrera: por defecto el de ruta + fecha. */
+  errorDeCarrera: Error = new CargaInicialDuplicadaError();
+  /**
+   * Carrera en la que la ganadora ya no se encuentra al volver a buscar (se
+   * cancelo o termino entretanto): el alta falla con esto y no deja nada.
+   */
+  fallaAlCrear: Error | null = null;
   private secuencia = 0;
 
   async buscarCargaInicialDeFecha(
@@ -94,10 +109,15 @@ class FakeCargaRepository implements CargaRepository {
   }
 
   async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
+    if (this.fallaAlCrear !== null) {
+      const falla = this.fallaAlCrear;
+      this.fallaAlCrear = null;
+      throw falla;
+    }
     if (this.ganadorDeCarrera !== null) {
       this.eventos.push(this.ganadorDeCarrera);
       this.ganadorDeCarrera = null;
-      throw new CargaInicialDuplicadaError();
+      throw this.errorDeCarrera;
     }
     this.secuencia += 1;
     this.eventosCreados.push(datos);
@@ -148,8 +168,10 @@ class FakeCargaRepository implements CargaRepository {
     };
   }
 
-  buscarEventoPorId(): Promise<EventoCarga | null> {
-    throw new Error('no usado en esta prueba');
+  // Para encadenar `CancelarCargaUseCase` y `CambiarFechaOperativaUseCase`
+  // reales sobre los mismos eventos.
+  async buscarEventoPorId(id: string): Promise<EventoCarga | null> {
+    return this.eventos.find((e) => e.id === id) ?? null;
   }
   cambiarEstado(): Promise<EventoCarga> {
     throw new Error('no usado en esta prueba');
@@ -197,14 +219,28 @@ class FakeCargaRepository implements CargaRepository {
   ): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
   }
-  async cambiarFechaOperativa(): Promise<never> {
-    throw new Error('no usado en estas pruebas');
+  async cambiarFechaOperativa(
+    datos: DatosCambiarFechaOperativa,
+  ): Promise<EventoCarga> {
+    const evento = this.eventos.find((e) => e.id === datos.eventoId)!;
+    evento.fechaOperativa = datos.fechaNueva;
+    return evento;
   }
   async recorrerFechaOperativa(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
-  async cancelarEvento(): Promise<never> {
-    throw new Error('no usado en estas pruebas');
+  async cancelarEvento(
+    eventoId: string,
+    usuarioAppId: string,
+    motivo: string | null,
+    ahora: Date,
+  ): Promise<EventoCarga> {
+    const evento = this.eventos.find((e) => e.id === eventoId)!;
+    evento.estado = 'CANCELADA';
+    evento.canceladaPorId = usuarioAppId;
+    evento.motivoCancelacion = motivo;
+    evento.fechaCancelacion = ahora;
+    return evento;
   }
   reabrirDiscrepancia(): Promise<Discrepancia> {
     throw new Error('no usado en esta prueba');
@@ -237,6 +273,51 @@ function inicialExistente(
     creadoEn: AHORA,
     ...parcial,
   };
+}
+
+/**
+ * Doble del puerto de consultas: lee los mismos eventos que el doble de cargas,
+ * con el criterio del indice parcial (INICIAL ni ENVIADA ni CANCELADA). Solo
+ * implementa lo que este caso de uso usa.
+ */
+class FakeConsultasCarga implements ConsultasCargaRepository {
+  readonly consultas: string[] = [];
+  constructor(private readonly cargas: FakeCargaRepository) {}
+
+  async buscarInicialSinTerminarPorRuta(
+    rutaId: string,
+  ): Promise<InicialSinTerminar | null> {
+    this.consultas.push(rutaId);
+    const e = this.cargas.eventos.find(
+      (e) =>
+        e.rutaId === rutaId &&
+        e.tipo === 'INICIAL' &&
+        e.estado !== 'ENVIADA' &&
+        e.estado !== 'CANCELADA',
+    );
+    return e ? { id: e.id, fechaOperativa: e.fechaOperativa, estado: e.estado } : null;
+  }
+  listarCargasDeFecha(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarPendientesVerificacion(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarConflictosDeParticipante(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  obtenerContextoResolucion(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarDiscrepanciasDetalle(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  listarInicialesEnviadasDesde(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
+  buscarInicialEnviadaPorIdHandy(): Promise<never> {
+    throw new Error('no usado en esta prueba');
+  }
 }
 
 /** Dias no laborables en memoria; `listarEntre` respeta el rango. */
@@ -324,6 +405,7 @@ describe('IniciarCargaUseCase', () => {
   let asignaciones: FakeAsignacionRepository;
   let handy: FakeHandyGateway;
   let noLaborables: FakeDiasNoLaborables;
+  let consultas: FakeConsultasCarga;
   let useCase: IniciarCargaUseCase;
 
   beforeEach(() => {
@@ -331,7 +413,14 @@ describe('IniciarCargaUseCase', () => {
     asignaciones = new FakeAsignacionRepository();
     handy = new FakeHandyGateway();
     noLaborables = new FakeDiasNoLaborables();
-    useCase = new IniciarCargaUseCase(cargas, asignaciones, handy, noLaborables);
+    consultas = new FakeConsultasCarga(cargas);
+    useCase = new IniciarCargaUseCase(
+      cargas,
+      asignaciones,
+      handy,
+      noLaborables,
+      consultas,
+    );
   });
 
   it('sin asignacion vigente: devuelve SIN_RUTA_ASIGNADA y no crea nada', async () => {
@@ -517,7 +606,9 @@ describe('IniciarCargaUseCase', () => {
     });
 
     it('el sabado acepta el sabado y el lunes', async () => {
-      exigirExito(await useCase.ejecutar(entrada(INICIO_SABADO), SABADO));
+      const sabado = exigirExito(await useCase.ejecutar(entrada(INICIO_SABADO), SABADO));
+      // Ya salio: si no, la del lunes chocaria con una inicial sin terminar.
+      sabado.evento.estado = 'ENVIADA';
       exigirExito(await useCase.ejecutar(entrada(INICIO_LUNES), SABADO));
     });
 
@@ -593,8 +684,9 @@ describe('IniciarCargaUseCase', () => {
       expect(segunda).toMatchObject({ motivo: 'YA_TIENE_CARGA_ABIERTA' });
     });
 
-    it('permite la INICIAL de otra fecha operativa', async () => {
-      exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
+    it('permite la INICIAL de otra fecha operativa si la primera ya se envio', async () => {
+      const primera = exigirExito(await useCase.ejecutar(entradaInicial, AHORA));
+      primera.evento.estado = 'ENVIADA';
 
       exigirExito(
         await useCase.ejecutar({ ...entradaInicial, fechaOperativa: HOY }, AHORA),
@@ -660,6 +752,208 @@ describe('IniciarCargaUseCase', () => {
       expect(cargas.sesionesCreadas).toHaveLength(0);
     });
   });
+  describe('una sola carga INICIAL sin terminar por ruta, de la fecha que sea', () => {
+    // Jueves 10: ni hoy ni mañana. Las cargas sembradas ahi solo existen para
+    // chocar; el vendedor no podria crearlas hoy.
+    const JUEVES = new Date('2026-09-10T00:00:00-06:00');
+    const inicialHoy = {
+      usuarioAppId: 'v1',
+      tipo: 'INICIAL' as const,
+      usuarioHandyId: 42,
+      fechaOperativa: HOY,
+    };
+
+    beforeEach(() => {
+      asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
+    });
+
+    it('sin otra inicial abierta en la ruta, la crea', async () => {
+      exigirExito(await useCase.ejecutar(inicialHoy, AHORA));
+
+      expect(consultas.consultas).toEqual(['ruta-7']);
+      expect(cargas.eventosCreados).toHaveLength(1);
+    });
+
+    it('con otra en EN_ESPERA_CONTADOR para otra fecha devuelve CARGA_INICIAL_SIN_TERMINAR y no crea nada', async () => {
+      // El bug: la de mañana esperaba al contador y dejaba abrir la de hoy.
+      cargas.eventos.push(
+        inicialExistente('EN_ESPERA_CONTADOR', { id: 'ev-manana', fechaOperativa: MANANA }),
+      );
+
+      const resultado = await useCase.ejecutar(inicialHoy, AHORA);
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+        cargaEnConflicto: {
+          id: 'ev-manana',
+          fechaOperativa: MANANA,
+          estado: 'EN_ESPERA_CONTADOR',
+        },
+      });
+      expect(cargas.eventosCreados).toHaveLength(0);
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it.each<EstadoCarga>([
+      'BORRADOR',
+      'EN_ESPERA_CONTADOR',
+      'BLOQUEADA_CORTE_PENDIENTE',
+      'EN_COMPARACION',
+      'CONFLICTOS_PENDIENTES',
+      'EN_ESPERA_AUTORIZACION',
+      'LISTA_PARA_ENVIAR',
+      'ERROR_ENVIO',
+      'ENVIO_INCIERTO',
+    ])('una inicial en %s de otra fecha tambien estorba', async (estado) => {
+      cargas.eventos.push(inicialExistente(estado, { fechaOperativa: JUEVES }));
+
+      const resultado = await useCase.ejecutar(inicialHoy, AHORA);
+
+      expect(resultado).toMatchObject({
+        exito: false,
+        motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+        cargaEnConflicto: { estado },
+      });
+    });
+
+    it('con otra ENVIADA de otra fecha, la crea', async () => {
+      cargas.eventos.push(inicialExistente('ENVIADA', { fechaOperativa: AYER }));
+
+      exigirExito(await useCase.ejecutar(inicialHoy, AHORA));
+    });
+
+    it('con otra CANCELADA de otra fecha, la crea', async () => {
+      cargas.eventos.push(inicialExistente('CANCELADA', { fechaOperativa: MANANA }));
+
+      exigirExito(await useCase.ejecutar(inicialHoy, AHORA));
+    });
+
+    it('si la que estorba es del mismo dia gana YA_TIENE_CARGA_ABIERTA, que deja continuarla', async () => {
+      cargas.eventos.push(inicialExistente('EN_ESPERA_CONTADOR', { id: 'ev-hoy' }));
+
+      expect(await useCase.ejecutar(inicialHoy, AHORA)).toEqual({
+        exito: false,
+        motivo: 'YA_TIENE_CARGA_ABIERTA',
+        eventoId: 'ev-hoy',
+      });
+    });
+
+    it('una RECARGA pasa aunque la ruta tenga una inicial sin terminar de otro dia', async () => {
+      cargas.eventos.push(
+        inicialExistente('ENVIADA', { id: 'ev-hoy' }),
+        inicialExistente('EN_ESPERA_CONTADOR', { id: 'ev-manana', fechaOperativa: MANANA }),
+      );
+
+      exigirExito(await useCase.ejecutar({ ...inicialHoy, tipo: 'RECARGA' }, AHORA));
+
+      // La regla ni se consulta para la RECARGA.
+      expect(consultas.consultas).toHaveLength(0);
+    });
+
+    it('con la inicial ENVIADA y dos recargas abiertas, ni otra recarga ni la inicial de mañana chocan', async () => {
+      const recargaAbierta = (id: string, estado: EstadoCarga): EventoCarga => ({
+        ...inicialExistente(estado),
+        id,
+        tipo: 'RECARGA',
+      });
+      cargas.eventos.push(
+        inicialExistente('ENVIADA', { id: 'ev-hoy' }),
+        recargaAbierta('rec-1', 'EN_ESPERA_CONTADOR'),
+        recargaAbierta('rec-2', 'BORRADOR'),
+      );
+
+      exigirExito(await useCase.ejecutar({ ...inicialHoy, tipo: 'RECARGA' }, AHORA));
+      exigirExito(
+        await useCase.ejecutar({ ...inicialHoy, fechaOperativa: MANANA }, AHORA),
+      );
+
+      expect(cargas.eventosCreados.map((e) => e.tipo)).toEqual(['RECARGA', 'INICIAL']);
+    });
+
+    it('al cancelar la que estorba, el vendedor puede empezar otra enseguida', async () => {
+      const cancelar = new CancelarCargaUseCase(cargas);
+      const manana = exigirExito(
+        await useCase.ejecutar({ ...inicialHoy, fechaOperativa: MANANA }, AHORA),
+      );
+      expect(await useCase.ejecutar(inicialHoy, AHORA)).toMatchObject({
+        motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+      });
+
+      const cancelada = await cancelar.ejecutar(
+        {
+          eventoId: manana.evento.id,
+          usuarioAppId: 'v1',
+          rolApp: 'VENDEDOR',
+          usuarioHandyId: 42,
+        },
+        AHORA,
+      );
+      expect(cancelada).toMatchObject({ exito: true, evento: { estado: 'CANCELADA' } });
+
+      const hoy = exigirExito(await useCase.ejecutar(inicialHoy, AHORA));
+      expect(hoy.evento.fechaOperativa).toEqual(HOY);
+    });
+
+    it('cambiarle la fecha a la que estorba sigue funcionando, y la regla la sigue a su fecha nueva', async () => {
+      const cambiarFecha = new CambiarFechaOperativaUseCase(cargas, handy, noLaborables);
+      const manana = exigirExito(
+        await useCase.ejecutar({ ...inicialHoy, fechaOperativa: MANANA }, AHORA),
+      );
+
+      const cambio = await cambiarFecha.ejecutar(
+        {
+          eventoId: manana.evento.id,
+          usuarioAppId: 'v1',
+          rolApp: 'VENDEDOR',
+          usuarioHandyId: 42,
+          fechaOperativa: HOY,
+        },
+        AHORA,
+      );
+
+      expect(cambio).toMatchObject({ exito: true, evento: { fechaOperativa: HOY } });
+      // Sigue sin terminar: hoy se continua, mañana todavia no se abre otra.
+      expect(await useCase.ejecutar(inicialHoy, AHORA)).toEqual({
+        exito: false,
+        motivo: 'YA_TIENE_CARGA_ABIERTA',
+        eventoId: manana.evento.id,
+      });
+      expect(
+        await useCase.ejecutar({ ...inicialHoy, fechaOperativa: MANANA }, AHORA),
+      ).toMatchObject({ motivo: 'CARGA_INICIAL_SIN_TERMINAR' });
+    });
+
+    it('carrera: si la base rechaza el alta por el indice nuevo, nombra la carga ganadora', async () => {
+      cargas.ganadorDeCarrera = inicialExistente('BORRADOR', {
+        id: 'ev-ganador',
+        fechaOperativa: MANANA,
+      });
+      cargas.errorDeCarrera = new CargaInicialSinTerminarError();
+
+      expect(await useCase.ejecutar(inicialHoy, AHORA)).toEqual({
+        exito: false,
+        motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+        cargaEnConflicto: {
+          id: 'ev-ganador',
+          fechaOperativa: MANANA,
+          estado: 'BORRADOR',
+        },
+      });
+      expect(cargas.sesionesCreadas).toHaveLength(0);
+    });
+
+    it('carrera: si la ganadora ya no se encuentra, responde sin datos en vez de inventarlos', async () => {
+      cargas.fallaAlCrear = new CargaInicialSinTerminarError();
+
+      expect(await useCase.ejecutar(inicialHoy, AHORA)).toEqual({
+        exito: false,
+        motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+        cargaEnConflicto: null,
+      });
+    });
+  });
+
   describe('la RECARGA exige una salida ENVIADA de la ruta ese dia', () => {
     const recarga = {
       usuarioAppId: 'v1',

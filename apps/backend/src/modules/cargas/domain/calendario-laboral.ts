@@ -157,6 +157,15 @@ export function diasHabilesDesde(ahora: Date, diasNoLaborables: Date[]): Date[] 
 }
 
 /**
+ * El dia de negocio en palabras, sin "hoy" ni "mañana": "sábado 3 de octubre".
+ * Para frases que ya traen su propio articulo ("la del sábado 3 de octubre").
+ */
+export function fechaEnPalabras(fecha: Date): string {
+  const { mes, dia, diaSemana } = partesDelDia(fecha);
+  return `${DIAS_SEMANA[diaSemana]} ${dia} de ${MESES[mes - 1]}`;
+}
+
+/**
  * Como se le nombra el dia al usuario. Nunca dice "mañana" si el dia no es
  * mañana: el sabado, la siguiente salida es "El lunes 28 de septiembre".
  *
@@ -165,8 +174,7 @@ export function diasHabilesDesde(ahora: Date, diasNoLaborables: Date[]): Date[] 
  * - otro:    "El lunes 28 de septiembre"
  */
 export function etiquetaFechaOperativa(fecha: Date, ahora: Date): string {
-  const { mes, dia, diaSemana } = partesDelDia(fecha);
-  const legible = `${DIAS_SEMANA[diaSemana]} ${dia} de ${MESES[mes - 1]}`;
+  const legible = fechaEnPalabras(fecha);
   const texto = diaTexto(fecha);
   if (texto === diaTexto(ahora)) {
     return `Hoy, ${legible}`;

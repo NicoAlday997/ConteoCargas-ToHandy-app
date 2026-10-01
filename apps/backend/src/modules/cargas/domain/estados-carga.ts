@@ -186,3 +186,27 @@ export function permiteCambioFechaDelVendedor(estado: EstadoCarga): boolean {
 export function permiteCambioFechaDelSupervisor(estado: EstadoCarga): boolean {
   return estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
 }
+
+/**
+ * El estado como se le dice al usuario, en minusculas y para leerse despues de
+ * "que está": "la del sábado 3 de octubre, que está en espera del contador".
+ * `Record<EstadoCarga, ...>` obliga a cubrir los once estados: si Prisma agrega
+ * uno y no se lista aca, el compilador falla.
+ */
+const ETIQUETAS_ESTADO: Record<EstadoCarga, string> = {
+  BORRADOR: 'en conteo del vendedor',
+  EN_ESPERA_CONTADOR: 'en espera del contador',
+  BLOQUEADA_CORTE_PENDIENTE: 'bloqueada por un corte de venta pendiente',
+  EN_COMPARACION: 'en comparación de conteos',
+  CONFLICTOS_PENDIENTES: 'con diferencias por resolver',
+  EN_ESPERA_AUTORIZACION: 'en espera de autorización del supervisor',
+  LISTA_PARA_ENVIAR: 'lista para enviar a Handy',
+  ENVIADA: 'enviada a Handy',
+  ERROR_ENVIO: 'con error al enviar a Handy',
+  ENVIO_INCIERTO: 'con envío a Handy sin confirmar',
+  CANCELADA: 'cancelada',
+};
+
+export function etiquetaEstadoCarga(estado: EstadoCarga): string {
+  return ETIQUETAS_ESTADO[estado];
+}

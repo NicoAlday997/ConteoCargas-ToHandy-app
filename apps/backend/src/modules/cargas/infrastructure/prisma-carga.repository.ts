@@ -12,6 +12,7 @@ import type {
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   CargaInicialDuplicadaError,
+  CargaInicialSinTerminarError,
   CargaRepository,
   type DatosActualizarDiscrepancia,
   type DatosCambiarFechaOperativa,
@@ -26,6 +27,27 @@ import {
   type ItemCapturado,
   type SesionConteo,
 } from '../application/carga.repository';
+
+/**
+ * Indice unico parcial creado a mano en la migracion
+ * `20261002120000_inicial_sin_terminar_unica` (Prisma no los modela): una sola
+ * INICIAL sin terminar por ruta, sin importar la fecha.
+ */
+const INDICE_INICIAL_SIN_TERMINAR = 'evento_carga_inicial_sin_terminar_unica';
+
+/**
+ * `true` si la violacion de unicidad es la de ese indice y no la de
+ * `eventos_carga_inicial_ruta_fecha_key` (ruta + fecha). Prisma reporta en
+ * `meta.target` el nombre del indice o las columnas, segun la version: con
+ * columnas, solo `rutaId` (sin `fechaOperativa`) es el indice nuevo.
+ */
+function violaInicialSinTerminar(
+  error: Prisma.PrismaClientKnownRequestError,
+): boolean {
+  const target = error.meta?.target;
+  const texto = Array.isArray(target) ? target.join(',') : String(target ?? '');
+  return texto.includes(INDICE_INICIAL_SIN_TERMINAR) || texto === 'rutaId';
+}
 
 /**
  * Adaptador Prisma del puerto `CargaRepository`. Aqui SI se conoce el esquema y
@@ -61,13 +83,16 @@ export class PrismaCargaRepository extends CargaRepository {
       });
       return this.aEventoCarga(row);
     } catch (error) {
-      // P2002 = violacion de unicidad. En `eventos_carga` solo puede venir del
-      // indice parcial "una INICIAL por ruta y fecha operativa".
+      // P2002 = violacion de unicidad. En `eventos_carga` solo puede venir de
+      // uno de los dos indices parciales de la INICIAL: "una sin terminar por
+      // ruta" o "una por ruta y fecha operativa".
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new CargaInicialDuplicadaError();
+        throw violaInicialSinTerminar(error)
+          ? new CargaInicialSinTerminarError()
+          : new CargaInicialDuplicadaError();
       }
       throw error;
     }

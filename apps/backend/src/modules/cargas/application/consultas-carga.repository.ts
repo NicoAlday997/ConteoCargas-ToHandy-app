@@ -132,6 +132,16 @@ export interface CargaDelDia {
   totalProductos: number;
 }
 
+/**
+ * La carga INICIAL que todavia no termina (ni ENVIADA ni CANCELADA): lo minimo
+ * para decirle al vendedor cual es la salida que le estorba.
+ */
+export interface InicialSinTerminar {
+  id: string;
+  fechaOperativa: Date;
+  estado: EstadoCarga;
+}
+
 export abstract class ConsultasCargaRepository {
   /**
    * TODAS las cargas de esa fecha operativa (ya normalizada), en cualquier
@@ -184,4 +194,14 @@ export abstract class ConsultasCargaRepository {
     rutaId: string,
     idHandy: string,
   ): Promise<DiaRecargable | null>;
+
+  /**
+   * La carga INICIAL de la ruta que no esta ENVIADA ni CANCELADA, en cualquier
+   * fecha operativa; `null` si no hay. El indice parcial
+   * `evento_carga_inicial_sin_terminar_unica` garantiza que hay a lo mas una.
+   * Las RECARGAS no cuentan.
+   */
+  abstract buscarInicialSinTerminarPorRuta(
+    rutaId: string,
+  ): Promise<InicialSinTerminar | null>;
 }

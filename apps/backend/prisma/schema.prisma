@@ -370,6 +370,10 @@ model FrecuenciaProductoRuta {
 model EventoCarga {
   id                         String        @id @default(cuid())
   // Snapshot de la ruta: se conserva aunque el vendedor se reasigne después.
+  // Una sola carga INICIAL sin terminar (estado distinto de ENVIADA y
+  // CANCELADA) por ruta: indice unico parcial creado con SQL manual en la
+  // migracion `inicial_sin_terminar_unica` (Prisma no soporta indices
+  // parciales en el esquema; no lo dejes borrar).
   rutaId                     String
   tipo                       TipoCarga
   // Snapshot de la plantilla vigente al momento de la carga: el historial
@@ -385,9 +389,10 @@ model EventoCarga {
   // tarde del 23 (tras la devolucion) es la salida del 24; si el camion se
   // descompone se cuenta el 24 en la mañana para salir ese mismo dia. Siempre
   // normalizada al inicio del dia en America/Mexico_City. Una sola carga
-  // INICIAL por ruta y fechaOperativa: indice unico parcial creado con SQL
-  // manual en la migracion `fecha_operativa` (Prisma no soporta indices
-  // parciales en el esquema).
+  // INICIAL por ruta y fechaOperativa (sin contar las CANCELADAS): indice unico
+  // parcial creado con SQL manual en la migracion
+  // `indice_inicial_sin_canceladas` (Prisma no soporta indices parciales en el
+  // esquema; no lo dejes borrar).
   fechaOperativa             DateTime
   fechaBloqueoCortePendiente DateTime?
   fechaDesbloqueo            DateTime?

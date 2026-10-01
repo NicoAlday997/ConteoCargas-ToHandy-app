@@ -12,6 +12,7 @@ import {
   permiteCancelacionDelSupervisor,
   permiteCambioFechaDelVendedor,
   permiteCambioFechaDelSupervisor,
+  etiquetaEstadoCarga,
 } from './estados-carga';
 
 describe('TRANSICIONES_VALIDAS — cada transicion declarada del mapa es valida', () => {
@@ -311,5 +312,24 @@ describe('permiteCambioFechaDelSupervisor', () => {
 
   it('true en ENVIADA: corrige nuestro registro, la ruta en Handy no se toca', () => {
     expect(permiteCambioFechaDelSupervisor('ENVIADA')).toBe(true);
+  });
+});
+
+describe('etiquetaEstadoCarga', () => {
+  it('cubre los once estados con un texto propio', () => {
+    expect(TODOS_LOS_ESTADOS).toHaveLength(11);
+    const etiquetas = TODOS_LOS_ESTADOS.map(etiquetaEstadoCarga);
+    for (const etiqueta of etiquetas) {
+      expect(etiqueta).toEqual(expect.any(String));
+      expect(etiqueta.length).toBeGreaterThan(0);
+    }
+    expect(new Set(etiquetas).size).toBe(11);
+  });
+
+  it('se lee despues de "que está" y nunca muestra el nombre interno', () => {
+    expect(etiquetaEstadoCarga('EN_ESPERA_CONTADOR')).toBe('en espera del contador');
+    for (const estado of TODOS_LOS_ESTADOS) {
+      expect(etiquetaEstadoCarga(estado)).not.toMatch(/[A-Z_]{4,}/);
+    }
   });
 });

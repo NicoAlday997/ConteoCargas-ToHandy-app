@@ -10,6 +10,7 @@ import {
   type ContextoResolucion,
   type DiaRecargable,
   type DiscrepanciaDetalle,
+  type InicialSinTerminar,
   type LadoDiscrepancia,
 } from '../application/consultas-carga.repository';
 
@@ -146,6 +147,21 @@ export class PrismaConsultasCargaRepository extends ConsultasCargaRepository {
     return row === null
       ? null
       : { fechaOperativa: row.fechaOperativa, eventoInicialId: row.id };
+  }
+
+  async buscarInicialSinTerminarPorRuta(
+    rutaId: string,
+  ): Promise<InicialSinTerminar | null> {
+    // Mismo criterio que el indice parcial `evento_carga_inicial_sin_terminar_unica`.
+    return this.prisma.eventoCarga.findFirst({
+      where: {
+        rutaId,
+        tipo: 'INICIAL',
+        estado: { notIn: ['ENVIADA', 'CANCELADA'] },
+      },
+      select: { id: true, fechaOperativa: true, estado: true },
+      orderBy: { creadoEn: 'asc' },
+    });
   }
 
   async obtenerContextoResolucion(

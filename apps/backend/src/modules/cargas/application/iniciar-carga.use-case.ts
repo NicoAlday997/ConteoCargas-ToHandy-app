@@ -10,10 +10,15 @@ import type { AsignacionRepository } from './asignacion.repository';
 import { diasNoLaborablesDesde } from './calendario';
 import {
   CargaInicialDuplicadaError,
+  CargaInicialSinTerminarError,
   type CargaRepository,
   type EventoCarga,
   type SesionConteo,
 } from './carga.repository';
+import type {
+  ConsultasCargaRepository,
+  InicialSinTerminar,
+} from './consultas-carga.repository';
 import type { DiaNoLaborableRepository } from './dia-no-laborable.repository';
 import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
 
@@ -28,6 +33,13 @@ import { sigueAbiertaEnHandy } from './sigue-abierta-en-handy';
  * Una sola carga INICIAL por ruta y fecha operativa: si se pudieran crear a
  * discrecion, se podrian generar versiones hasta que una pase la verificacion.
  * Las RECARGAS si pueden ser varias por dia.
+ *
+ * Y una sola INICIAL SIN TERMINAR por ruta, sin importar la fecha: el camion es
+ * uno y no puede tener dos salidas colgadas. "Sin terminar" es cualquier estado
+ * que no sea ENVIADA ni CANCELADA. Sin esto, una inicial para mañana esperando
+ * al contador dejaba abrir otra para hoy porque la fecha era distinta. El
+ * vendedor la termina, la cancela o le cambia la fecha antes de empezar otra.
+ * Las RECARGAS tampoco entran aqui.
  *
  * Una RECARGA exige una carga INICIAL de la misma ruta y fecha operativa en
  * estado ENVIADA: `/route/recharge` de Handy le suma producto a una ruta
@@ -95,6 +107,10 @@ export interface EntradaIniciarCarga {
  * - `SIN_RUTA_ABIERTA_EN_HANDY`: es una RECARGA, la inicial esta ENVIADA, pero
  *   Handy dice que el vendedor no tiene ruta abierta, o que la abierta es otra
  *   (la inicial ya se liquido o se cancelo alla).
+ * - `CARGA_INICIAL_SIN_TERMINAR`: es una INICIAL y la ruta ya tiene otra sin
+ *   terminar en OTRA fecha (si es la misma fecha gana `YA_TIENE_CARGA_ABIERTA`,
+ *   que deja continuarla). `cargaEnConflicto` dice cual es, para nombrarla;
+ *   `null` solo si la base rechazo el alta por carrera y ya no se encontro.
  */
 export type ResultadoIniciarCarga =
   | { exito: true; evento: EventoCarga; sesion: SesionConteo }
@@ -107,7 +123,12 @@ export type ResultadoIniciarCarga =
         | 'SIN_SALIDA_ENVIADA'
         | 'SIN_RUTA_ABIERTA_EN_HANDY';
     }
-  | { exito: false; motivo: 'YA_TIENE_CARGA_ABIERTA'; eventoId: string };
+  | { exito: false; motivo: 'YA_TIENE_CARGA_ABIERTA'; eventoId: string }
+  | {
+      exito: false;
+      motivo: 'CARGA_INICIAL_SIN_TERMINAR';
+      cargaEnConflicto: InicialSinTerminar | null;
+    };
 
 export class IniciarCargaUseCase {
   constructor(
@@ -115,6 +136,7 @@ export class IniciarCargaUseCase {
     private readonly asignaciones: AsignacionRepository,
     private readonly handy: HandyGateway,
     private readonly diasNoLaborables: DiaNoLaborableRepository,
+    private readonly consultas: ConsultasCargaRepository,
   ) {}
 
   async ejecutar(
@@ -157,6 +179,20 @@ export class IniciarCargaUseCase {
       };
     }
 
+    // 3a. ...y una sola INICIAL sin terminar por ruta, de la fecha que sea.
+    if (entrada.tipo === 'INICIAL') {
+      const sinTerminar = await this.consultas.buscarInicialSinTerminarPorRuta(
+        asignacion.rutaId,
+      );
+      if (sinTerminar !== null) {
+        return {
+          exito: false,
+          motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+          cargaEnConflicto: sinTerminar,
+        };
+      }
+    }
+
     // 3b. La RECARGA se suma a una salida que ya esta en Handy.
     if (entrada.tipo === 'RECARGA') {
       if (inicialDelDia?.estado !== 'ENVIADA') {
@@ -189,17 +225,34 @@ export class IniciarCargaUseCase {
       });
     } catch (error) {
       // Carrera: otra solicitud creo la INICIAL entre la consulta y el alta; la
-      // base de datos la rechazo por el indice unico. Misma respuesta que arriba.
-      if (error instanceof CargaInicialDuplicadaError) {
-        const existente = await this.cargas.buscarCargaInicialDeFecha(
+      // base de datos la rechazo por uno de los indices unicos. Misma respuesta
+      // que arriba, se vuelve a buscar cual estorba: el indice que salto no
+      // siempre lo dice (con la misma fecha aplican los dos).
+      if (
+        error instanceof CargaInicialDuplicadaError ||
+        error instanceof CargaInicialSinTerminarError
+      ) {
+        const delDia = await this.cargas.buscarCargaInicialDeFecha(
           asignacion.rutaId,
           fechaOperativa,
         );
-        if (existente !== null) {
+        if (delDia !== null) {
           return {
             exito: false,
             motivo: 'YA_TIENE_CARGA_ABIERTA',
-            eventoId: existente.id,
+            eventoId: delDia.id,
+          };
+        }
+        const sinTerminar = await this.consultas.buscarInicialSinTerminarPorRuta(
+          asignacion.rutaId,
+        );
+        if (sinTerminar !== null || error instanceof CargaInicialSinTerminarError) {
+          // Sin datos (la otra ya termino o se cancelo entretanto) el
+          // controlador da el mensaje generico en vez de inventar la fecha.
+          return {
+            exito: false,
+            motivo: 'CARGA_INICIAL_SIN_TERMINAR',
+            cargaEnConflicto: sinTerminar,
           };
         }
       }

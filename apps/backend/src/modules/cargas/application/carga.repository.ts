@@ -126,6 +126,20 @@ export class CargaInicialDuplicadaError extends Error {
 }
 
 /**
+ * Lo lanza `crearEvento` cuando la base de datos rechaza una carga INICIAL
+ * porque la ruta ya tiene otra sin terminar (ni ENVIADA ni CANCELADA), en
+ * cualquier fecha (indice unico parcial `evento_carga_inicial_sin_terminar_unica`).
+ * Cubre la carrera entre dos solicitudes simultaneas que pasaron la consulta
+ * previa de `buscarInicialSinTerminarPorRuta`.
+ */
+export class CargaInicialSinTerminarError extends Error {
+  constructor() {
+    super('La ruta ya tiene una carga INICIAL sin terminar');
+    this.name = 'CargaInicialSinTerminarError';
+  }
+}
+
+/**
  * Cambio de fecha operativa de un evento, con su renglon de bitacora. Solo
  * toca el evento y la bitacora: sesiones e items quedan como estan.
  */
@@ -224,7 +238,9 @@ export interface DatosReabrirDiscrepancia {
 export abstract class CargaRepository {
   /**
    * Crea un `EventoCarga` en estado `BORRADOR` y lo devuelve. Lanza
-   * `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y fecha.
+   * `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y fecha, y
+   * `CargaInicialSinTerminarError` si la ruta ya tiene otra INICIAL sin
+   * terminar en otra fecha.
    */
   abstract crearEvento(datos: DatosCrearEvento): Promise<EventoCarga>;
 

@@ -69,6 +69,7 @@ import {
   type ModificarCantidadDto,
   type RechazarProductosDto,
 } from './cargas.dto';
+import { mensajeInicialSinTerminar } from './inicial-sin-terminar.mensaje';
 
 const MENSAJE_FECHA_NO_DISPONIBLE_VENDEDOR =
   'Solo puedes cargar para hoy o para la siguiente salida.';
@@ -216,6 +217,14 @@ export class CargasController {
             codigo: 'SIN_RUTA_ABIERTA_EN_HANDY',
             mensaje:
               'Tu vendedor no tiene una ruta abierta en Handy. Una recarga le suma producto a una ruta que ya salio; si la ruta se liquido o se cancelo, hay que iniciar una carga inicial nueva.',
+          });
+        case 'CARGA_INICIAL_SIN_TERMINAR':
+          // `eventoId` (si se conoce) permite a la app llevar a esa carga.
+          throw new ConflictException({
+            statusCode: 409,
+            codigo: 'CARGA_INICIAL_SIN_TERMINAR',
+            mensaje: mensajeInicialSinTerminar(resultado.cargaEnConflicto),
+            eventoId: resultado.cargaEnConflicto?.id ?? null,
           });
       }
     }

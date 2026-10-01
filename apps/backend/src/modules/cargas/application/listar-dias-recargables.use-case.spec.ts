@@ -88,6 +88,9 @@ class FakeConsultas implements ConsultasCargaRepository {
   async obtenerContextoResolucion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
+  async buscarInicialSinTerminarPorRuta(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 class FakeAsignaciones implements AsignacionRepository {

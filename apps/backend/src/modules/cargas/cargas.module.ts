@@ -93,13 +93,21 @@ import { DiasNoLaborablesController } from './interface/dias-no-laborables.contr
         asignaciones: AsignacionRepository,
         handy: HandyGateway,
         diasNoLaborables: DiaNoLaborableRepository,
+        consultas: ConsultasCargaRepository,
       ) =>
-        new IniciarCargaUseCase(cargas, asignaciones, handy, diasNoLaborables),
+        new IniciarCargaUseCase(
+          cargas,
+          asignaciones,
+          handy,
+          diasNoLaborables,
+          consultas,
+        ),
       inject: [
         CargaRepository,
         AsignacionRepository,
         HandyGateway,
         DiaNoLaborableRepository,
+        ConsultasCargaRepository,
       ],
     },
     {
