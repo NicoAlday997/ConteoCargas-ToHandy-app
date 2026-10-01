@@ -434,15 +434,20 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     return mapa;
   }, [secciones]);
 
-  /** Familia y lugar en ella de cada producto, para el encabezado del teclado. */
+  /**
+   * Familia y avance en ella de cada producto, para el encabezado del teclado.
+   * Mismo cálculo que el encabezado de familia de la lista: "1 de 2" dice lo
+   * mismo en los dos lugares (cuántos van contados, no en qué lugar va este).
+   */
   const ubicacionesFamilia = useMemo(() => {
     const mapa = new Map<string, UbicacionProducto>();
     familias.forEach((f) => {
       const familia = formatearNombreFamilia(f.familia ?? 'Sin familia');
-      f.productos.forEach((p, i) => mapa.set(p.code, { familia, posicion: i + 1, total: f.productos.length }));
+      const { capturados, total } = progreso(f.productos, conteo ?? {});
+      f.productos.forEach((p) => mapa.set(p.code, { familia, contados: capturados, total }));
     });
     return mapa;
-  }, [familias]);
+  }, [familias, conteo]);
 
   const lista = useRef<SectionList<ProductoConteo[], SeccionFamilia>>(null);
   /** El último producto al que se desplazó la lista: si el intento falla, se reintenta con él. */

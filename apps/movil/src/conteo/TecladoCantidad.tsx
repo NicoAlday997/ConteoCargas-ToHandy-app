@@ -44,19 +44,20 @@ const FILAS: readonly (readonly string[])[] = [
   ['7', '8', '9'],
 ];
 
-/** El lugar de un producto en su familia; `posicion` empieza en 1. */
+/** La familia de un producto y cuántos de ella van contados. */
 export interface UbicacionProducto {
   familia: string;
-  posicion: number;
+  contados: number;
   total: number;
 }
 
 interface Props {
   producto: ProductoConteo;
   /**
-   * Dónde está el producto: su familia y su lugar en ella ("Abarrotes · 1 de 2").
-   * Va bajo el nombre: con el teclado abierto la lista de atrás no se lee, y la
-   * hoja es lo único que dice qué se cuenta.
+   * La familia del producto y su avance ("Abarrotes · 1 de 2 contados"), el
+   * mismo que muestra su encabezado en la lista. Va bajo el nombre: con el
+   * teclado abierto la lista de atrás no se lee, y la hoja es lo único que
+   * dice qué se cuenta.
    */
   ubicacion?: UbicacionProducto | null;
   campo: CampoCaptura;
@@ -124,7 +125,6 @@ export function TecladoCantidad({
   const altoTecla = teclasGrandes ? ALTO_TECLA_GRANDE : TOQUE_MINIMO;
   const etiquetaCampo = nombreCampo(producto, campo);
   const nombre = formatearNombreProducto(producto.nombre);
-  const contexto = ubicacion ? `${ubicacion.familia} · ${ubicacion.posicion} de ${ubicacion.total}` : null;
 
   return (
     <View style={[estilos.panel, lateral && estilos.panelLateral, { paddingBottom: (lateral ? ESPACIADO.lg : ESPACIADO.md) + (areaSegura ? margenes.bottom : 0) }]}>
@@ -134,7 +134,7 @@ export function TecladoCantidad({
           accessible
           accessibilityLabel={
             ubicacion
-              ? `Capturando ${nombre}, ${ubicacion.familia}, producto ${ubicacion.posicion} de ${ubicacion.total}`
+              ? `Capturando ${nombre}, ${ubicacion.familia}, ${ubicacion.contados} de ${ubicacion.total} contados`
               : `Capturando ${nombre}`
           }
           accessibilityLiveRegion="polite"
@@ -144,10 +144,16 @@ export function TecladoCantidad({
             <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
               {nombre}
             </Text>
-            {contexto ? (
-              <Text style={estilos.contexto} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-                {contexto}
-              </Text>
+            {/* Si no cabe se recorta la familia, nunca "contados": es la palabra que quita la duda. */}
+            {ubicacion ? (
+              <View style={estilos.lineaContexto}>
+                <Text style={[estilos.contexto, estilos.familiaContexto]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                  {ubicacion.familia}
+                </Text>
+                <Text style={estilos.contexto} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                  {` · ${ubicacion.contados} de ${ubicacion.total} contados`}
+                </Text>
+              </View>
             ) : null}
           </View>
         </View>
@@ -378,8 +384,16 @@ const estilos = StyleSheet.create({
     fontFamily: FUENTE.extraNegrita,
     color: COLORES.texto,
   },
+  lineaContexto: {
+    flexDirection: 'row',
+  },
+  // Cede el ancho: el avance se lee completo.
+  familiaContexto: {
+    flexShrink: 1,
+  },
   // Se retira frente al nombre: lo ubica, no compite con él.
   contexto: {
+    flexShrink: 0,
     ...TIPOGRAFIA.etiqueta,
     color: COLORES.textoSecundario,
   },
