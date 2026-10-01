@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  AVISO_SINCRONIZACION_FALLIDA_RECIENTE,
   AVISO_SINCRONIZACION_RECIENTE,
   falloSincronizacion,
   quienConfirma,
@@ -122,6 +123,15 @@ describe('falloSincronizacion', () => {
     const fallo = falloSincronizacion({ sinRed: false, estado: 429, codigo: 'SINCRONIZACION_RECIENTE' });
     assert.equal(fallo.detalle, 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.');
     assert.equal(fallo.detalle, AVISO_SINCRONIZACION_RECIENTE);
+    assert.equal(fallo.informativo, true);
+    assert.equal(fallo.reintentable, false);
+  });
+
+  it('429 tras un intento fallido: no dice que alguien sincronizó', () => {
+    const fallo = falloSincronizacion({ sinRed: false, estado: 429, codigo: 'SINCRONIZACION_FALLIDA_RECIENTE' });
+    assert.equal(fallo.titulo, 'El intento anterior falló');
+    assert.equal(fallo.detalle, 'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.');
+    assert.equal(fallo.detalle, AVISO_SINCRONIZACION_FALLIDA_RECIENTE);
     assert.equal(fallo.informativo, true);
     assert.equal(fallo.reintentable, false);
   });

@@ -21,6 +21,7 @@ import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AdminUsuarioRepository } from '../application/admin-usuario.repository';
 import { CrearUsuarioUseCase } from '../application/crear-usuario.use-case';
+import type { RechazoCuentaHandyYaAsignada } from '../application/cuenta-handy-libre';
 import { EditarUsuarioUseCase } from '../application/editar-usuario.use-case';
 import { RestablecerPinUseCase } from '../application/restablecer-pin.use-case';
 import {
@@ -32,6 +33,22 @@ import {
 } from './usuarios.dto';
 
 const MENSAJE_USUARIO_NO_ENCONTRADO = 'Usuario no encontrado';
+
+/**
+ * 409 cuando la cuenta de Handy ya la tiene otro usuario activo: dice a quien,
+ * para que el supervisor sepa a quien desactivar primero.
+ */
+function cuentaHandyYaAsignada(
+  rechazo: RechazoCuentaHandyYaAsignada,
+): ConflictException {
+  const cuenta = rechazo.cuentaHandy.nombre ?? `#${rechazo.cuentaHandy.id}`;
+  return new ConflictException({
+    statusCode: 409,
+    codigo: rechazo.motivo,
+    mensaje: `La cuenta de Handy de ${cuenta} ya está asignada a ${rechazo.asignadaA.nombreCompleto}. Desactiva a esa persona primero.`,
+    asignadaA: rechazo.asignadaA,
+  });
+}
 
 /**
  * Administracion de usuarios (RF-05 .. RF-11). Toda la seccion es exclusiva del
@@ -83,6 +100,8 @@ export class UsuariosController {
             mensaje:
               'Solo un vendedor puede tener un usuario de Handy vinculado',
           });
+        case 'CUENTA_HANDY_YA_ASIGNADA':
+          throw cuentaHandyYaAsignada(resultado);
       }
     }
 
@@ -132,6 +151,8 @@ export class UsuariosController {
             mensaje:
               'Esta accion dejaria el sistema sin ningun supervisor activo. Asigna el rol de supervisor a otra persona antes de continuar.',
           });
+        case 'CUENTA_HANDY_YA_ASIGNADA':
+          throw cuentaHandyYaAsignada(resultado);
       }
     }
 

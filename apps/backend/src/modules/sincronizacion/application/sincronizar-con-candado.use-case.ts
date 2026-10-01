@@ -1,4 +1,7 @@
-import { evaluarCandado } from '../domain/candado-sincronizacion';
+import {
+  evaluarCandado,
+  type MotivoCandado,
+} from '../domain/candado-sincronizacion';
 import { RegistroSincronizacionRepository } from './registro-sincronizacion.repository';
 import {
   SincronizarConHandyUseCase,
@@ -8,12 +11,13 @@ import {
 
 export type ResultadoSincronizarConCandado =
   | { exito: true; resultado: ResultadoSincronizarConHandy }
-  | { exito: false; motivo: 'SINCRONIZACION_RECIENTE'; reintentarEn: Date };
+  | { exito: false; motivo: MotivoCandado; reintentarEn: Date };
 
 /**
  * Puerta de entrada a la sincronizacion con Handy: deja constancia de quien
- * la pidio y cuando, y aplica el candado global de 2 minutos
- * (`domain/candado-sincronizacion.ts`) a las que se piden desde la app.
+ * la pidio, cuando y si salio bien, y aplica el candado global
+ * (`domain/candado-sincronizacion.ts`: 2 minutos tras un exito, 20 segundos
+ * tras un fallo) a las que se piden desde la app.
  *
  * La sincronizacion en si sigue siendo UNA (`SincronizarConHandyUseCase`):
  * esto solo la envuelve. Si el candado esta cerrado no se llama a Handy.
@@ -39,7 +43,7 @@ export class SincronizarConCandadoUseCase {
     if (!reserva.reservado) {
       return {
         exito: false,
-        motivo: 'SINCRONIZACION_RECIENTE',
+        motivo: reserva.motivo,
         reintentarEn: reserva.reintentarEn,
       };
     }
@@ -78,7 +82,8 @@ export class SincronizarConCandadoUseCase {
         exito,
       });
     } catch {
-      // La fila ya existe con su inicio, que es lo que sostiene el candado.
+      // La fila ya existe con su inicio. Sin `exito` el candado la trata como
+      // en curso (2 minutos): se pierde la ventana corta, nunca la proteccion.
     }
   }
 }

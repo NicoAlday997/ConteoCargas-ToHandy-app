@@ -51,6 +51,25 @@ export interface RegistroRestablecimientoPin {
   restablecidoPor: string;
 }
 
+/** El usuario activo que ya ocupa una cuenta de Handy. */
+export interface OcupanteCuentaHandy {
+  id: string;
+  nombreCompleto: string;
+}
+
+/**
+ * Lo lanza `crear` o `actualizar` cuando la base de datos rechaza un segundo
+ * usuario ACTIVO con la misma cuenta de Handy (indice unico parcial). Los casos
+ * de uso validan antes, asi que esto solo pasa en una carrera entre dos
+ * peticiones; se traduce al mismo rechazo `CUENTA_HANDY_YA_ASIGNADA`.
+ */
+export class CuentaHandyYaAsignadaError extends Error {
+  constructor(readonly usuarioHandyId: number | null) {
+    super('La cuenta de Handy ya esta asignada a otro usuario activo');
+    this.name = 'CuentaHandyYaAsignadaError';
+  }
+}
+
 /**
  * Puerto: que se necesita de la persistencia para administrar usuarios, no como
  * se hace. El adaptador Prisma vive en infrastructure/.
@@ -73,4 +92,14 @@ export abstract class AdminUsuarioRepository {
    * de rol deje el sistema sin ningun supervisor activo.
    */
   abstract contarSupervisoresActivos(): Promise<number>;
+  /**
+   * El usuario ACTIVO vinculado a esa cuenta de Handy, sin contar a
+   * `excluirId` (el que se esta editando). `null` si la cuenta esta libre.
+   */
+  abstract buscarActivoConCuentaHandy(
+    usuarioHandyId: number,
+    excluirId?: string,
+  ): Promise<OcupanteCuentaHandy | null>;
+  /** Nombre de la cuenta en el cache de Handy; `null` si no esta sincronizada. */
+  abstract nombreCuentaHandy(usuarioHandyId: number): Promise<string | null>;
 }

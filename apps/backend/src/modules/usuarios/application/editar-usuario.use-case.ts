@@ -9,6 +9,11 @@ import {
   AdminUsuarioRepository,
   type UsuarioAdmin,
 } from './admin-usuario.repository';
+import {
+  escribirOCuentaOcupada,
+  rechazoSiCuentaHandyOcupada,
+  type RechazoCuentaHandyYaAsignada,
+} from './cuenta-handy-libre';
 
 /**
  * Campos que el PATCH `/admin/usuarios/:id` puede tocar (RF-05, RF-11).
@@ -24,14 +29,17 @@ export interface DatosEditarUsuario {
 
 export type ResultadoEditarUsuario =
   | { exito: true; usuario: UsuarioAdmin }
-  | { exito: false; motivo: 'USUARIO_NO_ENCONTRADO' | MotivoRechazoPolitica };
+  | { exito: false; motivo: 'USUARIO_NO_ENCONTRADO' | MotivoRechazoPolitica }
+  | RechazoCuentaHandyYaAsignada;
 
 /**
  * Caso de uso que maneja el PATCH completo de un usuario del panel de
  * administracion: campos simples, alta/baja y cambio de rol. Antes de tocar
  * `activo = false` o `rolApp` aplica las politicas de `politica-supervisores`:
  * nadie se desactiva ni se cambia el rol a si mismo, y ninguna accion puede
- * dejar el sistema sin un supervisor activo.
+ * dejar el sistema sin un supervisor activo. Si el PATCH vincula una cuenta
+ * de Handy o REACTIVA a alguien que tiene una, verifica que ningun otro
+ * usuario activo la tenga ya (una cuenta de Handy, un solo usuario activo).
  *
  * `actorId` SIEMPRE sale del usuario autenticado (JWT), nunca del body: si
  * viajara en el body cualquiera podria suplantar a otro admin para saltarse
@@ -54,14 +62,16 @@ export class EditarUsuarioUseCase {
 
     const rolNuevo = datos.rolApp;
     const tocaDesactivacion = datos.activo === false;
-    const tocaCambioDeRol = rolNuevo !== undefined && rolNuevo !== existente.rolApp;
+    const tocaCambioDeRol =
+      rolNuevo !== undefined && rolNuevo !== existente.rolApp;
 
     // El conteo de supervisores activos solo hace falta cuando el objetivo ES
     // supervisor Y el PATCH realmente toca `activo` o `rolApp`: ninguna de las
     // dos politicas puede rechazar por ULTIMO_SUPERVISOR en ningun otro caso.
     // Se consulta como maximo una vez por ejecucion.
     const necesitaConteo =
-      existente.rolApp === 'SUPERVISOR' && (tocaDesactivacion || tocaCambioDeRol);
+      existente.rolApp === 'SUPERVISOR' &&
+      (tocaDesactivacion || tocaCambioDeRol);
     const total = necesitaConteo
       ? await this.usuarios.contarSupervisoresActivos()
       : 0;
@@ -80,7 +90,32 @@ export class EditarUsuarioUseCase {
       }
     }
 
-    const actualizado = await this.usuarios.actualizar(id, datos);
+    // Como quedaria tras el PATCH: solo choca si queda ACTIVO y CON cuenta, y
+    // solo se revisa si el PATCH toca alguno de los dos (vincular una cuenta o
+    // reactivar a alguien cuya cuenta ya paso a otro).
+    const cuentaFinal =
+      datos.usuarioHandyId !== undefined
+        ? datos.usuarioHandyId
+        : existente.usuarioHandyId;
+    const activoFinal = datos.activo ?? existente.activo;
+    const tocaCuentaOActivo =
+      datos.usuarioHandyId !== undefined || datos.activo !== undefined;
+    if (tocaCuentaOActivo && activoFinal && cuentaFinal !== null) {
+      const rechazo = await rechazoSiCuentaHandyOcupada(
+        this.usuarios,
+        cuentaFinal,
+        id,
+      );
+      if (rechazo !== null) return rechazo;
+    }
+
+    const actualizado = await escribirOCuentaOcupada(
+      this.usuarios,
+      cuentaFinal,
+      id,
+      () => this.usuarios.actualizar(id, datos),
+    );
+    if ('motivo' in actualizado) return actualizado;
     return { exito: true, usuario: actualizado };
   }
 }

@@ -1,14 +1,41 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import {
   AdminUsuarioRepository,
+  CuentaHandyYaAsignadaError,
   type DatosActualizarUsuario,
   type DatosCrearUsuario,
+  type OcupanteCuentaHandy,
   type RegistroRestablecimientoPin,
   type UsuarioAdmin,
 } from '../application/admin-usuario.repository';
+
+/**
+ * Indice unico parcial creado a mano en la migracion
+ * `20261001120000_cuenta_handy_unica_activa` (Prisma no los modela).
+ */
+const INDICE_CUENTA_HANDY_ACTIVA = 'usuarios_app_usuarioHandyId_activo_key';
+
+/**
+ * `true` si el error de Prisma es la violacion de ese indice. Prisma reporta
+ * en `meta.target` el nombre del indice o las columnas, segun la version.
+ */
+function violaCuentaHandyUnica(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== 'P2002'
+  ) {
+    return false;
+  }
+  const target = error.meta?.target;
+  const texto = Array.isArray(target) ? target.join(',') : String(target ?? '');
+  return (
+    texto.includes(INDICE_CUENTA_HANDY_ACTIVA) ||
+    texto.includes('usuarioHandyId')
+  );
+}
 
 /**
  * Adaptador de infraestructura del repositorio de administracion de usuarios.
@@ -48,19 +75,23 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
   }
 
   async crear(datos: DatosCrearUsuario): Promise<UsuarioAdmin> {
-    const registro = await this.prisma.usuarioApp.create({
-      data: {
-        nombreCompleto: datos.nombreCompleto,
-        rolApp: datos.rolApp,
-        usuarioHandyId: datos.usuarioHandyId,
-        pinHash: datos.pinHash,
-        // Alta (RF-07 / RF-08): PIN temporal, se exige cambiarlo en el primer
-        // login y el usuario nace activo.
-        debeCambiarPin: true,
-        activo: true,
-      },
-      select: PrismaAdminUsuarioRepository.SELECT,
-    });
+    const registro = await this.traducirCuentaOcupada(
+      datos.usuarioHandyId,
+      () =>
+        this.prisma.usuarioApp.create({
+          data: {
+            nombreCompleto: datos.nombreCompleto,
+            rolApp: datos.rolApp,
+            usuarioHandyId: datos.usuarioHandyId,
+            pinHash: datos.pinHash,
+            // Alta (RF-07 / RF-08): PIN temporal, se exige cambiarlo en el primer
+            // login y el usuario nace activo.
+            debeCambiarPin: true,
+            activo: true,
+          },
+          select: PrismaAdminUsuarioRepository.SELECT,
+        }),
+    );
     return this.aDominio(registro);
   }
 
@@ -68,22 +99,26 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     id: string,
     datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin> {
-    const registro = await this.prisma.usuarioApp.update({
-      where: { id },
-      data: {
-        // `undefined` = Prisma no toca el campo; asi un PATCH parcial solo
-        // modifica lo que realmente vino en el body.
-        nombreCompleto: datos.nombreCompleto,
-        rolApp: datos.rolApp,
-        usuarioHandyId: datos.usuarioHandyId,
-        activo: datos.activo,
-        debeCambiarPin: datos.debeCambiarPin,
-        pinHash: datos.pinHash,
-        intentosFallidos: datos.intentosFallidos,
-        bloqueadoHasta: datos.bloqueadoHasta,
-      },
-      select: PrismaAdminUsuarioRepository.SELECT,
-    });
+    const registro = await this.traducirCuentaOcupada(
+      datos.usuarioHandyId ?? null,
+      () =>
+        this.prisma.usuarioApp.update({
+          where: { id },
+          data: {
+            // `undefined` = Prisma no toca el campo; asi un PATCH parcial solo
+            // modifica lo que realmente vino en el body.
+            nombreCompleto: datos.nombreCompleto,
+            rolApp: datos.rolApp,
+            usuarioHandyId: datos.usuarioHandyId,
+            activo: datos.activo,
+            debeCambiarPin: datos.debeCambiarPin,
+            pinHash: datos.pinHash,
+            intentosFallidos: datos.intentosFallidos,
+            bloqueadoHasta: datos.bloqueadoHasta,
+          },
+          select: PrismaAdminUsuarioRepository.SELECT,
+        }),
+    );
     return this.aDominio(registro);
   }
 
@@ -110,6 +145,43 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     return this.prisma.usuarioApp.count({
       where: { rolApp: 'SUPERVISOR', activo: true },
     });
+  }
+
+  async buscarActivoConCuentaHandy(
+    usuarioHandyId: number,
+    excluirId?: string,
+  ): Promise<OcupanteCuentaHandy | null> {
+    return this.prisma.usuarioApp.findFirst({
+      where: {
+        usuarioHandyId,
+        activo: true,
+        ...(excluirId !== undefined && { id: { not: excluirId } }),
+      },
+      select: { id: true, nombreCompleto: true },
+    });
+  }
+
+  async nombreCuentaHandy(usuarioHandyId: number): Promise<string | null> {
+    const cuenta = await this.prisma.usuarioHandy.findUnique({
+      where: { idHandy: usuarioHandyId },
+      select: { nombre: true },
+    });
+    return cuenta?.nombre ?? null;
+  }
+
+  /** La violacion del indice parcial sale como error del puerto, no de Prisma. */
+  private async traducirCuentaOcupada<T>(
+    usuarioHandyId: number | null,
+    escribir: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await escribir();
+    } catch (error) {
+      if (violaCuentaHandyUnica(error)) {
+        throw new CuentaHandyYaAsignadaError(usuarioHandyId);
+      }
+      throw error;
+    }
   }
 
   private aDominio(registro: {

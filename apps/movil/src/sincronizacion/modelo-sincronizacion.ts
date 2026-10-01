@@ -110,6 +110,12 @@ export function quienConfirma(supervisoresActivos: readonly string[]): string {
 /** El 429 del candado de 2 minutos: no es un error, alguien más ya trajo lo nuevo. */
 export const AVISO_SINCRONIZACION_RECIENTE = 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.';
 
+/**
+ * El 429 corto (20 s) tras un intento FALLIDO: no dice que alguien
+ * sincronizó, porque no se sincronizó nada (y casi siempre fue uno mismo).
+ */
+export const AVISO_SINCRONIZACION_FALLIDA_RECIENTE = 'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.';
+
 export interface FalloSincronizacion {
   titulo: string;
   detalle: string;
@@ -130,6 +136,14 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
       detalle: 'Para sincronizar necesitas señal: revísala y vuelve a intentarlo. No se perdió nada.',
       reintentable: true,
       informativo: false,
+    };
+  }
+  if (error.estado === 429 && error.codigo === 'SINCRONIZACION_FALLIDA_RECIENTE') {
+    return {
+      titulo: 'El intento anterior falló',
+      detalle: AVISO_SINCRONIZACION_FALLIDA_RECIENTE,
+      reintentable: false,
+      informativo: true,
     };
   }
   if (error.estado === 429) {

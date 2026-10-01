@@ -1,12 +1,14 @@
 import { RolApp } from '@prisma/client';
 
 import { HasherPort } from '../../auth/application/hasher.port';
-import type {
-  AdminUsuarioRepository,
-  DatosActualizarUsuario,
-  DatosCrearUsuario,
-  RegistroRestablecimientoPin,
-  UsuarioAdmin,
+import {
+  CuentaHandyYaAsignadaError,
+  type AdminUsuarioRepository,
+  type DatosActualizarUsuario,
+  type DatosCrearUsuario,
+  type OcupanteCuentaHandy,
+  type RegistroRestablecimientoPin,
+  type UsuarioAdmin,
 } from './admin-usuario.repository';
 import {
   CrearUsuarioUseCase,
@@ -25,6 +27,12 @@ import {
 class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   readonly creados: Array<{ datos: DatosCrearUsuario; usuario: UsuarioAdmin }> =
     [];
+  /** Usuarios que ya existian antes del alta (para la cuenta de Handy). */
+  readonly previos: UsuarioAdmin[] = [];
+  /** Nombres del cache de Handy, por id. */
+  readonly cuentasHandy = new Map<number, string>();
+  /** Simula que otra peticion gano la carrera: `crear` choca con el indice. */
+  chocaConIndice = false;
   private secuencia = 0;
 
   async listarTodos(): Promise<UsuarioAdmin[]> {
@@ -32,6 +40,12 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   }
 
   async crear(datos: DatosCrearUsuario): Promise<UsuarioAdmin> {
+    if (this.chocaConIndice) {
+      this.previos.push(
+        usuarioPrevio({ id: 'carrera', nombreCompleto: 'Gana Carrera' }),
+      );
+      throw new CuentaHandyYaAsignadaError(datos.usuarioHandyId);
+    }
     this.secuencia += 1;
     const ahora = new Date('2026-09-03T10:00:00-06:00');
     const usuario: UsuarioAdmin = {
@@ -50,7 +64,10 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     return usuario;
   }
 
-  actualizar(_id: string, _datos: DatosActualizarUsuario): Promise<UsuarioAdmin> {
+  actualizar(
+    _id: string,
+    _datos: DatosActualizarUsuario,
+  ): Promise<UsuarioAdmin> {
     throw new Error('no usado en estas pruebas');
   }
 
@@ -67,6 +84,41 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   contarSupervisoresActivos(): Promise<number> {
     throw new Error('no usado en estas pruebas');
   }
+
+  async buscarActivoConCuentaHandy(
+    usuarioHandyId: number,
+    excluirId?: string,
+  ): Promise<OcupanteCuentaHandy | null> {
+    const todos = [...this.previos, ...this.creados.map((c) => c.usuario)];
+    const ocupante = todos.find(
+      (u) =>
+        u.activo && u.usuarioHandyId === usuarioHandyId && u.id !== excluirId,
+    );
+    return ocupante
+      ? { id: ocupante.id, nombreCompleto: ocupante.nombreCompleto }
+      : null;
+  }
+
+  async nombreCuentaHandy(usuarioHandyId: number): Promise<string | null> {
+    return this.cuentasHandy.get(usuarioHandyId) ?? null;
+  }
+}
+
+/** Un usuario que ya estaba dado de alta: por omision, vendedor activo de la cuenta 42. */
+function usuarioPrevio(overrides: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
+  const fecha = new Date('2026-08-01T10:00:00-06:00');
+  return {
+    id: 'previo-1',
+    nombreCompleto: 'Carlos Ruiz',
+    rolApp: RolApp.VENDEDOR,
+    usuarioHandyId: 42,
+    activo: true,
+    debeCambiarPin: false,
+    fechaUltimoCambioPin: null,
+    creadoEn: fecha,
+    actualizadoEn: fecha,
+    ...overrides,
+  };
 }
 
 /**
@@ -176,5 +228,75 @@ describe('CrearUsuarioUseCase', () => {
 
     expect(hasher.hashInvocaciones).toEqual([resultado.pinTemporal]);
     expect(repo.creados[0].datos.pinHash).toBe(`HASH:${resultado.pinTemporal}`);
+  });
+
+  describe('una cuenta de Handy, un solo usuario activo', () => {
+    it('6. rechaza el alta con una cuenta que ya tiene otro usuario activo, diciendo quien', async () => {
+      repo.previos.push(usuarioPrevio());
+      repo.cuentasHandy.set(42, 'Ruta 3 - Carlos Ruiz');
+
+      const resultado = await useCase.ejecutar({
+        nombreCompleto: 'Ana Vendedora',
+        rolApp: RolApp.VENDEDOR,
+        usuarioHandyId: 42,
+      });
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'CUENTA_HANDY_YA_ASIGNADA',
+        cuentaHandy: { id: 42, nombre: 'Ruta 3 - Carlos Ruiz' },
+        asignadaA: { id: 'previo-1', nombreCompleto: 'Carlos Ruiz' },
+      });
+      expect(repo.creados).toHaveLength(0);
+      expect(hasher.hashInvocaciones).toHaveLength(0);
+    });
+
+    it('7. si quien la tenia esta INACTIVO, la cuenta esta libre', async () => {
+      repo.previos.push(usuarioPrevio({ activo: false }));
+
+      const resultado = await useCase.ejecutar({
+        nombreCompleto: 'Ana Vendedora',
+        rolApp: RolApp.VENDEDOR,
+        usuarioHandyId: 42,
+      });
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('8. un usuario sin cuenta no choca con nada', async () => {
+      repo.previos.push(
+        usuarioPrevio(),
+        usuarioPrevio({
+          id: 'previo-2',
+          rolApp: RolApp.CONTADOR,
+          usuarioHandyId: null,
+        }),
+      );
+
+      const resultado = await useCase.ejecutar({
+        nombreCompleto: 'Beto Contador',
+        rolApp: RolApp.CONTADOR,
+        usuarioHandyId: null,
+      });
+
+      expect(resultado.exito).toBe(true);
+    });
+
+    it('9. si otra peticion gana la carrera, el indice de la BD da el mismo rechazo', async () => {
+      repo.chocaConIndice = true;
+
+      const resultado = await useCase.ejecutar({
+        nombreCompleto: 'Ana Vendedora',
+        rolApp: RolApp.VENDEDOR,
+        usuarioHandyId: 42,
+      });
+
+      expect(resultado).toMatchObject({
+        exito: false,
+        motivo: 'CUENTA_HANDY_YA_ASIGNADA',
+        cuentaHandy: { id: 42, nombre: null },
+        asignadaA: { id: 'carrera', nombreCompleto: 'Gana Carrera' },
+      });
+    });
   });
 });

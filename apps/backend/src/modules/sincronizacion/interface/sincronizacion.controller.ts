@@ -38,6 +38,15 @@ import {
   ConfirmarFactorSchema,
   type ConfirmarFactorDto,
 } from './sincronizacion.dto';
+import type { MotivoCandado } from '../domain/candado-sincronizacion';
+
+/** Lo que dice el 429 segun por que esta cerrado el candado. */
+const MENSAJE_CANDADO: Record<MotivoCandado, string> = {
+  SINCRONIZACION_RECIENTE:
+    'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.',
+  SINCRONIZACION_FALLIDA_RECIENTE:
+    'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.',
+};
 
 /**
  * Sincronizacion del cache local contra Handy (docs/04-api-interna.md §1.3);
@@ -71,8 +80,11 @@ export class SincronizacionController {
    * con `vendedores: null` y `errorVendedores` con el motivo.
    *
    * Candado global: si la ultima sincronizacion (de quien sea, incluida la de
-   * las 5:00) empezo hace menos de 2 minutos, responde 429 con `reintentarEn`
-   * (y `Retry-After` en segundos) SIN llamar a Handy. Queda registrado quien
+   * las 5:00) empezo hace menos de 2 minutos, responde 429
+   * `SINCRONIZACION_RECIENTE` con `reintentarEn` (y `Retry-After` en segundos)
+   * SIN llamar a Handy. Si esa ultima FALLO, la espera es de 20 segundos y el
+   * codigo `SINCRONIZACION_FALLIDA_RECIENTE`: no se dice que alguien
+   * sincronizo, porque no se sincronizo nada. Queda registrado quien
    * sincronizo y cuando; `usuarioAppId` sale del JWT.
    */
   @Post()
@@ -100,8 +112,7 @@ export class SincronizacionController {
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           codigo: salida.motivo,
-          mensaje:
-            'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.',
+          mensaje: MENSAJE_CANDADO[salida.motivo],
           reintentarEn: salida.reintentarEn.toISOString(),
         },
         HttpStatus.TOO_MANY_REQUESTS,

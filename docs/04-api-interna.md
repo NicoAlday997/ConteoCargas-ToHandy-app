@@ -44,6 +44,8 @@ Revelar intentos restantes no abre enumeración de usuarios porque `GET /auth/us
 
 En `POST /admin/usuarios`, `usuarioHandyId` es obligatorio si `rolApp = VENDEDOR` y prohibido para cualquier otro rol (400). La respuesta `{ usuario, pinTemporal }` y la de `POST /admin/usuarios/:id/restablecer-pin` (`{ pinTemporal }`) son la **única** vez que el PIN temporal existe en claro: el servidor solo guarda su hash y la app no lo persiste. Los rechazos de `PATCH /admin/usuarios/:id` responden `409` con `mensaje` listo para mostrarse tal cual: autodesactivación, cambio del propio rol, o dejar el sistema sin supervisor activo.
 
+**Una cuenta de Handy, un solo usuario activo.** `POST` y `PATCH /admin/usuarios` responden **409** `{ statusCode, codigo: "CUENTA_HANDY_YA_ASIGNADA", mensaje, asignadaA: { id, nombreCompleto } }` si la cuenta de Handy que quedaría vinculada a un usuario **activo** ya la tiene otro usuario activo: al vincular una cuenta y también al **reactivar** a alguien cuya cuenta pasó a otra persona. `mensaje`: *"La cuenta de Handy de [nombre de la cuenta en Handy] ya está asignada a [nombre del otro usuario]. Desactiva a esa persona primero."* Los usuarios inactivos no ocupan la cuenta. La garantía real es un índice único parcial en `usuarios_app` (`usuarioHandyId` donde `activo = true`), creado con SQL a mano en la migración `cuenta_handy_unica_activa`; la validación del caso de uso solo da el mensaje.
+
 ### 1.2.1 Plantillas de carga
 
 Una plantilla decide qué productos ve el vendedor de una ruta en su grid de conteo. La plantilla vive en la asignación vigente de la ruta (`AsignacionRutaVendedor.plantillaId`) y cada evento de carga guarda la suya como snapshot al crearse. Ids de plantilla y ruta: texto no vacío (las plantillas históricas tienen ids legibles creados por SQL, no CUID). Toda mutación responde la plantilla completa (mismo cuerpo que `GET /admin/plantillas/:id`).
@@ -85,7 +87,7 @@ Días sueltos o periodos que no se trabajan (festivos, paros, clima, Navidad), e
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | `/productos?ruta=&q=` | Vendedor, Contador, Supervisor | Catálogo activo, ordenado por frecuencia de uso de la ruta indicada; `q` filtra por búsqueda de texto. |
-| POST | `/admin/sincronizacion` | Vendedor, Contador, Supervisor | Sincronización completa con Handy: productos y luego vendedores. Es el mismo caso de uso que corre solo cada día a las 5:00 (docs/02 §4.6). Candado global de 2 minutos (429). Ver detalle abajo. |
+| POST | `/admin/sincronizacion` | Vendedor, Contador, Supervisor | Sincronización completa con Handy: productos y luego vendedores. Es el mismo caso de uso que corre solo cada día a las 5:00 (docs/02 §4.6). Candado global: 2 minutos tras un éxito, 20 s tras un fallo (429). Ver detalle abajo. |
 | GET | `/admin/sincronizacion/estado` | Vendedor, Contador, Supervisor | Cuándo fue la última sincronización y cómo quedó el cache. Ver detalle abajo. |
 | GET | `/admin/sincronizacion/factores-pendientes` | Supervisor (admin) | Productos activos sin factor de empaque confirmado: `[{ code, nombre, familia, modalidadVenta, piezasPorPaqueteSugerido }]`. `modalidadVenta` (`COMPLETO` \| `POR_PIEZA`) es la guardada hoy, aún sin confirmar. El sugerido sale del nombre (`C/12`, `X 12`, `12 pack`) o es `null` si hay que capturarlo; solo aplica si el producto se vende por pieza (en un dulce, `c/70` NO es factor). |
 | GET | `/admin/sincronizacion/factores` | Supervisor (admin) | Todos los productos activos con su empaque actual, confirmado o no (para corregir confirmaciones equivocadas): `[{ code, nombre, familia, modalidadVenta, piezasPorPaquete, factorConfirmado, confirmadoPor, fechaConfirmacionFactor }]`. Sin confirmar, `piezasPorPaquete` es solo la propuesta; `confirmadoPor` es el nombre de quien hizo la última confirmación. |
@@ -114,7 +116,7 @@ Sin body. Puede tardar varios segundos (varias páginas contra Handy). Responde 
 
 **Quién puede sincronizar (cambio de 2026-09-30).** Los tres roles, por decisión del dueño (antes solo Supervisor). Los endpoints del factor de empaque (`factores`, `factores-pendientes`, `productos/:code/factor…`) siguen siendo **solo Supervisor**: sincronizar no desbloquea nada a vendedor ni contador (confirmar el empaque y armar la plantilla son del supervisor); el botón les sirve para saber que un producto ya llegó y a quién avisarle.
 
-**Candado de 2 minutos.** Si la última sincronización —de quien sea, incluida la automática de las 5:00, y aunque haya fallado— **empezó** hace menos de 2 minutos, responde sin llamar a Handy:
+**Candado (2 minutos tras un éxito, 20 segundos tras un fallo).** Si la última sincronización —de quien sea, incluida la automática de las 5:00— **empezó** hace menos de 2 minutos y salió bien (o sigue en curso), responde sin llamar a Handy:
 
 ```json
 HTTP/1.1 429 Too Many Requests
@@ -123,6 +125,16 @@ Retry-After: 110
 { "statusCode": 429, "codigo": "SINCRONIZACION_RECIENTE", "mensaje": "Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.", "reintentarEn": "2026-09-30T16:02:00.000Z" }
 ```
 
+Si la última **falló** (Handy caído, token inválido, red), la espera es de solo 20 segundos y el mensaje no dice que alguien sincronizó, porque no se sincronizó nada:
+
+```json
+HTTP/1.1 429 Too Many Requests
+Retry-After: 15
+
+{ "statusCode": 429, "codigo": "SINCRONIZACION_FALLIDA_RECIENTE", "mensaje": "El intento anterior falló. Espera unos segundos y vuelve a intentarlo.", "reintentarEn": "2026-09-30T16:00:20.000Z" }
+```
+
+- Los 20 segundos tras un fallo solo evitan que alguien le pegue a Handy en bucle; no castigan por una falla ajena. Se decide con `exito` de la última fila de la bitácora; si quedó sin cerrar (`exito = null`), cuenta como en curso: 2 minutos.
 - Es **global**, no por usuario: lo que se protege es la API de Handy, y con once dispositivos alguien ansioso podría golpearla decenas de veces por minuto.
 - Cuenta desde el **inicio**: una sincronización en curso ya bloquea a la siguiente. Leer la última y registrar la nueva ocurre de forma atómica (`pg_advisory_xact_lock`), así que dos peticiones simultáneas no pasan las dos.
 - Un intento rechazado con 429 no se registra ni alarga el candado.

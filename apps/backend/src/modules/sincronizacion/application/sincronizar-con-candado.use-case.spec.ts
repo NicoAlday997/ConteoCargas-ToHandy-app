@@ -1,4 +1,7 @@
-import type { ResultadoCandado } from '../domain/candado-sincronizacion';
+import type {
+  ResultadoCandado,
+  UltimaSincronizacion,
+} from '../domain/candado-sincronizacion';
 import {
   RegistroSincronizacionRepository,
   type NuevoRegistroSincronizacion,
@@ -51,15 +54,21 @@ class RegistrosEnMemoria extends RegistroSincronizacionRepository {
 
   async reservar(
     registro: NuevoRegistroSincronizacion,
-    evaluar: (ultima: Date | null) => ResultadoCandado,
+    evaluar: (ultima: UltimaSincronizacion | null) => ResultadoCandado,
   ): Promise<ResultadoReserva> {
-    const ultima = this.filas.reduce<Date | null>(
-      (max, f) => (max === null || f.iniciadaEn > max ? f.iniciadaEn : max),
+    const ultima = this.filas.reduce<UltimaSincronizacion | null>(
+      (max, f) => (max === null || f.iniciadaEn > max.iniciadaEn ? f : max),
       null,
     );
-    const candado = evaluar(ultima);
+    const candado = evaluar(
+      ultima && { iniciadaEn: ultima.iniciadaEn, exito: ultima.exito },
+    );
     if (!candado.libre) {
-      return { reservado: false, reintentarEn: candado.reintentarEn };
+      return {
+        reservado: false,
+        motivo: candado.motivo,
+        reintentarEn: candado.reintentarEn,
+      };
     }
     return { reservado: true, registroId: await this.registrar(registro) };
   }
@@ -81,9 +90,10 @@ class RegistrosEnMemoria extends RegistroSincronizacionRepository {
 
 function armar(opciones: { falla?: boolean } = {}) {
   let ahora = T0;
+  let falla = opciones.falla ?? false;
   const sincronizar = {
     ejecutar: jest.fn(async () => {
-      if (opciones.falla) throw new HandyErrorServidorError('/products', 503);
+      if (falla) throw new HandyErrorServidorError('/products', 503);
       return resultado();
     }),
     ejecutarAutomatica: jest.fn(async () => ({
@@ -103,6 +113,9 @@ function armar(opciones: { falla?: boolean } = {}) {
     sincronizar,
     avanzar: (ms: number) => {
       ahora = new Date(ahora.getTime() + ms);
+    },
+    handyVuelve: () => {
+      falla = false;
     },
   };
 }
@@ -160,16 +173,57 @@ describe('SincronizarConCandadoUseCase', () => {
     expect(sincronizar.ejecutar).toHaveBeenCalledTimes(2);
   });
 
-  it('si Handy falla: el error sube, el registro queda como fallido y cuenta para el candado', async () => {
-    const { useCase, registros, avanzar } = armar({ falla: true });
+  it('si Handy falla: el error sube y el registro queda como fallido', async () => {
+    const { useCase, registros } = armar({ falla: true });
 
     await expect(useCase.ejecutarManual('vendedor-1')).rejects.toBeInstanceOf(
       HandyErrorServidorError,
     );
     expect(registros.filas[0]).toMatchObject({ exito: false });
+  });
 
+  it('tras un fallo, a los 10 s: candado corto con motivo honesto, sin llamar a Handy', async () => {
+    const { useCase, registros, sincronizar, avanzar } = armar({
+      falla: true,
+    });
+    await expect(useCase.ejecutarManual('vendedor-1')).rejects.toThrow();
     avanzar(10_000);
-    expect((await useCase.ejecutarManual('vendedor-2')).exito).toBe(false);
+
+    const r = await useCase.ejecutarManual('vendedor-1');
+
+    expect(r).toEqual({
+      exito: false,
+      motivo: 'SINCRONIZACION_FALLIDA_RECIENTE',
+      reintentarEn: new Date('2026-09-30T16:00:20.000Z'),
+    });
+    expect(sincronizar.ejecutar).toHaveBeenCalledTimes(1);
+    expect(registros.filas).toHaveLength(1);
+  });
+
+  it('tras un fallo, a los 20 s se puede reintentar (no son 2 minutos)', async () => {
+    const { useCase, sincronizar, avanzar, handyVuelve } = armar({
+      falla: true,
+    });
+    await expect(useCase.ejecutarManual('vendedor-1')).rejects.toThrow();
+    avanzar(20_000);
+    handyVuelve();
+
+    expect((await useCase.ejecutarManual('vendedor-1')).exito).toBe(true);
+    expect(sincronizar.ejecutar).toHaveBeenCalledTimes(2);
+  });
+
+  it('el reintento exitoso tras un fallo vuelve a cerrar 2 minutos', async () => {
+    const { useCase, avanzar, handyVuelve } = armar({ falla: true });
+    await expect(useCase.ejecutarManual('vendedor-1')).rejects.toThrow();
+    avanzar(20_000);
+    handyVuelve();
+    await useCase.ejecutarManual('vendedor-1');
+    avanzar(60_000);
+
+    expect(await useCase.ejecutarManual('contador-1')).toMatchObject({
+      exito: false,
+      motivo: 'SINCRONIZACION_RECIENTE',
+    });
   });
 
   it('la corrida automatica se registra sin usuario y cuenta para el candado', async () => {

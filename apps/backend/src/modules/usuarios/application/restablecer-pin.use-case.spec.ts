@@ -75,6 +75,14 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   contarSupervisoresActivos(): Promise<number> {
     throw new Error('no usado en estas pruebas');
   }
+
+  buscarActivoConCuentaHandy(): Promise<null> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  nombreCuentaHandy(): Promise<string | null> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 /** Hasher falso: el "hash" de un valor plano `x` es la cadena `HASH:x`. */

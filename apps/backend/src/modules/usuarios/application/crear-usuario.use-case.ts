@@ -6,6 +6,11 @@ import {
   AdminUsuarioRepository,
   type UsuarioAdmin,
 } from './admin-usuario.repository';
+import {
+  escribirOCuentaOcupada,
+  rechazoSiCuentaHandyOcupada,
+  type RechazoCuentaHandyYaAsignada,
+} from './cuenta-handy-libre';
 
 /** Datos de alta que llegan del controlador (RF-07). */
 export interface EntradaCrearUsuario {
@@ -25,7 +30,8 @@ export type ResultadoCrearUsuario =
   | {
       exito: false;
       motivo: 'VENDEDOR_REQUIERE_HANDY' | 'NO_VENDEDOR_CON_HANDY';
-    };
+    }
+  | RechazoCuentaHandyYaAsignada;
 
 /**
  * Caso de uso de alta de usuario (RF-06 sin auto-registro, RF-07 alta por
@@ -50,16 +56,32 @@ export class CrearUsuarioUseCase {
       return { exito: false, motivo: 'NO_VENDEDOR_CON_HANDY' };
     }
 
+    // Una cuenta de Handy, un solo usuario activo (y el alta nace activa).
+    if (entrada.usuarioHandyId !== null) {
+      const rechazo = await rechazoSiCuentaHandyOcupada(
+        this.usuarios,
+        entrada.usuarioHandyId,
+      );
+      if (rechazo !== null) return rechazo;
+    }
+
     // PIN temporal: se genera, se hashea y solo el hash llega a la persistencia.
     const pinTemporal = generarPinTemporal();
     const pinHash = await this.hasher.hash(pinTemporal);
 
-    const usuario = await this.usuarios.crear({
-      nombreCompleto: entrada.nombreCompleto,
-      rolApp: entrada.rolApp,
-      usuarioHandyId: esVendedor ? entrada.usuarioHandyId : null,
-      pinHash,
-    });
+    const usuario = await escribirOCuentaOcupada(
+      this.usuarios,
+      entrada.usuarioHandyId,
+      undefined,
+      () =>
+        this.usuarios.crear({
+          nombreCompleto: entrada.nombreCompleto,
+          rolApp: entrada.rolApp,
+          usuarioHandyId: esVendedor ? entrada.usuarioHandyId : null,
+          pinHash,
+        }),
+    );
+    if ('motivo' in usuario) return usuario;
     // `crear` deja el usuario con `debeCambiarPin = true` (RF-08) y `activo = true`.
 
     return { exito: true, usuario, pinTemporal };

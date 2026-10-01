@@ -4,6 +4,7 @@ import type {
   AdminUsuarioRepository,
   DatosActualizarUsuario,
   DatosCrearUsuario,
+  OcupanteCuentaHandy,
   RegistroRestablecimientoPin,
   UsuarioAdmin,
 } from './admin-usuario.repository';
@@ -78,6 +79,23 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     this.consultasDeConteo += 1;
     return this.totalSupervisoresActivos;
   }
+
+  async buscarActivoConCuentaHandy(
+    usuarioHandyId: number,
+    excluirId?: string,
+  ): Promise<OcupanteCuentaHandy | null> {
+    const ocupante = [...this.usuarios.values()].find(
+      (u) =>
+        u.activo && u.usuarioHandyId === usuarioHandyId && u.id !== excluirId,
+    );
+    return ocupante
+      ? { id: ocupante.id, nombreCompleto: ocupante.nombreCompleto }
+      : null;
+  }
+
+  async nombreCuentaHandy(usuarioHandyId: number): Promise<string | null> {
+    return usuarioHandyId === 42 ? 'Ruta 3' : null;
+  }
 }
 
 function crearUsuario(overrides: Partial<UsuarioAdmin> = {}): UsuarioAdmin {
@@ -127,7 +145,10 @@ describe('EditarUsuarioUseCase', () => {
       nombreCompleto: 'Nuevo nombre',
     });
 
-    expect(resultado).toEqual({ exito: false, motivo: 'USUARIO_NO_ENCONTRADO' });
+    expect(resultado).toEqual({
+      exito: false,
+      motivo: 'USUARIO_NO_ENCONTRADO',
+    });
     expect(repo.actualizaciones).toHaveLength(0);
   });
 
@@ -264,5 +285,125 @@ describe('EditarUsuarioUseCase', () => {
 
     expect(resultado.usuario.rolApp).toBe(RolApp.CONTADOR);
     expect(repo.consultasDeConteo).toBe(0);
+  });
+
+  describe('una cuenta de Handy, un solo usuario activo', () => {
+    const vendedor = (overrides: Partial<UsuarioAdmin>) =>
+      crearUsuario({ rolApp: RolApp.VENDEDOR, ...overrides });
+
+    it('rechaza REACTIVAR a alguien cuya cuenta ya paso a otro usuario activo', async () => {
+      repo.sembrar(
+        vendedor({
+          id: 'viejo',
+          nombreCompleto: 'Juan Viejo',
+          usuarioHandyId: 42,
+          activo: false,
+        }),
+      );
+      repo.sembrar(
+        vendedor({
+          id: 'nuevo',
+          nombreCompleto: 'Pedro Nuevo',
+          usuarioHandyId: 42,
+        }),
+      );
+
+      const resultado = await useCase.ejecutar('viejo', 'admin-1', {
+        activo: true,
+      });
+
+      expect(resultado).toEqual({
+        exito: false,
+        motivo: 'CUENTA_HANDY_YA_ASIGNADA',
+        cuentaHandy: { id: 42, nombre: 'Ruta 3' },
+        asignadaA: { id: 'nuevo', nombreCompleto: 'Pedro Nuevo' },
+      });
+      expect(repo.actualizaciones).toHaveLength(0);
+    });
+
+    it('rechaza vincular una cuenta que ya tiene otro usuario activo', async () => {
+      repo.sembrar(vendedor({ id: 'a', usuarioHandyId: 7 }));
+      repo.sembrar(
+        vendedor({
+          id: 'b',
+          nombreCompleto: 'Pedro Nuevo',
+          usuarioHandyId: 42,
+        }),
+      );
+
+      const resultado = exigirFallo(
+        await useCase.ejecutar('a', 'admin-1', { usuarioHandyId: 42 }),
+      );
+
+      expect(resultado.motivo).toBe('CUENTA_HANDY_YA_ASIGNADA');
+      expect(repo.actualizaciones).toHaveLength(0);
+    });
+
+    it('reactivar se permite si quien tiene la cuenta esta inactivo', async () => {
+      repo.sembrar(
+        vendedor({ id: 'viejo', usuarioHandyId: 42, activo: false }),
+      );
+      repo.sembrar(vendedor({ id: 'otro', usuarioHandyId: 42, activo: false }));
+
+      const resultado = exigirExito(
+        await useCase.ejecutar('viejo', 'admin-1', { activo: true }),
+      );
+
+      expect(resultado.usuario.activo).toBe(true);
+    });
+
+    it('dos usuarios INACTIVOS con la misma cuenta se permiten', async () => {
+      repo.sembrar(vendedor({ id: 'a', usuarioHandyId: 7, activo: false }));
+      repo.sembrar(vendedor({ id: 'b', usuarioHandyId: 42, activo: false }));
+
+      const resultado = exigirExito(
+        await useCase.ejecutar('a', 'admin-1', { usuarioHandyId: 42 }),
+      );
+
+      expect(resultado.usuario.usuarioHandyId).toBe(42);
+    });
+
+    it('reactivar y cambiar de cuenta en el mismo PATCH revisa la cuenta NUEVA', async () => {
+      repo.sembrar(
+        vendedor({ id: 'viejo', usuarioHandyId: 42, activo: false }),
+      );
+      repo.sembrar(vendedor({ id: 'nuevo', usuarioHandyId: 42 }));
+
+      const resultado = exigirExito(
+        await useCase.ejecutar('viejo', 'admin-1', {
+          activo: true,
+          usuarioHandyId: 9,
+        }),
+      );
+
+      expect(resultado.usuario).toMatchObject({
+        activo: true,
+        usuarioHandyId: 9,
+      });
+    });
+
+    it('el usuario no choca consigo mismo al re-guardar su propia cuenta', async () => {
+      repo.sembrar(vendedor({ id: 'a', usuarioHandyId: 42 }));
+
+      expect(
+        (await useCase.ejecutar('a', 'admin-1', { usuarioHandyId: 42 })).exito,
+      ).toBe(true);
+    });
+
+    it('un usuario sin cuenta no choca con nada', async () => {
+      repo.sembrar(vendedor({ id: 'v', usuarioHandyId: 42 }));
+      repo.sembrar(
+        crearUsuario({ id: 'c', rolApp: RolApp.CONTADOR, activo: false }),
+      );
+
+      const resultado = exigirExito(
+        await useCase.ejecutar('c', 'admin-1', { activo: true }),
+      );
+
+      expect(resultado.usuario).toMatchObject({
+        activo: true,
+        usuarioHandyId: null,
+      });
+    });
   });
 });

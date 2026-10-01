@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../shared/prisma/prisma.service';
-import type { ResultadoCandado } from '../domain/candado-sincronizacion';
+import type {
+  ResultadoCandado,
+  UltimaSincronizacion,
+} from '../domain/candado-sincronizacion';
 import {
   RegistroSincronizacionRepository,
   type NuevoRegistroSincronizacion,
@@ -31,17 +34,21 @@ export class PrismaRegistroSincronizacionRepository extends RegistroSincronizaci
    */
   async reservar(
     registro: NuevoRegistroSincronizacion,
-    evaluar: (ultimaIniciadaEn: Date | null) => ResultadoCandado,
+    evaluar: (ultima: UltimaSincronizacion | null) => ResultadoCandado,
   ): Promise<ResultadoReserva> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LLAVE_CANDADO_SINCRONIZACION})`;
       const ultima = await tx.registroSincronizacion.findFirst({
         orderBy: { iniciadaEn: 'desc' },
-        select: { iniciadaEn: true },
+        select: { iniciadaEn: true, exito: true },
       });
-      const candado = evaluar(ultima?.iniciadaEn ?? null);
+      const candado = evaluar(ultima);
       if (!candado.libre) {
-        return { reservado: false, reintentarEn: candado.reintentarEn };
+        return {
+          reservado: false,
+          motivo: candado.motivo,
+          reintentarEn: candado.reintentarEn,
+        };
       }
       const creado = await tx.registroSincronizacion.create({
         data: {

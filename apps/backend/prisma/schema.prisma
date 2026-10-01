@@ -147,6 +147,9 @@ model UsuarioApp {
   fechaUltimoCambioPin DateTime?
   rolApp               RolApp
   // Solo se completa cuando rolApp = VENDEDOR (asignación fija por un admin).
+  // Una cuenta de Handy, un solo usuario ACTIVO: indice unico parcial creado
+  // con SQL manual en la migracion `cuenta_handy_unica_activa` (Prisma no
+  // soporta indices parciales en el esquema; no lo dejes borrar).
   usuarioHandyId       Int?
   activo               Boolean   @default(true)
   // Rate limiting del RF-03: bloqueo temporal tras 5 intentos fallidos.
