@@ -17,6 +17,7 @@ import type {
   UsuarioAutenticado,
 } from '../../../shared/auth/jwt.strategy';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
+import { LimiteCredenciales } from '../../../shared/limites/limites-peticiones';
 import { CambiarPinUseCase } from '../application/cambiar-pin.use-case';
 import { LoginUseCase } from '../application/login.use-case';
 import { UsuarioRepository } from '../application/usuario.repository';
@@ -99,6 +100,7 @@ export class AuthController {
   /** Autenticacion por PIN (RF-02). Publico. */
   @Post('login')
   @HttpCode(200)
+  @LimiteCredenciales()
   async login(@Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto) {
     const ahora = new Date();
     const resultado = await this.loginUseCase.ejecutar(
@@ -159,6 +161,7 @@ export class AuthController {
    */
   @Post('cambiar-pin')
   @HttpCode(200)
+  @LimiteCredenciales()
   @UseGuards(JwtAuthGuard)
   async cambiarPin(
     @UsuarioActual() usuario: UsuarioAutenticado,

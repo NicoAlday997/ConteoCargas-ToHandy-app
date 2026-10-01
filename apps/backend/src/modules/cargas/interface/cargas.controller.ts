@@ -21,6 +21,7 @@ import type { UsuarioAutenticado } from '../../../shared/auth/jwt.strategy';
 import { Roles } from '../../../shared/auth/roles.decorator';
 import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
+import { LimiteCredenciales } from '../../../shared/limites/limites-peticiones';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AbrirSesionUseCase } from '../application/abrir-sesion.use-case';
 import { AutorizarCargaUseCase } from '../application/autorizar-carga.use-case';
@@ -712,6 +713,7 @@ export class CargasController {
    */
   @Post(':id/discrepancias/:productoCode/confirmar')
   @HttpCode(200)
+  @LimiteCredenciales()
   @Roles(RolApp.VENDEDOR, RolApp.CONTADOR)
   async confirmarDiscrepancia(
     @Param('id', new ZodValidationPipe(IdSchema)) eventoId: string,

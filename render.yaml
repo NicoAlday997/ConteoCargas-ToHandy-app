@@ -1,0 +1,56 @@
+# Blueprint de Render: backend (NestJS) + Postgres administrado.
+# Paso a paso en docs/07-despliegue.md.
+#
+# Las variables con `sync: false` son secretas: Render las pide en el panel la
+# primera vez y NUNCA quedan en este archivo ni en el repositorio.
+
+services:
+  - type: web
+    name: conteo-cargas-backend
+    runtime: node
+    # Virginia: la region de Render mas cercana a Mexico. La base tiene que
+    # estar en la misma region para usar la conexion interna.
+    region: virginia
+    # Plan de pago (0.5 CPU, 512 MB): siempre encendido, sin dormirse.
+    plan: 0.5c-512mb
+    rootDir: apps/backend
+    # `--include=dev`: con NODE_ENV=production npm ci se saltaria las
+    # devDependencies, y ahi viven el CLI de Nest (build) y el de Prisma
+    # (generate y `migrate deploy` al arrancar).
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    # Aplica migraciones pendientes (`prisma migrate deploy`) y arranca.
+    startCommand: npm run start:prod
+    healthCheckPath: /salud
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: conteo-cargas-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: America/Mexico_City
+      - key: HANDY_API_BASE_URL
+        value: https://hub.handy.la/api/v2
+      - key: SINCRONIZACION_AUTOMATICA
+        value: "true"
+      # Secretas: se escriben a mano en el panel de Render.
+      - key: JWT_SECRET
+        sync: false
+      - key: HANDY_API_TOKEN
+        sync: false
+
+databases:
+  - name: conteo-cargas-db
+    databaseName: handy_conteo
+    user: handy_app
+    region: virginia
+    # La misma version mayor que el contenedor local (docker-compose.yml).
+    postgresMajorVersion: "16"
+    # Plan de pago mas chico (0.1 CPU, 256 MB) con 5 GB de disco: de sobra
+    # para 5 rutas. Incluye recuperacion a un punto en el tiempo.
+    plan: 0.1c-256mb
+    diskSizeGB: 5
+    # Sin IPs permitidas: solo los servicios de Render (el backend) pueden
+    # conectarse. Para entrar desde tu Mac, ver docs/07-despliegue.md.
+    ipAllowList: []

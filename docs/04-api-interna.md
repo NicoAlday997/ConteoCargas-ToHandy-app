@@ -196,9 +196,16 @@ Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion
 | PATCH | `/alertas/:id/resolver` | Supervisor | Marca una alerta como resuelta. |
 | POST | `/dispositivos-push` | Cualquier autenticado | Registra o actualiza el `fcmToken` del dispositivo actual. |
 
+### 1.6.1 Salud del servicio
+
+| Método | Ruta | Rol | Descripción |
+|---|---|---|---|
+| GET | `/salud` | Público (sin JWT, sin límite de peticiones) | `200 { estado: "ok", version, baseDeDatos: "ok" }` si la base responde a un `SELECT 1` en menos de 3 s; si no, `503 { estado: "error", version, baseDeDatos: "sin respuesta" }`. Render lo usa como health check. Nunca devuelve variables de entorno, cadena de conexión ni nada del token de Handy. |
+
 ### 1.7 Convenciones generales
 - Formato de fecha: ISO 8601 (`2026-08-31T14:00:00-06:00`).
 - Errores: cuerpo estándar `{ statusCode, mensaje, detalle? }`; nunca exponer mensajes crudos de la API de Handy directamente al usuario final, solo en `detalle` para depuración.
+- Límite de peticiones por IP: 100 por minuto en total; `POST /auth/login`, `POST /auth/cambiar-pin` y la confirmación de discrepancias con PIN comparten además un límite de 20 por minuto. Al pasarse: `429 { statusCode, codigo: "DEMASIADAS_SOLICITUDES", mensaje }`. Se suma al bloqueo por intentos fallidos de PIN, que es por usuario.
 - Paginación: `?page=&pageSize=` en listados que puedan crecer (historial, catálogo).
 - Todas las mutaciones devuelven el recurso actualizado completo, no solo un código de éxito — reduce llamadas adicionales desde la app.
 

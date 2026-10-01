@@ -152,13 +152,8 @@ npx prisma init
 Esto genera `prisma/schema.prisma` (donde se modela `Usuario_App`, `Evento_Carga`, etc.) y un `.env` con la variable `DATABASE_URL` apuntando al contenedor de Postgres.
 
 ### 4.5 Variables de entorno del backend (`.env`, nunca commiteado)
-```
-DATABASE_URL="postgresql://handy_app:cambiar_esta_clave_local@localhost:5432/handy_conteo"
-HANDY_API_TOKEN="tu_token_de_handy"
-HANDY_API_BASE_URL="https://hub.handy.la/api/v2"
-JWT_SECRET="una_clave_larga_y_aleatoria"
-FCM_SERVER_KEY="clave_de_firebase_cloud_messaging"
-```
+
+Copia `apps/backend/.env.example` como `.env`: ahí está cada variable con un comentario de para qué sirve. Son obligatorias `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; `openssl rand -base64 48`), `HANDY_API_TOKEN`, `HANDY_API_BASE_URL`, `NODE_ENV` y `TZ` (`America/Mexico_City`). Si falta alguna o no es válida, el servidor no arranca y dice cuál. Para producción, ver `docs/07-despliegue.md`.
 
 ## 5. App móvil (React Native)
 

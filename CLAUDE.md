@@ -12,6 +12,7 @@ Antes de trabajar en este repo, consulta la documentación en `/docs`:
 - `docs/04-api-interna.md` — contrato de endpoints entre el backend propio y la app.
 - `docs/05-estrategia-pruebas.md` — qué debe tener pruebas unitarias antes de mergear, y checklist de QA manual.
 - `docs/06-documento-visual-y-experiencia.md` — catálogo de pantallas, flujos de UX y matriz de permisos por rol.
+- `docs/07-despliegue.md` — despliegue en Render (`render.yaml`), variables de entorno, respaldos y restauración.
 
 ## Reglas clave a respetar siempre
 
