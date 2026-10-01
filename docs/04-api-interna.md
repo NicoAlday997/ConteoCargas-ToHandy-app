@@ -205,7 +205,7 @@ Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion
 ### 1.7 Convenciones generales
 - Formato de fecha: ISO 8601 (`2026-08-31T14:00:00-06:00`).
 - Errores: cuerpo estándar `{ statusCode, mensaje, detalle? }`; nunca exponer mensajes crudos de la API de Handy directamente al usuario final, solo en `detalle` para depuración.
-- Límite de peticiones por IP: 100 por minuto en total; `POST /auth/login`, `POST /auth/cambiar-pin` y la confirmación de discrepancias con PIN comparten además un límite de 20 por minuto. Al pasarse: `429 { statusCode, codigo: "DEMASIADAS_SOLICITUDES", mensaje }`. Se suma al bloqueo por intentos fallidos de PIN, que es por usuario.
+- Límites de peticiones: 600 por minuto por IP en total; `POST /auth/login`, `POST /auth/cambiar-pin` y la confirmación de discrepancias con PIN comparten además un límite de 20 por minuto **por usuario** (el del PIN que se prueba: `usuarioAppId` o `confirmaUsuarioAppId` del cuerpo, o el de la sesión) y un techo de 150 por minuto por IP. Al pasarse: `429 { statusCode, codigo: "DEMASIADAS_SOLICITUDES", mensaje }`. Se suman al bloqueo por intentos fallidos de PIN. Detalle y cómo ajustarlos: docs/07 §9.1.
 - Paginación: `?page=&pageSize=` en listados que puedan crecer (historial, catálogo).
 - Todas las mutaciones devuelven el recurso actualizado completo, no solo un código de éxito — reduce llamadas adicionales desde la app.
 

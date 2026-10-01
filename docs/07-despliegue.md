@@ -263,9 +263,33 @@ Si más adelante generas instaladores con EAS Build, ese valor también hay que 
 | El servidor no arranca | Servicio → **Logs**. Busca `El servidor no arranca: revisa las variables de entorno` (falta una variable) o errores de `prisma migrate deploy` (una migración falló; ver sección 5). |
 | La app dice que no hay conexión | Abre `/salud` en el navegador. `503` con `"baseDeDatos":"sin respuesta"` = problema con la base; revisa la base en el panel. |
 | La sincronización de las 5:00 | Servicio → **Logs**, busca `Sincronizacion automatica`. También aparece en el centro de alertas de la app. |
-| Un usuario dice "Demasiadas solicitudes" | Hay un límite de 100 peticiones por minuto por IP (y 20 por minuto para login y PIN). Los teléfonos en el mismo Wi-Fi comparten IP; si pasa seguido, hay que subir el límite en `apps/backend/src/shared/limites/limites-peticiones.ts`. |
+| Un usuario dice "Demasiadas solicitudes" | Servicio → **Logs**, busca `429`. Qué hacer: sección 9.1. |
 
 En **Logs** puedes filtrar por texto y por rango de fechas. Los registros nunca muestran el token de Handy ni el `JWT_SECRET`.
+
+### 9.1 Límites de peticiones
+
+Todos los teléfonos de la bodega salen a internet con **una sola IP pública** (y con datos celulares varios pueden compartir la del operador). Por eso los límites por IP son techos holgados para toda la empresa junta, y el que frena a una persona va por usuario.
+
+| Límite | Cuánto | Llave | Por qué ese número |
+|---|---|---|---|
+| Global | 600 por minuto | IP | Un conteo de 60 productos hace ~70 peticiones (un guardado por producto, más abrir y finalizar); contando rápido, ~60 por minuto por teléfono. Tres contando a la vez más las consultas automáticas del resto (~4 por minuto por teléfono en el inicio, ~14 el supervisor con discrepancias abiertas) dan ~240 por minuto en el pico: 600 deja más del doble de margen. |
+| PIN por usuario | 20 por minuto | Usuario cuyo PIN se prueba | Aplica a `POST /auth/login`, `POST /auth/cambiar-pin` y la confirmación de discrepancias. Nadie teclea 20 PIN legítimos en un minuto; quien machaca el suyo no frena a sus compañeros. |
+| PIN por IP | 150 por minuto | IP | Los mismos endpoints. Red de seguridad contra alguien probando PIN de muchos usuarios desde fuera. |
+
+Ninguno de estos sustituye el **bloqueo a los 5 PIN fallidos**, que es la protección real contra adivinar un PIN. `/salud` no tiene límite.
+
+**Dónde se cambian:** `apps/backend/src/shared/limites/limites-peticiones.ts` (`LIMITE_GLOBAL`, `LIMITE_CREDENCIALES_USUARIO`, `LIMITE_CREDENCIALES_IP`). Cambiar el número, correr `npm test`, hacer commit y push: Render vuelve a desplegar solo. Los contadores viven en memoria del servidor y se reinician con cada despliegue.
+
+**Si en la mañana alguien reporta "Demasiadas solicitudes":**
+
+1. Servicio → **Logs**, busca `429`. Cada rechazo deja una línea de advertencia como:
+   `429 POST /auth/login limite=credenciales-usuario (20 por 60s) llave=usuario:ckx…`
+   (nunca incluye PIN ni token).
+2. Según `limite=`:
+   - `credenciales-usuario`: una sola persona tecleó demasiados PIN en un minuto. Que espere un minuto; no afecta a nadie más. Si se repite sin razón, revisar qué hace ese teléfono.
+   - `global` o `credenciales-ip`, con la IP de la bodega en `llave=`: la bodega entera llegó al techo. Sube ese límite (por ejemplo al doble) y despliega. Mientras tanto, se libera solo en un minuto; el conteo no se pierde porque la app lo guarda en el teléfono y reintenta el envío sola.
+   - `global` o `credenciales-ip` con una IP desconocida y muchas líneas seguidas: alguien de fuera está machacando el servidor. El límite está haciendo su trabajo; no lo subas.
 
 ---
 

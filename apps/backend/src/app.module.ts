@@ -27,7 +27,8 @@ import { PrismaModule } from './shared/prisma/prisma.module';
     }),
     // Trabajos programados (la sincronizacion diaria con Handy a las 5:00).
     ScheduleModule.forRoot(),
-    // Limite de peticiones por IP (global + uno mas estricto para PINs).
+    // Limites de peticiones: global por IP y, en endpoints con PIN, por usuario
+    // mas un techo por IP (ver shared/limites).
     ThrottlerModule.forRoot(opcionesLimitesPeticiones()),
     PrismaModule,
     // Global: registra la JwtStrategy y deja Passport/JWT disponibles para el
