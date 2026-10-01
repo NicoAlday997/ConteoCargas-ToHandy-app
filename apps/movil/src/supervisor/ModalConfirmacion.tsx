@@ -24,6 +24,10 @@ interface Props {
    * junto a cerrar; confirmar queda solo abajo, al alcance del pulgar.
    */
   alternativa?: { texto: string; onPress: () => void };
+  /** Lleva un campo de texto: los botones van con el contenido (ver `Hoja`). */
+  formulario?: boolean;
+  /** Falta algo para poder confirmar (un motivo obligatorio): el botón se apaga. */
+  confirmarDeshabilitado?: boolean;
   onConfirmar: () => void;
   onCerrar: () => void;
 }
@@ -44,6 +48,8 @@ export function ModalConfirmacion({
   cargando,
   error,
   alternativa,
+  formulario = false,
+  confirmarDeshabilitado = false,
   onConfirmar,
   onCerrar,
 }: Props) {
@@ -55,6 +61,7 @@ export function ModalConfirmacion({
       texto={textoConfirmar}
       variante={variante}
       onPress={onConfirmar}
+      deshabilitado={confirmarDeshabilitado}
       cargando={cargando}
       textoCargando={textoCargando}
       tacto={variante === 'peligro' ? 'aviso' : 'toque'}
@@ -66,6 +73,7 @@ export function ModalConfirmacion({
       onCerrar={cerrar}
       bloqueada={cargando}
       titulo={titulo}
+      formulario={formulario}
       pie={
         variante === 'peligro' ? (
           // Destructivo: lo que no se deshace queda de contorno, arriba; la

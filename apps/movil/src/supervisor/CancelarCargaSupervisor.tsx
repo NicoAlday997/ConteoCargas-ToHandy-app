@@ -8,7 +8,12 @@ import { Boton, CampoTexto } from '../componentes/base';
 import type { CargaDetalle } from '../historial/modelo-historial';
 import { COLORES, FUENTE, TIPOGRAFIA } from '../theme/tokens';
 import { ModalConfirmacion } from './ModalConfirmacion';
-import { accionCancelacion, MOTIVO_MINIMO_CANCELACION, motivoCancelacionValido } from './modelo-supervisor';
+import {
+  accionCancelacion,
+  estadoMotivoCancelacion,
+  MOTIVO_MAXIMO_CANCELACION,
+  MOTIVO_MINIMO_CANCELACION,
+} from './modelo-supervisor';
 
 type ErrorModal = { titulo: string; detalle: string; tono?: 'error' | 'atencion' };
 
@@ -57,23 +62,22 @@ export function CancelarCargaSupervisor({
   const cancelar = useCancelarCargaSupervisor(carga.evento.id);
   const [abierto, setAbierto] = useState(false);
   const [motivo, setMotivo] = useState('');
-  const [intento, setIntento] = useState(false);
   const [error, setError] = useState<ErrorModal | null>(null);
 
   const accion = accionCancelacion(carga.evento.estado);
   if (!accion) return null;
   const enHandy = accion === 'cancelar-en-handy';
+  // Sin motivo suficiente el botón está apagado: no se entera hasta que el servidor lo rechace.
+  const estadoMotivo = estadoMotivoCancelacion(motivo);
 
   const abrir = () => {
     setMotivo('');
-    setIntento(false);
     setError(null);
     setAbierto(true);
   };
 
   const confirmar = () => {
-    setIntento(true);
-    if (!motivoCancelacionValido(motivo)) return;
+    if (!estadoMotivo.suficiente) return;
     setError(null);
     cancelar.mutate(
       { enHandy, motivo: motivo.trim() },
@@ -101,6 +105,8 @@ export function CancelarCargaSupervisor({
         textoCerrar="No, volver"
         variante="peligro"
         cargando={cancelar.isPending}
+        formulario
+        confirmarDeshabilitado={!estadoMotivo.suficiente}
         error={error}
         onConfirmar={confirmar}
         onCerrar={() => setAbierto(false)}
@@ -124,13 +130,9 @@ export function CancelarCargaSupervisor({
           onCambiar={setMotivo}
           ejemplo="Ej. se abrió con la fecha equivocada"
           multilinea
-          maxLength={200}
+          maxLength={MOTIVO_MAXIMO_CANCELACION}
           ayuda={`Obligatorio. Mínimo ${MOTIVO_MINIMO_CANCELACION} caracteres.`}
-          error={
-            intento && !motivoCancelacionValido(motivo)
-              ? `Escribe por qué la cancelas (mínimo ${MOTIVO_MINIMO_CANCELACION} caracteres).`
-              : null
-          }
+          contador={estadoMotivo.contador}
         />
       </ModalConfirmacion>
     </>

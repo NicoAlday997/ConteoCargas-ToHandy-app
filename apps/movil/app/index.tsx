@@ -775,6 +775,7 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
         textoCerrar="No, volver"
         variante="peligro"
         cargando={cancelando}
+        formulario
         error={error}
         onConfirmar={() => void confirmar()}
         onCerrar={() => setAbierto(false)}

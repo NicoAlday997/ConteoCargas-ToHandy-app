@@ -17,3 +17,5 @@ export { BarraAccion } from './BarraAccion';
 export { Datos, Personas, type Dato, type Persona } from './Personas';
 export { Seccion, TituloSeccion } from './Seccion';
 export { SEPARACION_TARJETAS, Tarjeta, type BandaTarjeta } from './Tarjeta';
+export { estadoMotivo, type EstadoMotivo } from './motivo';
+export { COMPORTAMIENTO_TECLADO, PantallaConFormulario } from './PantallaConFormulario';

@@ -13,6 +13,7 @@ import {
   codigosDeDetalle,
   inicioEspera,
   minutosEspera,
+  estadoMotivoCancelacion,
   motivoCancelacionValido,
   nivelEspera,
   rechazosParaEnviar,
@@ -183,10 +184,29 @@ describe('accionCancelacion', () => {
 });
 
 describe('motivoCancelacionValido', () => {
-  it('pide al menos 5 caracteres sin contar espacios de los lados', () => {
-    assert.equal(motivoCancelacionValido('abcde'), true);
-    assert.equal(motivoCancelacionValido('  abcd  '), false);
+  it('pide al menos 10 caracteres sin contar espacios de los lados', () => {
+    assert.equal(motivoCancelacionValido('abcdefghij'), true);
+    assert.equal(motivoCancelacionValido('  abcdefghi  '), false);
     assert.equal(motivoCancelacionValido(''), false);
+  });
+});
+
+// El botón «Cancelar carga» / «Sí, cambiar la fecha» del supervisor se apaga con `!suficiente`.
+describe('estadoMotivoCancelacion', () => {
+  it('motivo vacío: el botón de confirmar queda deshabilitado', () => {
+    const estado = estadoMotivoCancelacion('');
+    assert.equal(estado.suficiente, false);
+    assert.equal(estado.contador, '0/10');
+  });
+
+  it('motivo corto: sigue deshabilitado y el contador dice cuánto lleva', () => {
+    assert.deepEqual(estadoMotivoCancelacion('error'), { suficiente: false, contador: '5/10' });
+  });
+
+  it('motivo lleno: el botón se habilita', () => {
+    const estado = estadoMotivoCancelacion('Se abrió con la fecha equivocada');
+    assert.equal(estado.suficiente, true);
+    assert.equal(estado.contador, '32/200');
   });
 });
 

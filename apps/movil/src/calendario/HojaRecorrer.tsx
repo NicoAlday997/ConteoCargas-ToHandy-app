@@ -111,7 +111,7 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
     ) : undefined;
 
   return (
-    <Hoja visible={visible} onCerrar={cerrar} bloqueada={recorrer.isPending} pie={pie}>
+    <Hoja visible={visible} onCerrar={cerrar} bloqueada={recorrer.isPending} pie={pie} formulario>
       {fecha !== null && eligiendoDia ? (
         <ElegirDestino
           origen={fecha}

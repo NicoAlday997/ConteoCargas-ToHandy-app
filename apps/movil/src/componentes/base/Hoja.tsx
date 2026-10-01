@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -17,6 +16,7 @@ import Animated, { Easing, FadeIn, FadeInDown, SlideInDown } from 'react-native-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../../theme/breakpoints';
+import { COMPORTAMIENTO_TECLADO, PantallaConFormulario } from './PantallaConFormulario';
 import {
   ANCHO_MODAL,
   COLORES,
@@ -56,8 +56,14 @@ interface Props {
    * lista para ir a un producto); nunca con un formulario a medias.
    */
   cerrarAlTocarFondo?: boolean;
-  /** Botones: fijos abajo, siempre al alcance del pulgar aunque el contenido se desplace. */
+  /** Botones: fijos abajo, siempre al alcance del pulgar aunque el contenido se desplace (salvo con `formulario`). */
   pie?: ReactNode;
+  /**
+   * Tiene un campo de texto: el pie va al final del contenido, dentro de lo
+   * que se desplaza, en vez de fijo abajo. Fijo, al abrir el teclado la hoja
+   * se encoge y el pie acaba encima del campo.
+   */
+  formulario?: boolean;
   /** Pantalla completa del contenido sin desplazamiento propio (listas virtualizadas). */
   sinDesplazamiento?: boolean;
   children?: ReactNode;
@@ -80,6 +86,7 @@ export function Hoja({
   bloqueada = false,
   cerrarAlTocarFondo = false,
   pie,
+  formulario = false,
   sinDesplazamiento = false,
   children,
   estiloContenido,
@@ -107,21 +114,28 @@ export function Hoja({
       </View>
     ) : null;
 
+  const pieConMargen = pie ? (
+    <View style={[estilos.pie, !esTablet && { paddingBottom: margenes.bottom + RITMO.margen }]}>{pie}</View>
+  ) : null;
+  const pieDentro = formulario && !sinDesplazamiento;
+
   const cuerpo = sinDesplazamiento ? (
     <View style={[estilos.contenido, estilos.contenidoFijo, estiloContenido]}>
       {cabecera}
       {children}
     </View>
   ) : (
-    <ScrollView
+    // La hoja entera ya se aparta del teclado (abajo): aquí solo el desplazamiento.
+    <PantallaConFormulario
+      evitarTeclado={false}
       style={estilos.desplazable}
-      contentContainerStyle={[estilos.contenido, estiloContenido]}
-      keyboardShouldPersistTaps="handled"
-      bounces={false}
+      estiloContenido={[estilos.contenido, estiloContenido]}
+      pie={pieDentro ? pieConMargen : null}
+      sinRebote
     >
       {cabecera}
       {children}
-    </ScrollView>
+    </PantallaConFormulario>
   );
 
   return (
@@ -134,7 +148,7 @@ export function Hoja({
       onRequestClose={cerrar}
     >
       {visible && (
-        <KeyboardAvoidingView style={[estilos.raiz, altoAndroid]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={[estilos.raiz, altoAndroid]} behavior={COMPORTAMIENTO_TECLADO}>
           <Animated.View entering={ENTRADA_VELO} style={StyleSheet.absoluteFill}>
             <Pressable
               style={estilos.velo}
@@ -160,11 +174,10 @@ export function Hoja({
             >
               {!esTablet && <View style={estilos.tirador} accessibilityElementsHidden importantForAccessibility="no" />}
               {cuerpo}
-              {pie ? (
-                <View style={[estilos.pie, !esTablet && { paddingBottom: margenes.bottom + RITMO.margen }]}>{pie}</View>
-              ) : (
-                !esTablet && <View style={{ height: margenes.bottom }} />
-              )}
+              {/* Con `formulario` el pie ya va dentro del desplazamiento. */}
+              {pieConMargen && !pieDentro
+                ? pieConMargen
+                : !pieConMargen && !esTablet && <View style={{ height: margenes.bottom }} />}
             </Animated.View>
           </View>
         </KeyboardAvoidingView>

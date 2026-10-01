@@ -1,11 +1,22 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ETIQUETAS_ROL, type RolApp } from '../api/auth';
 import { ErrorRed } from '../api/cliente';
 import { useCrearPersona, useCuentasHandy } from '../api/hooks-personas';
-import { Avatar, BarraAccion, BloqueError, Boton, CampoTexto, Encabezado, PantallaModal, Pulsable, TituloSeccion } from '../componentes/base';
+import {
+  Avatar,
+  BarraAccion,
+  BloqueError,
+  Boton,
+  CampoTexto,
+  Encabezado,
+  PantallaConFormulario,
+  PantallaModal,
+  Pulsable,
+  TituloSeccion,
+} from '../componentes/base';
 import {
   ANCHO_MAXIMO_LISTA,
   BORDES,
@@ -100,7 +111,15 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <Encabezado variante="barra" titulo="Dar de alta" onVolver={onCerrar} etiquetaVolver="Cancelar y volver" />
-      <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <PantallaConFormulario
+        estiloContenido={estilos.contenido}
+        pie={
+          <BarraAccion nota={intento && !valido ? 'Falta completar lo marcado arriba.' : null}>
+            <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} deshabilitado={crear.isPending} style={estilos.boton} />
+            <Boton texto="Dar de alta" onPress={guardar} cargando={crear.isPending} textoCargando="Guardando…" style={estilos.boton} />
+          </BarraAccion>
+        }
+      >
         <CampoTexto
           etiqueta="Nombre completo"
           valor={nombre}
@@ -152,11 +171,7 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
         )}
 
         {errorGuardar && <BloqueError titulo="No se dio de alta" detalle={errorGuardar} />}
-      </ScrollView>
-      <BarraAccion nota={intento && !valido ? 'Falta completar lo marcado arriba.' : null}>
-        <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} deshabilitado={crear.isPending} style={estilos.boton} />
-        <Boton texto="Dar de alta" onPress={guardar} cargando={crear.isPending} textoCargando="Guardando…" style={estilos.boton} />
-      </BarraAccion>
+      </PantallaConFormulario>
     </SafeAreaView>
   );
 }

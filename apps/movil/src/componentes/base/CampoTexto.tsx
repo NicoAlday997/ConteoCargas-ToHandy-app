@@ -1,5 +1,7 @@
-import { useState, type Ref } from 'react';
+import { useCallback, useRef, useState, type Ref } from 'react';
 import { StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+
+import { useMostrarCampo } from './PantallaConFormulario';
 
 import { BORDES, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
 
@@ -14,8 +16,10 @@ interface Props {
   ayuda?: string | null;
   /** Reemplaza a la ayuda, en rojo y con el borde rojo: lo escrito no sirve así. */
   error?: string | null;
-  /** Varias líneas: un motivo, una nota. */
+  /** Varias líneas: un motivo, una nota. Retorno pone un salto de línea, no cierra el teclado. */
   multilinea?: boolean;
+  /** A la derecha, bajo el campo: cuánto lleva escrito («3/10»). Ver `estadoMotivo`. */
+  contador?: string | null;
   maxLength?: number;
   autoFocus?: boolean;
   deshabilitado?: boolean;
@@ -40,6 +44,7 @@ export function CampoTexto({
   ayuda,
   error,
   multilinea = false,
+  contador,
   maxLength,
   autoFocus,
   deshabilitado = false,
@@ -50,12 +55,23 @@ export function CampoTexto({
 }: Props) {
   const [enfocado, setEnfocado] = useState(false);
   const pie = error ?? ayuda;
+  // Dentro de `PantallaConFormulario` (o una `Hoja`), al enfocarse se desplaza a la vista.
+  const mostrarCampo = useMostrarCampo();
+  const propio = useRef<TextInput | null>(null);
+  const asignarRef = useCallback(
+    (nodo: TextInput | null) => {
+      propio.current = nodo;
+      if (typeof ref === 'function') ref(nodo);
+      else if (ref) ref.current = nodo;
+    },
+    [ref],
+  );
 
   return (
     <View style={[estilos.contenedor, style]}>
       <Text style={[estilos.etiqueta, enfocado && estilos.etiquetaEnfocada]}>{etiqueta}</Text>
       <TextInput
-        ref={ref}
+        ref={asignarRef}
         value={valor}
         onChangeText={onCambiar}
         placeholder={ejemplo}
@@ -63,12 +79,14 @@ export function CampoTexto({
         selectionColor={COLORES.accion}
         cursorColor={COLORES.accion}
         multiline={multilinea}
+        submitBehavior={multilinea ? 'newline' : undefined}
         maxLength={maxLength}
         autoFocus={autoFocus}
         editable={!deshabilitado}
         autoCapitalize="sentences"
         onFocus={() => {
           setEnfocado(true);
+          if (mostrarCampo && propio.current) mostrarCampo(propio.current);
           onFocus?.();
         }}
         onBlur={() => setEnfocado(false)}
@@ -82,10 +100,22 @@ export function CampoTexto({
           deshabilitado && estilos.deshabilitado,
         ]}
       />
-      {pie ? (
-        <Text style={error ? estilos.error : estilos.ayuda} accessibilityLiveRegion={error ? 'polite' : undefined}>
-          {pie}
-        </Text>
+      {pie || contador ? (
+        <View style={estilos.filaPie}>
+          {pie ? (
+            <Text
+              style={[error ? estilos.error : estilos.ayuda, estilos.textoPie]}
+              accessibilityLiveRegion={error ? 'polite' : undefined}
+            >
+              {pie}
+            </Text>
+          ) : null}
+          {contador ? (
+            <Text style={[estilos.ayuda, estilos.contador]} accessibilityLabel={`${contador.replace('/', ' de ')} caracteres`}>
+              {contador}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -128,6 +158,19 @@ const estilos = StyleSheet.create({
   },
   deshabilitado: {
     backgroundColor: COLORES.superficieHonda,
+  },
+  filaPie: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ESPACIADO.sm,
+  },
+  textoPie: {
+    flex: 1,
+  },
+  // Cifras de ancho fijo: el contador no baila al escribir.
+  contador: {
+    marginLeft: 'auto',
+    fontVariant: ['tabular-nums'],
   },
   ayuda: {
     ...TIPOGRAFIA.etiqueta,

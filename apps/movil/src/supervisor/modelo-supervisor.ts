@@ -1,5 +1,6 @@
 import type { CargaHistorialApi, EstadoCargaApi } from '../api/historial.ts';
 import type { EventoConTiemposApi, ProductoRechazado } from '../api/supervisor.ts';
+import { estadoMotivo, type EstadoMotivo } from '../componentes/base/motivo.ts';
 import { normalizarFila, type CargaDetalle, type FilaHistorial } from '../historial/modelo-historial.ts';
 
 /**
@@ -166,11 +167,22 @@ export function nombresDeProductos(codes: readonly string[], carga: CargaDetalle
 // Cancelación
 // ---------------------------------------------------------------------------
 
-/** El mismo mínimo que valida el servidor al cancelar: cancelar trabajo ajeno exige decir por qué. */
-export const MOTIVO_MINIMO_CANCELACION = 5;
+/**
+ * Cancelar (o mover de día) trabajo ajeno exige decir por qué, y que se
+ * entienda después en el historial. Más exigente que el servidor (5): con
+ * cinco letras cabe «error», que no explica nada.
+ */
+export const MOTIVO_MINIMO_CANCELACION = 10;
+/** El largo máximo del campo del motivo. */
+export const MOTIVO_MAXIMO_CANCELACION = 200;
 
 export function motivoCancelacionValido(motivo: string): boolean {
   return motivo.trim().length >= MOTIVO_MINIMO_CANCELACION;
+}
+
+/** Si el botón de confirmar se habilita, y el contador bajo el campo. */
+export function estadoMotivoCancelacion(motivo: string): EstadoMotivo {
+  return estadoMotivo(motivo, MOTIVO_MINIMO_CANCELACION, MOTIVO_MAXIMO_CANCELACION);
 }
 
 /**

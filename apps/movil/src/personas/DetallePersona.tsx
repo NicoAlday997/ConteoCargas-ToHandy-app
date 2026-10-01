@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ETIQUETAS_ROL } from '../api/auth';
@@ -14,6 +14,7 @@ import {
   Datos,
   Encabezado,
   Hoja,
+  PantallaConFormulario,
   PantallaModal,
   Tarjeta,
   TituloSeccion,
@@ -122,7 +123,7 @@ function Ficha({
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <Encabezado variante="barra" titulo={persona.nombre} subtitulo={ETIQUETAS_ROL[persona.rol]} onVolver={onCerrar} />
-      <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <PantallaConFormulario estiloContenido={estilos.contenido}>
         <Tarjeta style={estilos.identidad}>
           <Avatar nombre={persona.nombre} fotoUrl={persona.fotoUrl} tamano={TAMANO_AVATAR} />
           <View style={estilos.datos}>
@@ -186,7 +187,7 @@ function Ficha({
             </>
           )}
         </View>
-      </ScrollView>
+      </PantallaConFormulario>
 
       <Hoja
         visible={confirmar === 'desactivar'}

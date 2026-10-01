@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
@@ -10,6 +10,7 @@ import {
   CampoTexto,
   Encabezado,
   FilaDato,
+  PantallaConFormulario,
   PantallaModal,
   Tarjeta,
   Pulsable,
@@ -227,12 +228,8 @@ function Editor({
       <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['left', 'right'] : ['left', 'right', 'bottom']}>
         <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
         <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
-          <ScrollView
-            style={estilos.scroll}
-            contentContainerStyle={estilos.contenido}
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-          >
+          {/* Con el teclado del sistema (el motivo) el propio está cerrado: solo esta vista se aparta. */}
+          <PantallaConFormulario style={estilos.scroll} estiloContenido={estilos.contenido}>
             <Tarjeta compacta>
               <View style={estilos.lineaProducto}>
                 <EtiquetaFactor producto={producto} />
@@ -314,7 +311,7 @@ function Editor({
                 style={estilos.boton}
               />
             </View>
-          </ScrollView>
+          </PantallaConFormulario>
           {tecladoLateral ? <View style={estilos.lateral}>{teclado}</View> : teclado}
         </View>
       </SafeAreaView>

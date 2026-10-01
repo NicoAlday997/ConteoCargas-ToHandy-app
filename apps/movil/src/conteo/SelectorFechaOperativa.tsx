@@ -4,7 +4,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { ETIQUETAS_TIPO_CARGA, type TipoCarga } from '../api/cargas';
 import { ErrorRed } from '../api/cliente';
 import { useFechasOperativasDisponibles } from '../api/hooks-cargas';
-import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto, Hoja, Pulsable } from '../componentes/base';
+import { BloqueError, BloqueEsqueleto, Boton, CampoTexto, Esqueleto, estadoMotivo, Hoja, Pulsable } from '../componentes/base';
 import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, ONDA, OPACIDAD, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
 import {
   deLaSalida,
@@ -71,6 +71,7 @@ interface Props {
   onCerrar: () => void;
 }
 
+const MOTIVO_MAXIMO = 200;
 const AVISO_CAMBIO_DE_DIA = 'Cambió el día mientras elegías. Revisa las fechas y elige de nuevo.';
 const AVISO_SIN_VERIFICAR_CON_HANDY =
   'No pude confirmar con Handy que tu ruta siga abierta. Puedes contar, pero si la ruta ya se cerró la recarga no se va a poder enviar.';
@@ -328,13 +329,14 @@ function ContenidoCambio({
 }: Props & { cambio: CambioFechaSelector }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
-  const [intento, setIntento] = useState(false);
   const lista = useRef<ScrollView>(null);
   const fechas = useFechasDelServidor(true, error);
 
   const hoy = diaNegocio(new Date());
   const { motivoMinimo } = cambio;
-  const motivoValido = motivoMinimo === null || motivo.trim().length >= motivoMinimo;
+  // Con motivo obligatorio, «Sí, cambiar la fecha» se apaga hasta que alcanza.
+  const estado = motivoMinimo === null ? null : estadoMotivo(motivo, motivoMinimo, MOTIVO_MAXIMO);
+  const motivoValido = estado === null || estado.suficiente;
 
   const elegir = (dia: string) => {
     if (dia === cambio.diaActual) {
@@ -345,9 +347,7 @@ function ContenidoCambio({
   };
 
   const confirmar = () => {
-    if (elegido === null) return;
-    setIntento(true);
-    if (!motivoValido) return;
+    if (elegido === null || !motivoValido) return;
     onElegir(elegido, motivoMinimo === null ? undefined : motivo.trim());
   };
 
@@ -367,13 +367,19 @@ function ContenidoCambio({
               onCambiar={setMotivo}
               ejemplo="Ej. el camión sale hasta el lunes"
               multilinea
-              maxLength={200}
+              maxLength={MOTIVO_MAXIMO}
               ayuda={`Obligatorio. Mínimo ${motivoMinimo} caracteres.`}
-              error={intento && !motivoValido ? `Escribe por qué cambias la fecha (mínimo ${motivoMinimo} caracteres).` : null}
+              contador={estado?.contador}
             />
           )}
           {error && <BloqueError titulo="No se pudo cambiar la fecha" detalle={error} />}
-          <Boton texto="Sí, cambiar la fecha" cargando={ocupado} textoCargando="Cambiando…" onPress={confirmar} />
+          <Boton
+            texto="Sí, cambiar la fecha"
+            cargando={ocupado}
+            textoCargando="Cambiando…"
+            deshabilitado={!motivoValido}
+            onPress={confirmar}
+          />
           {error ? (
             <Boton
               texto="Elegir otro día"

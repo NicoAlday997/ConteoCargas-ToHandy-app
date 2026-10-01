@@ -352,6 +352,7 @@ function ModalMarcar({
       onCerrar={cerrar}
       bloqueada={marcar.isPending}
       titulo="Marcar un día no laborable"
+      formulario
       pie={
         <AccionesHoja>
           <Boton texto="Cancelar" variante="secundario" deshabilitado={marcar.isPending} onPress={cerrar} />

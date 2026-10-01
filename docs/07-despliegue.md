@@ -273,7 +273,7 @@ Todos los teléfonos de la bodega salen a internet con **una sola IP pública** 
 
 | Límite | Cuánto | Llave | Por qué ese número |
 |---|---|---|---|
-| Global | 600 por minuto | IP | Un conteo de 60 productos hace ~70 peticiones (un guardado por producto, más abrir y finalizar); contando rápido, ~60 por minuto por teléfono. Tres contando a la vez más las consultas automáticas del resto (~4 por minuto por teléfono en el inicio, ~14 el supervisor con discrepancias abiertas) dan ~240 por minuto en el pico: 600 deja más del doble de margen. |
+| Global | 1000 por minuto | IP | Un conteo de 60 productos hace ~70 peticiones (un guardado por producto, más abrir y finalizar); contando rápido, ~60 por minuto por teléfono. Las cinco rutas contando a la vez, con vendedor y contador cada una (diez teléfonos), más las consultas automáticas del resto (~4 por minuto por teléfono en el inicio, ~14 el supervisor con discrepancias abiertas) dan ~700 por minuto en el pico: con 600 quedaba muy justo. Es una red contra abuso desde fuera, no un control de capacidad: la protección real es la autenticación y el límite por usuario. |
 | PIN por usuario | 20 por minuto | Usuario cuyo PIN se prueba | Aplica a `POST /auth/login`, `POST /auth/cambiar-pin` y la confirmación de discrepancias. Nadie teclea 20 PIN legítimos en un minuto; quien machaca el suyo no frena a sus compañeros. |
 | PIN por IP | 150 por minuto | IP | Los mismos endpoints. Red de seguridad contra alguien probando PIN de muchos usuarios desde fuera. |
 

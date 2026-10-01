@@ -30,10 +30,13 @@ import {
 /**
  * Todas las peticiones de una IP, entre todos los endpoints. Un conteo de 60
  * productos hace ~70 peticiones; a ritmo rapido, ~60 por minuto por telefono.
+ * Las cinco rutas contando a la vez llegan a ~700 por minuto. Es una red contra
+ * abuso desde fuera, no un control de capacidad: lo que protege de verdad es la
+ * autenticacion y el limite por usuario.
  */
 export const LIMITE_GLOBAL = {
   nombre: 'global',
-  limite: 600,
+  limite: 1000,
   ventanaMs: 60_000,
 } as const;
 
