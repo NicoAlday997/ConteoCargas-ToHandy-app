@@ -41,6 +41,13 @@ import {
   BarraSuperior,
   DetalleCancelacion,
 } from '../../src/historial/ComponentesHistorial';
+import { BarraFiltros } from '../../src/historial/FiltrosHistorial';
+import {
+  cuantosFiltros,
+  explicarSinResultados,
+  FILTROS_VACIOS,
+  type FiltrosHistorial,
+} from '../../src/historial/filtros-historial';
 import {
   agruparPorDia,
   type FilaHistorial,
@@ -59,8 +66,9 @@ import {
 /**
  * Historial de cargas por fecha operativa (docs/06 §3.8). Lo primero que se
  * busca es "qué cargué el martes": por eso se agrupa por día. El alcance lo
- * decide el servidor con el rol; aquí no hay filtros de usuario ni de fechas
- * que el cliente pueda mover.
+ * decide el servidor con el rol; los filtros de arriba solo lo estrechan
+ * (vendedor y ruta para contador y supervisor; fechas y estado para todos).
+ * Los filtros viven en esta pantalla: al volver a entrar arranca limpia.
  */
 
 /** Solo informa lo que el servidor ya aplica; no es un control. */
@@ -119,7 +127,12 @@ export default function PantallaHistorial() {
 }
 
 function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
-  const consulta = useHistorial(usuario.id);
+  const [filtros, setFiltros] = useState<FiltrosHistorial>(FILTROS_VACIOS);
+  const conFiltros = cuantosFiltros(filtros) > 0;
+  const consulta = useHistorial(usuario.id, filtros);
+  const total = consulta.isPending
+    ? null
+    : (consulta.data?.pages[0]?.total ?? null);
   const grupos = useMemo(
     () => agruparPorDia(consulta.data?.pages.map((p) => p?.items ?? []) ?? []),
     [consulta.data],
@@ -160,6 +173,23 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
           reintentando={consulta.isFetching}
         />
       </View>
+    );
+  } else if (grupos.length === 0 && conFiltros) {
+    contenido = (
+      <EstadoVacio
+        icono="lista"
+        titulo="Ninguna carga con estos filtros"
+        detalle={
+          explicarSinResultados(filtros) +
+          (usuario.rolApp === 'SUPERVISOR'
+            ? ''
+            : ' Recuerda que solo ves las últimas 2 semanas.')
+        }
+        accion={{
+          texto: 'Limpiar filtros',
+          onPress: () => setFiltros(FILTROS_VACIOS),
+        }}
+      />
     );
   } else if (grupos.length === 0) {
     contenido = (
@@ -228,6 +258,14 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
       <BarraSuperior titulo="Historial de cargas">
         {alcance && <NotaEncabezado>{alcance}</NotaEncabezado>}
       </BarraSuperior>
+      <View style={estilos.filtros}>
+        <BarraFiltros
+          rol={usuario.rolApp ?? null}
+          filtros={filtros}
+          onCambiar={setFiltros}
+          total={consulta.isError ? null : total}
+        />
+      </View>
       {contenido}
     </SafeAreaView>
   );
@@ -354,6 +392,11 @@ const estilos = StyleSheet.create({
   pantalla: {
     flex: 1,
     backgroundColor: COLORES.fondo,
+  },
+  filtros: {
+    width: '100%',
+    maxWidth: ANCHO_MAXIMO_LISTA,
+    alignSelf: 'center',
   },
   esqueleto: {
     width: '100%',

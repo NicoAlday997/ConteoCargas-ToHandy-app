@@ -2,6 +2,7 @@ import {
   alcanceHistorial,
   cargaDentroDeAlcance,
   fechaInicioEfectiva,
+  vendedorEfectivo,
   type AlcanceHistorial,
 } from './politica-historial';
 
@@ -116,5 +117,29 @@ describe('fechaInicioEfectiva', () => {
     const antigua = new Date('2025-01-01T00:00:00-06:00');
     expect(fechaInicioEfectiva(total, antigua)).toEqual(antigua);
     expect(fechaInicioEfectiva(total, undefined)).toBeUndefined();
+  });
+});
+
+describe('vendedorEfectivo', () => {
+  const vendedor = alcanceHistorial('VENDEDOR', 'v1', AHORA);
+  const contador = alcanceHistorial('CONTADOR', 'c1', AHORA);
+  const supervisor = alcanceHistorial('SUPERVISOR', 's1', AHORA);
+
+  it('un vendedor que pide el id de otro sigue viendo solo lo suyo', () => {
+    expect(vendedorEfectivo(vendedor, 'v2')).toBe('v1');
+  });
+
+  it('un vendedor sin filtro ve lo suyo', () => {
+    expect(vendedorEfectivo(vendedor, undefined)).toBe('v1');
+  });
+
+  it('contador y supervisor pueden estrechar a un vendedor', () => {
+    expect(vendedorEfectivo(contador, 'v2')).toBe('v2');
+    expect(vendedorEfectivo(supervisor, 'v2')).toBe('v2');
+  });
+
+  it('contador y supervisor sin filtro ven a todos', () => {
+    expect(vendedorEfectivo(contador, undefined)).toBeUndefined();
+    expect(vendedorEfectivo(supervisor, undefined)).toBeUndefined();
   });
 });

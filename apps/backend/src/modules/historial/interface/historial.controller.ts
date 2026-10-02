@@ -16,6 +16,7 @@ import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { ConsultarHistorialUseCase } from '../application/consultar-historial.use-case';
+import { OpcionesFiltroHistorialUseCase } from '../application/opciones-filtro-historial.use-case';
 import { VerCargaConsolidadaUseCase } from '../application/ver-carga-consolidada.use-case';
 import {
   FiltrosHistorialSchema,
@@ -40,6 +41,7 @@ export class HistorialController {
   constructor(
     private readonly consultarHistorialUseCase: ConsultarHistorialUseCase,
     private readonly verCargaConsolidadaUseCase: VerCargaConsolidadaUseCase,
+    private readonly opcionesFiltroUseCase: OpcionesFiltroHistorialUseCase,
   ) {}
 
   /** Listado filtrable de cargas, por fecha operativa (RF-23). */
@@ -55,6 +57,17 @@ export class HistorialController {
       filtros,
       new Date(),
     );
+  }
+
+  /**
+   * Listas para llenar los filtros: vendedores y rutas, inactivos incluidos y
+   * marcados. El vendedor no lo necesita: solo ve lo suyo. Va antes de `:id`
+   * para que "filtros" no se lea como un id.
+   */
+  @Get('filtros')
+  @Roles(RolApp.CONTADOR, RolApp.SUPERVISOR)
+  async opcionesFiltro() {
+    return this.opcionesFiltroUseCase.ejecutar();
   }
 
   /** Detalle completo de una carga, productos agrupados por familia (RF-23). */

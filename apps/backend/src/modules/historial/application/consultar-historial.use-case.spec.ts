@@ -36,6 +36,10 @@ class FakeHistorialRepository implements HistorialRepository {
   async obtenerCargaConsolidada(): Promise<null> {
     throw new Error('no usado en estas pruebas');
   }
+
+  async listarOpcionesFiltro(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
 }
 
 describe('ConsultarHistorialUseCase', () => {
@@ -142,13 +146,38 @@ describe('ConsultarHistorialUseCase', () => {
       expect(repo.ultimosFiltros?.fechaInicio).toEqual(reciente);
     });
 
-    it('el filtro de vendedor sale del solicitante, no de los filtros del cliente', async () => {
-      // Aunque llegara algo extra en los filtros, el caso de uso no lo usa.
-      const intento = { vendedorUsuarioAppId: 'v2' } as EntradaConsultarHistorial;
-
-      await useCase.ejecutar(VENDEDOR, intento, AHORA);
+    it('un vendedor que manda el usuarioAppId de otro sigue viendo solo lo suyo', async () => {
+      await useCase.ejecutar(VENDEDOR, { vendedorUsuarioAppId: 'v2' }, AHORA);
 
       expect(repo.ultimosFiltros?.vendedorUsuarioAppId).toBe('v1');
+    });
+
+    it('supervisor y contador pueden filtrar por un vendedor', async () => {
+      await useCase.ejecutar(SUPERVISOR, { vendedorUsuarioAppId: 'v2' }, AHORA);
+      expect(repo.ultimosFiltros?.vendedorUsuarioAppId).toBe('v2');
+
+      await useCase.ejecutar(CONTADOR, { vendedorUsuarioAppId: 'v2' }, AHORA);
+      expect(repo.ultimosFiltros?.vendedorUsuarioAppId).toBe('v2');
+    });
+
+    it('un contador que filtra por vendedor sigue sin pasar de 14 dias atras', async () => {
+      await useCase.ejecutar(
+        CONTADOR,
+        {
+          vendedorUsuarioAppId: 'v2',
+          fechaInicio: new Date('2026-01-01T00:00:00-06:00'),
+          rutaId: 'ruta-1',
+          estado: 'ENVIADA',
+        },
+        AHORA,
+      );
+
+      expect(repo.ultimosFiltros).toMatchObject({
+        vendedorUsuarioAppId: 'v2',
+        fechaInicio: HACE_14_DIAS,
+        rutaId: 'ruta-1',
+        estado: 'ENVIADA',
+      });
     });
   });
 });

@@ -66,6 +66,10 @@ class FakeHistorialRepository implements HistorialRepository {
     throw new Error('no usado en estas pruebas');
   }
 
+  async listarOpcionesFiltro(): Promise<never> {
+    throw new Error('no usado en estas pruebas');
+  }
+
   async obtenerCargaConsolidada(): Promise<CargaConsolidada | null> {
     return this.consolidada;
   }

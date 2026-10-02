@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthSharedModule } from '../../shared/auth/auth-shared.module';
 import { ConsultarHistorialUseCase } from './application/consultar-historial.use-case';
 import { HistorialRepository } from './application/historial.repository';
+import { OpcionesFiltroHistorialUseCase } from './application/opciones-filtro-historial.use-case';
 import { VerCargaConsolidadaUseCase } from './application/ver-carga-consolidada.use-case';
 import { PrismaHistorialRepository } from './infrastructure/prisma-historial.repository';
 import { HistorialController } from './interface/historial.controller';
@@ -31,6 +32,12 @@ import { HistorialController } from './interface/historial.controller';
       provide: VerCargaConsolidadaUseCase,
       useFactory: (historial: HistorialRepository) =>
         new VerCargaConsolidadaUseCase(historial),
+      inject: [HistorialRepository],
+    },
+    {
+      provide: OpcionesFiltroHistorialUseCase,
+      useFactory: (historial: HistorialRepository) =>
+        new OpcionesFiltroHistorialUseCase(historial),
       inject: [HistorialRepository],
     },
   ],

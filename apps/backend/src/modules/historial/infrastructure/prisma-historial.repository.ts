@@ -8,6 +8,7 @@ import {
   type CargaHistorial,
   type EventoConsolidado,
   type FiltrosHistorial,
+  type OpcionesFiltroHistorial,
   type PaginaCargas,
   type ProductoConsolidado,
 } from '../application/historial.repository';
@@ -116,6 +117,26 @@ export class PrismaHistorialRepository extends HistorialRepository {
       page: filtros.page,
       pageSize: filtros.pageSize,
     };
+  }
+
+  async listarOpcionesFiltro(): Promise<OpcionesFiltroHistorial> {
+    const [vendedores, rutas] = await Promise.all([
+      this.prisma.usuarioApp.findMany({
+        // Tambien quien conto como vendedor aunque hoy tenga otro rol: sus
+        // cargas siguen en el historial y hay que poder buscarlas.
+        where: {
+          OR: [
+            { rolApp: 'VENDEDOR' },
+            { sesionesConteo: { some: { tipo: 'VENDEDOR' } } },
+          ],
+        },
+        select: { id: true, nombreCompleto: true, activo: true },
+      }),
+      this.prisma.ruta.findMany({
+        select: { id: true, nombre: true, codigo: true, activa: true },
+      }),
+    ]);
+    return { vendedores, rutas };
   }
 
   async obtenerCargaConsolidada(

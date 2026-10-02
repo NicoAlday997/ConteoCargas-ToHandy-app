@@ -52,8 +52,9 @@ export interface CargaHistorial {
 export interface FiltrosHistorial {
   rutaId?: string;
   /**
-   * Solo cargas donde este usuario hizo el conteo del vendedor. Sale de la
-   * politica de alcance (`alcanceHistorial`), nunca del cliente.
+   * Solo cargas donde este usuario hizo el conteo del vendedor. Ya pasado por
+   * `vendedorEfectivo`: para el rol VENDEDOR es siempre el propio, diga lo que
+   * diga el cliente.
    */
   vendedorUsuarioAppId?: string;
   /** Rango sobre `fechaOperativa`, inclusivo en ambos extremos. */
@@ -71,6 +72,33 @@ export interface PaginaCargas {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// ---------------------------------------------------------------------------
+// Opciones para los filtros
+// ---------------------------------------------------------------------------
+
+/**
+ * Un vendedor que se puede elegir en el filtro. Los inactivos vienen tambien:
+ * el caso principal es revisar las cargas de alguien que ya no trabaja aqui.
+ */
+export interface OpcionVendedor {
+  id: string;
+  nombreCompleto: string;
+  activo: boolean;
+}
+
+/** Una ruta que se puede elegir en el filtro; las inactivas vienen tambien. */
+export interface OpcionRuta {
+  id: string;
+  nombre: string;
+  codigo: string;
+  activa: boolean;
+}
+
+export interface OpcionesFiltroHistorial {
+  vendedores: OpcionVendedor[];
+  rutas: OpcionRuta[];
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +191,12 @@ export interface CargaConsolidada {
 
 export abstract class HistorialRepository {
   abstract listarCargas(filtros: FiltrosHistorial): Promise<PaginaCargas>;
+
+  /**
+   * Vendedores (por rol, o por haber contado alguna carga como vendedor) y
+   * rutas, activos e inactivos, sin ningun orden garantizado.
+   */
+  abstract listarOpcionesFiltro(): Promise<OpcionesFiltroHistorial>;
 
   /** `null` si no existe un `EventoCarga` con ese id. */
   abstract obtenerCargaConsolidada(

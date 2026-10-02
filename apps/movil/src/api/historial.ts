@@ -4,8 +4,7 @@ import { peticion } from './cliente';
 /**
  * Historial de cargas (docs/04 §1.5). El alcance lo decide el servidor con el
  * rol del JWT: el vendedor solo recibe las suyas y, con el contador, solo 2
- * semanas. Por eso aquí no hay parámetro de usuario ni de fechas: la app solo
- * pagina.
+ * semanas. Los filtros que manda la app solo estrechan ese alcance.
  */
 
 export type EstadoCargaApi =
@@ -107,13 +106,39 @@ export interface DetalleHistorialApi {
   familias: FamiliaConsolidadaApi[] | null;
 }
 
+/** De `GET /historial/filtros`: los inactivos vienen también, marcados. */
+export interface OpcionVendedorApi {
+  id: string | null;
+  nombreCompleto: string | null;
+  activo: boolean | null;
+}
+
+export interface OpcionRutaApi {
+  id: string | null;
+  nombre: string | null;
+  codigo?: string | null;
+  activa: boolean | null;
+}
+
+export interface OpcionesFiltroApi {
+  vendedores: OpcionVendedorApi[] | null;
+  rutas: OpcionRutaApi[] | null;
+}
+
+/** `filtros`: query string ya armado (`parametrosHistorial`), vacío si no hay. */
 export function listarHistorial(
   page: number,
   pageSize: number,
+  filtros: string,
 ): Promise<PaginaHistorialApi | null> {
   return peticion<PaginaHistorialApi | null>(
-    `/historial?page=${page}&pageSize=${pageSize}`,
+    `/historial?page=${page}&pageSize=${pageSize}${filtros ? `&${filtros}` : ''}`,
   );
+}
+
+/** Solo contador y supervisor: el vendedor no filtra por persona. */
+export function obtenerOpcionesFiltro(): Promise<OpcionesFiltroApi | null> {
+  return peticion<OpcionesFiltroApi | null>('/historial/filtros');
 }
 
 export function obtenerDetalleHistorial(

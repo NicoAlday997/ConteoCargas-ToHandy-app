@@ -3,6 +3,7 @@ import type { EstadoCarga, RolApp, TipoCarga } from '@prisma/client';
 import {
   alcanceHistorial,
   fechaInicioEfectiva,
+  vendedorEfectivo,
 } from '../domain/politica-historial';
 import type {
   FiltrosHistorial,
@@ -17,7 +18,9 @@ import type {
  * Lo que cada rol puede ver lo decide `alcanceHistorial` a partir de quien
  * pregunta (JWT), nunca de los filtros: el vendedor solo ve sus cargas y,
  * junto con el contador, solo 2 semanas hacia atras. Los filtros del cliente
- * solo estrechan ese alcance.
+ * solo estrechan ese alcance: `vendedorUsuarioAppId` y `fechaInicio` pasan por
+ * `vendedorEfectivo` y `fechaInicioEfectiva` antes de llegar al puerto; el
+ * resto (`rutaId`, `fechaFin`, `estado`...) solo puede quitar filas.
  *
  * No hay restriccion de acceso por si la carga "cuadro" o no (CLAUDE.md,
  * docs/01 seccion 6 regla 4): `conDiscrepancia` es solo un filtro mas, igual
@@ -41,9 +44,12 @@ export interface SolicitanteHistorial {
 
 /**
  * Filtros tal como llegan del controlador: `page`/`pageSize` opcionales.
- * `fechaInicio`/`fechaFin` se aplican sobre la fecha operativa.
+ * `fechaInicio`/`fechaFin` se aplican sobre la fecha operativa. Todos se
+ * combinan con "y".
  */
 export interface EntradaConsultarHistorial {
+  /** Cargas que conto este vendedor. Al rol VENDEDOR se le ignora. */
+  vendedorUsuarioAppId?: string;
   rutaId?: string;
   fechaInicio?: Date;
   fechaFin?: Date;
@@ -70,7 +76,10 @@ export class ConsultarHistorialUseCase {
 
     const filtros: FiltrosHistorial = {
       rutaId: entrada.rutaId,
-      vendedorUsuarioAppId: alcance.usuarioAppIdFiltro ?? undefined,
+      vendedorUsuarioAppId: vendedorEfectivo(
+        alcance,
+        entrada.vendedorUsuarioAppId,
+      ),
       fechaInicio: fechaInicioEfectiva(alcance, entrada.fechaInicio),
       fechaFin: entrada.fechaFin,
       estado: entrada.estado,

@@ -83,6 +83,19 @@ export function cargaDentroDeAlcance(
 }
 
 /**
+ * Combina el vendedor que pide el cliente con el del alcance. Si el alcance ya
+ * fija un vendedor (rol VENDEDOR), gana siempre el del alcance: un vendedor que
+ * mande el id de otro sigue viendo solo lo suyo. Si no lo fija, el cliente
+ * puede estrechar a un vendedor concreto.
+ */
+export function vendedorEfectivo(
+  alcance: AlcanceHistorial,
+  vendedorCliente: string | undefined,
+): string | undefined {
+  return alcance.usuarioAppIdFiltro ?? vendedorCliente;
+}
+
+/**
  * Combina la fecha de inicio que pide el cliente con la minima del alcance: se
  * queda con la mas reciente, asi el cliente nunca puede ir mas atras.
  */
