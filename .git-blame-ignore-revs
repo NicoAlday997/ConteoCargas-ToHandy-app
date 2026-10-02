@@ -1,0 +1,5 @@
+# Commits de solo formato: `git blame` los salta para no tapar al autor real
+# de cada línea. Ver "Formato" en CLAUDE.md.
+
+# Formato: prettier en apps/movil (solo formato)
+5d8a88a59c47091d42e876b48955695612abfe91

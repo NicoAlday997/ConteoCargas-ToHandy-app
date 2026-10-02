@@ -41,3 +41,8 @@ Antes de trabajar en este repo, consulta la documentación en `/docs`:
 ## Stack
 
 Backend: NestJS + TypeScript + PostgreSQL (Prisma). App: React Native + TypeScript (Android + iOS). Ver detalle completo en `docs/02-documento-tecnico-y-diseno.md` y `docs/03-guia-entorno-desarrollo.md`.
+
+## Formato
+
+- Los commits de solo formato (p. ej. correr prettier sobre una carpeta entera) van solos, sin cambios de lógica, y su hash se agrega a `.git-blame-ignore-revs` en un commit aparte.
+- Para que `git blame` los salte localmente, una vez por clon: `git config blame.ignoreRevsFile .git-blame-ignore-revs`. GitHub lo lee solo.
