@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 
@@ -17,8 +20,16 @@ import {
   type TipoCarga,
 } from '../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
-import { clavesCargas, useAbrirSesion, useIniciarCarga } from '../src/api/hooks-cargas';
-import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../src/api/sesion';
+import {
+  clavesCargas,
+  useAbrirSesion,
+  useIniciarCarga,
+} from '../src/api/hooks-cargas';
+import {
+  cerrarSesion,
+  obtenerUsuarioSesion,
+  type UsuarioSesion,
+} from '../src/api/sesion';
 import { obtenerToken } from '../src/api/token';
 import {
   Avatar,
@@ -38,10 +49,21 @@ import {
   Seccion,
   type TonoEtiqueta,
 } from '../src/componentes/base';
-import { queSigue, tomarAvisoConteoFinalizado, type ConteoFinalizado } from '../src/conteo/aviso-finalizado';
-import { estadoDeCarga, type TonoEstado } from '../src/historial/modelo-historial';
+import {
+  queSigue,
+  tomarAvisoConteoFinalizado,
+  type ConteoFinalizado,
+} from '../src/conteo/aviso-finalizado';
+import {
+  estadoDeCarga,
+  type TonoEstado,
+} from '../src/historial/modelo-historial';
 import type { EstadoCargaApi } from '../src/api/historial';
-import { guardarCargaAbierta, obtenerCargaAbierta, type CargaAbierta } from '../src/conteo/almacen-conteo';
+import {
+  guardarCargaAbierta,
+  obtenerCargaAbierta,
+  type CargaAbierta,
+} from '../src/conteo/almacen-conteo';
 import { ModalCambiarFecha } from '../src/conteo/CambiarFechaCarga';
 import {
   descartarCargaNoDisponible,
@@ -50,8 +72,15 @@ import {
 } from '../src/conteo/carga-no-disponible';
 import { esBorrado, obtenerConteoLocal } from '../src/conteo/almacen-local';
 import { detenerColas, estaConectado } from '../src/conteo/cola-sincronizacion';
-import { diaDesdeApi, diaNegocio, textoSalida } from '../src/conteo/fecha-operativa';
-import { SelectorFechaOperativa, type ConflictoFecha } from '../src/conteo/SelectorFechaOperativa';
+import {
+  diaDesdeApi,
+  diaNegocio,
+  textoSalida,
+} from '../src/conteo/fecha-operativa';
+import {
+  SelectorFechaOperativa,
+  type ConflictoFecha,
+} from '../src/conteo/SelectorFechaOperativa';
 import { AccesoConflictos } from '../src/discrepancias/AccesoConflictos';
 import { AccesoFactores } from '../src/factores/AccesoFactores';
 import { AccesoSincronizacion } from '../src/sincronizacion/AccesoSincronizacion';
@@ -102,7 +131,10 @@ export default function PantallaInicio() {
   useEffect(() => {
     let vigente = true;
     void (async () => {
-      const [token, usuario] = await Promise.all([obtenerToken(), obtenerUsuarioSesion()]);
+      const [token, usuario] = await Promise.all([
+        obtenerToken(),
+        obtenerUsuarioSesion(),
+      ]);
       // Un PIN temporal sin cambiar no da acceso a la app (docs/06 §3.1).
       if (!token || usuario?.debeCambiarPin) {
         await cerrarSesion();
@@ -126,7 +158,8 @@ export default function PantallaInicio() {
 
   const { usuario } = estado;
 
-  const cuenta = usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
+  const cuenta =
+    usuario?.rolApp === 'VENDEDOR' || usuario?.rolApp === 'CONTADOR';
 
   // Inicio por rol (docs/06 §3.2-3.3); el supervisor, sus autorizaciones, los empaques y las plantillas. El
   // historial y la sincronización con Handy son para los tres: qué ve cada quien lo decide el servidor.
@@ -137,27 +170,53 @@ export default function PantallaInicio() {
   const nombre = usuario?.nombreCompleto ?? 'Usuario';
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
-      <ScrollView style={estilos.cuerpo} contentContainerStyle={[estilos.scroll, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}>
-        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
+      <ScrollView
+        style={estilos.cuerpo}
+        contentContainerStyle={[
+          estilos.scroll,
+          { paddingBottom: ESPACIADO.xl + margenes.bottom },
+        ]}
+      >
+        <View
+          style={[
+            estilos.bandaIdentidad,
+            { paddingTop: margenes.top + ESPACIADO.md },
+          ]}
+        >
           <Degradado degradado={DEGRADADOS.marca} halo anillos />
-          <View style={[estilos.columna, estilos.margenLateral, estilos.lineaMarca]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View
+            style={[estilos.columna, estilos.margenLateral, estilos.lineaMarca]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
             <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.sm} />
             <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
           </View>
           <View style={[estilos.columna, estilos.identidad]}>
             <View style={estilos.textosIdentidad}>
               <Text style={estilos.saludo}>Hola,</Text>
-              <Text style={estilos.nombre} accessibilityRole="header" numberOfLines={2}>
+              <Text
+                style={estilos.nombre}
+                accessibilityRole="header"
+                numberOfLines={2}
+              >
                 {nombre}
               </Text>
               {usuario?.rolApp && (
                 <View style={estilos.pastillaRol}>
                   <View style={estilos.puntoRol} />
-                  <Text style={estilos.rol}>{ETIQUETAS_ROL[usuario.rolApp]}</Text>
+                  <Text style={estilos.rol}>
+                    {ETIQUETAS_ROL[usuario.rolApp]}
+                  </Text>
                 </View>
               )}
             </View>
-            <Avatar nombre={nombre} fotoUrl={usuario?.fotoUrl} tamano={TAMANO_AVATAR} style={estilos.avatar} />
+            <Avatar
+              nombre={nombre}
+              fotoUrl={usuario?.fotoUrl}
+              tamano={TAMANO_AVATAR}
+              style={estilos.avatar}
+            />
           </View>
           <View pointerEvents="none" style={estilos.montura} />
         </View>
@@ -214,7 +273,13 @@ export default function PantallaInicio() {
                   onPress={() => router.push('/dias-no-laborables')}
                 />
               )}
-              {usuario && <FilaMenu tarea="historial" texto="Historial de cargas" onPress={() => router.push('/historial')} />}
+              {usuario && (
+                <FilaMenu
+                  tarea="historial"
+                  texto="Historial de cargas"
+                  onPress={() => router.push('/historial')}
+                />
+              )}
             </GrupoMenu>
           </Animated.View>
           <BotonCerrarSesion usuarioId={usuario?.id ?? null} />
@@ -230,9 +295,21 @@ function EsqueletoInicio() {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
       <View style={estilos.cuerpo}>
-        <View style={[estilos.bandaIdentidad, { paddingTop: margenes.top + ESPACIADO.md }]}>
+        <View
+          style={[
+            estilos.bandaIdentidad,
+            { paddingTop: margenes.top + ESPACIADO.md },
+          ]}
+        >
           <Degradado degradado={DEGRADADOS.marca} halo anillos />
-          <Esqueleto etiqueta="Abriendo la app" style={[estilos.columna, estilos.textosIdentidad, estilos.margenLateral]}>
+          <Esqueleto
+            etiqueta="Abriendo la app"
+            style={[
+              estilos.columna,
+              estilos.textosIdentidad,
+              estilos.margenLateral,
+            ]}
+          >
             <LineaEsqueleto nivel="micro" ancho="40%" sobreMarca />
             <LineaEsqueleto nivel="display" ancho="70%" sobreMarca />
             <LineaEsqueleto nivel="cuerpo" ancho="30%" sobreMarca />
@@ -240,7 +317,10 @@ function EsqueletoInicio() {
           <View pointerEvents="none" style={estilos.montura} />
         </View>
         <View style={[estilos.columna, estilos.contenido]}>
-          <Esqueleto etiqueta="Cargando acciones" style={estilos.esqueletoAcciones}>
+          <Esqueleto
+            etiqueta="Cargando acciones"
+            style={estilos.esqueletoAcciones}
+          >
             <LineaEsqueleto nivel="subtitulo" ancho="40%" />
             <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
             <BloqueEsqueleto alto={TOQUE_MINIMO} />
@@ -304,9 +384,14 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
         onda={ONDA.peligro}
         accessibilityRole="button"
         accessibilityState={{ busy: consultando }}
-        style={({ pressed }) => [estilos.cerrarSesion, pressed && estilos.cerrarSesionPresionado]}
+        style={({ pressed }) => [
+          estilos.cerrarSesion,
+          pressed && estilos.cerrarSesionPresionado,
+        ]}
       >
-        <Text style={estilos.textoCerrarSesion}>{consultando ? 'Un momento…' : 'Cerrar sesión'}</Text>
+        <Text style={estilos.textoCerrarSesion}>
+          {consultando ? 'Un momento…' : 'Cerrar sesión'}
+        </Text>
       </Pulsable>
       <Hoja
         visible={progreso !== null}
@@ -314,7 +399,11 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
         titulo="Tienes una carga en proceso"
         pie={
           <AccionesHoja>
-            <Boton texto="Cancelar" variante="secundario" onPress={() => setProgreso(null)} />
+            <Boton
+              texto="Cancelar"
+              variante="secundario"
+              onPress={() => setProgreso(null)}
+            />
             <Boton
               texto="Cerrar sesión"
               onPress={() => {
@@ -329,10 +418,12 @@ function BotonCerrarSesion({ usuarioId }: { usuarioId: string | null }) {
           <>
             <Text style={estilos.detalleModal}>
               Llevas <Text style={estilos.negrita}>{progreso.capturados}</Text>
-              {progreso.total !== null ? ` de ${progreso.total}` : ''} productos capturados.
+              {progreso.total !== null ? ` de ${progreso.total}` : ''} productos
+              capturados.
             </Text>
             <Text style={estilos.detalleModal}>
-              Tu progreso queda guardado en este teléfono y podrás continuar donde te quedaste al volver a entrar.
+              Tu progreso queda guardado en este teléfono y podrás continuar
+              donde te quedaste al volver a entrar.
             </Text>
             {progreso.porEnviar > 0 && (
               <Text style={estilos.detalleModal}>
@@ -392,25 +483,33 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   const abrir = useAbrirSesion();
   const clienteConsultas = useQueryClient();
   // `undefined` mientras se consulta: no mostrar "Iniciar" a quien debe "Continuar".
-  const [cargaAbierta, setCargaAbierta] = useState<CargaAbierta | null | undefined>(undefined);
+  const [cargaAbierta, setCargaAbierta] = useState<
+    CargaAbierta | null | undefined
+  >(undefined);
   const [error, setError] = useState<string | null>(null);
   // Selector de fecha abierto para este tipo de carga (`null` = cerrado).
   const [tipoAIniciar, setTipoAIniciar] = useState<TipoCarga | null>(null);
   const [conflicto, setConflicto] = useState<ConflictoFecha | null>(null);
   const [abriendoExistente, setAbriendoExistente] = useState(false);
   // Lo que se intentaba cuando faltó la señal (o falló la consulta de salidas): "Reintentar" vuelve a eso.
-  const [tipoAReintentar, setTipoAReintentar] = useState<TipoCarga | null>(null);
+  const [tipoAReintentar, setTipoAReintentar] = useState<TipoCarga | null>(
+    null,
+  );
   // El día de la ruta abierta en Handy: el único en que se puede recargar.
   const [diasRecarga, setDiasRecarga] = useState<string[] | null>(null);
   // `false`: Handy no respondió; el día sale solo de lo enviado y se advierte.
   const [recargaVerificada, setRecargaVerificada] = useState(true);
   const [consultandoDias, setConsultandoDias] = useState(false);
   // La consulta respondió que no hay a qué recargar, y por qué (`null` = no se muestra).
-  const [sinSalidas, setSinSalidas] = useState<MotivoSinDiasRecargables | 'SIN_SALIDAS' | null>(null);
+  const [sinSalidas, setSinSalidas] = useState<
+    MotivoSinDiasRecargables | 'SIN_SALIDAS' | null
+  >(null);
   // La carga guardada en el teléfono ya no existía en el servidor y se quitó.
   const [cargaNoDisponible, setCargaNoDisponible] = useState(false);
   // Estado de la carga abierta según el servidor (`null` = no se pudo saber, p. ej. sin señal).
-  const [estadoCargaAbierta, setEstadoCargaAbierta] = useState<string | null>(null);
+  const [estadoCargaAbierta, setEstadoCargaAbierta] = useState<string | null>(
+    null,
+  );
   // El vendedor acaba de cancelar su carga: se le confirma en el inicio.
   const [cargaCancelada, setCargaCancelada] = useState(false);
   // Acaba de finalizar un conteo: el cierre (que llegó y qué sigue).
@@ -450,8 +549,12 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
         }
       })();
       // Las listas del servidor también: al volver de contar o de resolver, ya cambiaron.
-      void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
-      void clienteConsultas.invalidateQueries({ queryKey: clavesCargas.conflictosPendientes });
+      void clienteConsultas.invalidateQueries({
+        queryKey: clavesCargas.pendientesVerificacion,
+      });
+      void clienteConsultas.invalidateQueries({
+        queryKey: clavesCargas.conflictosPendientes,
+      });
       return () => {
         vigente = false;
       };
@@ -469,7 +572,11 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     [usuario.id],
   );
 
-  const ocupado = iniciar.isPending || abrir.isPending || abriendoExistente || consultandoDias;
+  const ocupado =
+    iniciar.isPending ||
+    abrir.isPending ||
+    abriendoExistente ||
+    consultandoDias;
 
   const cerrarSelector = () => {
     setTipoAIniciar(null);
@@ -503,7 +610,8 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     }
     setConsultandoDias(true);
     try {
-      const { dias, motivo, verificadoConHandy } = await listarDiasRecargables();
+      const { dias, motivo, verificadoConHandy } =
+        await listarDiasRecargables();
       if (dias.length === 0) {
         setSinSalidas(motivo ?? 'SIN_SALIDAS');
         return;
@@ -513,7 +621,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       setTipoAIniciar(tipo);
     } catch (e) {
       // "No pude preguntar" no es "no hay salidas": se ofrece reintentar.
-      const mensaje = mensajeDeError(e, 'No se pudieron consultar las salidas de tu ruta.');
+      const mensaje = mensajeDeError(
+        e,
+        'No se pudieron consultar las salidas de tu ruta.',
+      );
       if (mensaje === null) return;
       setError(mensaje);
       setTipoAReintentar(tipo);
@@ -536,22 +647,29 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     try {
       const respuesta = await iniciar.mutateAsync({ tipo, fechaOperativa });
       const eventoId = respuesta?.evento?.id;
-      if (!eventoId) throw new Error('No se pudo crear la carga. Intenta de nuevo.');
+      if (!eventoId)
+        throw new Error('No se pudo crear la carga. Intenta de nuevo.');
       // El backend ya abre la sesión del vendedor al crear el evento; solo si
       // no viniera se abre aparte (abrirla dos veces responde 409).
-      const sesionId = respuesta?.sesion?.id ?? (await abrir.mutateAsync(eventoId))?.id;
-      if (!sesionId) throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
+      const sesionId =
+        respuesta?.sesion?.id ?? (await abrir.mutateAsync(eventoId))?.id;
+      if (!sesionId)
+        throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
 
       await entrarAConteo({
         eventoId,
         sesionId,
         tipo: respuesta?.evento?.tipo ?? tipo,
-        fechaOperativa: diaDesdeApi(respuesta?.evento?.fechaOperativa) ?? fechaOperativa,
+        fechaOperativa:
+          diaDesdeApi(respuesta?.evento?.fechaOperativa) ?? fechaOperativa,
       });
     } catch (e) {
       // Una sola carga inicial por ruta y día (hasta que una pase la
       // verificación no se generan otras versiones): se ofrece la que ya existe.
-      const existente = e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_YA_TIENE_CARGA ? e.cuerpo.eventoId : null;
+      const existente =
+        e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_YA_TIENE_CARGA
+          ? e.cuerpo.eventoId
+          : null;
       if (existente) {
         setConflicto({ eventoId: existente, dia: fechaOperativa });
         return;
@@ -570,7 +688,9 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     try {
       const respuesta = await obtenerEvento(eventoId);
       const evento = respuesta?.evento;
-      const mia = respuesta?.sesiones?.find((s) => s.usuarioAppId === usuario.id);
+      const mia = respuesta?.sesiones?.find(
+        (s) => s.usuarioAppId === usuario.id,
+      );
       if (mia?.id && mia.estado === 'ABIERTA') {
         await entrarAConteo({
           eventoId,
@@ -582,9 +702,15 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       }
       cerrarSelector();
       if (evento?.estado === 'CONFLICTOS_PENDIENTES') {
-        router.push({ pathname: '/discrepancias/[eventoId]', params: { eventoId } });
+        router.push({
+          pathname: '/discrepancias/[eventoId]',
+          params: { eventoId },
+        });
       } else {
-        router.push({ pathname: '/historial/[eventoId]', params: { eventoId } });
+        router.push({
+          pathname: '/historial/[eventoId]',
+          params: { eventoId },
+        });
       }
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 403) {
@@ -602,7 +728,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
 
   if (cargaAbierta === undefined) {
     return (
-      <Esqueleto etiqueta="Revisando si tienes una carga en proceso" style={estilos.esqueletoAcciones}>
+      <Esqueleto
+        etiqueta="Revisando si tienes una carga en proceso"
+        style={estilos.esqueletoAcciones}
+      >
         <LineaEsqueleto nivel="subtitulo" ancho="40%" />
         <BloqueEsqueleto alto={TOQUE_MINIMO * 2} />
       </Esqueleto>
@@ -611,8 +740,15 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
 
   const aviso = (
     <>
-      {finalizado && <AvisoConteoFinalizado datos={finalizado} onCerrar={() => setFinalizado(null)} />}
-      {cargaNoDisponible && <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} />}
+      {finalizado && (
+        <AvisoConteoFinalizado
+          datos={finalizado}
+          onCerrar={() => setFinalizado(null)}
+        />
+      )}
+      {cargaNoDisponible && (
+        <AvisoCargaNoDisponible onCerrar={() => setCargaNoDisponible(false)} />
+      )}
     </>
   );
 
@@ -620,20 +756,32 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     // Solo mientras el vendedor cuenta (BORRADOR): una vez que finaliza, el
     // contador puede estar contando y cancelar sería una salida para cuando el
     // conteo no cuadra. Sin señal no se sabe el estado: no se ofrece.
-    const puedeCancelar = usuario.rolApp === 'VENDEDOR' && estadoCargaAbierta === 'BORRADOR';
-    const estado = estadoCargaAbierta ? estadoDeCarga(estadoCargaAbierta as EstadoCargaApi) : null;
+    const puedeCancelar =
+      usuario.rolApp === 'VENDEDOR' && estadoCargaAbierta === 'BORRADOR';
+    const estado = estadoCargaAbierta
+      ? estadoDeCarga(estadoCargaAbierta as EstadoCargaApi)
+      : null;
     return (
       <Seccion
         texto="Tienes una carga en proceso"
-        contador={estado ? { texto: estado.etiqueta, tono: TONO_ETIQUETA[estado.tono] } : null}
+        contador={
+          estado
+            ? { texto: estado.etiqueta, tono: TONO_ETIQUETA[estado.tono] }
+            : null
+        }
       >
         <Boton
           grande
           texto="Continuar carga"
           detalle={[
-            cargaAbierta.tipo ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo] : 'Conteo sin finalizar',
+            cargaAbierta.tipo
+              ? ETIQUETAS_TIPO_CARGA[cargaAbierta.tipo]
+              : 'Conteo sin finalizar',
             cargaAbierta.fechaOperativa
-              ? textoSalida(cargaAbierta.fechaOperativa, diaNegocio(new Date())).toLowerCase()
+              ? textoSalida(
+                  cargaAbierta.fechaOperativa,
+                  diaNegocio(new Date()),
+                ).toLowerCase()
               : null,
           ]
             .filter(Boolean)
@@ -656,7 +804,9 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
             carga={cargaAbierta}
             onCancelada={async () => {
               await descartarCargaNoDisponible(usuario.id, cargaAbierta);
-              void clienteConsultas.invalidateQueries({ queryKey: ['historial'] });
+              void clienteConsultas.invalidateQueries({
+                queryKey: ['historial'],
+              });
               setEstadoCargaAbierta(null);
               setCargaAbierta(null);
               setCargaCancelada(true);
@@ -674,7 +824,10 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
     return (
       <>
         {aviso}
-        <ColaVerificacion onAbrir={abrirVerificacion} onSesionVencida={sesionVencida} />
+        <ColaVerificacion
+          onAbrir={abrirVerificacion}
+          onSesionVencida={sesionVencida}
+        />
       </>
     );
   }
@@ -684,9 +837,21 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
   return (
     <Seccion texto="Cargas de tu ruta">
       {aviso}
-      {cargaCancelada && <AvisoCargaCancelada onCerrar={() => setCargaCancelada(false)} />}
-      {sinSalidas && <AvisoSinSalidas motivo={sinSalidas} onCerrar={() => setSinSalidas(null)} />}
-      <Boton grande texto="Iniciar carga inicial" onPress={() => void pedirFecha('INICIAL')} deshabilitado={ocupado} />
+      {cargaCancelada && (
+        <AvisoCargaCancelada onCerrar={() => setCargaCancelada(false)} />
+      )}
+      {sinSalidas && (
+        <AvisoSinSalidas
+          motivo={sinSalidas}
+          onCerrar={() => setSinSalidas(null)}
+        />
+      )}
+      <Boton
+        grande
+        texto="Iniciar carga inicial"
+        onPress={() => void pedirFecha('INICIAL')}
+        deshabilitado={ocupado}
+      />
       <Boton
         texto="Iniciar recarga"
         variante="secundario"
@@ -697,10 +862,18 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
       />
       {error && tipoAIniciar === null && (
         <BloqueError
-          titulo={error === MENSAJE_SIN_RED_INICIAR ? 'Sin conexión' : 'No se pudo iniciar la carga'}
-          detalle={error === MENSAJE_SIN_RED_INICIAR ? DETALLE_SIN_RED_INICIAR : error}
+          titulo={
+            error === MENSAJE_SIN_RED_INICIAR
+              ? 'Sin conexión'
+              : 'No se pudo iniciar la carga'
+          }
+          detalle={
+            error === MENSAJE_SIN_RED_INICIAR ? DETALLE_SIN_RED_INICIAR : error
+          }
           tono={error === MENSAJE_SIN_RED_INICIAR ? 'atencion' : 'error'}
-          onReintentar={tipoAReintentar ? () => void pedirFecha(tipoAReintentar) : undefined}
+          onReintentar={
+            tipoAReintentar ? () => void pedirFecha(tipoAReintentar) : undefined
+          }
         />
       )}
       <SelectorFechaOperativa
@@ -729,11 +902,21 @@ function AccionesCarga({ usuario }: { usuario: UsuarioSesion }) {
  * sin querer). Solo mientras él cuenta. No se borra: queda cancelada en el
  * historial. El motivo es opcional.
  */
-function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCancelada: () => Promise<void> }) {
+function BotonCancelarCarga({
+  carga,
+  onCancelada,
+}: {
+  carga: CargaAbierta;
+  onCancelada: () => Promise<void>;
+}) {
   const [abierto, setAbierto] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [cancelando, setCancelando] = useState(false);
-  const [error, setError] = useState<{ titulo: string; detalle: string; tono?: 'error' | 'atencion' } | null>(null);
+  const [error, setError] = useState<{
+    titulo: string;
+    detalle: string;
+    tono?: 'error' | 'atencion';
+  } | null>(null);
 
   const confirmar = async () => {
     setCancelando(true);
@@ -747,11 +930,18 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
         setAbierto(false);
         sesionVencida();
       } else if (e instanceof ErrorRed) {
-        setError({ titulo: 'Sin conexión', detalle: 'No se canceló nada. Inténtalo cuando haya señal.', tono: 'atencion' });
+        setError({
+          titulo: 'Sin conexión',
+          detalle: 'No se canceló nada. Inténtalo cuando haya señal.',
+          tono: 'atencion',
+        });
       } else {
         setError({
           titulo: 'No se pudo cancelar',
-          detalle: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.',
+          detalle:
+            e instanceof Error && e.message
+              ? e.message
+              : 'Intenta de nuevo en un momento.',
         });
       }
     } finally {
@@ -784,12 +974,13 @@ function BotonCancelarCarga({ carga, onCancelada }: { carga: CargaAbierta; onCan
         onCerrar={() => setAbierto(false)}
       >
         <Text style={estilos.detalleModal}>
-          <Text style={estilos.negrita}>Esto no se puede deshacer.</Text> La carga queda cancelada y lo que llevas contado en
-          ella se borra de este teléfono.
+          <Text style={estilos.negrita}>Esto no se puede deshacer.</Text> La
+          carga queda cancelada y lo que llevas contado en ella se borra de este
+          teléfono.
         </Text>
         <Text style={estilos.detalleModal}>
-          No desaparece: se queda en el historial como cancelada, con tu nombre. Si todavía hay que contar, después inicias
-          una carga nueva.
+          No desaparece: se queda en el historial como cancelada, con tu nombre.
+          Si todavía hay que contar, después inicias una carga nueva.
         </Text>
         <CampoTexto
           etiqueta="Motivo (opcional)"
@@ -822,14 +1013,23 @@ function BotonCambiarFecha({
   const [contados, setContados] = useState(0);
 
   const abrir = async () => {
-    const local = await obtenerConteoLocal(carga.eventoId, carga.sesionId).catch(() => null);
-    setContados(Object.values(local?.items ?? {}).filter((i) => !esBorrado(i)).length);
+    const local = await obtenerConteoLocal(
+      carga.eventoId,
+      carga.sesionId,
+    ).catch(() => null);
+    setContados(
+      Object.values(local?.items ?? {}).filter((i) => !esBorrado(i)).length,
+    );
     setAbierto(true);
   };
 
   return (
     <>
-      <Boton texto="Cambiar la fecha de salida" variante="secundario" onPress={() => void abrir()} />
+      <Boton
+        texto="Cambiar la fecha de salida"
+        variante="secundario"
+        onPress={() => void abrir()}
+      />
       <ModalCambiarFecha
         visible={abierto}
         eventoId={carga.eventoId}
@@ -857,8 +1057,16 @@ const TONO_ETIQUETA: Record<TonoEstado, TonoEtiqueta> = {
 };
 
 /** El cierre del conteo: llegó, cuántos productos, y qué sigue. */
-function AvisoConteoFinalizado({ datos, onCerrar }: { datos: ConteoFinalizado; onCerrar: () => void }) {
-  const tipo = datos.tipo ? ETIQUETAS_TIPO_CARGA[datos.tipo].toLowerCase() : 'carga';
+function AvisoConteoFinalizado({
+  datos,
+  onCerrar,
+}: {
+  datos: ConteoFinalizado;
+  onCerrar: () => void;
+}) {
+  const tipo = datos.tipo
+    ? ETIQUETAS_TIPO_CARGA[datos.tipo].toLowerCase()
+    : 'carga';
   return (
     <BloqueError
       tono="exito"
@@ -880,12 +1088,18 @@ function AvisoCargaCancelada({ onCerrar }: { onCerrar: () => void }) {
   );
 }
 
-const DETALLE_SIN_SALIDAS: Record<MotivoSinDiasRecargables | 'SIN_SALIDAS', string> = {
+const DETALLE_SIN_SALIDAS: Record<
+  MotivoSinDiasRecargables | 'SIN_SALIDAS',
+  string
+> = {
   SIN_RUTA_ABIERTA:
     'No tienes una ruta abierta en Handy. La recarga le suma producto a una ruta que ya salió. Si ya liquidaste, tienes que iniciar una carga inicial nueva.',
-  RUTA_NO_RECONOCIDA: 'Tu ruta abierta en Handy no se inició desde esta app, así que no puedo recargarla desde aquí.',
-  SIN_RUTA_ASIGNADA: 'No tienes una ruta asignada vigente. Pide a un supervisor que te asigne una.',
-  SIN_SALIDAS: 'No hay ninguna salida enviada de tu ruta. Primero tiene que salir la carga inicial.',
+  RUTA_NO_RECONOCIDA:
+    'Tu ruta abierta en Handy no se inició desde esta app, así que no puedo recargarla desde aquí.',
+  SIN_RUTA_ASIGNADA:
+    'No tienes una ruta asignada vigente. Pide a un supervisor que te asigne una.',
+  SIN_SALIDAS:
+    'No hay ninguna salida enviada de tu ruta. Primero tiene que salir la carga inicial.',
 };
 
 /** La recarga se suma a la ruta abierta en Handy: sin ella, no hay a qué recargar. */

@@ -3,15 +3,35 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ErrorRed } from '../api/cliente';
 import { useAsignarRuta, useRutasConPlantilla } from '../api/hooks-plantillas';
-import { BloqueError, Boton, Encabezado, Esqueleto, Etiqueta, Hoja, TarjetaEsqueleto, Tarjeta } from '../componentes/base';
+import {
+  BloqueError,
+  Boton,
+  Encabezado,
+  Esqueleto,
+  Etiqueta,
+  Hoja,
+  TarjetaEsqueleto,
+  Tarjeta,
+} from '../componentes/base';
 import { textoProductos } from '../factores/modelo-factores';
-import { COLORES, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import {
+  COLORES,
+  ETIQUETA_DATO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
 import { avisoDeError, estilosPlantillas } from './ComponentesPlantillas';
 import { rutasRespectoA, type RutaAsignable } from './modelo-plantillas';
 
 interface Props {
   visible: boolean;
-  plantilla: { id: string; nombre: string; activa: boolean; totalProductos: number };
+  plantilla: {
+    id: string;
+    nombre: string;
+    activa: boolean;
+    totalProductos: number;
+  };
   onCerrar: () => void;
 }
 
@@ -39,20 +59,36 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
   };
 
   if (confirmando) {
-    const error = asignar.isError ? avisoDeError(asignar.error, 'No se pudo asignar') : null;
+    const error = asignar.isError
+      ? avisoDeError(asignar.error, 'No se pudo asignar')
+      : null;
     return (
       <View style={estilos.modal}>
-        <Encabezado titulo={`¿Asignar “${plantilla.nombre}” a ${confirmando.nombre}?`} variante="plano" lineasTitulo={3} />
+        <Encabezado
+          titulo={`¿Asignar “${plantilla.nombre}” a ${confirmando.nombre}?`}
+          variante="plano"
+          lineasTitulo={3}
+        />
         <Tarjeta elevacion={0} compacta>
           <Text style={estilos.rotulo}>Hoy</Text>
           <Text style={estilos.detalle}>{confirmando.actual}</Text>
         </Tarjeta>
         <Text style={estilos.detalle}>
-          {confirmando.vendedores.length === 1 ? `${confirmando.vendedores[0]} verá` : 'Sus vendedores verán'}{' '}
-          <Text style={estilos.negrita}>{textoProductos(plantilla.totalProductos)}</Text> desde su próxima carga. Las cargas ya
-          iniciadas no cambian.
+          {confirmando.vendedores.length === 1
+            ? `${confirmando.vendedores[0]} verá`
+            : 'Sus vendedores verán'}{' '}
+          <Text style={estilos.negrita}>
+            {textoProductos(plantilla.totalProductos)}
+          </Text>{' '}
+          desde su próxima carga. Las cargas ya iniciadas no cambian.
         </Text>
-        {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono} />}
+        {error && (
+          <BloqueError
+            titulo={error.titulo}
+            detalle={error.detalle}
+            tono={error.tono}
+          />
+        )}
         <View style={estilosPlantillas.filaBotones}>
           <Boton
             texto="Atrás"
@@ -66,7 +102,11 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
           />
           <Boton
             texto={asignar.isError ? 'Reintentar' : 'Asignar'}
-            onPress={() => asignar.mutate(confirmando.id, { onSuccess: () => setConfirmando(null) })}
+            onPress={() =>
+              asignar.mutate(confirmando.id, {
+                onSuccess: () => setConfirmando(null),
+              })
+            }
             cargando={asignar.isPending}
             textoCargando="Asignando…"
             style={estilosPlantillas.botonFila}
@@ -93,7 +133,8 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
         detalle={
           sinRed
             ? 'Para ver las rutas necesitas señal: revísala y vuelve a intentarlo.'
-            : (consulta.error instanceof Error && consulta.error.message) || 'Intenta de nuevo en un momento.'
+            : (consulta.error instanceof Error && consulta.error.message) ||
+              'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}
         onReintentar={() => void consulta.refetch()}
@@ -122,9 +163,14 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
 
   return (
     <View style={estilos.modal}>
-      <Encabezado titulo="Rutas" subtitulo={plantilla.nombre} variante="plano" />
+      <Encabezado
+        titulo="Rutas"
+        subtitulo={plantilla.nombre}
+        variante="plano"
+      />
       <Text style={estilos.detalle}>
-        Al asignarla, la ruta deja la plantilla que tenía. Para quitársela a una ruta, asígnale otra desde esa plantilla.
+        Al asignarla, la ruta deja la plantilla que tenía. Para quitársela a una
+        ruta, asígnale otra desde esa plantilla.
       </Text>
       {!plantilla.activa && (
         <BloqueError
@@ -139,18 +185,34 @@ function Contenido({ plantilla, onCerrar }: Omit<Props, 'visible'>) {
   );
 }
 
-function FilaRuta({ ruta, puedeAsignar, onAsignar }: { ruta: RutaAsignable; puedeAsignar: boolean; onAsignar: () => void }) {
+function FilaRuta({
+  ruta,
+  puedeAsignar,
+  onAsignar,
+}: {
+  ruta: RutaAsignable;
+  puedeAsignar: boolean;
+  onAsignar: () => void;
+}) {
   return (
     <Tarjeta
       elevacion={0}
       compacta
       accessible={!ruta.asignable || ruta.usaEsta || !puedeAsignar}
-      accessibilityLabel={[ruta.nombre, ruta.vendedores.join(', '), ruta.usaEsta ? 'Usa esta plantilla' : ruta.actual].filter(Boolean).join('. ')}
+      accessibilityLabel={[
+        ruta.nombre,
+        ruta.vendedores.join(', '),
+        ruta.usaEsta ? 'Usa esta plantilla' : ruta.actual,
+      ]
+        .filter(Boolean)
+        .join('. ')}
     >
       <View style={estilos.filaRuta}>
         <View style={estilos.datosRuta}>
           <Text style={estilos.nombreRuta}>{ruta.nombre}</Text>
-          {ruta.vendedores.length > 0 && <Text style={estilos.rotulo}>{ruta.vendedores.join(', ')}</Text>}
+          {ruta.vendedores.length > 0 && (
+            <Text style={estilos.rotulo}>{ruta.vendedores.join(', ')}</Text>
+          )}
           {!ruta.usaEsta && <Text style={estilos.detalle}>{ruta.actual}</Text>}
         </View>
         {ruta.usaEsta ? (

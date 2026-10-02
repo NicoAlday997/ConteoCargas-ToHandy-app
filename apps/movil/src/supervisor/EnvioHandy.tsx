@@ -19,15 +19,21 @@ import { ModalConfirmacion } from './ModalConfirmacion';
  */
 
 /** Estados en los que el envío (o su reintento) tiene sentido. */
-export const ESTADOS_ENVIABLES: ReadonlySet<EstadoCargaApi> = new Set<EstadoCargaApi>([
-  'LISTA_PARA_ENVIAR',
-  'ENVIO_INCIERTO',
-  'ERROR_ENVIO',
-]);
+export const ESTADOS_ENVIABLES: ReadonlySet<EstadoCargaApi> =
+  new Set<EstadoCargaApi>([
+    'LISTA_PARA_ENVIAR',
+    'ENVIO_INCIERTO',
+    'ERROR_ENVIO',
+  ]);
 
 /** Lo que respondió el último intento de esta pantalla. */
 type Resultado =
-  | { tipo: 'enviada'; idHandy: string | null; yaExistia: boolean; rechazados: string[] }
+  | {
+      tipo: 'enviada';
+      idHandy: string | null;
+      yaExistia: boolean;
+      rechazados: string[];
+    }
   | { tipo: 'inventario-total'; rechazados: string[] }
   | { tipo: 'incierto' }
   | { tipo: 'token' }
@@ -37,17 +43,32 @@ type Resultado =
 function interpretarError(e: unknown, carga: CargaDetalle): Resultado {
   if (e instanceof ErrorRed) return { tipo: 'sin-red' };
   if (e instanceof ErrorApi && e.estado === 409 && e.cuerpo?.detalle) {
-    return { tipo: 'inventario-total', rechazados: nombresDeProductos(codigosDeDetalle(e.cuerpo.detalle), carga) };
+    return {
+      tipo: 'inventario-total',
+      rechazados: nombresDeProductos(codigosDeDetalle(e.cuerpo.detalle), carga),
+    };
   }
   // Los dos 502 solo se distinguen por el texto; el estado de la carga, al
   // releerse, lo confirma (ENVIO_INCIERTO o ERROR_ENVIO) y manda sobre esto.
   if (e instanceof ErrorApi && e.estado === 502) {
-    return /administrador/i.test(e.cuerpo?.mensaje ?? '') ? { tipo: 'token' } : { tipo: 'incierto' };
+    return /administrador/i.test(e.cuerpo?.mensaje ?? '')
+      ? { tipo: 'token' }
+      : { tipo: 'incierto' };
   }
-  return { tipo: 'otro', mensaje: e instanceof Error && e.message ? e.message : 'No se pudo enviar la carga.' };
+  return {
+    tipo: 'otro',
+    mensaje:
+      e instanceof Error && e.message
+        ? e.message
+        : 'No se pudo enviar la carga.',
+  };
 }
 
-export function useEnvioHandy(eventoId: string, carga: CargaDetalle | null, onSesionVencida: () => void) {
+export function useEnvioHandy(
+  eventoId: string,
+  carga: CargaDetalle | null,
+  onSesionVencida: () => void,
+) {
   const enviar = useEnviarCarga(eventoId);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [confirmando, setConfirmando] = useState(false);
@@ -57,10 +78,18 @@ export function useEnvioHandy(eventoId: string, carga: CargaDetalle | null, onSe
     if (!carga) return;
     enviar.mutate(undefined, {
       onSuccess: (r) => {
-        const rechazados = nombresDeProductos(r?.productosRechazados ?? [], carga);
+        const rechazados = nombresDeProductos(
+          r?.productosRechazados ?? [],
+          carga,
+        );
         // El cierre del día del supervisor: se siente aunque no mire la pantalla.
         sentir(rechazados.length > 0 ? 'aviso' : 'exito');
-        setResultado({ tipo: 'enviada', idHandy: r?.idHandy ?? null, yaExistia: r?.yaExistia === true, rechazados });
+        setResultado({
+          tipo: 'enviada',
+          idHandy: r?.idHandy ?? null,
+          yaExistia: r?.yaExistia === true,
+          rechazados,
+        });
       },
       onError: (e) => {
         if (e instanceof ErrorApi && e.estado === 401) {
@@ -115,19 +144,30 @@ export function AvisoEnvio({
   if (estado === 'ENVIADA') {
     const enviada = resultado?.tipo === 'enviada' ? resultado : null;
     return (
-      <Tarjeta tintada="capturado" elevacion={0} compacta style={estilos.bloque}>
+      <Tarjeta
+        tintada="capturado"
+        elevacion={0}
+        compacta
+        style={estilos.bloque}
+      >
         {/* El final del recorrido: lectura grande, como la del conteo terminado. */}
         <View style={estilos.cabeceraExito}>
-          <Palomita color={COLORES.capturadoHondo} tamano={ESPACIADO.xl + ESPACIADO.xs} />
+          <Palomita
+            color={COLORES.capturadoHondo}
+            tamano={ESPACIADO.xl + ESPACIADO.xs}
+          />
           <Text style={estilos.tituloExito} accessibilityRole="header">
             Enviada a Handy
           </Text>
         </View>
         {resumen && <Text style={estilos.texto}>{resumen}</Text>}
-        {enviada?.idHandy && <FilaDato etiqueta="Ruta en Handy" valor={`#${enviada.idHandy}`} />}
+        {enviada?.idHandy && (
+          <FilaDato etiqueta="Ruta en Handy" valor={`#${enviada.idHandy}`} />
+        )}
         {enviada?.yaExistia && (
           <Text style={estilos.texto}>
-            La ruta ya se había creado en el intento anterior: se registró sin volver a enviarla, así que no quedó duplicada.
+            La ruta ya se había creado en el intento anterior: se registró sin
+            volver a enviarla, así que no quedó duplicada.
           </Text>
         )}
         {enviada && enviada.rechazados.length > 0 && (
@@ -175,7 +215,9 @@ export function AvisoEnvio({
           titulo="Handy rechazó todos los productos por inventario"
           detalle={[
             'No se creó ninguna ruta y la carga sigue lista para enviar.',
-            resultado.rechazados.length > 0 ? `Rechazados: ${resultado.rechazados.join(', ')}.` : null,
+            resultado.rechazados.length > 0
+              ? `Rechazados: ${resultado.rechazados.join(', ')}.`
+              : null,
             'Cuando haya inventario en Handy, vuelve a enviarla.',
           ]
             .filter(Boolean)
@@ -193,7 +235,13 @@ export function AvisoEnvio({
         />
       );
     case 'otro':
-      return <BloqueError titulo="No se pudo enviar" detalle={resultado.mensaje} style={estilos.bloque} />;
+      return (
+        <BloqueError
+          titulo="No se pudo enviar"
+          detalle={resultado.mensaje}
+          style={estilos.bloque}
+        />
+      );
     // 'incierto' y 'token' se muestran por el estado en cuanto se relee la carga.
     default:
       return null;
@@ -201,7 +249,13 @@ export function AvisoEnvio({
 }
 
 /** Antes de enviar: qué va a llegar a Handy. Una vez ahí no se corrige desde la app. */
-export function ModalEnviar({ carga, envio }: { carga: CargaDetalle; envio: EnvioHandy }) {
+export function ModalEnviar({
+  carga,
+  envio,
+}: {
+  carga: CargaDetalle;
+  envio: EnvioHandy;
+}) {
   const { evento, totalProductos, totalPiezas } = carga;
   const reintento = evento.estado !== 'LISTA_PARA_ENVIAR';
   const destino =
@@ -227,7 +281,10 @@ export function ModalEnviar({ carga, envio }: { carga: CargaDetalle; envio: Envi
         ({formatearCifra(totalPiezas)} piezas).
       </Text>
       {evento.estado === 'ENVIO_INCIERTO' && (
-        <Text style={estilos.texto}>Antes de reenviar se revisa si la ruta ya existe en Handy: no se duplica.</Text>
+        <Text style={estilos.texto}>
+          Antes de reenviar se revisa si la ruta ya existe en Handy: no se
+          duplica.
+        </Text>
       )}
     </ModalConfirmacion>
   );

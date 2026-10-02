@@ -1,6 +1,12 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { COLORES, FUENTE, RADIOS } from '../../theme/tokens';
 import { iniciales } from './iniciales';
@@ -34,29 +40,60 @@ export function Avatar({ nombre, fotoUrl, tamano, style }: Props) {
       importantForAccessibility="no-hide-descendants"
     >
       {/* La foto se recorta en un círculo interior: el marco conserva su sombra. */}
-      <View style={[StyleSheet.absoluteFill, estilos.recorte, { borderRadius: tamano / 2 }]}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          estilos.recorte,
+          { borderRadius: tamano / 2 },
+        ]}
+      >
         {/* `key`: si cambia la foto, se vuelve a empezar desde las iniciales. */}
-        <Contenido key={foto ?? ''} nombre={nombre} foto={foto} tamano={tamano} />
+        <Contenido
+          key={foto ?? ''}
+          nombre={nombre}
+          foto={foto}
+          tamano={tamano}
+        />
       </View>
     </View>
   );
 }
 
-function Contenido({ nombre, foto, tamano }: { nombre: string | null; foto: string | null; tamano: number }) {
-  const [estado, setEstado] = useState<'cargando' | 'lista' | 'fallo'>('cargando');
+function Contenido({
+  nombre,
+  foto,
+  tamano,
+}: {
+  nombre: string | null;
+  foto: string | null;
+  tamano: number;
+}) {
+  const [estado, setEstado] = useState<'cargando' | 'lista' | 'fallo'>(
+    'cargando',
+  );
   const conFoto = foto !== null && estado !== 'fallo';
 
   return (
     <>
       {estado !== 'lista' && (
         <View style={[StyleSheet.absoluteFill, estilos.centro]}>
-          <Text style={[estilos.iniciales, { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 }]}>{iniciales(nombre)}</Text>
+          <Text
+            style={[
+              estilos.iniciales,
+              { fontSize: tamano * 0.36, lineHeight: tamano * 0.44 },
+            ]}
+          >
+            {iniciales(nombre)}
+          </Text>
         </View>
       )}
       {conFoto && (
         <Image
           source={{ uri: foto }}
-          style={[StyleSheet.absoluteFill, estado !== 'lista' && estilos.oculta]}
+          style={[
+            StyleSheet.absoluteFill,
+            estado !== 'lista' && estilos.oculta,
+          ]}
           contentFit="cover"
           cachePolicy="memory-disk"
           transition={0}

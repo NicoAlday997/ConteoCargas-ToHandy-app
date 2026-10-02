@@ -6,7 +6,12 @@ import { usePersonas } from '../api/hooks-personas';
 import { Chevron, Tarjeta } from '../componentes/base';
 import { useAhora } from '../supervisor/ComponentesSupervisor';
 import { COLORES, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
-import { detalleAvisoBloqueados, normalizarPersonas, personasBloqueadas, tituloAvisoBloqueados } from './modelo-personas';
+import {
+  detalleAvisoBloqueados,
+  normalizarPersonas,
+  personasBloqueadas,
+  tituloAvisoBloqueados,
+} from './modelo-personas';
 
 function abrir() {
   router.push('/personas');
@@ -30,7 +35,10 @@ export function AvisoBloqueados() {
     }, [refetch]),
   );
 
-  const bloqueadas = personasBloqueadas(normalizarPersonas(consulta.data ?? null, null), ahora);
+  const bloqueadas = personasBloqueadas(
+    normalizarPersonas(consulta.data ?? null, null),
+    ahora,
+  );
   if (bloqueadas.length === 0) return null;
 
   const titulo = tituloAvisoBloqueados(bloqueadas);

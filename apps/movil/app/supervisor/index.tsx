@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useColaAutorizacion, usePorEnviar } from '../../src/api/hooks-supervisor';
+import {
+  useColaAutorizacion,
+  usePorEnviar,
+} from '../../src/api/hooks-supervisor';
 import { cerrarSesion } from '../../src/api/sesion';
 import {
   BloqueError,
@@ -21,13 +30,28 @@ import {
   type Dato,
 } from '../../src/componentes/base';
 import { diaNegocio, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
-import { ANCHO_MAXIMO_LISTA, bandaDeEstado, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  bandaDeEstado,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import type { FilaHistorial } from '../../src/historial/modelo-historial';
 import { tomarAviso, type AvisoCola } from '../../src/supervisor/aviso-cola';
-import { bandaDeEspera, espera, useAhora } from '../../src/supervisor/ComponentesSupervisor';
+import {
+  bandaDeEspera,
+  espera,
+  useAhora,
+} from '../../src/supervisor/ComponentesSupervisor';
 import type { CargaEnEspera } from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import {
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../../src/theme/tokens';
 
 /**
  * Cargas que esperan el visto bueno del supervisor. Ninguna llega a Handy sin
@@ -85,14 +109,18 @@ function Cola() {
     }, [releerCola, releerPorEnviar]),
   );
 
-  const vencida = [cola.error, porEnviar.error].some((e) => e instanceof ErrorApi && e.estado === 401);
+  const vencida = [cola.error, porEnviar.error].some(
+    (e) => e instanceof ErrorApi && e.estado === 401,
+  );
   useEffect(() => {
     if (vencida) void cerrarSesion().then(() => router.replace('/login'));
   }, [vencida]);
 
   const refrescar = () => {
     setRefrescando(true);
-    void Promise.all([releerCola(), releerPorEnviar()]).finally(() => setRefrescando(false));
+    void Promise.all([releerCola(), releerPorEnviar()]).finally(() =>
+      setRefrescando(false),
+    );
   };
 
   const cargas = cola.data ?? [];
@@ -110,7 +138,8 @@ function Cola() {
         detalle={
           sinRed
             ? 'Para ver las cargas por autorizar necesitas señal: revísala y vuelve a intentarlo.'
-            : (cola.error instanceof Error && cola.error.message) || 'Intenta de nuevo en un momento.'
+            : (cola.error instanceof Error && cola.error.message) ||
+              'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}
         onReintentar={() => void releerCola()}
@@ -133,7 +162,12 @@ function Cola() {
         ) : (
           <Seccion
             texto="Esperan tu autorización"
-            contador={{ texto: cargas.length === 1 ? '1 carga' : `${cargas.length} cargas`, tono: 'fuerte', relleno: 'solida' }}
+            contador={{
+              texto:
+                cargas.length === 1 ? '1 carga' : `${cargas.length} cargas`,
+              tono: 'fuerte',
+              relleno: 'solida',
+            }}
           >
             {cargas.map((c) => (
               <TarjetaEnEspera key={c.id} carga={c} ahora={ahora} hoy={hoy} />
@@ -143,7 +177,14 @@ function Cola() {
         {enviables.length > 0 && (
           <Seccion
             texto="Autorizadas, sin enviar a Handy"
-            contador={{ texto: enviables.length === 1 ? '1 carga' : `${enviables.length} cargas`, tono: 'fuerte', relleno: 'solida' }}
+            contador={{
+              texto:
+                enviables.length === 1
+                  ? '1 carga'
+                  : `${enviables.length} cargas`,
+              tono: 'fuerte',
+              relleno: 'solida',
+            }}
           >
             {enviables.map((c) => (
               <TarjetaPorEnviar key={c.id} fila={c} hoy={hoy} />
@@ -159,7 +200,9 @@ function Cola() {
       <ScrollView
         style={estilos.scroll}
         contentContainerStyle={estilos.contenido}
-        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={refrescar} />
+        }
       >
         {contenido}
       </ScrollView>
@@ -171,7 +214,9 @@ function Pantalla({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo="Autorizar cargas">
-        <NotaEncabezado>Ninguna carga llega a Handy sin tu visto bueno</NotaEncabezado>
+        <NotaEncabezado>
+          Ninguna carga llega a Handy sin tu visto bueno
+        </NotaEncabezado>
       </BarraSuperior>
       {children}
     </SafeAreaView>
@@ -180,7 +225,10 @@ function Pantalla({ children }: { children: ReactNode }) {
 
 function EsqueletoCola() {
   return (
-    <Esqueleto etiqueta="Cargando cargas por autorizar" style={estilos.esqueleto}>
+    <Esqueleto
+      etiqueta="Cargando cargas por autorizar"
+      style={estilos.esqueleto}
+    >
       {[0, 1, 2].map((i) => (
         <TarjetaEsqueleto key={i} titulo="titulo" lineas={['50%', '70%']} />
       ))}
@@ -196,7 +244,14 @@ function AvisoRegreso({ aviso }: { aviso: AvisoCola }) {
       ? `Propusiste ${aviso.cantidad} de ${aviso.producto}. No queda aplicada hasta que el vendedor o el contador la confirmen con su PIN. Cuando lo hagan, la carga regresará aquí para tu autorización.`
       : `${aviso.productos === 1 ? 'El producto que rechazaste vuelve' : `Los ${aviso.productos} productos que rechazaste vuelven`} a resolverse: alguien captura la cantidad y otra persona la confirma con su PIN. El resto de la carga no se tocó. Regresará aquí para tu autorización.`;
   return (
-    <Tarjeta tintada="discrepancia" elevacion={0} compacta style={estilos.aviso} accessible accessibilityLabel={`${titulo}. ${detalle}`}>
+    <Tarjeta
+      tintada="discrepancia"
+      elevacion={0}
+      compacta
+      style={estilos.aviso}
+      accessible
+      accessibilityLabel={`${titulo}. ${detalle}`}
+    >
       <Text style={estilos.tituloAviso} accessibilityRole="header">
         {titulo}
       </Text>
@@ -206,7 +261,11 @@ function AvisoRegreso({ aviso }: { aviso: AvisoCola }) {
 }
 
 function textoDiscrepancias(n: number): string {
-  return n === 0 ? 'Sin discrepancias' : n === 1 ? '1 con discrepancia' : `${n} con discrepancia`;
+  return n === 0
+    ? 'Sin discrepancias'
+    : n === 1
+      ? '1 con discrepancia'
+      : `${n} con discrepancia`;
 }
 
 function datosCarga(fila: FilaHistorial): Dato[] {
@@ -214,7 +273,12 @@ function datosCarga(fila: FilaHistorial): Dato[] {
     { rotulo: 'Contó', valor: fila.vendedorNombre },
     { rotulo: 'Verificó', valor: fila.contadorNombre },
   ];
-  if (fila.totalProductos !== null) datos.push({ rotulo: 'Productos', valor: String(fila.totalProductos), cifra: true });
+  if (fila.totalProductos !== null)
+    datos.push({
+      rotulo: 'Productos',
+      valor: String(fila.totalProductos),
+      cifra: true,
+    });
   return datos;
 }
 
@@ -223,7 +287,15 @@ function datosCarga(fila: FilaHistorial): Dato[] {
  * punto focal; debajo, el día que sale, quién contó y verificó y cuántos
  * productos, y si hubo discrepancias (lo que pide mirar con más cuidado).
  */
-function TarjetaEnEspera({ carga, ahora, hoy }: { carga: CargaEnEspera; ahora: number; hoy: string }) {
+function TarjetaEnEspera({
+  carga,
+  ahora,
+  hoy,
+}: {
+  carga: CargaEnEspera;
+  ahora: number;
+  hoy: string;
+}) {
   const e = espera(carga.esperaDesde, ahora);
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
   const salida = carga.dia ? textoSalidaCorta(carga.dia, hoy) : null;
@@ -232,7 +304,13 @@ function TarjetaEnEspera({ carga, ahora, hoy }: { carga: CargaEnEspera; ahora: n
     <Tarjeta
       onPress={() => abrir(carga.id)}
       conAcento={bandaDeEspera(e, tipo)}
-      accessibilityLabel={[`${carga.rutaNombre}, ${tipo}`, e.titulo, salida, textoDiscrepancias(carga.discrepancias), 'Revisar y autorizar']
+      accessibilityLabel={[
+        `${carga.rutaNombre}, ${tipo}`,
+        e.titulo,
+        salida,
+        textoDiscrepancias(carga.discrepancias),
+        'Revisar y autorizar',
+      ]
         .filter(Boolean)
         .join('. ')}
     >
@@ -249,14 +327,27 @@ function TarjetaPorEnviar({ fila, hoy }: { fila: FilaHistorial; hoy: string }) {
     <Tarjeta
       onPress={() => abrir(fila.id)}
       conAcento={banda}
-      accessibilityLabel={[`${fila.rutaNombre}, ${tipo}`, banda.titulo, salida, 'Abrir para enviar a Handy'].filter(Boolean).join('. ')}
+      accessibilityLabel={[
+        `${fila.rutaNombre}, ${tipo}`,
+        banda.titulo,
+        salida,
+        'Abrir para enviar a Handy',
+      ]
+        .filter(Boolean)
+        .join('. ')}
     >
       <CuerpoCarga fila={fila} salida={salida} />
     </Tarjeta>
   );
 }
 
-function CuerpoCarga({ fila, salida }: { fila: FilaHistorial; salida: string | null }) {
+function CuerpoCarga({
+  fila,
+  salida,
+}: {
+  fila: FilaHistorial;
+  salida: string | null;
+}) {
   return (
     <>
       <View style={estilos.lineaRuta}>
@@ -271,7 +362,10 @@ function CuerpoCarga({ fila, salida }: { fila: FilaHistorial; salida: string | n
       <View style={estilos.grupoDatos}>
         <Datos datos={datosCarga(fila)} />
         <View style={estilos.filaEtiquetas}>
-          <Etiqueta texto={textoDiscrepancias(fila.discrepancias)} tono={fila.discrepancias > 0 ? 'discrepancia' : 'capturado'} />
+          <Etiqueta
+            texto={textoDiscrepancias(fila.discrepancias)}
+            tono={fila.discrepancias > 0 ? 'discrepancia' : 'capturado'}
+          />
         </View>
       </View>
     </>

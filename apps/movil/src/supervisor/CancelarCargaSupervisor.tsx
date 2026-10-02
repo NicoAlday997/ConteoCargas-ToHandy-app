@@ -15,27 +15,42 @@ import {
   MOTIVO_MINIMO_CANCELACION,
 } from './modelo-supervisor';
 
-type ErrorModal = { titulo: string; detalle: string; tono?: 'error' | 'atencion' };
+type ErrorModal = {
+  titulo: string;
+  detalle: string;
+  tono?: 'error' | 'atencion';
+};
 
 function mensajeError(e: unknown, enHandy: boolean): ErrorModal {
   if (e instanceof ErrorRed) {
-    return { titulo: 'Sin conexión', detalle: 'No se canceló nada. Inténtalo cuando haya señal.', tono: 'atencion' };
+    return {
+      titulo: 'Sin conexión',
+      detalle: 'No se canceló nada. Inténtalo cuando haya señal.',
+      tono: 'atencion',
+    };
   }
   if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_HANDY_RECHAZO) {
     return {
       titulo: 'Handy no dejó cancelarla',
-      detalle: e.message || 'Handy ya no permite cancelar esta ruta. La carga sigue enviada.',
+      detalle:
+        e.message ||
+        'Handy ya no permite cancelar esta ruta. La carga sigue enviada.',
     };
   }
   if (e instanceof ErrorApi && e.estado === 409) {
     return {
       titulo: 'La carga cambió',
-      detalle: e.message || 'Alguien actuó sobre esta carga hace un momento. Cierra para ver cómo quedó.',
+      detalle:
+        e.message ||
+        'Alguien actuó sobre esta carga hace un momento. Cierra para ver cómo quedó.',
     };
   }
   return {
     titulo: enHandy ? 'No se pudo cancelar en Handy' : 'No se pudo cancelar',
-    detalle: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.',
+    detalle:
+      e instanceof Error && e.message
+        ? e.message
+        : 'Intenta de nuevo en un momento.',
   };
 }
 
@@ -87,7 +102,8 @@ export function CancelarCargaSupervisor({
           onCancelada?.();
         },
         onError: (e) => {
-          if (e instanceof ErrorApi && e.estado === 401) return onSesionVencida();
+          if (e instanceof ErrorApi && e.estado === 401)
+            return onSesionVencida();
           setError(mensajeError(e, enHandy));
         },
       },
@@ -96,10 +112,17 @@ export function CancelarCargaSupervisor({
 
   return (
     <>
-      <Boton texto={enHandy ? 'Cancelar en Handy' : 'Cancelar carga'} variante="peligro" onPress={abrir} style={style} />
+      <Boton
+        texto={enHandy ? 'Cancelar en Handy' : 'Cancelar carga'}
+        variante="peligro"
+        onPress={abrir}
+        style={style}
+      />
       <ModalConfirmacion
         visible={abierto}
-        titulo={enHandy ? '¿Cancelar esta carga en Handy?' : '¿Cancelar esta carga?'}
+        titulo={
+          enHandy ? '¿Cancelar esta carga en Handy?' : '¿Cancelar esta carga?'
+        }
         textoConfirmar={enHandy ? 'Cancelar en Handy' : 'Cancelar carga'}
         textoCargando="Cancelando…"
         textoCerrar="No, volver"
@@ -112,17 +135,22 @@ export function CancelarCargaSupervisor({
         onCerrar={() => setAbierto(false)}
       >
         <Text style={estilos.texto}>
-          <Text style={estilos.negrita}>Esto no se puede deshacer.</Text> La carga de{' '}
-          <Text style={estilos.negrita}>{carga.evento.rutaNombre}</Text> queda cancelada: no se borra, se queda en el
-          historial con tu nombre y tu motivo.
+          <Text style={estilos.negrita}>Esto no se puede deshacer.</Text> La
+          carga de{' '}
+          <Text style={estilos.negrita}>{carga.evento.rutaNombre}</Text> queda
+          cancelada: no se borra, se queda en el historial con tu nombre y tu
+          motivo.
         </Text>
         {enHandy ? (
           <Text style={estilos.texto}>
-            Primero se le pide a Handy que cancele la ruta. Si el vendedor ya la aceptó en su celular, Handy no deja
-            cancelarla y aquí no cambia nada.
+            Primero se le pide a Handy que cancele la ruta. Si el vendedor ya la
+            aceptó en su celular, Handy no deja cancelarla y aquí no cambia
+            nada.
           </Text>
         ) : (
-          <Text style={estilos.texto}>Si alguien todavía la está contando, su conteo se cierra.</Text>
+          <Text style={estilos.texto}>
+            Si alguien todavía la está contando, su conteo se cierra.
+          </Text>
         )}
         <CampoTexto
           etiqueta="Motivo"

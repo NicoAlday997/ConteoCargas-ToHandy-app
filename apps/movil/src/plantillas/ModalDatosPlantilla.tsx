@@ -3,10 +3,20 @@ import { StyleSheet, View } from 'react-native';
 
 import { ErrorApi } from '../api/cliente';
 import { CODIGO_NOMBRE_DUPLICADO } from '../api/plantillas';
-import { BloqueError, Boton, CampoTexto, Encabezado, Hoja } from '../componentes/base';
+import {
+  BloqueError,
+  Boton,
+  CampoTexto,
+  Encabezado,
+  Hoja,
+} from '../componentes/base';
 import { ESPACIADO, RITMO } from '../theme/tokens';
 import { avisoDeError, estilosPlantillas } from './ComponentesPlantillas';
-import { DESCRIPCION_MAXIMO, errorNombre, NOMBRE_MAXIMO } from './modelo-plantillas';
+import {
+  DESCRIPCION_MAXIMO,
+  errorNombre,
+  NOMBRE_MAXIMO,
+} from './modelo-plantillas';
 
 export interface DatosFormulario {
   nombre: string;
@@ -36,19 +46,33 @@ export function ModalDatosPlantilla(props: Props) {
   );
 }
 
-function Formulario({ titulo, textoGuardar, inicial, guardando, error, onGuardar, onCerrar }: Props) {
+function Formulario({
+  titulo,
+  textoGuardar,
+  inicial,
+  guardando,
+  error,
+  onGuardar,
+  onCerrar,
+}: Props) {
   const [nombre, setNombre] = useState(inicial.nombre);
   const [descripcion, setDescripcion] = useState(inicial.descripcion ?? '');
   const [intento, setIntento] = useState(false);
 
   const problemaNombre = errorNombre(nombre);
-  const duplicado = error instanceof ErrorApi && error.cuerpo?.codigo === CODIGO_NOMBRE_DUPLICADO;
-  const aviso = error && !duplicado ? avisoDeError(error, 'No se pudo guardar') : null;
+  const duplicado =
+    error instanceof ErrorApi &&
+    error.cuerpo?.codigo === CODIGO_NOMBRE_DUPLICADO;
+  const aviso =
+    error && !duplicado ? avisoDeError(error, 'No se pudo guardar') : null;
 
   const guardar = () => {
     setIntento(true);
     if (problemaNombre) return;
-    onGuardar({ nombre: nombre.trim(), descripcion: descripcion.trim() || null });
+    onGuardar({
+      nombre: nombre.trim(),
+      descripcion: descripcion.trim() || null,
+    });
   };
 
   return (
@@ -78,9 +102,21 @@ function Formulario({ titulo, textoGuardar, inicial, guardando, error, onGuardar
         multilinea
         maxLength={DESCRIPCION_MAXIMO}
       />
-      {aviso && <BloqueError titulo={aviso.titulo} detalle={aviso.detalle} tono={aviso.tono} />}
+      {aviso && (
+        <BloqueError
+          titulo={aviso.titulo}
+          detalle={aviso.detalle}
+          tono={aviso.tono}
+        />
+      )}
       <View style={[estilosPlantillas.filaBotones, estilos.botones]}>
-        <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} deshabilitado={guardando} style={estilosPlantillas.botonFila} />
+        <Boton
+          texto="Cancelar"
+          variante="secundario"
+          onPress={onCerrar}
+          deshabilitado={guardando}
+          style={estilosPlantillas.botonFila}
+        />
         <Boton
           texto={textoGuardar}
           onPress={guardar}

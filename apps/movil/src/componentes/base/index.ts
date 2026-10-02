@@ -3,13 +3,41 @@ export { BloqueError } from './BloqueError';
 export { Boton, type VarianteBoton } from './Boton';
 export { CampoTexto } from './CampoTexto';
 export { Degradado } from './Degradado';
-export { BarraAvance, Encabezado, NotaEncabezado, PanelEncabezado, useSobreMarca } from './Encabezado';
-export { BloqueEsqueleto, Esqueleto, LineaEsqueleto, TarjetaEsqueleto } from './Esqueleto';
+export {
+  BarraAvance,
+  Encabezado,
+  NotaEncabezado,
+  PanelEncabezado,
+  useSobreMarca,
+} from './Encabezado';
+export {
+  BloqueEsqueleto,
+  Esqueleto,
+  LineaEsqueleto,
+  TarjetaEsqueleto,
+} from './Esqueleto';
 export { EstadoVacio, type AccionEstado } from './EstadoVacio';
-export { Etiqueta, type RellenoEtiqueta, type TamanoEtiqueta, type TonoEtiqueta } from './Etiqueta';
+export {
+  Etiqueta,
+  type RellenoEtiqueta,
+  type TamanoEtiqueta,
+  type TonoEtiqueta,
+} from './Etiqueta';
 export { FilaDato } from './FilaDato';
 export { FilaMenu, GrupoMenu } from './FilaMenu';
-export { Chevron, EscudoRuta, Flecha, Glifo, Icono, IconoTarea, Lapiz, MarcaApp, numeroRuta, Palomita, type NombreIcono } from './Icono';
+export {
+  Chevron,
+  EscudoRuta,
+  Flecha,
+  Glifo,
+  Icono,
+  IconoTarea,
+  Lapiz,
+  MarcaApp,
+  numeroRuta,
+  Palomita,
+  type NombreIcono,
+} from './Icono';
 export { AccionesHoja, Hoja } from './Hoja';
 export { PantallaModal } from './PantallaModal';
 export { Pulsable } from './Pulsable';
@@ -18,4 +46,8 @@ export { Datos, Personas, type Dato, type Persona } from './Personas';
 export { Seccion, TituloSeccion } from './Seccion';
 export { SEPARACION_TARJETAS, Tarjeta, type BandaTarjeta } from './Tarjeta';
 export { estadoMotivo, type EstadoMotivo } from './motivo';
-export { COMPORTAMIENTO_TECLADO, PantallaConFormulario, useListaConFormulario } from './PantallaConFormulario';
+export {
+  COMPORTAMIENTO_TECLADO,
+  PantallaConFormulario,
+  useListaConFormulario,
+} from './PantallaConFormulario';

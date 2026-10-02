@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -39,7 +47,9 @@ const ESPERA_SIN_EVENTO_MS = 350;
 type Medible = Pick<View, 'measureLayout' | 'measureInWindow'>;
 
 /** Lo usa `CampoTexto`: al recibir el foco, pide que lo desplacen a la vista. */
-const ContextoFormulario = createContext<((campo: Medible) => void) | null>(null);
+const ContextoFormulario = createContext<((campo: Medible) => void) | null>(
+  null,
+);
 
 export function useMostrarCampo() {
   return useContext(ContextoFormulario);
@@ -49,8 +59,12 @@ export function useMostrarCampo() {
 function useTecladoVisible() {
   const [visible, setVisible] = useState(() => Keyboard.isVisible());
   useEffect(() => {
-    const mostrar = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
-    const ocultar = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
+    const mostrar = Keyboard.addListener('keyboardDidShow', () =>
+      setVisible(true),
+    );
+    const ocultar = Keyboard.addListener('keyboardDidHide', () =>
+      setVisible(false),
+    );
     return () => {
       mostrar.remove();
       ocultar.remove();
@@ -86,8 +100,13 @@ function useDesfaseEnPantalla() {
 function useTopeTeclado() {
   const [tope, setTope] = useState<number | null>(null);
   useEffect(() => {
-    const mostrar = Keyboard.addListener('keyboardDidShow', (e: KeyboardEvent) => setTope(e.endCoordinates.screenY));
-    const ocultar = Keyboard.addListener('keyboardDidHide', () => setTope(null));
+    const mostrar = Keyboard.addListener(
+      'keyboardDidShow',
+      (e: KeyboardEvent) => setTope(e.endCoordinates.screenY),
+    );
+    const ocultar = Keyboard.addListener('keyboardDidHide', () =>
+      setTope(null),
+    );
     return () => {
       mostrar.remove();
       ocultar.remove();
@@ -117,7 +136,10 @@ function useMostrarCampoTrasTeclado(llevarALaVista: (campo: Medible) => void) {
         requestAnimationFrame(() => llevarALaVista(campo));
       };
       sub = Keyboard.addListener('keyboardDidShow', medirAhora);
-      reserva = setTimeout(medirAhora, Keyboard.isVisible() ? 0 : ESPERA_SIN_EVENTO_MS);
+      reserva = setTimeout(
+        medirAhora,
+        Keyboard.isVisible() ? 0 : ESPERA_SIN_EVENTO_MS,
+      );
     },
     [llevarALaVista],
   );
@@ -183,8 +205,13 @@ export function PantallaConFormulario({
         const desde = posicion.current;
         const hasta = desde + altoVisible.current;
         // Si no cabe completo, manda que se vea el principio (donde está el cursor al entrar).
-        if (abajo > hasta) desplazable.current?.scrollTo({ y: Math.min(arriba, abajo - altoVisible.current), animated: true });
-        else if (arriba < desde) desplazable.current?.scrollTo({ y: arriba, animated: true });
+        if (abajo > hasta)
+          desplazable.current?.scrollTo({
+            y: Math.min(arriba, abajo - altoVisible.current),
+            animated: true,
+          });
+        else if (arriba < desde)
+          desplazable.current?.scrollTo({ y: arriba, animated: true });
       },
       () => {},
     );
@@ -216,7 +243,10 @@ export function PantallaConFormulario({
       scrollEventThrottle={32}
       onLayout={alMedir}
     >
-      <View ref={contenido} style={[estilos.columna, tecladoVisible && estilos.conTeclado]}>
+      <View
+        ref={contenido}
+        style={[estilos.columna, tecladoVisible && estilos.conTeclado]}
+      >
         <View style={estiloContenido}>{children}</View>
         {pie ? <View style={[estilos.pie, estiloPie]}>{pie}</View> : null}
       </View>
@@ -227,7 +257,11 @@ export function PantallaConFormulario({
     <ContextoFormulario.Provider value={mostrarCampo}>
       {evitarTeclado ? (
         <View ref={marco} style={[estilos.llenar, style]} onLayout={medir}>
-          <KeyboardAvoidingView style={estilos.llenar} behavior={COMPORTAMIENTO_TECLADO} keyboardVerticalOffset={desfase}>
+          <KeyboardAvoidingView
+            style={estilos.llenar}
+            behavior={COMPORTAMIENTO_TECLADO}
+            keyboardVerticalOffset={desfase}
+          >
             {vista}
           </KeyboardAvoidingView>
         </View>
@@ -271,11 +305,17 @@ export function useListaConFormulario(desplazarA: (y: number) => void) {
         const m = medidas.current;
         const bordeLista = m.desfase + m.alto;
         const visibleArriba = m.desfase + MARGEN_FOCO;
-        const visibleAbajo = Math.min(bordeLista, m.tope ?? bordeLista) - MARGEN_FOCO;
+        const visibleAbajo =
+          Math.min(bordeLista, m.tope ?? bordeLista) - MARGEN_FOCO;
         const abajo = y + altoCampo;
         // Si no cabe completo, manda que se vea el principio (donde está el cursor al entrar).
-        if (abajo > visibleAbajo) desplazarA(posicion.current + Math.min(abajo - visibleAbajo, y - visibleArriba));
-        else if (y < visibleArriba) desplazarA(Math.max(0, posicion.current - (visibleArriba - y)));
+        if (abajo > visibleAbajo)
+          desplazarA(
+            posicion.current +
+              Math.min(abajo - visibleAbajo, y - visibleArriba),
+          );
+        else if (y < visibleArriba)
+          desplazarA(Math.max(0, posicion.current - (visibleArriba - y)));
       });
     },
     [desplazarA],

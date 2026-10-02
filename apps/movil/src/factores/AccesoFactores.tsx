@@ -4,7 +4,14 @@ import { router, useFocusEffect } from 'expo-router';
 
 import { useFactoresPendientes } from '../api/hooks-factores';
 import { Chevron, FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  FUENTE,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
 import { contarPendientes, textoProductos } from './modelo-factores';
 
 function abrir() {
@@ -36,7 +43,11 @@ export function AccesoFactores() {
         <FilaMenu
           tarea="empaques"
           texto="Empaque de productos"
-          detalle={pendientes === 0 ? 'Todos los productos tienen su empaque confirmado' : undefined}
+          detalle={
+            pendientes === 0
+              ? 'Todos los productos tienen su empaque confirmado'
+              : undefined
+          }
           onPress={abrir}
         />
       </GrupoMenu>
@@ -50,11 +61,15 @@ export function AccesoFactores() {
       accessibilityLabel={`Empaques por confirmar: ${textoProductos(pendientes)}. No se pueden contar en paquetes hasta confirmarlos.`}
     >
       <View style={estilos.fila}>
-        <Text style={estilos.explicacion}>No se pueden contar en paquetes hasta que confirmes cómo se venden.</Text>
+        <Text style={estilos.explicacion}>
+          No se pueden contar en paquetes hasta que confirmes cómo se venden.
+        </Text>
         {/* Lo que falta domina: es lo que hay que hacer. */}
         <View style={estilos.cifra}>
           <Text style={estilos.numero}>{pendientes}</Text>
-          <Text style={estilos.unidad}>{pendientes === 1 ? 'producto' : 'productos'}</Text>
+          <Text style={estilos.unidad}>
+            {pendientes === 1 ? 'producto' : 'productos'}
+          </Text>
         </View>
         <Chevron />
       </View>

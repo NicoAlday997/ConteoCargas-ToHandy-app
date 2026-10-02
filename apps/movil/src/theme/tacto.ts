@@ -9,7 +9,8 @@ import * as Haptics from 'expo-haptics';
  *
  * Nunca falla: un teléfono sin motor de vibración simplemente no vibra.
  */
-export type Tacto = 'tecla' | 'toque' | 'seleccion' | 'exito' | 'aviso' | 'error';
+export type Tacto =
+  'tecla' | 'toque' | 'seleccion' | 'exito' | 'aviso' | 'error';
 
 const ANDROID: Record<Tacto, Haptics.AndroidHaptics> = {
   tecla: Haptics.AndroidHaptics.Keyboard_Tap,
@@ -28,9 +29,13 @@ function ios(tipo: Tacto): Promise<void> {
     case 'seleccion':
       return Haptics.selectionAsync();
     case 'exito':
-      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      );
     case 'aviso':
-      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Warning,
+      );
     case 'error':
       return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
   }
@@ -38,6 +43,9 @@ function ios(tipo: Tacto): Promise<void> {
 
 export function sentir(tipo: Tacto): void {
   if (Platform.OS === 'web') return;
-  const promesa = Platform.OS === 'android' ? Haptics.performAndroidHapticsAsync(ANDROID[tipo]) : ios(tipo);
+  const promesa =
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(ANDROID[tipo])
+      : ios(tipo);
   promesa.catch(() => undefined);
 }

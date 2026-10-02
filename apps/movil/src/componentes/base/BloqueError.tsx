@@ -1,6 +1,20 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS } from '../../theme/tokens';
+import {
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TONOS,
+} from '../../theme/tokens';
 import { Boton } from './Boton';
 import { Glifo } from './Icono';
 
@@ -38,12 +52,27 @@ export function BloqueError({
   tono = 'error',
   style,
 }: Props) {
-  const colores = tono === 'error' ? TONOS.error : tono === 'exito' ? TONOS.capturado : TONOS.discrepancia;
-  const borde = tono === 'error' ? COLORES.error : tono === 'exito' ? COLORES.capturadoHondo : COLORES.discrepanciaHonda;
-  const glifo = tono === 'error' ? 'alto' : tono === 'exito' ? 'listo' : 'reloj';
+  const colores =
+    tono === 'error'
+      ? TONOS.error
+      : tono === 'exito'
+        ? TONOS.capturado
+        : TONOS.discrepancia;
+  const borde =
+    tono === 'error'
+      ? COLORES.error
+      : tono === 'exito'
+        ? COLORES.capturadoHondo
+        : COLORES.discrepanciaHonda;
+  const glifo =
+    tono === 'error' ? 'alto' : tono === 'exito' ? 'listo' : 'reloj';
   return (
     <View
-      style={[estilos.bloque, { backgroundColor: colores.fondo, borderColor: borde }, style]}
+      style={[
+        estilos.bloque,
+        { backgroundColor: colores.fondo, borderColor: borde },
+        style,
+      ]}
       accessibilityRole={tono === 'exito' ? 'summary' : 'alert'}
     >
       <View style={estilos.cabecera}>
@@ -54,7 +83,12 @@ export function BloqueError({
       {(onReintentar || secundaria) && (
         <View style={estilos.acciones}>
           {secundaria && (
-            <Boton texto={secundaria.texto} variante="secundario" onPress={secundaria.onPress} style={estilos.boton} />
+            <Boton
+              texto={secundaria.texto}
+              variante="secundario"
+              onPress={secundaria.onPress}
+              style={estilos.boton}
+            />
           )}
           {onReintentar && (
             <Boton

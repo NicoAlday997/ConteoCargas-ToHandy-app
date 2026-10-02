@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 
-import { AccionesHoja, BloqueError, Boton, Hoja, type VarianteBoton } from '../componentes/base';
+import {
+  AccionesHoja,
+  BloqueError,
+  Boton,
+  Hoja,
+  type VarianteBoton,
+} from '../componentes/base';
 
 interface Props {
   visible: boolean;
@@ -17,7 +23,11 @@ interface Props {
   variante?: VarianteBoton;
   cargando: boolean;
   /** Por qué falló el último intento; el modal sigue abierto para reintentar o cancelar. */
-  error?: { titulo: string; detalle: string; tono?: 'error' | 'atencion' } | null;
+  error?: {
+    titulo: string;
+    detalle: string;
+    tono?: 'error' | 'atencion';
+  } | null;
   /**
    * Una segunda salida que también hace algo, más modesta que confirmar
    * (p. ej. «Solo autorizar» junto a «Autorizar y enviar»). Va de contorno,
@@ -80,26 +90,51 @@ export function ModalConfirmacion({
           // salida segura es el sólido y va hasta abajo, la más cercana al pulgar.
           <AccionesHoja apiladas>
             {confirmar}
-            <Boton texto={textoCerrar} onPress={cerrar} deshabilitado={cargando} />
+            <Boton
+              texto={textoCerrar}
+              onPress={cerrar}
+              deshabilitado={cargando}
+            />
           </AccionesHoja>
         ) : alternativa ? (
           <AccionesHoja apiladas>
             <AccionesHoja>
-              <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} />
-              <Boton texto={alternativa.texto} variante="secundario" onPress={alternativa.onPress} deshabilitado={cargando} />
+              <Boton
+                texto={textoCerrar}
+                variante="secundario"
+                onPress={cerrar}
+                deshabilitado={cargando}
+              />
+              <Boton
+                texto={alternativa.texto}
+                variante="secundario"
+                onPress={alternativa.onPress}
+                deshabilitado={cargando}
+              />
             </AccionesHoja>
             {confirmar}
           </AccionesHoja>
         ) : (
           <AccionesHoja>
-            <Boton texto={textoCerrar} variante="secundario" onPress={cerrar} deshabilitado={cargando} />
+            <Boton
+              texto={textoCerrar}
+              variante="secundario"
+              onPress={cerrar}
+              deshabilitado={cargando}
+            />
             {confirmar}
           </AccionesHoja>
         )
       }
     >
       {children}
-      {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono ?? 'error'} />}
+      {error && (
+        <BloqueError
+          titulo={error.titulo}
+          detalle={error.detalle}
+          tono={error.tono ?? 'error'}
+        />
+      )}
     </Hoja>
   );
 }

@@ -3,23 +3,49 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { candidatosConfirmar, confirmadorInicial, nombreCorto, type Participante } from './quien-confirma.ts';
+import {
+  candidatosConfirmar,
+  confirmadorInicial,
+  nombreCorto,
+  type Participante,
+} from './quien-confirma.ts';
 
-const IRVIN: Participante = { id: 'vendedor-1', nombre: 'Irvin Alday', tipoSesion: 'VENDEDOR' };
-const JUAN: Participante = { id: 'contador-1', nombre: 'Juan Pérez', tipoSesion: 'CONTADOR' };
-const ANA: Participante = { id: 'contador-2', nombre: 'Ana Ruiz', tipoSesion: 'CONTADOR' };
+const IRVIN: Participante = {
+  id: 'vendedor-1',
+  nombre: 'Irvin Alday',
+  tipoSesion: 'VENDEDOR',
+};
+const JUAN: Participante = {
+  id: 'contador-1',
+  nombre: 'Juan Pérez',
+  tipoSesion: 'CONTADOR',
+};
+const ANA: Participante = {
+  id: 'contador-2',
+  nombre: 'Ana Ruiz',
+  tipoSesion: 'CONTADOR',
+};
 
 describe('candidatosConfirmar', () => {
   it('nunca ofrece a quien capturó, aunque tenga la sesión abierta', () => {
-    assert.deepEqual(candidatosConfirmar([IRVIN, JUAN], 'vendedor-1', 'vendedor-1'), [JUAN]);
+    assert.deepEqual(
+      candidatosConfirmar([IRVIN, JUAN], 'vendedor-1', 'vendedor-1'),
+      [JUAN],
+    );
   });
 
   it('pone primero a quien tiene la sesión si puede confirmar', () => {
-    assert.deepEqual(candidatosConfirmar([IRVIN, JUAN, ANA], 'vendedor-1', 'contador-2'), [ANA, JUAN]);
+    assert.deepEqual(
+      candidatosConfirmar([IRVIN, JUAN, ANA], 'vendedor-1', 'contador-2'),
+      [ANA, JUAN],
+    );
   });
 
   it('sin captura todavía, todos los que contaron', () => {
-    assert.deepEqual(candidatosConfirmar([IRVIN, JUAN], null, null), [IRVIN, JUAN]);
+    assert.deepEqual(candidatosConfirmar([IRVIN, JUAN], null, null), [
+      IRVIN,
+      JUAN,
+    ]);
   });
 });
 

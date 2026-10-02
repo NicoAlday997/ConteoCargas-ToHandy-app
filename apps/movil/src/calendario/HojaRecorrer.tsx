@@ -19,7 +19,18 @@ import {
 import { formatearDia } from '../conteo/fecha-operativa';
 import { bandaDeEstado } from '../historial/ComponentesHistorial';
 import { MOTIVO_MINIMO_CANCELACION } from '../supervisor/modelo-supervisor';
-import { BORDES, COLORES, ESCALA_PRESIONADO, ESPACIADO, FUENTE, ONDA, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  BORDES,
+  COLORES,
+  ESCALA_PRESIONADO,
+  ESPACIADO,
+  FUENTE,
+  ONDA,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../theme/tokens';
 import {
   preguntaRecorrer,
   rutasEnConflicto,
@@ -57,14 +68,23 @@ interface Props {
  * una ruta ya tiene carga inicial en el destino no se mueve ninguna, y se dice
  * cuál.
  */
-export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorridas }: Props) {
+export function HojaRecorrer({
+  fecha,
+  motivoInicial,
+  manual,
+  onCerrar,
+  onRecorridas,
+}: Props) {
   const consulta = useCargasDelDia(fecha);
   const recorrer = useRecorrerCargas();
   const [destinoElegido, setDestinoElegido] = useState<string | null>(null);
   const [eligiendoDia, setEligiendoDia] = useState(false);
   const [motivo, setMotivo] = useState(motivoInicial);
   const [intento, setIntento] = useState(false);
-  const [error, setError] = useState<{ titulo: string; detalle: string | null } | null>(null);
+  const [error, setError] = useState<{
+    titulo: string;
+    detalle: string | null;
+  } | null>(null);
 
   const vista = consulta.data;
   const destino = destinoElegido ?? vista?.destinoSugerido ?? null;
@@ -76,7 +96,11 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
     if (!manual && fecha !== null && sinCargas) onCerrar();
   }, [manual, fecha, sinCargas, onCerrar]);
 
-  const visible = fecha !== null && (manual || consulta.isError || (vista !== undefined && vista.cargas.length > 0));
+  const visible =
+    fecha !== null &&
+    (manual ||
+      consulta.isError ||
+      (vista !== undefined && vista.cargas.length > 0));
 
   const cerrar = () => {
     if (recorrer.isPending) return;
@@ -100,9 +124,16 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
   const pie =
     vista && !sinCargas && !eligiendoDia ? (
       <AccionesHoja>
-        <Boton texto="Ahora no" variante="secundario" deshabilitado={recorrer.isPending} onPress={cerrar} />
         <Boton
-          texto={cuantas === 1 ? 'Recorrer la carga' : `Recorrer las ${cuantas}`}
+          texto="Ahora no"
+          variante="secundario"
+          deshabilitado={recorrer.isPending}
+          onPress={cerrar}
+        />
+        <Boton
+          texto={
+            cuantas === 1 ? 'Recorrer la carga' : `Recorrer las ${cuantas}`
+          }
           cargando={recorrer.isPending}
           textoCargando="Recorriendo…"
           deshabilitado={destino === null}
@@ -112,7 +143,13 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
     ) : undefined;
 
   return (
-    <Hoja visible={visible} onCerrar={cerrar} bloqueada={recorrer.isPending} pie={pie} formulario>
+    <Hoja
+      visible={visible}
+      onCerrar={cerrar}
+      bloqueada={recorrer.isPending}
+      pie={pie}
+      formulario
+    >
       {fecha !== null && eligiendoDia ? (
         <ElegirDestino
           origen={fecha}
@@ -134,7 +171,8 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
           detalle={
             consulta.error instanceof ErrorRed
               ? 'Sin conexión. El día sí quedó marcado; cuando haya señal, ábrelo desde la lista para recorrer sus cargas.'
-              : (consulta.error instanceof Error && consulta.error.message) || null
+              : (consulta.error instanceof Error && consulta.error.message) ||
+                null
           }
           tono={consulta.error instanceof ErrorRed ? 'atencion' : 'error'}
           onReintentar={() => void consulta.refetch()}
@@ -146,7 +184,9 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
           <Text style={estilos.titulo} accessibilityRole="header">
             Este día no tiene cargas que recorrer
           </Text>
-          {vista.excluidas.length > 0 && <NotaExcluidas cuantas={vista.excluidas.length} />}
+          {vista.excluidas.length > 0 && (
+            <NotaExcluidas cuantas={vista.excluidas.length} />
+          )}
           <Boton texto="Cerrar" variante="secundario" onPress={cerrar} />
         </>
       ) : (
@@ -156,19 +196,27 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
               {preguntaRecorrer(cuantas, destino)}
             </Text>
             <Text style={estilos.detalle}>
-              {formatearDia(vista.fecha)} no se trabajó. Las cargas se mueven completas, con lo contado; las que ya se
-              enviaron también: se corrige el historial y la ruta en Handy no se modifica.
+              {formatearDia(vista.fecha)} no se trabajó. Las cargas se mueven
+              completas, con lo contado; las que ya se enviaron también: se
+              corrige el historial y la ruta en Handy no se modifica.
             </Text>
-            <ScrollView style={estilos.lista} contentContainerStyle={estilos.contenidoLista}>
+            <ScrollView
+              style={estilos.lista}
+              contentContainerStyle={estilos.contenidoLista}
+            >
               {vista.cargas.map((carga, i) => (
                 <RenglonCarga key={carga.id} carga={carga} primero={i === 0} />
               ))}
             </ScrollView>
-            {vista.excluidas.length > 0 && <NotaExcluidas cuantas={vista.excluidas.length} />}
+            {vista.excluidas.length > 0 && (
+              <NotaExcluidas cuantas={vista.excluidas.length} />
+            )}
             <View style={estilos.destino}>
               <View style={estilos.textosDestino}>
                 <Text style={estilos.rotulo}>Se recorren al</Text>
-                <Text style={estilos.diaDestino}>{destino ? formatearDia(destino) : 'Elige un día'}</Text>
+                <Text style={estilos.diaDestino}>
+                  {destino ? formatearDia(destino) : 'Elige un día'}
+                </Text>
               </View>
               <Boton
                 texto="Otro día"
@@ -184,9 +232,15 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
               ejemplo="Ej. no se trabajó por el frío"
               maxLength={200}
               ayuda={`Obligatorio. Mínimo ${MOTIVO_MINIMO} caracteres. Queda en el historial de cada carga.`}
-              error={intento && !motivoValido ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+              error={
+                intento && !motivoValido
+                  ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).`
+                  : null
+              }
             />
-            {error && <BloqueError titulo={error.titulo} detalle={error.detalle} />}
+            {error && (
+              <BloqueError titulo={error.titulo} detalle={error.detalle} />
+            )}
           </>
         )
       )}
@@ -194,10 +248,22 @@ export function HojaRecorrer({ fecha, motivoInicial, manual, onCerrar, onRecorri
   );
 }
 
-function RenglonCarga({ carga, primero }: { carga: CargaDelDia; primero: boolean }) {
+function RenglonCarga({
+  carga,
+  primero,
+}: {
+  carga: CargaDelDia;
+  primero: boolean;
+}) {
   const estado = bandaDeEstado(carga.estado);
-  const productos = carga.totalProductos === 1 ? '1 producto' : `${carga.totalProductos} productos`;
-  const ruta = carga.tipo === 'RECARGA' ? `${carga.rutaNombre} · Recarga` : carga.rutaNombre;
+  const productos =
+    carga.totalProductos === 1
+      ? '1 producto'
+      : `${carga.totalProductos} productos`;
+  const ruta =
+    carga.tipo === 'RECARGA'
+      ? `${carga.rutaNombre} · Recarga`
+      : carga.rutaNombre;
   return (
     <View
       style={[estilos.renglon, !primero && estilos.renglonConDivisor]}
@@ -218,8 +284,10 @@ function RenglonCarga({ carga, primero }: { carga: CargaDelDia; primero: boolean
 function NotaExcluidas({ cuantas }: { cuantas: number }) {
   return (
     <Text style={estilos.detalle}>
-      {cuantas === 1 ? '1 carga se queda en su día' : `${cuantas} cargas se quedan en su día`}: están canceladas o con el
-      envío a Handy sin confirmar.
+      {cuantas === 1
+        ? '1 carga se queda en su día'
+        : `${cuantas} cargas se quedan en su día`}
+      : están canceladas o con el envío a Handy sin confirmar.
     </Text>
   );
 }
@@ -265,7 +333,10 @@ function ElegirDestino({
           reintentando={fechas.isFetching}
         />
       ) : (
-        <ScrollView style={estilos.lista} contentContainerStyle={estilos.contenidoDias}>
+        <ScrollView
+          style={estilos.lista}
+          contentContainerStyle={estilos.contenidoDias}
+        >
           {opciones.map((opcion) => {
             const elegido = opcion.dia === actual;
             return (
@@ -278,9 +349,20 @@ function ElegirDestino({
                 accessibilityRole="button"
                 accessibilityLabel={`${formatearDia(opcion.dia)}${elegido ? ', elegido' : ''}`}
                 accessibilityState={{ selected: elegido }}
-                style={({ pressed }) => [estilos.opcion, elegido && estilos.opcionElegida, pressed && estilos.opcionPresionada]}
+                style={({ pressed }) => [
+                  estilos.opcion,
+                  elegido && estilos.opcionElegida,
+                  pressed && estilos.opcionPresionada,
+                ]}
               >
-                <Text style={[estilos.textoOpcion, elegido && estilos.textoOpcionElegida]}>{formatearDia(opcion.dia)}</Text>
+                <Text
+                  style={[
+                    estilos.textoOpcion,
+                    elegido && estilos.textoOpcionElegida,
+                  ]}
+                >
+                  {formatearDia(opcion.dia)}
+                </Text>
               </Pulsable>
             );
           })}
@@ -291,14 +373,29 @@ function ElegirDestino({
   );
 }
 
-function errorRecorrer(e: unknown, destino: string): { titulo: string; detalle: string | null } {
+function errorRecorrer(
+  e: unknown,
+  destino: string,
+): { titulo: string; detalle: string | null } {
   if (e instanceof ErrorRed) {
-    return { titulo: 'Sin conexión', detalle: 'No se movió ninguna carga. Inténtalo cuando haya señal.' };
+    return {
+      titulo: 'Sin conexión',
+      detalle: 'No se movió ninguna carga. Inténtalo cuando haya señal.',
+    };
   }
-  if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_CONFLICTO_EN_DESTINO) {
-    return { titulo: 'No se movió ninguna carga', detalle: textoConflicto(rutasEnConflicto(e.cuerpo), destino) };
+  if (
+    e instanceof ErrorApi &&
+    e.cuerpo?.codigo === CODIGO_CONFLICTO_EN_DESTINO
+  ) {
+    return {
+      titulo: 'No se movió ninguna carga',
+      detalle: textoConflicto(rutasEnConflicto(e.cuerpo), destino),
+    };
   }
-  return { titulo: 'No se pudieron recorrer las cargas', detalle: e instanceof Error && e.message ? e.message : null };
+  return {
+    titulo: 'No se pudieron recorrer las cargas',
+    detalle: e instanceof Error && e.message ? e.message : null,
+  };
 }
 
 const estilos = StyleSheet.create({

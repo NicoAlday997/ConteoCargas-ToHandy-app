@@ -4,7 +4,11 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Boton } from '../componentes/base';
 import { ModalCambiarFecha } from '../conteo/CambiarFechaCarga';
 import type { CargaDetalle } from '../historial/modelo-historial';
-import { AVISO_CAMBIO_FECHA_ENVIADA, MOTIVO_MINIMO_CANCELACION, puedeCambiarFecha } from './modelo-supervisor';
+import {
+  AVISO_CAMBIO_FECHA_ENVIADA,
+  MOTIVO_MINIMO_CANCELACION,
+  puedeCambiarFecha,
+} from './modelo-supervisor';
 
 /**
  * «Cambiar fecha de salida» del supervisor: mueve la carga de día sin tocar lo
@@ -30,7 +34,12 @@ export function CambiarFechaSupervisor({
 
   return (
     <>
-      <Boton texto={texto} variante="secundario" onPress={() => setAbierto(true)} style={style} />
+      <Boton
+        texto={texto}
+        variante="secundario"
+        onPress={() => setAbierto(true)}
+        style={style}
+      />
       <ModalCambiarFecha
         visible={abierto}
         eventoId={evento.id}

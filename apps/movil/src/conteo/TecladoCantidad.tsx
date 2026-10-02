@@ -30,7 +30,12 @@ import { formatearNombreProducto } from './formato-nombre';
 
 /** Controles del encabezado del teclado: 40 de alto y 8 de holgura arriba y abajo llegan a 56. */
 const ALTO_CONTROL_ENCABEZADO = ESPACIADO.xxl + ESPACIADO.sm;
-const HOLGURA_ENCABEZADO = { top: ESPACIADO.sm, bottom: ESPACIADO.sm, left: ESPACIADO.xs, right: ESPACIADO.xs };
+const HOLGURA_ENCABEZADO = {
+  top: ESPACIADO.sm,
+  bottom: ESPACIADO.sm,
+  left: ESPACIADO.xs,
+  right: ESPACIADO.xs,
+};
 /** La columna de acciones es más ancha que la de un dígito: "Siguiente" cabe sin encogerse. */
 const PESO_COLUMNA_ACCIONES = 1.3;
 /** La tecla de avance no lleva borde: su color plano y su sombra la dibujan. */
@@ -119,13 +124,24 @@ export function TecladoCantidad({
   // El panel llega hasta el borde de abajo: su fondo absorbe el área segura.
   const margenes = useSafeAreaInsets();
   const factor = factorEfectivo(producto);
-  const avisoSueltas = campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
+  const avisoSueltas =
+    campo === 'sueltas' && sueltasExcedenPaquete(captura.sueltas, factor);
   const altoTecla = teclasGrandes ? ALTO_TECLA_GRANDE : TOQUE_MINIMO;
   const etiquetaCampo = nombreCampo(producto, campo);
   const nombre = formatearNombreProducto(producto.nombre);
 
   return (
-    <View style={[estilos.panel, lateral && estilos.panelLateral, { paddingBottom: (lateral ? ESPACIADO.lg : ESPACIADO.md) + (areaSegura ? margenes.bottom : 0) }]}>
+    <View
+      style={[
+        estilos.panel,
+        lateral && estilos.panelLateral,
+        {
+          paddingBottom:
+            (lateral ? ESPACIADO.lg : ESPACIADO.md) +
+            (areaSegura ? margenes.bottom : 0),
+        },
+      ]}
+    >
       <View style={estilos.encabezado}>
         <View
           style={estilos.lineaProducto}
@@ -139,16 +155,28 @@ export function TecladoCantidad({
         >
           <EtiquetaFactor producto={producto} grande={lateral} />
           <View style={estilos.textosProducto}>
-            <Text style={estilos.nombre} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+            <Text
+              style={estilos.nombre}
+              numberOfLines={2}
+              maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+            >
               {nombre}
             </Text>
             {/* Si no cabe se recorta la familia, nunca "contados": es la palabra que quita la duda. */}
             {ubicacion ? (
               <View style={estilos.lineaContexto}>
-                <Text style={[estilos.contexto, estilos.familiaContexto]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                <Text
+                  style={[estilos.contexto, estilos.familiaContexto]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                >
                   {ubicacion.familia}
                 </Text>
-                <Text style={estilos.contexto} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                <Text
+                  style={estilos.contexto}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                >
                   {` · ${ubicacion.contados} de ${ubicacion.total} contados`}
                 </Text>
               </View>
@@ -162,9 +190,15 @@ export function TecladoCantidad({
           accessibilityRole="button"
           accessibilityLabel="Listo, cerrar teclado"
           escala={ESCALA_PRESIONADO_CONTROL}
-          style={({ pressed }) => [estilos.botonListo, pressed && estilos.botonListoPresionado]}
+          style={({ pressed }) => [
+            estilos.botonListo,
+            pressed && estilos.botonListoPresionado,
+          ]}
         >
-          <Text style={estilos.textoListo} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+          <Text
+            style={estilos.textoListo}
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
+          >
             Listo
           </Text>
         </Pulsable>
@@ -176,7 +210,10 @@ export function TecladoCantidad({
         teclea es el visor azul noche; el otro (si hay) se ve con su valor y se
         toca para pasar a él.
       */}
-      <View style={estilos.lineaValor} accessibilityRole={camposDisponibles.length > 1 ? 'tablist' : undefined}>
+      <View
+        style={estilos.lineaValor}
+        accessibilityRole={camposDisponibles.length > 1 ? 'tablist' : undefined}
+      >
         {camposDisponibles.map((c) => {
           const rotulo = nombreCampo(producto, c);
           if (c === campo) {
@@ -185,15 +222,26 @@ export function TecladoCantidad({
                 key={c}
                 style={[estilos.visor, avisoSueltas && estilos.visorConAviso]}
                 accessible
-                accessibilityRole={camposDisponibles.length > 1 ? 'tab' : undefined}
-                accessibilityState={camposDisponibles.length > 1 ? { selected: true } : undefined}
+                accessibilityRole={
+                  camposDisponibles.length > 1 ? 'tab' : undefined
+                }
+                accessibilityState={
+                  camposDisponibles.length > 1 ? { selected: true } : undefined
+                }
                 accessibilityLabel={`Capturando ${etiquetaCampo}: ${texto === '' ? 'sin capturar' : texto}`}
               >
-                <Text style={estilos.rotuloVisor} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+                <Text
+                  style={estilos.rotuloVisor}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.control}
+                >
                   {rotulo}
                 </Text>
                 <Text
-                  style={[estilos.valor, reemplazar && estilos.valorPorReemplazar]}
+                  style={[
+                    estilos.valor,
+                    reemplazar && estilos.valorPorReemplazar,
+                  ]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={ESCALA_TEXTO.control}
                 >
@@ -213,13 +261,23 @@ export function TecladoCantidad({
               accessibilityRole="tab"
               accessibilityState={{ selected: false }}
               accessibilityLabel={`Capturar ${rotulo}: ${valor === null ? 'sin capturar' : valor}`}
-              style={({ pressed }) => [estilos.campoInactivo, pressed && estilos.campoInactivoPresionado]}
+              style={({ pressed }) => [
+                estilos.campoInactivo,
+                pressed && estilos.campoInactivoPresionado,
+              ]}
             >
-              <Text style={estilos.rotuloInactivo} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+              <Text
+                style={estilos.rotuloInactivo}
+                numberOfLines={1}
+                maxFontSizeMultiplier={ESCALA_TEXTO.control}
+              >
                 {rotulo}
               </Text>
               <Text
-                style={[estilos.valorInactivo, valor === null && estilos.valorInactivoVacio]}
+                style={[
+                  estilos.valorInactivo,
+                  valor === null && estilos.valorInactivoVacio,
+                ]}
                 numberOfLines={1}
                 maxFontSizeMultiplier={ESCALA_TEXTO.control}
               >
@@ -234,9 +292,17 @@ export function TecladoCantidad({
       <View style={estilos.zonaAviso}>
         {avisoSueltas && factor !== null && (
           <View style={estilos.aviso} accessibilityRole="alert">
-            <Glifo nombre="alerta" color={COLORES.discrepanciaTexto} tamano={ESPACIADO.lg + 2} />
-            <Text style={estilos.textoAviso} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
-              Eso ya es un paquete completo de {factor}. Si venía cerrado, cuéntalo en Paquetes.
+            <Glifo
+              nombre="alerta"
+              color={COLORES.discrepanciaTexto}
+              tamano={ESPACIADO.lg + 2}
+            />
+            <Text
+              style={estilos.textoAviso}
+              maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+            >
+              Eso ya es un paquete completo de {factor}. Si venía cerrado,
+              cuéntalo en Paquetes.
             </Text>
           </View>
         )}
@@ -247,17 +313,32 @@ export function TecladoCantidad({
           {FILAS.map((fila) => (
             <View key={fila.join('')} style={estilos.fila}>
               {fila.map((digito) => (
-                <Tecla key={digito} etiqueta={digito} alto={altoTecla} onPress={() => onDigito(digito)} />
+                <Tecla
+                  key={digito}
+                  etiqueta={digito}
+                  alto={altoTecla}
+                  onPress={() => onDigito(digito)}
+                />
               ))}
             </View>
           ))}
           <View style={estilos.fila}>
-            <Tecla etiqueta="0" alto={altoTecla} onPress={() => onDigito('0')} />
+            <Tecla
+              etiqueta="0"
+              alto={altoTecla}
+              onPress={() => onDigito('0')}
+            />
           </View>
         </View>
 
         <View style={[estilos.acciones, lateral && estilos.tecladoLateral]}>
-          <Tecla etiqueta="Borrar" alto={altoTecla} onPress={onBorrar} variante="secundaria" etiquetaAccesible="Borrar último dígito" />
+          <Tecla
+            etiqueta="Borrar"
+            alto={altoTecla}
+            onPress={onBorrar}
+            variante="secundaria"
+            etiquetaAccesible="Borrar último dígito"
+          />
           {onNoLleva && (
             <Tecla
               etiqueta="No lleva"
@@ -294,7 +375,15 @@ interface PropsTecla {
   estirar?: boolean;
 }
 
-function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible, chevron = false, estirar = false }: PropsTecla) {
+function Tecla({
+  etiqueta,
+  alto,
+  onPress,
+  variante = 'digito',
+  etiquetaAccesible,
+  chevron = false,
+  estirar = false,
+}: PropsTecla) {
   const avance = variante === 'avance';
   return (
     <Pulsable
@@ -302,7 +391,9 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
       tacto="tecla"
       repetible
       escala={ESCALA_PRESIONADO_CONTROL}
-      onda={avance || variante === 'noLleva' ? ONDA.sobreColor : ONDA.sobreClaro}
+      onda={
+        avance || variante === 'noLleva' ? ONDA.sobreColor : ONDA.sobreClaro
+      }
       accessibilityRole="button"
       accessibilityLabel={etiquetaAccesible ?? etiqueta}
       style={({ pressed }) => [
@@ -311,17 +402,21 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
         estirar && estilos.teclaEstirada,
         variante === 'noLleva' && estilos.teclaNoLleva,
         avance && estilos.teclaAvance,
-        pressed && (avance ? estilos.teclaAvancePresionada : estilos.teclaPresionada),
+        pressed &&
+          (avance ? estilos.teclaAvancePresionada : estilos.teclaPresionada),
       ]}
     >
       {({ pressed }) => (
         <View style={estilos.contenidoTecla}>
           <Text
             style={[
-              variante === 'digito' ? estilos.textoDigito : estilos.textoSecundario,
+              variante === 'digito'
+                ? estilos.textoDigito
+                : estilos.textoSecundario,
               variante === 'noLleva' && estilos.textoNoLleva,
               avance && estilos.textoAvance,
-              pressed && (avance ? estilos.textoInvertido : estilos.textoPresionado),
+              pressed &&
+                (avance ? estilos.textoInvertido : estilos.textoPresionado),
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -329,7 +424,14 @@ function Tecla({ etiqueta, alto, onPress, variante = 'digito', etiquetaAccesible
           >
             {etiqueta}
           </Text>
-          {chevron && <Chevron color={avance || pressed ? COLORES.textoSobreColor : COLORES.texto} tamano={ESPACIADO.xl} />}
+          {chevron && (
+            <Chevron
+              color={
+                avance || pressed ? COLORES.textoSobreColor : COLORES.texto
+              }
+              tamano={ESPACIADO.xl}
+            />
+          )}
         </View>
       )}
     </Pulsable>

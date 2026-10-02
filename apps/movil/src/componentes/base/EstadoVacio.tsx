@@ -1,6 +1,18 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import { COLORES, ESPACIADO, RITMO, TIPOGRAFIA, type ColorTono } from '../../theme/tokens';
+import {
+  COLORES,
+  ESPACIADO,
+  RITMO,
+  TIPOGRAFIA,
+  type ColorTono,
+} from '../../theme/tokens';
 import { Boton } from './Boton';
 import { Icono, type NombreIcono } from './Icono';
 
@@ -36,9 +48,24 @@ interface Props {
  * "no hay datos" gris y suelto: lo encabeza el círculo tintado de 72 px con su
  * ícono en el color fuerte, que dice de un vistazo si es buena noticia.
  */
-export function EstadoVacio({ icono, titulo, detalle, accion, secundaria, tono = 'marca', enLinea = false, style }: Props) {
+export function EstadoVacio({
+  icono,
+  titulo,
+  detalle,
+  accion,
+  secundaria,
+  tono = 'marca',
+  enLinea = false,
+  style,
+}: Props) {
   return (
-    <View style={[estilos.contenedor, enLinea ? estilos.enLinea : estilos.pantalla, style]}>
+    <View
+      style={[
+        estilos.contenedor,
+        enLinea ? estilos.enLinea : estilos.pantalla,
+        style,
+      ]}
+    >
       <Icono nombre={icono} tono={tono} />
       <View style={estilos.textos}>
         <Text style={estilos.titulo} accessibilityRole="header">

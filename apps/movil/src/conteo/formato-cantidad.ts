@@ -42,11 +42,24 @@ export function unidadEnPlural(descripcion: string): string {
  * vende completo: entonces la cantidad ya ESTÁ en esa unidad y el factor no
  * aplica. `formatearEnPaquetes(5, null, 'Caja')` → "5 cajas".
  */
-export function formatearEnPaquetes(piezas: number, piezasPorPaquete: number | null, unidadCompleta: string | null = null): string {
+export function formatearEnPaquetes(
+  piezas: number,
+  piezasPorPaquete: number | null,
+  unidadCompleta: string | null = null,
+): string {
   if (unidadCompleta !== null) {
-    return plural(piezas, unidadEnSingular(unidadCompleta), unidadEnPlural(unidadCompleta));
+    return plural(
+      piezas,
+      unidadEnSingular(unidadCompleta),
+      unidadEnPlural(unidadCompleta),
+    );
   }
-  const factor = piezasPorPaquete !== null && Number.isInteger(piezasPorPaquete) && piezasPorPaquete >= 1 ? piezasPorPaquete : null;
+  const factor =
+    piezasPorPaquete !== null &&
+    Number.isInteger(piezasPorPaquete) &&
+    piezasPorPaquete >= 1
+      ? piezasPorPaquete
+      : null;
   if (factor === null) return plural(piezas, 'pieza', 'piezas');
 
   const paquetes = Math.floor(piezas / factor);

@@ -2,7 +2,15 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ANCHO_MAXIMO_LISTA, BARRA_INFERIOR, COLORES, ESCALA_TEXTO, ESPACIADO, RITMO, TIPOGRAFIA } from '../../theme/tokens';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BARRA_INFERIOR,
+  COLORES,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  RITMO,
+  TIPOGRAFIA,
+} from '../../theme/tokens';
 
 /**
  * La acción de la pantalla, fija abajo: donde llega el pulgar con el teléfono
@@ -23,10 +31,20 @@ export function BarraAccion({
 }) {
   const margenes = useSafeAreaInsets();
   return (
-    <View style={[estilos.barra, { paddingBottom: (sinAreaSegura ? 0 : margenes.bottom) + ESPACIADO.md }]}>
+    <View
+      style={[
+        estilos.barra,
+        { paddingBottom: (sinAreaSegura ? 0 : margenes.bottom) + ESPACIADO.md },
+      ]}
+    >
       <View style={estilos.columna}>
         {nota ? (
-          <Text style={estilos.nota} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto} accessibilityLiveRegion="polite">
+          <Text
+            style={estilos.nota}
+            numberOfLines={2}
+            maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+            accessibilityLiveRegion="polite"
+          >
             {nota}
           </Text>
         ) : null}

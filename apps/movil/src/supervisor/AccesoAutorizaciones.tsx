@@ -4,7 +4,15 @@ import { router, useFocusEffect } from 'expo-router';
 
 import { useColaAutorizacion, usePorEnviar } from '../api/hooks-supervisor';
 import { Chevron, FilaMenu, GrupoMenu, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, ESCALA_TEXTO, FUENTE, RITMO, TIPOGRAFIA, TONOS } from '../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  ESCALA_TEXTO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+  TONOS,
+} from '../theme/tokens';
 import { espera, TONO_ESPERA, useAhora } from './ComponentesSupervisor';
 
 function abrir() {
@@ -13,7 +21,9 @@ function abrir() {
 
 function textoSinEnviar(n: number): string | null {
   if (n === 0) return null;
-  return n === 1 ? '1 autorizada sin enviar a Handy' : `${n} autorizadas sin enviar a Handy`;
+  return n === 1
+    ? '1 autorizada sin enviar a Handy'
+    : `${n} autorizadas sin enviar a Handy`;
 }
 
 /**
@@ -46,7 +56,10 @@ export function AccesoAutorizaciones() {
         <FilaMenu
           tarea="autorizar"
           texto="Autorizar cargas"
-          detalle={sinEnviar ?? (cargas ? 'Ninguna carga espera tu autorización' : undefined)}
+          detalle={
+            sinEnviar ??
+            (cargas ? 'Ninguna carga espera tu autorización' : undefined)
+          }
           onPress={abrir}
         />
       </GrupoMenu>
@@ -73,16 +86,26 @@ export function AccesoAutorizaciones() {
     >
       <View style={estilos.fila}>
         <View style={estilos.textos}>
-          <Text style={estilos.explicacion}>Ninguna llega a Handy sin tu visto bueno.</Text>
-          <Text style={[estilos.espera, { color: colorCifra }]}>La que más lleva: {masAntigua.titulo.toLowerCase()}</Text>
+          <Text style={estilos.explicacion}>
+            Ninguna llega a Handy sin tu visto bueno.
+          </Text>
+          <Text style={[estilos.espera, { color: colorCifra }]}>
+            La que más lleva: {masAntigua.titulo.toLowerCase()}
+          </Text>
           {sinEnviar && <Text style={estilos.detalle}>{sinEnviar}</Text>}
         </View>
         {/* Lo que falta domina: es lo que hay que hacer. */}
         <View style={estilos.cifra}>
-          <Text style={[estilos.numero, { color: colorCifra }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+          <Text
+            style={[estilos.numero, { color: colorCifra }]}
+            maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+          >
             {n}
           </Text>
-          <Text style={[estilos.unidad, { color: colorCifra }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+          <Text
+            style={[estilos.unidad, { color: colorCifra }]}
+            maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+          >
             {n === 1 ? 'espera' : 'esperan'}
           </Text>
         </View>

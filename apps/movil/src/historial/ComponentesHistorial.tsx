@@ -4,9 +4,20 @@ import { router } from 'expo-router';
 
 import type { EstadoCargaApi } from '../api/historial';
 import { Encabezado, type BandaTarjeta } from '../componentes/base';
-import { COLORES, FUENTE, RITMO, TIPOGRAFIA, type ColorTono } from '../theme/tokens';
+import {
+  COLORES,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+  type ColorTono,
+} from '../theme/tokens';
 import { textoCambioFecha } from '../conteo/fecha-operativa';
-import { estadoDeCarga, type Cancelacion, type CambioFecha, type TonoEstado } from './modelo-historial';
+import {
+  estadoDeCarga,
+  type Cancelacion,
+  type CambioFecha,
+  type TonoEstado,
+} from './modelo-historial';
 
 /** Ancho máximo de las listas en tablet: una columna legible, no una fila de 1000 px. */
 export { ANCHO_MAXIMO_LISTA } from '../theme/tokens';
@@ -29,7 +40,10 @@ const TONO_ESTADO: Record<TonoEstado, ColorTono> = {
 };
 
 /** Banda de color de la tarjeta de una carga: el estado se lee antes que nada. */
-export function bandaDeEstado(estado: EstadoCargaApi | null, detalle?: string | null): BandaTarjeta {
+export function bandaDeEstado(
+  estado: EstadoCargaApi | null,
+  detalle?: string | null,
+): BandaTarjeta {
   const { etiqueta, tono } = estadoDeCarga(estado);
   return { titulo: etiqueta, tono: TONO_ESTADO[tono], detalle };
 }
@@ -52,7 +66,12 @@ export function BarraSuperior({
   children?: ReactNode;
 }) {
   return (
-    <Encabezado variante={marca ? 'marca' : 'barra'} titulo={titulo} subtitulo={subtitulo} onVolver={volver}>
+    <Encabezado
+      variante={marca ? 'marca' : 'barra'}
+      titulo={titulo}
+      subtitulo={subtitulo}
+      onVolver={volver}
+    >
       {children}
     </Encabezado>
   );
@@ -65,15 +84,25 @@ export function BarraSuperior({
  * obligado a darlo) se dice.
  */
 export function textoCancelacion(cancelacion: Cancelacion): string {
-  const quien = cancelacion.porNombre ? `Cancelada por ${cancelacion.porNombre}` : 'Cancelada';
-  const porque = cancelacion.motivo ? `“${cancelacion.motivo}”` : 'sin motivo escrito';
+  const quien = cancelacion.porNombre
+    ? `Cancelada por ${cancelacion.porNombre}`
+    : 'Cancelada';
+  const porque = cancelacion.motivo
+    ? `“${cancelacion.motivo}”`
+    : 'sin motivo escrito';
   return `${quien} · ${porque}`;
 }
 
-export function DetalleCancelacion({ cancelacion }: { cancelacion: Cancelacion }) {
+export function DetalleCancelacion({
+  cancelacion,
+}: {
+  cancelacion: Cancelacion;
+}) {
   return (
     <View style={estilos.cancelacion}>
-      <Text style={estilos.textoCancelacion}>{textoCancelacion(cancelacion)}</Text>
+      <Text style={estilos.textoCancelacion}>
+        {textoCancelacion(cancelacion)}
+      </Text>
     </View>
   );
 }
@@ -82,7 +111,11 @@ export function DetalleCancelacion({ cancelacion }: { cancelacion: Cancelacion }
  * Cada vez que la carga se movió de día, con quién y (si lo dio) por qué. Mismo
  * tono que la cancelación: es auditoría, no una alerta.
  */
-export function DetalleCambiosFecha({ cambios }: { cambios: readonly CambioFecha[] }) {
+export function DetalleCambiosFecha({
+  cambios,
+}: {
+  cambios: readonly CambioFecha[];
+}) {
   return (
     <View style={estilos.cancelacion}>
       {cambios.map((c, i) => (

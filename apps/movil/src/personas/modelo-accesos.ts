@@ -1,5 +1,9 @@
 import type { MovimientoAccesoApi } from '../api/personas';
-import { diaNegocio, formatearDia, horaNegocio } from '../conteo/fecha-operativa.ts';
+import {
+  diaNegocio,
+  formatearDia,
+  horaNegocio,
+} from '../conteo/fecha-operativa.ts';
 
 /**
  * Historial de acceso de una persona: restablecimientos de PIN y bloqueos
@@ -17,7 +21,13 @@ import { diaNegocio, formatearDia, horaNegocio } from '../conteo/fecha-operativa
 export type MovimientoAcceso =
   | { id: string; tipo: 'pin'; fecha: Date; autor: string }
   | { id: string; tipo: 'pin-emergencia'; fecha: Date; motivo: string }
-  | { id: string; tipo: 'desbloqueo'; fecha: Date; autor: string; bloqueadoHasta: Date | null };
+  | {
+      id: string;
+      tipo: 'desbloqueo';
+      fecha: Date;
+      autor: string;
+      bloqueadoHasta: Date | null;
+    };
 
 /** El servidor siempre manda quién; si el nombre faltara, el renglón no se esconde. */
 const AUTOR_DESCONOCIDO = 'un supervisor';
@@ -29,18 +39,35 @@ function leerFecha(texto: string | null | undefined): Date | null {
 }
 
 /** Descarta solo lo que no se puede mostrar (sin id, tipo o fecha). */
-export function normalizarAccesos(items: readonly MovimientoAccesoApi[] | null | undefined): MovimientoAcceso[] {
+export function normalizarAccesos(
+  items: readonly MovimientoAccesoApi[] | null | undefined,
+): MovimientoAcceso[] {
   return (items ?? []).flatMap((m): MovimientoAcceso[] => {
     const fecha = leerFecha(m.fecha);
     if (!m.id || !fecha) return [];
     const autor = m.autor?.nombreCompleto?.trim() || AUTOR_DESCONOCIDO;
     if (m.tipo === 'PIN_RESTABLECIDO') {
       return m.origen === 'LINEA_COMANDOS'
-        ? [{ id: m.id, tipo: 'pin-emergencia', fecha, motivo: m.motivo?.trim() ?? '' }]
+        ? [
+            {
+              id: m.id,
+              tipo: 'pin-emergencia',
+              fecha,
+              motivo: m.motivo?.trim() ?? '',
+            },
+          ]
         : [{ id: m.id, tipo: 'pin', fecha, autor }];
     }
     if (m.tipo === 'BLOQUEO_QUITADO') {
-      return [{ id: m.id, tipo: 'desbloqueo', fecha, autor, bloqueadoHasta: leerFecha(m.bloqueadoHasta) }];
+      return [
+        {
+          id: m.id,
+          tipo: 'desbloqueo',
+          fecha,
+          autor,
+          bloqueadoHasta: leerFecha(m.bloqueadoHasta),
+        },
+      ];
     }
     return [];
   });
@@ -65,12 +92,19 @@ export function tituloMovimiento(m: MovimientoAcceso): string {
 export function textoMomento(instante: Date, ahora: number): string {
   const dia = diaNegocio(instante);
   const hoy = diaNegocio(new Date(ahora));
-  const fecha = dia === hoy ? 'Hoy' : dia.slice(0, 4) === hoy.slice(0, 4) ? formatearDia(dia) : `${formatearDia(dia)} de ${dia.slice(0, 4)}`;
+  const fecha =
+    dia === hoy
+      ? 'Hoy'
+      : dia.slice(0, 4) === hoy.slice(0, 4)
+        ? formatearDia(dia)
+        : `${formatearDia(dia)} de ${dia.slice(0, 4)}`;
   return `${fecha}, ${horaNegocio(instante)}`;
 }
 
 /** Bajo el título del desbloqueo: «El bloqueo iba hasta las 06:12». */
-export function textoBloqueoQuitado(m: Extract<MovimientoAcceso, { tipo: 'desbloqueo' }>): string | null {
+export function textoBloqueoQuitado(
+  m: Extract<MovimientoAcceso, { tipo: 'desbloqueo' }>,
+): string | null {
   if (!m.bloqueadoHasta) return null;
   const mismoDia = diaNegocio(m.bloqueadoHasta) === diaNegocio(m.fecha);
   return mismoDia

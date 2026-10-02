@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { agruparCatalogo, agruparPendientes } from '../factores/modelo-factores';
+import {
+  agruparCatalogo,
+  agruparPendientes,
+} from '../factores/modelo-factores';
 import { ErrorApi } from './cliente';
 import {
   confirmarFactor,
@@ -15,7 +18,8 @@ export const clavesFactores = {
   todo: ['factores'] as const,
   pendientes: ['factores', 'pendientes'] as const,
   catalogo: ['factores', 'catalogo'] as const,
-  cargasEnCurso: (code: string) => ['factores', 'cargas-en-curso', code] as const,
+  cargasEnCurso: (code: string) =>
+    ['factores', 'cargas-en-curso', code] as const,
 };
 
 /** Un 403 no se arregla reintentando: se muestra de inmediato. */
@@ -59,26 +63,41 @@ export function useCargasEnCurso(code: string) {
     queryFn: () => contarCargasEnCurso(code),
     staleTime: 0,
     retry: reintentar,
-    select: (r) => (typeof r?.cargasEnCurso === 'number' ? r.cargasEnCurso : null),
+    select: (r) =>
+      typeof r?.cargasEnCurso === 'number' ? r.cargasEnCurso : null,
   });
 }
 
 /** Quita de la lista lo ya confirmado sin esperar a releerla. */
-function quitarDeLista(clienteConsultas: ReturnType<typeof useQueryClient>, codes: readonly string[]) {
-  clienteConsultas.setQueryData<FactorPendienteApi[] | null>(clavesFactores.pendientes, (actual) =>
-    actual ? actual.filter((f) => !f.code || !codes.includes(f.code.trim())) : actual,
+function quitarDeLista(
+  clienteConsultas: ReturnType<typeof useQueryClient>,
+  codes: readonly string[],
+) {
+  clienteConsultas.setQueryData<FactorPendienteApi[] | null>(
+    clavesFactores.pendientes,
+    (actual) =>
+      actual
+        ? actual.filter((f) => !f.code || !codes.includes(f.code.trim()))
+        : actual,
   );
 }
 
 export function useConfirmarFactor() {
   const clienteConsultas = useQueryClient();
   return useMutation({
-    mutationFn: ({ code, confirmacion }: { code: string; confirmacion: ConfirmacionFactor }) =>
-      confirmarFactor(code, confirmacion),
+    mutationFn: ({
+      code,
+      confirmacion,
+    }: {
+      code: string;
+      confirmacion: ConfirmacionFactor;
+    }) => confirmarFactor(code, confirmacion),
     onSuccess: (_respuesta, { code }) => {
       quitarDeLista(clienteConsultas, [code]);
       // Pendientes, catálogo y cargas en curso: todo cambia con un empaque.
-      void clienteConsultas.invalidateQueries({ queryKey: clavesFactores.todo });
+      void clienteConsultas.invalidateQueries({
+        queryKey: clavesFactores.todo,
+      });
     },
   });
 }
@@ -93,10 +112,14 @@ export interface ProgresoFamilia {
  * endpoint por lote: uno por uno, y al primer fallo se detiene. Lo ya guardado
  * queda guardado; el error dice cuántos alcanzaron.
  */
-export function useConfirmarFamilia(onProgreso: (progreso: ProgresoFamilia) => void) {
+export function useConfirmarFamilia(
+  onProgreso: (progreso: ProgresoFamilia) => void,
+) {
   const clienteConsultas = useQueryClient();
   return useMutation({
-    mutationFn: async (productos: readonly { code: string; confirmacion: ConfirmacionFactor }[]) => {
+    mutationFn: async (
+      productos: readonly { code: string; confirmacion: ConfirmacionFactor }[],
+    ) => {
       const hechos: string[] = [];
       try {
         for (const { code, confirmacion } of productos) {
@@ -113,7 +136,9 @@ export function useConfirmarFamilia(onProgreso: (progreso: ProgresoFamilia) => v
       }
     },
     onSettled: () => {
-      void clienteConsultas.invalidateQueries({ queryKey: clavesFactores.todo });
+      void clienteConsultas.invalidateQueries({
+        queryKey: clavesFactores.todo,
+      });
     },
   });
 }
@@ -125,7 +150,11 @@ export class ErrorFamilia extends Error {
     readonly total: number,
     readonly causa: unknown,
   ) {
-    super(causa instanceof Error ? causa.message : 'No se pudo confirmar la familia.');
+    super(
+      causa instanceof Error
+        ? causa.message
+        : 'No se pudo confirmar la familia.',
+    );
     this.name = 'ErrorFamilia';
   }
 }

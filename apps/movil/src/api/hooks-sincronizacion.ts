@@ -4,7 +4,10 @@ import { ErrorApi } from './cliente';
 import { clavesFactores } from './hooks-factores';
 import { clavesFamilias } from './hooks-familias';
 import { clavesPlantillas } from './hooks-plantillas';
-import { consultarEstadoSincronizacion, sincronizarConHandy } from './sincronizacion';
+import {
+  consultarEstadoSincronizacion,
+  sincronizarConHandy,
+} from './sincronizacion';
 
 export const clavesSincronizacion = {
   estado: ['sincronizacion', 'estado'] as const,

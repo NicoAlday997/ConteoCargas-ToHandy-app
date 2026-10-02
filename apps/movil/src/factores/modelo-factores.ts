@@ -1,4 +1,9 @@
-import type { ConfirmacionFactor, FactorCatalogoApi, FactorPendienteApi, ModalidadVentaApi } from '../api/factores';
+import type {
+  ConfirmacionFactor,
+  FactorCatalogoApi,
+  FactorPendienteApi,
+  ModalidadVentaApi,
+} from '../api/factores';
 
 /**
  * Lo que la pantalla de empaques necesita, ya validado. La regla que protege
@@ -63,13 +68,20 @@ function sugeridoValido(valor: unknown): number | null {
 }
 
 export function piezasValidas(piezas: number): boolean {
-  return Number.isInteger(piezas) && piezas >= PIEZAS_MINIMO && piezas <= PIEZAS_MAXIMO;
+  return (
+    Number.isInteger(piezas) &&
+    piezas >= PIEZAS_MINIMO &&
+    piezas <= PIEZAS_MAXIMO
+  );
 }
 
-const comparar = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base' });
+const comparar = (a: string, b: string) =>
+  a.localeCompare(b, 'es', { sensitivity: 'base' });
 
 /** Por familia (alfabético, "Sin familia" al final) y por nombre dentro de cada una. */
-function agruparPorFamilia<T extends { familia: string | null; nombre: string }>(productos: readonly T[]): Familia<T>[] {
+function agruparPorFamilia<
+  T extends { familia: string | null; nombre: string },
+>(productos: readonly T[]): Familia<T>[] {
   const porFamilia = new Map<string | null, T[]>();
   for (const p of productos) {
     const lista = porFamilia.get(p.familia);
@@ -90,7 +102,9 @@ function agruparPorFamilia<T extends { familia: string | null; nombre: string }>
 }
 
 /** Filas con código, sin repetidos: lo que no tiene código no se puede confirmar. */
-function conCodigoUnico<F extends { code: string | null }>(filas: readonly F[] | null | undefined): (F & { code: string })[] {
+function conCodigoUnico<F extends { code: string | null }>(
+  filas: readonly F[] | null | undefined,
+): (F & { code: string })[] {
   const vistos = new Set<string>();
   const resultado: (F & { code: string })[] = [];
   for (const f of filas ?? []) {
@@ -106,7 +120,9 @@ function conCodigoUnico<F extends { code: string | null }>(filas: readonly F[] |
  * Agrupa por familia (alfabético, "Sin familia" al final) y por nombre dentro
  * de cada una. Descarta lo que no se puede confirmar (sin código).
  */
-export function agruparPendientes(filas: readonly FactorPendienteApi[] | null | undefined): FamiliaPendiente[] {
+export function agruparPendientes(
+  filas: readonly FactorPendienteApi[] | null | undefined,
+): FamiliaPendiente[] {
   return agruparPorFamilia(
     conCodigoUnico(filas).map((f) => ({
       code: f.code,
@@ -119,8 +135,13 @@ export function agruparPendientes(filas: readonly FactorPendienteApi[] | null | 
 
 function empaqueConfirmado(f: FactorCatalogoApi): EmpaqueConfirmado | null {
   if (f.factorConfirmado !== true) return null;
-  if (f.modalidadVenta === 'COMPLETO') return { modalidad: 'COMPLETO', piezas: null };
-  if (f.modalidadVenta === 'POR_PIEZA') return { modalidad: 'POR_PIEZA', piezas: sugeridoValido(f.piezasPorPaquete) };
+  if (f.modalidadVenta === 'COMPLETO')
+    return { modalidad: 'COMPLETO', piezas: null };
+  if (f.modalidadVenta === 'POR_PIEZA')
+    return {
+      modalidad: 'POR_PIEZA',
+      piezas: sugeridoValido(f.piezasPorPaquete),
+    };
   return null;
 }
 
@@ -131,7 +152,9 @@ function fechaValida(valor: string | null | undefined): Date | null {
 }
 
 /** El catálogo completo, agrupado igual que los pendientes. */
-export function agruparCatalogo(filas: readonly FactorCatalogoApi[] | null | undefined): FamiliaCatalogo[] {
+export function agruparCatalogo(
+  filas: readonly FactorCatalogoApi[] | null | undefined,
+): FamiliaCatalogo[] {
   return agruparPorFamilia(
     conCodigoUnico(filas).map((f) => {
       const confirmado = empaqueConfirmado(f);
@@ -142,7 +165,9 @@ export function agruparCatalogo(filas: readonly FactorCatalogoApi[] | null | und
         confirmado,
         sugerido: confirmado ? null : sugeridoValido(f.piezasPorPaquete),
         confirmadoPor: confirmado ? f.confirmadoPor?.trim() || null : null,
-        fechaConfirmacion: confirmado ? fechaValida(f.fechaConfirmacionFactor) : null,
+        fechaConfirmacion: confirmado
+          ? fechaValida(f.fechaConfirmacionFactor)
+          : null,
       };
     }),
   );
@@ -161,7 +186,10 @@ function normalizar(texto: string): string {
  * buscadas (en el nombre, la familia o el código), en cualquier orden. Las
  * familias que quedan vacías desaparecen. Sin búsqueda, todo.
  */
-export function filtrarCatalogo(familias: readonly FamiliaCatalogo[], busqueda: string): FamiliaCatalogo[] {
+export function filtrarCatalogo(
+  familias: readonly FamiliaCatalogo[],
+  busqueda: string,
+): FamiliaCatalogo[] {
   const palabras = normalizar(busqueda).split(/\s+/).filter(Boolean);
   if (palabras.length === 0) return [...familias];
   return familias
@@ -179,7 +207,9 @@ export function filtrarCatalogo(familias: readonly FamiliaCatalogo[], busqueda: 
 export function textoEmpaque(empaque: EmpaqueConfirmado | null): string {
   if (empaque === null) return 'Sin confirmar';
   if (empaque.modalidad === 'COMPLETO') return 'Se vende completo';
-  return empaque.piezas !== null ? `Por pieza, ${empaque.piezas} por paquete` : 'Por pieza';
+  return empaque.piezas !== null
+    ? `Por pieza, ${empaque.piezas} por paquete`
+    : 'Por pieza';
 }
 
 /** Lo que el flujo de dos pasos recibe al tocar un producto del catálogo. */
@@ -195,7 +225,11 @@ export function productoAConfirmar(p: ProductoCatalogo): ProductoAConfirmar {
 }
 
 /** `true` si lo elegido es exactamente lo que ya estaba confirmado. */
-export function esMismoEmpaque(actual: EmpaqueConfirmado | null, modalidad: ModalidadVentaApi, piezas: number | null): boolean {
+export function esMismoEmpaque(
+  actual: EmpaqueConfirmado | null,
+  modalidad: ModalidadVentaApi,
+  piezas: number | null,
+): boolean {
   if (actual === null || actual.modalidad !== modalidad) return false;
   return modalidad === 'COMPLETO' || actual.piezas === piezas;
 }
@@ -205,7 +239,9 @@ export function textoCargas(cantidad: number): string {
   return cantidad === 1 ? '1 carga' : `${cantidad} cargas`;
 }
 
-export function contarPendientes(familias: readonly Familia<unknown>[]): number {
+export function contarPendientes(
+  familias: readonly Familia<unknown>[],
+): number {
   return familias.reduce((total, f) => total + f.data.length, 0);
 }
 
@@ -251,21 +287,40 @@ export interface PlanFamilia {
  * pieza: cada uno con el número de SU nombre (C/6, C/12, C/24 conviven en una
  * familia); el que no trae número no se adivina y se queda pendiente.
  */
-export function planFamilia(productos: readonly ProductoPendiente[], modalidad: ModalidadVentaApi): PlanFamilia {
+export function planFamilia(
+  productos: readonly ProductoPendiente[],
+  modalidad: ModalidadVentaApi,
+): PlanFamilia {
   if (modalidad === 'COMPLETO') {
-    return { aConfirmar: productos.map((p) => ({ ...p, confirmacion: { modalidadVenta: 'COMPLETO' } })), sinNumero: [] };
+    return {
+      aConfirmar: productos.map((p) => ({
+        ...p,
+        confirmacion: { modalidadVenta: 'COMPLETO' },
+      })),
+      sinNumero: [],
+    };
   }
   const aConfirmar: ProductoConConfirmacion[] = [];
   const sinNumero: ProductoPendiente[] = [];
   for (const p of productos) {
     if (p.sugerido === null) sinNumero.push(p);
-    else aConfirmar.push({ ...p, confirmacion: { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: p.sugerido } });
+    else
+      aConfirmar.push({
+        ...p,
+        confirmacion: {
+          modalidadVenta: 'POR_PIEZA',
+          piezasPorPaquete: p.sugerido,
+        },
+      });
   }
   return { aConfirmar, sinNumero };
 }
 
 /** El resumen por pieza de un producto concreto: en una familia cada uno multiplica distinto. */
-export function resumenPorPiezaDe(nombre: string, piezasPorPaquete: number): string {
+export function resumenPorPiezaDe(
+  nombre: string,
+  piezasPorPaquete: number,
+): string {
   return `Al contar ${PAQUETES_EJEMPLO} paquetes de ${nombre}, se enviarán ${PAQUETES_EJEMPLO * piezasPorPaquete} piezas a Handy.`;
 }
 

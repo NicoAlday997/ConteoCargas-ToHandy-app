@@ -27,7 +27,9 @@ export function useHistorial(usuarioId: string) {
     initialPageParam: 1,
     getNextPageParam: (ultima, _todas, paginaActual) => {
       const total = ultima?.total ?? 0;
-      return paginaActual * TAMANO_PAGINA < total ? paginaActual + 1 : undefined;
+      return paginaActual * TAMANO_PAGINA < total
+        ? paginaActual + 1
+        : undefined;
     },
     enabled: usuarioId.length > 0,
     staleTime: 0,

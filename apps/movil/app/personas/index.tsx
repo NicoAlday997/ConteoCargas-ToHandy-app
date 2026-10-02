@@ -1,5 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ETIQUETAS_ROL } from '../../src/api/auth';
@@ -18,7 +24,11 @@ import {
   Tarjeta,
   TarjetaEsqueleto,
 } from '../../src/componentes/base';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import { AltaPersona } from '../../src/personas/AltaPersona';
 import { DetallePersona } from '../../src/personas/DetallePersona';
 import {
@@ -34,7 +44,17 @@ import {
 import { sesionVencida } from '../../src/plantillas/ComponentesPlantillas';
 import { useAhora } from '../../src/supervisor/ComponentesSupervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ELEVACION, ESPACIADO, FUENTE, OPACIDAD, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import {
+  COLORES,
+  ELEVACION,
+  ESPACIADO,
+  FUENTE,
+  OPACIDAD,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../src/theme/tokens';
 
 /**
  * Personas (solo Supervisor): quién usa la app. Dar de alta a alguien nuevo,
@@ -103,14 +123,18 @@ function Lista() {
   // Los minutos de bloqueo bajan solos, y el que vence se apaga sin refrescar.
   const ahora = useAhora();
 
-  const vencida = [consulta.error, cuentas.error].some((e) => e instanceof ErrorApi && e.estado === 401);
+  const vencida = [consulta.error, cuentas.error].some(
+    (e) => e instanceof ErrorApi && e.estado === 401,
+  );
   useEffect(() => {
     if (vencida) sesionVencida();
   }, [vencida]);
 
   const refrescar = () => {
     setRefrescando(true);
-    void Promise.all([consulta.refetch(), cuentas.refetch()]).finally(() => setRefrescando(false));
+    void Promise.all([consulta.refetch(), cuentas.refetch()]).finally(() =>
+      setRefrescando(false),
+    );
   };
 
   if (consulta.isPending) {
@@ -127,11 +151,14 @@ function Lista() {
       <Pantalla>
         <View style={estilos.contenido}>
           <BloqueError
-            titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar la lista de personas'}
+            titulo={
+              sinRed ? 'Sin conexión' : 'No se pudo cargar la lista de personas'
+            }
             detalle={
               sinRed
                 ? 'Para ver a las personas necesitas señal: revísala.'
-                : (consulta.error instanceof Error && consulta.error.message) || null
+                : (consulta.error instanceof Error && consulta.error.message) ||
+                  null
             }
             tono={sinRed ? 'atencion' : 'error'}
             onReintentar={() => void consulta.refetch()}
@@ -143,33 +170,60 @@ function Lista() {
     );
   }
 
-  const personas = normalizarPersonas(consulta.data ?? null, cuentas.data ?? null);
+  const personas = normalizarPersonas(
+    consulta.data ?? null,
+    cuentas.data ?? null,
+  );
   const grupos = agruparPersonas(personas);
   // Se busca en la lista viva: tras guardar, la ficha muestra lo que quedó en el servidor.
   const abierta = personas.find((p) => p.id === abiertaId) ?? null;
   const cuentaAbierta =
     abierta?.usuarioHandyId != null
-      ? (cuentas.data?.find((c) => c.idHandy === abierta.usuarioHandyId)?.nombre ?? null)
+      ? (cuentas.data?.find((c) => c.idHandy === abierta.usuarioHandyId)
+          ?.nombre ?? null)
       : null;
 
   return (
     <Pantalla>
-      <ScrollView contentContainerStyle={estilos.contenido} refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}>
+      <ScrollView
+        contentContainerStyle={estilos.contenido}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={refrescar} />
+        }
+      >
         {/* Informa, no bloquea nada: arriba para que se vea cada vez que se entra. */}
         {hayUnSoloSupervisor(personas) && (
           <Tarjeta tintada="discrepancia" elevacion={0} compacta>
             <Text style={estilos.aviso}>{AVISO_UN_SOLO_SUPERVISOR}</Text>
           </Tarjeta>
         )}
-        <Boton texto="Dar de alta a alguien" onPress={() => setCreando(true)} accessibilityHint="Nombre, rol y, si es vendedor, su cuenta de Handy" />
+        <Boton
+          texto="Dar de alta a alguien"
+          onPress={() => setCreando(true)}
+          accessibilityHint="Nombre, rol y, si es vendedor, su cuenta de Handy"
+        />
         {grupos.length === 0 ? (
-          <EstadoVacio icono="personas" titulo="Todavía no hay nadie" detalle="Da de alta a la primera persona." enLinea />
+          <EstadoVacio
+            icono="personas"
+            titulo="Todavía no hay nadie"
+            detalle="Da de alta a la primera persona."
+            enLinea
+          />
         ) : (
           grupos.map((g) => (
-            <Seccion key={g.rol} texto={g.titulo} detalle={detalleGrupo(g.personas)}>
+            <Seccion
+              key={g.rol}
+              texto={g.titulo}
+              detalle={detalleGrupo(g.personas)}
+            >
               <View style={estilos.tarjeta}>
                 {g.personas.map((p) => (
-                  <RenglonPersona key={p.id} persona={p} ahora={ahora} onPress={() => setAbiertaId(p.id)} />
+                  <RenglonPersona
+                    key={p.id}
+                    persona={p}
+                    ahora={ahora}
+                    onPress={() => setAbiertaId(p.id)}
+                  />
                 ))}
               </View>
             </Seccion>
@@ -177,12 +231,25 @@ function Lista() {
         )}
       </ScrollView>
       <AltaPersona visible={creando} onCerrar={() => setCreando(false)} />
-      <DetallePersona persona={abierta} cuentaHandy={cuentaAbierta} ahora={ahora} onCerrar={() => setAbiertaId(null)} />
+      <DetallePersona
+        persona={abierta}
+        cuentaHandy={cuentaAbierta}
+        ahora={ahora}
+        onCerrar={() => setAbiertaId(null)}
+      />
     </Pantalla>
   );
 }
 
-function RenglonPersona({ persona, ahora, onPress }: { persona: Persona; ahora: number; onPress: () => void }) {
+function RenglonPersona({
+  persona,
+  ahora,
+  onPress,
+}: {
+  persona: Persona;
+  ahora: number;
+  onPress: () => void;
+}) {
   const rol = ETIQUETAS_ROL[persona.rol];
   const pinPendiente = persona.activo && persona.pinPendiente;
   const bloqueo = bloqueoVigente(persona, ahora);
@@ -191,20 +258,34 @@ function RenglonPersona({ persona, ahora, onPress }: { persona: Persona; ahora: 
     <Pulsable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[persona.nombre, rol, bloqueado ?? (persona.activo ? 'activo' : 'inactivo'), pinPendiente ? 'aún no cambia su PIN temporal' : null]
+      accessibilityLabel={[
+        persona.nombre,
+        rol,
+        bloqueado ?? (persona.activo ? 'activo' : 'inactivo'),
+        pinPendiente ? 'aún no cambia su PIN temporal' : null,
+      ]
         .filter(Boolean)
         .join(', ')}
       accessibilityHint="Abrir su ficha"
-      style={({ pressed }) => [estilos.renglon, pressed && estilos.renglonPresionado]}
+      style={({ pressed }) => [
+        estilos.renglon,
+        pressed && estilos.renglonPresionado,
+      ]}
     >
       {/* Apagado, pero se sigue leyendo: el inactivo se consulta, no se usa. */}
       <View style={[estilos.cuerpoRenglon, !persona.activo && estilos.apagado]}>
-        <Avatar nombre={persona.nombre} fotoUrl={persona.fotoUrl} tamano={TAMANO_AVATAR} />
+        <Avatar
+          nombre={persona.nombre}
+          fotoUrl={persona.fotoUrl}
+          tamano={TAMANO_AVATAR}
+        />
         <View style={estilos.textosRenglon}>
           <Text style={estilos.nombre} numberOfLines={1}>
             {persona.nombre}
           </Text>
-          <Text style={estilos.detalle}>{pinPendiente ? `${rol} · Aún no pone su PIN` : rol}</Text>
+          <Text style={estilos.detalle}>
+            {pinPendiente ? `${rol} · Aún no pone su PIN` : rol}
+          </Text>
         </View>
       </View>
       {/* Bloqueado manda sobre Activo: es lo que el supervisor tiene que resolver. */}

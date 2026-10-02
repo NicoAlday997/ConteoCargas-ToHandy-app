@@ -4,7 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ETIQUETAS_ROL } from '../api/auth';
 import { ErrorApi, ErrorRed } from '../api/cliente';
-import { useDesbloquearPersona, useEditarPersona, useRestablecerPin } from '../api/hooks-personas';
+import {
+  useDesbloquearPersona,
+  useEditarPersona,
+  useRestablecerPin,
+} from '../api/hooks-personas';
 import { obtenerUsuarioSesion } from '../api/sesion';
 import {
   AccionesHoja,
@@ -21,9 +25,25 @@ import {
   TituloSeccion,
   type Dato,
 } from '../componentes/base';
-import { ANCHO_MAXIMO_LISTA, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
-import { PantallaHistorialAcceso, SeccionHistorialAcceso } from './HistorialAcceso';
-import { bloqueoVigente, CONSEJO_DESACTIVAR, textoBloqueo, textoInicioBloqueo, type Persona } from './modelo-personas';
+import {
+  ANCHO_MAXIMO_LISTA,
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
+import {
+  PantallaHistorialAcceso,
+  SeccionHistorialAcceso,
+} from './HistorialAcceso';
+import {
+  bloqueoVigente,
+  CONSEJO_DESACTIVAR,
+  textoBloqueo,
+  textoInicioBloqueo,
+  type Persona,
+} from './modelo-personas';
 import { PantallaPin, type PinTemporal } from './PantallaPin';
 
 const TAMANO_AVATAR = 64;
@@ -58,7 +78,10 @@ export function DetallePersona({
   // El nombre a medio editar vive aquí y no en la Ficha: la Ficha se desmonta
   // al abrir "Ver todo" (o el PIN) y, al volver, no debe perderse lo escrito.
   // Va atado a la persona para que no se cuele en la ficha de otra.
-  const [borrador, setBorrador] = useState<{ personaId: string; nombre: string } | null>(null);
+  const [borrador, setBorrador] = useState<{
+    personaId: string;
+    nombre: string;
+  } | null>(null);
   const terminar = () => {
     setPin(null);
     setVerAccesos(false);
@@ -68,20 +91,35 @@ export function DetallePersona({
   return (
     // Con el PIN en pantalla, el atrás del sistema no hace nada; con el
     // historial completo, regresa a la ficha.
-    <PantallaModal visible={persona !== null} onCerrar={pin ? () => {} : verAccesos ? () => setVerAccesos(false) : terminar}>
+    <PantallaModal
+      visible={persona !== null}
+      onCerrar={
+        pin ? () => {} : verAccesos ? () => setVerAccesos(false) : terminar
+      }
+    >
       {persona &&
         (pin ? (
           <PantallaPin datos={pin} onListo={() => setPin(null)} />
         ) : verAccesos ? (
-          <PantallaHistorialAcceso persona={persona} ahora={ahora} onVolver={() => setVerAccesos(false)} />
+          <PantallaHistorialAcceso
+            persona={persona}
+            ahora={ahora}
+            onVolver={() => setVerAccesos(false)}
+          />
         ) : (
           <Ficha
             key={persona.id}
             persona={persona}
             cuentaHandy={cuentaHandy}
             ahora={ahora}
-            nombre={borrador?.personaId === persona.id ? borrador.nombre : persona.nombre}
-            onCambiarNombre={(nombre) => setBorrador({ personaId: persona.id, nombre })}
+            nombre={
+              borrador?.personaId === persona.id
+                ? borrador.nombre
+                : persona.nombre
+            }
+            onCambiarNombre={(nombre) =>
+              setBorrador({ personaId: persona.id, nombre })
+            }
             onCerrar={terminar}
             onPin={setPin}
             onVerAccesos={() => setVerAccesos(true)}
@@ -146,7 +184,10 @@ function Ficha({
   const cambiarActivo = (activo: boolean) => {
     restablecer.reset();
     desbloquear.reset();
-    editar.mutate({ id: persona.id, datos: { activo } }, { onSettled: () => setConfirmar(null) });
+    editar.mutate(
+      { id: persona.id, datos: { activo } },
+      { onSettled: () => setConfirmar(null) },
+    );
   };
 
   const restablecerPin = () => {
@@ -155,7 +196,12 @@ function Ficha({
     restablecer.mutate(persona.id, {
       onSuccess: (respuesta) => {
         setConfirmar(null);
-        if (respuesta?.pinTemporal) onPin({ nombre: persona.nombre, pin: respuesta.pinTemporal, motivo: 'restablecido' });
+        if (respuesta?.pinTemporal)
+          onPin({
+            nombre: persona.nombre,
+            pin: respuesta.pinTemporal,
+            motivo: 'restablecido',
+          });
       },
       onError: () => setConfirmar(null),
     });
@@ -168,10 +214,14 @@ function Ficha({
   };
 
   // Si el bloqueo venció justo antes del toque, el resultado es el mismo: ya puede entrar.
-  const yaNoEstaba = desbloquear.error instanceof ErrorApi && desbloquear.error.estado === 409;
+  const yaNoEstaba =
+    desbloquear.error instanceof ErrorApi && desbloquear.error.estado === 409;
   const desbloqueado = desbloquear.isSuccess || yaNoEstaba;
 
-  const fallo = editar.error ?? restablecer.error ?? (yaNoEstaba ? null : desbloquear.error);
+  const fallo =
+    editar.error ??
+    restablecer.error ??
+    (yaNoEstaba ? null : desbloquear.error);
   const textoFallo = fallo
     ? fallo instanceof ErrorRed
       ? 'Sin conexión: no se guardó nada. Revisa la señal y vuelve a intentarlo.'
@@ -184,19 +234,37 @@ function Ficha({
     { rotulo: 'Rol', valor: ETIQUETAS_ROL[persona.rol] },
     { rotulo: 'Estado', valor: persona.activo ? 'Activo' : 'Inactivo' },
   ];
-  if (persona.rol === 'VENDEDOR') datos.push({ rotulo: 'Cuenta de Handy', valor: cuentaHandy, ausente: 'Sin cuenta' });
-  if (persona.activo && persona.pinPendiente) datos.push({ rotulo: 'PIN', valor: 'Temporal: aún no pone el suyo' });
+  if (persona.rol === 'VENDEDOR')
+    datos.push({
+      rotulo: 'Cuenta de Handy',
+      valor: cuentaHandy,
+      ausente: 'Sin cuenta',
+    });
+  if (persona.activo && persona.pinPendiente)
+    datos.push({ rotulo: 'PIN', valor: 'Temporal: aún no pone el suyo' });
   if (bloqueo) {
     datos.push({ rotulo: 'Acceso', valor: textoBloqueo(bloqueo, ahora) });
-    datos.push({ rotulo: 'Se bloqueó', valor: textoInicioBloqueo(bloqueo, ahora) });
+    datos.push({
+      rotulo: 'Se bloqueó',
+      valor: textoInicioBloqueo(bloqueo, ahora),
+    });
   }
 
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
-      <Encabezado variante="barra" titulo={persona.nombre} subtitulo={ETIQUETAS_ROL[persona.rol]} onVolver={onCerrar} />
+      <Encabezado
+        variante="barra"
+        titulo={persona.nombre}
+        subtitulo={ETIQUETAS_ROL[persona.rol]}
+        onVolver={onCerrar}
+      />
       <PantallaConFormulario estiloContenido={estilos.contenido}>
         <Tarjeta style={estilos.identidad}>
-          <Avatar nombre={persona.nombre} fotoUrl={persona.fotoUrl} tamano={TAMANO_AVATAR} />
+          <Avatar
+            nombre={persona.nombre}
+            fotoUrl={persona.fotoUrl}
+            tamano={TAMANO_AVATAR}
+          />
           <View style={estilos.datos}>
             <Datos datos={datos} />
           </View>
@@ -212,14 +280,19 @@ function Ficha({
             onCambiar={onCambiarNombre}
             maxLength={120}
             ayuda="Para corregirlo. Si llega otra persona, no le cambies el nombre a esta: da de alta una nueva."
-            error={nombre.trim().length === 0 ? 'Escribe su nombre completo.' : null}
+            error={
+              nombre.trim().length === 0 ? 'Escribe su nombre completo.' : null
+            }
           />
           <Boton
             texto="Guardar nombre"
             variante="secundario"
             onPress={guardarNombre}
             deshabilitado={!cambioNombre || editar.isPending}
-            cargando={editar.isPending && editar.variables?.datos.nombreCompleto !== undefined}
+            cargando={
+              editar.isPending &&
+              editar.variables?.datos.nombreCompleto !== undefined
+            }
             textoCargando="Guardando…"
           />
         </View>
@@ -227,14 +300,24 @@ function Ficha({
         {/* Solo mientras está bloqueado: un botón que no hace nada no se muestra. */}
         {bloqueo && (
           <View style={estilos.bloque}>
-            <TituloSeccion texto="Bloqueo" nivel="grupo" detalle="Se equivocó de PIN 5 veces seguidas." />
+            <TituloSeccion
+              texto="Bloqueo"
+              nivel="grupo"
+              detalle="Se equivocó de PIN 5 veces seguidas."
+            />
             {esYo ? (
               <Text style={estilos.nota}>
-                No puedes quitarte tu propio bloqueo: lo tiene que hacer otro supervisor. Si no hay ninguno, sigue el procedimiento de recuperación de acceso.
+                No puedes quitarte tu propio bloqueo: lo tiene que hacer otro
+                supervisor. Si no hay ninguno, sigue el procedimiento de
+                recuperación de acceso.
               </Text>
             ) : (
               <>
-                <Text style={estilos.nota}>Si recuerda su PIN, quítale el bloqueo y que vuelva a intentar. Si no lo recuerda, mejor restablécelo: eso también quita el bloqueo.</Text>
+                <Text style={estilos.nota}>
+                  Si recuerda su PIN, quítale el bloqueo y que vuelva a
+                  intentar. Si no lo recuerda, mejor restablécelo: eso también
+                  quita el bloqueo.
+                </Text>
                 <Boton
                   texto="Quitar bloqueo"
                   onPress={quitarBloqueo}
@@ -248,46 +331,72 @@ function Ficha({
         )}
         {!bloqueo && desbloqueado && (
           <Tarjeta tintada="capturado" elevacion={0} compacta>
-            <Text style={estilos.listo}>Listo: ya puede entrar con su PIN.</Text>
+            <Text style={estilos.listo}>
+              Listo: ya puede entrar con su PIN.
+            </Text>
           </Tarjeta>
         )}
 
         <View style={estilos.bloque}>
-          <TituloSeccion texto="PIN" nivel="grupo" detalle="Si lo olvidó. También le quita el bloqueo por intentos fallidos." />
+          <TituloSeccion
+            texto="PIN"
+            nivel="grupo"
+            detalle="Si lo olvidó. También le quita el bloqueo por intentos fallidos."
+          />
           <Boton
             texto="Restablecer PIN"
             variante="secundario"
             onPress={() => setConfirmar('restablecer')}
             deshabilitado={!persona.activo || editar.isPending}
           />
-          {!persona.activo && <Text style={estilos.nota}>Está inactivo: actívalo primero para darle un PIN.</Text>}
+          {!persona.activo && (
+            <Text style={estilos.nota}>
+              Está inactivo: actívalo primero para darle un PIN.
+            </Text>
+          )}
         </View>
 
         <View style={estilos.bloque}>
-          <TituloSeccion texto={persona.activo ? 'Dar de baja' : 'Volver a activar'} nivel="grupo" />
+          <TituloSeccion
+            texto={persona.activo ? 'Dar de baja' : 'Volver a activar'}
+            nivel="grupo"
+          />
           {persona.activo ? (
             <>
               {/* El error más fácil de cometer y el más caro de deshacer: se dice antes de que pase. */}
               <Tarjeta tintada="discrepancia" elevacion={0} compacta>
                 <Text style={estilos.consejo}>{CONSEJO_DESACTIVAR}</Text>
               </Tarjeta>
-              <Boton texto="Desactivar" variante="peligro" onPress={() => setConfirmar('desactivar')} deshabilitado={editar.isPending} />
+              <Boton
+                texto="Desactivar"
+                variante="peligro"
+                onPress={() => setConfirmar('desactivar')}
+                deshabilitado={editar.isPending}
+              />
             </>
           ) : (
             <>
-              <Text style={estilos.nota}>No puede entrar a la app. Su historial de cargas se conserva.</Text>
+              <Text style={estilos.nota}>
+                No puede entrar a la app. Su historial de cargas se conserva.
+              </Text>
               <Boton
                 texto="Activar"
                 variante="secundario"
                 onPress={() => cambiarActivo(true)}
-                cargando={editar.isPending && editar.variables?.datos.activo === true}
+                cargando={
+                  editar.isPending && editar.variables?.datos.activo === true
+                }
                 textoCargando="Activando…"
               />
             </>
           )}
         </View>
 
-        <SeccionHistorialAcceso personaId={persona.id} ahora={ahora} onVerTodo={onVerAccesos} />
+        <SeccionHistorialAcceso
+          personaId={persona.id}
+          ahora={ahora}
+          onVerTodo={onVerAccesos}
+        />
       </PantallaConFormulario>
 
       <Hoja
@@ -305,7 +414,12 @@ function Ficha({
               cargando={editar.isPending}
               textoCargando="Desactivando…"
             />
-            <Boton texto="Cancelar" variante="secundario" onPress={() => setConfirmar(null)} deshabilitado={editar.isPending} />
+            <Boton
+              texto="Cancelar"
+              variante="secundario"
+              onPress={() => setConfirmar(null)}
+              deshabilitado={editar.isPending}
+            />
           </AccionesHoja>
         }
       />
@@ -318,8 +432,18 @@ function Ficha({
         detalle="Su PIN actual deja de servir. Te vamos a mostrar uno temporal para que se lo des; al entrar, la app le pedirá que ponga el suyo."
         pie={
           <AccionesHoja>
-            <Boton texto="Cancelar" variante="secundario" onPress={() => setConfirmar(null)} deshabilitado={restablecer.isPending} />
-            <Boton texto="Restablecer" onPress={restablecerPin} cargando={restablecer.isPending} textoCargando="Un momento…" />
+            <Boton
+              texto="Cancelar"
+              variante="secundario"
+              onPress={() => setConfirmar(null)}
+              deshabilitado={restablecer.isPending}
+            />
+            <Boton
+              texto="Restablecer"
+              onPress={restablecerPin}
+              cargando={restablecer.isPending}
+              textoCargando="Un momento…"
+            />
           </AccionesHoja>
         }
       />

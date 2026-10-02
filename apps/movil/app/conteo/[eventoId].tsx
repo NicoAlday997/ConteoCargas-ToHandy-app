@@ -1,13 +1,37 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { BackHandler, Pressable, SectionList, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import {
+  BackHandler,
+  Pressable,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { ETIQUETAS_TIPO_CARGA, esTipoCarga, type TipoCarga } from '../../src/api/cargas';
+import {
+  ETIQUETAS_TIPO_CARGA,
+  esTipoCarga,
+  type TipoCarga,
+} from '../../src/api/cargas';
 import { ETIQUETAS_ROL } from '../../src/api/auth';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useContextoResolucion, useEventoCarga, useFinalizarSesion, useProductosCarga } from '../../src/api/hooks-cargas';
+import {
+  useContextoResolucion,
+  useEventoCarga,
+  useFinalizarSesion,
+  useProductosCarga,
+} from '../../src/api/hooks-cargas';
 import { cerrarSesion, obtenerUsuarioSesion } from '../../src/api/sesion';
 import {
   AccionesHoja,
@@ -31,11 +55,25 @@ import {
   Pulsable,
 } from '../../src/componentes/base';
 import { avisarConteoFinalizado } from '../../src/conteo/aviso-finalizado';
-import { actualizarFechaCargaAbierta, olvidarCarga } from '../../src/conteo/almacen-conteo';
+import {
+  actualizarFechaCargaAbierta,
+  olvidarCarga,
+} from '../../src/conteo/almacen-conteo';
 import { ModalCambiarFecha } from '../../src/conteo/CambiarFechaCarga';
-import { avisarCargaNoDisponible, descartarCargaNoDisponible } from '../../src/conteo/carga-no-disponible';
-import { esBorrado, limpiarConteoLocal, type ItemLocal } from '../../src/conteo/almacen-local';
-import { conteoDesdeItems, descartarCola, obtenerCola } from '../../src/conteo/cola-sincronizacion';
+import {
+  avisarCargaNoDisponible,
+  descartarCargaNoDisponible,
+} from '../../src/conteo/carga-no-disponible';
+import {
+  esBorrado,
+  limpiarConteoLocal,
+  type ItemLocal,
+} from '../../src/conteo/almacen-local';
+import {
+  conteoDesdeItems,
+  descartarCola,
+  obtenerCola,
+} from '../../src/conteo/cola-sincronizacion';
 import {
   admiteSueltas,
   camposDe,
@@ -52,13 +90,34 @@ import {
   type EstadoConteo,
   type ProductoConteo,
 } from '../../src/conteo/estado-conteo';
-import { EtiquetaFactor, FilaProducto, type EnvioFila } from '../../src/conteo/FilaProducto';
-import { formatearNombreFamilia, formatearNombreProducto } from '../../src/conteo/formato-nombre';
-import { TecladoCantidad, type UbicacionProducto } from '../../src/conteo/TecladoCantidad';
-import { diaDesdeApi, diaNegocio, esDia, textoSalidaCorta } from '../../src/conteo/fecha-operativa';
-import { useEstadoSincronizacion, type EstadoSincronizacion } from '../../src/conteo/useEstadoSincronizacion';
+import {
+  EtiquetaFactor,
+  FilaProducto,
+  type EnvioFila,
+} from '../../src/conteo/FilaProducto';
+import {
+  formatearNombreFamilia,
+  formatearNombreProducto,
+} from '../../src/conteo/formato-nombre';
+import {
+  TecladoCantidad,
+  type UbicacionProducto,
+} from '../../src/conteo/TecladoCantidad';
+import {
+  diaDesdeApi,
+  diaNegocio,
+  esDia,
+  textoSalidaCorta,
+} from '../../src/conteo/fecha-operativa';
+import {
+  useEstadoSincronizacion,
+  type EstadoSincronizacion,
+} from '../../src/conteo/useEstadoSincronizacion';
 import { useLayout } from '../../src/theme/breakpoints';
-import { TONOS_COLOR_FAMILIA, type ColorFamilia } from '../../src/theme/colores-familia';
+import {
+  TONOS_COLOR_FAMILIA,
+  type ColorFamilia,
+} from '../../src/theme/colores-familia';
 import { sentir } from '../../src/theme/tacto';
 import {
   ALTO_CONTROL,
@@ -129,7 +188,13 @@ function parametro(valor: string | string[] | undefined): string {
  * Por qué no se puede finalizar aunque todo esté capturado. La comparación de
  * conteos ocurre en el servidor: necesita que TODO haya llegado.
  */
-type BloqueoFinalizar = 'sesion-expirada' | 'sin-conexion' | 'rechazados' | 'por-enviar' | 'error' | null;
+type BloqueoFinalizar =
+  | 'sesion-expirada'
+  | 'sin-conexion'
+  | 'rechazados'
+  | 'por-enviar'
+  | 'error'
+  | null;
 
 function bloqueoFinalizar(s: EstadoSincronizacion): BloqueoFinalizar {
   if (s.ultimoError?.tipo === 'sesion-expirada') return 'sesion-expirada';
@@ -146,7 +211,8 @@ function envioDe(item: ItemLocal | undefined): EnvioFila {
   return item.sincronizado ? 'enviado' : 'por-enviar';
 }
 
-const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios);
+const plural = (n: number, uno: string, varios: string) =>
+  n === 1 ? uno : varios;
 
 /** Si el conteo se abrió sin nada detrás (p. ej. al recargar la app), `back` no llevaría a ningún lado. */
 function volverAlInicio() {
@@ -154,7 +220,8 @@ function volverAlInicio() {
   else router.replace('/');
 }
 
-const esNoEncontrado = (error: unknown) => error instanceof ErrorApi && error.estado === 404;
+const esNoEncontrado = (error: unknown) =>
+  error instanceof ErrorApi && error.estado === 404;
 
 export default function PantallaConteo() {
   const params = useLocalSearchParams<{
@@ -177,7 +244,10 @@ export default function PantallaConteo() {
           icono="lista"
           titulo="No se encontró la sesión de conteo"
           detalle="Vuelve al inicio y entra otra vez a tu carga: lo contado sigue guardado en este teléfono."
-          accion={{ texto: 'Volver al inicio', onPress: () => router.replace('/') }}
+          accion={{
+            texto: 'Volver al inicio',
+            onPress: () => router.replace('/'),
+          }}
         />
       </SafeAreaView>
     );
@@ -207,22 +277,39 @@ interface PropsConteo {
   rutaNombre: string | null;
 }
 
-function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegacion, rutaNombre: rutaNavegacion }: PropsConteo) {
+function Conteo({
+  eventoId,
+  sesionId,
+  tituloCarga,
+  fechaOperativa: fechaNavegacion,
+  rutaNombre: rutaNavegacion,
+}: PropsConteo) {
   const { esTablet, tecladoLateral, ancho } = useLayout();
   // Todos ven qué ruta cuentan: con la del vendedor también se evita contar la carga equivocada.
   const contexto = useContextoResolucion(rutaNavegacion ? '' : eventoId);
-  const rutaNombre = rutaNavegacion ?? (contexto.data?.rutaNombre?.trim() || null);
+  const rutaNombre =
+    rutaNavegacion ?? (contexto.data?.rutaNombre?.trim() || null);
   // Siempre: además de la fecha trae el estado, que decide si se puede cambiar el día.
   const evento = useEventoCarga(eventoId, true);
-  const fechaOperativa = diaDesdeApi(evento.data?.evento?.fechaOperativa) ?? fechaNavegacion;
+  const fechaOperativa =
+    diaDesdeApi(evento.data?.evento?.fechaOperativa) ?? fechaNavegacion;
   const tipoEvento = evento.data?.evento?.tipo ?? null;
   const consulta = useProductosCarga(eventoId);
-  const productos = useMemo(() => consulta.data?.productos ?? [], [consulta.data]);
-  const familias = useMemo(() => consulta.data?.familias ?? [], [consulta.data]);
+  const productos = useMemo(
+    () => consulta.data?.productos ?? [],
+    [consulta.data],
+  );
+  const familias = useMemo(
+    () => consulta.data?.familias ?? [],
+    [consulta.data],
+  );
 
   // Primero lo del dispositivo; la cola reconcilia después con el servidor.
   // Vive fuera de la pantalla: salir al inicio no detiene el envío.
-  const cola = useMemo(() => obtenerCola(eventoId, sesionId), [eventoId, sesionId]);
+  const cola = useMemo(
+    () => obtenerCola(eventoId, sesionId),
+    [eventoId, sesionId],
+  );
   const estadoCola = useSyncExternalStore(cola.suscribir, cola.obtenerEstado);
   const sincronizacion = useEstadoSincronizacion(cola);
   const bloqueo = bloqueoFinalizar(sincronizacion);
@@ -230,12 +317,17 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   // El evento se canceló o se borró en el servidor: lo guardado aquí ya no
   // tiene a dónde ir. Se quita del teléfono y el inicio explica por qué.
   const noExiste =
-    esNoEncontrado(consulta.error) || esNoEncontrado(evento.error) || evento.data?.evento?.estado === 'CANCELADA';
+    esNoEncontrado(consulta.error) ||
+    esNoEncontrado(evento.error) ||
+    evento.data?.evento?.estado === 'CANCELADA';
   useEffect(() => {
     if (!noExiste) return;
     void (async () => {
       const sesion = await obtenerUsuarioSesion().catch(() => null);
-      await descartarCargaNoDisponible(sesion?.id ?? null, { eventoId, sesionId });
+      await descartarCargaNoDisponible(sesion?.id ?? null, {
+        eventoId,
+        sesionId,
+      });
       avisarCargaNoDisponible();
       volverAlInicio();
     })();
@@ -253,14 +345,25 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const [edicion, setEdicion] = useState<Edicion | null>(null);
   const edicionRef = useRef<Edicion | null>(null);
-  const [usuario, setUsuario] = useState<{ id: string; nombre: string | null; rol: string | null } | null>(null);
+  const [usuario, setUsuario] = useState<{
+    id: string;
+    nombre: string | null;
+    rol: string | null;
+  } | null>(null);
   const [cambiandoFecha, setCambiandoFecha] = useState(false);
-  const [panel, setPanel] = useState<'ninguno' | 'pendientes' | 'bloqueo' | 'confirmar'>('ninguno');
+  const [panel, setPanel] = useState<
+    'ninguno' | 'pendientes' | 'bloqueo' | 'confirmar'
+  >('ninguno');
 
   useEffect(() => {
     let vigente = true;
     void obtenerUsuarioSesion().then((sesion) => {
-      if (vigente && sesion) setUsuario({ id: sesion.id, nombre: sesion.nombreCompleto, rol: sesion.rolApp });
+      if (vigente && sesion)
+        setUsuario({
+          id: sesion.id,
+          nombre: sesion.nombreCompleto,
+          rol: sesion.rolApp,
+        });
     });
     return () => {
       vigente = false;
@@ -269,7 +372,8 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   // Para decir "llevas X de Y" al cerrar sesión, aun sin red.
   useEffect(() => {
-    if (estadoCola.cargado && productos.length > 0) cola.fijarTotalProductos(productos.length);
+    if (estadoCola.cargado && productos.length > 0)
+      cola.fijarTotalProductos(productos.length);
   }, [cola, estadoCola.cargado, productos.length]);
 
   /** Cada producto que cambió se encola: primero al dispositivo, luego a la red. */
@@ -278,8 +382,12 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       const anterior = conteoRef.current;
       if (!anterior || nuevo === anterior) return;
       conteoRef.current = nuevo;
-      for (const code of new Set([...Object.keys(anterior), ...Object.keys(nuevo)])) {
-        if (anterior[code] !== nuevo[code]) cola.capturar(code, nuevo[code] ?? SIN_CAPTURA);
+      for (const code of new Set([
+        ...Object.keys(anterior),
+        ...Object.keys(nuevo),
+      ])) {
+        if (anterior[code] !== nuevo[code])
+          cola.capturar(code, nuevo[code] ?? SIN_CAPTURA);
       }
     },
     [cola],
@@ -295,14 +403,21 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     const actual = edicionRef.current;
     const base = conteoRef.current;
     if (!actual || !base) return;
-    aplicar(fijarCampo(base, actual.code, actual.campo, textoAValor(actual.texto)));
+    aplicar(
+      fijarCampo(base, actual.code, actual.campo, textoAValor(actual.texto)),
+    );
   }, [aplicar]);
 
   const abrirCampo = useCallback(
     (code: string, campo: CampoCaptura) => {
       confirmarEdicion();
       const valor = capturaDe(conteoRef.current ?? {}, code)[campo];
-      fijarEdicion({ code, campo, texto: valor === null ? '' : String(valor), reemplazar: true });
+      fijarEdicion({
+        code,
+        campo,
+        texto: valor === null ? '' : String(valor),
+        reemplazar: true,
+      });
     },
     [confirmarEdicion, fijarEdicion],
   );
@@ -315,8 +430,11 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   /** El producto que sigue en la lista, en su primer campo; `null` al final. */
   const productoSiguiente = useCallback(
     (code: string): { code: string; campo: CampoCaptura } | null => {
-      const siguiente = productos[productos.findIndex((p) => p.code === code) + 1];
-      return siguiente ? { code: siguiente.code, campo: primerCampo(siguiente) } : null;
+      const siguiente =
+        productos[productos.findIndex((p) => p.code === code) + 1];
+      return siguiente
+        ? { code: siguiente.code, campo: primerCampo(siguiente) }
+        : null;
     },
     [productos],
   );
@@ -340,8 +458,14 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         fijarEdicion(null);
         return;
       }
-      const valor = capturaDe(conteoRef.current ?? {}, destino.code)[destino.campo];
-      fijarEdicion({ ...destino, texto: valor === null ? '' : String(valor), reemplazar: true });
+      const valor = capturaDe(conteoRef.current ?? {}, destino.code)[
+        destino.campo
+      ];
+      fijarEdicion({
+        ...destino,
+        texto: valor === null ? '' : String(valor),
+        reemplazar: true,
+      });
     },
     [aplicar, fijarEdicion, productoSiguiente, productos],
   );
@@ -366,7 +490,11 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   const alBorrar = useCallback(() => {
     const actual = edicionRef.current;
     if (!actual) return;
-    fijarEdicion({ ...actual, texto: actual.reemplazar ? '' : actual.texto.slice(0, -1), reemplazar: false });
+    fijarEdicion({
+      ...actual,
+      texto: actual.reemplazar ? '' : actual.texto.slice(0, -1),
+      reemplazar: false,
+    });
   }, [fijarEdicion]);
 
   /**
@@ -378,7 +506,12 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   const destinoSiguiente = useCallback(
     (actual: Edicion): { code: string; campo: CampoCaptura } | null => {
       const producto = productos.find((p) => p.code === actual.code);
-      if (actual.campo === 'paquetes' && actual.texto === '' && producto && admiteSueltas(producto)) {
+      if (
+        actual.campo === 'paquetes' &&
+        actual.texto === '' &&
+        producto &&
+        admiteSueltas(producto)
+      ) {
         return { code: actual.code, campo: 'sueltas' };
       }
       return productoSiguiente(actual.code);
@@ -395,18 +528,24 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   }, [abrirCampo, cerrarTeclado, destinoSiguiente]);
 
   useEffect(() => {
-    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!edicionRef.current) return false;
-      cerrarTeclado();
-      return true;
-    });
+    const suscripcion = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (!edicionRef.current) return false;
+        cerrarTeclado();
+        return true;
+      },
+    );
     return () => suscripcion.remove();
   }, [cerrarTeclado]);
 
   // ---- Lista -----------------------------------------------------------
 
   const anchoLista = tecladoLateral ? ancho - ANCHO_TECLADO_LATERAL : ancho;
-  const columnas = tecladoLateral && anchoLista >= ANCHO_MINIMO_FILA * 2 + ESPACIADO.md * 3 ? 2 : 1;
+  const columnas =
+    tecladoLateral && anchoLista >= ANCHO_MINIMO_FILA * 2 + ESPACIADO.md * 3
+      ? 2
+      : 1;
 
   const secciones = useMemo<SeccionFamilia[]>(
     () =>
@@ -429,7 +568,9 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
   const ubicaciones = useMemo(() => {
     const mapa = new Map<string, { sectionIndex: number; itemIndex: number }>();
     secciones.forEach((s, sectionIndex) =>
-      s.data.forEach((fila, itemIndex) => fila.forEach((p) => mapa.set(p.code, { sectionIndex, itemIndex }))),
+      s.data.forEach((fila, itemIndex) =>
+        fila.forEach((p) => mapa.set(p.code, { sectionIndex, itemIndex })),
+      ),
     );
     return mapa;
   }, [secciones]);
@@ -444,7 +585,9 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     familias.forEach((f) => {
       const familia = formatearNombreFamilia(f.familia ?? 'Sin familia');
       const { capturados, total } = progreso(f.productos, conteo ?? {});
-      f.productos.forEach((p) => mapa.set(p.code, { familia, contados: capturados, total }));
+      f.productos.forEach((p) =>
+        mapa.set(p.code, { familia, contados: capturados, total }),
+      );
     });
     return mapa;
   }, [familias, conteo]);
@@ -484,20 +627,29 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
    */
   const codeEditado = edicion?.code ?? null;
   /** Hoja abierta: el producto con el que se abrió (`null` si se abrió desde pendientes) y el último editado. */
-  const recorridoHoja = useRef<{ abiertaEn: string | null; ultimo: string } | null>(null);
+  const recorridoHoja = useRef<{
+    abiertaEn: string | null;
+    ultimo: string;
+  } | null>(null);
   /** `irAPendiente` abre la hoja en un producto que puede no estar a la vista. */
   const abiertaDesdePendientes = useRef(false);
   useEffect(() => {
     if (tecladoLateral) {
       recorridoHoja.current = null;
       if (!codeEditado) return;
-      const espera = setTimeout(() => irAProducto(codeEditado), RETRASO_SCROLL_MS);
+      const espera = setTimeout(
+        () => irAProducto(codeEditado),
+        RETRASO_SCROLL_MS,
+      );
       return () => clearTimeout(espera);
     }
     if (codeEditado) {
       recorridoHoja.current = recorridoHoja.current
         ? { ...recorridoHoja.current, ultimo: codeEditado }
-        : { abiertaEn: abiertaDesdePendientes.current ? null : codeEditado, ultimo: codeEditado };
+        : {
+            abiertaEn: abiertaDesdePendientes.current ? null : codeEditado,
+            ultimo: codeEditado,
+          };
       abiertaDesdePendientes.current = false;
       return;
     }
@@ -505,7 +657,10 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
     recorridoHoja.current = null;
     if (!recorrido || recorrido.ultimo === recorrido.abiertaEn) return;
     // Al cerrar, la lista recupera el alto de la hoja: se desplaza ya medida.
-    const espera = setTimeout(() => irAProducto(recorrido.ultimo, 0.5), RETRASO_SCROLL_MS);
+    const espera = setTimeout(
+      () => irAProducto(recorrido.ultimo, 0.5),
+      RETRASO_SCROLL_MS,
+    );
     return () => clearTimeout(espera);
   }, [codeEditado, tecladoLateral, irAProducto]);
   const altoLista = useRef(0);
@@ -556,11 +711,16 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
       <SafeAreaView style={estilos.pantalla}>
         <View style={estilos.contenedorAviso}>
           <BloqueError
-            titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar la lista de productos'}
+            titulo={
+              sinRed
+                ? 'Sin conexión'
+                : 'No se pudo cargar la lista de productos'
+            }
             detalle={
               sinRed
                 ? 'La lista de productos se descarga la primera vez que abres la carga; después ya puedes contar sin señal.'
-                : consulta.error.message || 'Revisa la conexión y vuelve a intentarlo.'
+                : consulta.error.message ||
+                  'Revisa la conexión y vuelve a intentarlo.'
             }
             tono={sinRed ? 'atencion' : 'error'}
             onReintentar={() => void consulta.refetch()}
@@ -587,18 +747,24 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
 
   const { capturados, total } = progreso(productos, conteo);
   const pendientes = productosPendientes(productos, conteo);
-  const productoEditado = edicion ? productos.find((p) => p.code === edicion.code) : undefined;
+  const productoEditado = edicion
+    ? productos.find((p) => p.code === edicion.code)
+    : undefined;
 
   const rechazados = productos.filter((p) => estadoCola.items[p.code]?.error);
 
   // Solo el vendedor y solo mientras cuenta (BORRADOR): después, el contador
   // puede haber contado y mover la fecha sería una escapatoria si no cuadra.
   const puedeCambiarFecha =
-    usuario?.rol === 'VENDEDOR' && evento.data?.evento?.estado === 'BORRADOR' && fechaOperativa !== null;
+    usuario?.rol === 'VENDEDOR' &&
+    evento.data?.evento?.estado === 'BORRADOR' &&
+    fechaOperativa !== null;
 
   const intentarFinalizar = () => {
     cerrarTeclado();
-    setPanel(pendientes.length > 0 ? 'pendientes' : bloqueo ? 'bloqueo' : 'confirmar');
+    setPanel(
+      pendientes.length > 0 ? 'pendientes' : bloqueo ? 'bloqueo' : 'confirmar',
+    );
   };
 
   const irAPendiente = (producto: ProductoConteo) => {
@@ -619,7 +785,9 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         texto={edicion.texto}
         reemplazar={edicion.reemplazar}
         captura={capturaVisible(edicion.code)}
-        etiquetaSiguiente={siguienteEsSueltas ? 'Sueltas' : destino ? 'Siguiente' : 'Terminar'}
+        etiquetaSiguiente={
+          siguienteEsSueltas ? 'Sueltas' : destino ? 'Siguiente' : 'Terminar'
+        }
         siguienteConChevron={destino !== null}
         lateral={tecladoLateral}
         teclasGrandes={esTablet}
@@ -648,7 +816,11 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
         variante={razon ? 'secundario' : 'primario'}
         onPress={intentarFinalizar}
         tacto={razon ? 'aviso' : 'toque'}
-        accessibilityLabel={razon ? `Finalizar conteo. Aún no se puede: ${razon}` : 'Finalizar conteo'}
+        accessibilityLabel={
+          razon
+            ? `Finalizar conteo. Aún no se puede: ${razon}`
+            : 'Finalizar conteo'
+        }
         accessibilityHint={razon ? 'Muestra qué falta' : undefined}
         style={estilos.botonFinalizar}
       />
@@ -689,19 +861,30 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             onLayout={alMedirLista}
             // Bajo el velo tampoco se lee en voz alta: la hoja dice qué se cuenta.
             accessibilityElementsHidden={listaVelada}
-            importantForAccessibility={listaVelada ? 'no-hide-descendants' : 'auto'}
+            importantForAccessibility={
+              listaVelada ? 'no-hide-descendants' : 'auto'
+            }
             sections={secciones}
             keyExtractor={(fila) => fila.map((p) => p.code).join('|')}
             extraData={{ conteo, edicion, items: estadoCola.items }}
             stickySectionHeadersEnabled
             initialNumToRender={total}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={[estilos.contenidoLista, esTablet && !tecladoLateral && estilos.contenidoListaMedio]}
+            contentContainerStyle={[
+              estilos.contenidoLista,
+              esTablet && !tecladoLateral && estilos.contenidoListaMedio,
+            ]}
             onScrollToIndexFailed={() => {
               const destino = destinoScroll.current;
-              if (destino) setTimeout(() => irAProducto(destino.code, destino.posicion), RETRASO_SCROLL_MS * 4);
+              if (destino)
+                setTimeout(
+                  () => irAProducto(destino.code, destino.posicion),
+                  RETRASO_SCROLL_MS * 4,
+                );
             }}
-            renderSectionHeader={({ section }) => <EncabezadoFamilia seccion={section} conteo={conteo} />}
+            renderSectionHeader={({ section }) => (
+              <EncabezadoFamilia seccion={section} conteo={conteo} />
+            )}
             renderSectionFooter={() => <View style={estilos.pieFamilia} />}
             renderItem={({ item: fila }) => (
               <View style={estilos.filaColumnas}>
@@ -710,14 +893,18 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
                     key={producto.code}
                     producto={producto}
                     captura={capturaVisible(producto.code)}
-                    campoActivo={edicion?.code === producto.code ? edicion.campo : null}
+                    campoActivo={
+                      edicion?.code === producto.code ? edicion.campo : null
+                    }
                     envio={envioDe(estadoCola.items[producto.code])}
                     errorEnvio={estadoCola.items[producto.code]?.error ?? null}
                     onAbrirCampo={abrirCampo}
                     onCero={marcarCero}
                   />
                 ))}
-                {fila.length < columnas && <View style={estilos.huecoColumna} />}
+                {fila.length < columnas && (
+                  <View style={estilos.huecoColumna} />
+                )}
               </View>
             )}
           />
@@ -746,9 +933,17 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
           <View style={estilos.lateral}>
             {teclado ?? (
               <View style={estilos.lateralVacio}>
-                <Glifo nombre="caja" color={COLORES.textoSecundario} tamano={ESPACIADO.xxxl} />
-                <Text style={estilos.textoLateralVacio}>Toca Paquetes o Sueltas de un producto para capturar.</Text>
-                <Text style={estilos.detalleLateralVacio}>Si no lleva, toca su botón 0 o «No lleva» en el teclado.</Text>
+                <Glifo
+                  nombre="caja"
+                  color={COLORES.textoSecundario}
+                  tamano={ESPACIADO.xxxl}
+                />
+                <Text style={estilos.textoLateralVacio}>
+                  Toca Paquetes o Sueltas de un producto para capturar.
+                </Text>
+                <Text style={estilos.detalleLateralVacio}>
+                  Si no lleva, toca su botón 0 o «No lleva» en el teclado.
+                </Text>
               </View>
             )}
           </View>
@@ -785,7 +980,10 @@ function Conteo({ eventoId, sesionId, tituloCarga, fechaOperativa: fechaNavegaci
             setCambiandoFecha(false);
             // La navegación y "Continuar carga" del inicio también traían la fecha vieja.
             router.setParams({ fechaOperativa: dia });
-            if (usuario) void actualizarFechaCargaAbierta(usuario.id, eventoId, dia).catch(() => undefined);
+            if (usuario)
+              void actualizarFechaCargaAbierta(usuario.id, eventoId, dia).catch(
+                () => undefined,
+              );
           }}
           onCerrar={() => setCambiandoFecha(false)}
           onSesionVencida={() => {
@@ -831,8 +1029,14 @@ interface PropsEncabezado {
  * Por qué todavía no se puede finalizar, en una línea sobre el botón. Que no
  * se pueda no es lo mismo que no saber por qué. `null`: ya se puede.
  */
-function razonNoFinalizar(faltan: number, bloqueo: BloqueoFinalizar): string | null {
-  if (faltan > 0) return faltan === 1 ? 'Falta 1 producto por contar.' : `Faltan ${faltan} productos por contar.`;
+function razonNoFinalizar(
+  faltan: number,
+  bloqueo: BloqueoFinalizar,
+): string | null {
+  if (faltan > 0)
+    return faltan === 1
+      ? 'Falta 1 producto por contar.'
+      : `Faltan ${faltan} productos por contar.`;
   switch (bloqueo) {
     case 'sin-conexion':
       return 'Sin señal: lo que llevas está guardado en este teléfono y se manda solo cuando vuelva.';
@@ -867,7 +1071,9 @@ function Encabezado({
   onVolver,
 }: PropsEncabezado) {
   // Siempre a la vista: quien cuenta debe saber para qué día es la carga.
-  const salida = fechaOperativa ? textoSalidaCorta(fechaOperativa, diaNegocio(new Date())) : null;
+  const salida = fechaOperativa
+    ? textoSalidaCorta(fechaOperativa, diaNegocio(new Date()))
+    : null;
   const completo = capturados === total;
 
   return (
@@ -877,7 +1083,14 @@ function Encabezado({
       subtitulo={onCambiarFecha ? null : salida}
       onVolver={onVolver}
       etiquetaVolver="Volver al inicio. Lo contado queda guardado."
-      accion={numeroRuta(rutaNombre) ? <EscudoRuta numero={numeroRuta(rutaNombre)!} accessibilityLabel={rutaNombre ?? undefined} /> : undefined}
+      accion={
+        numeroRuta(rutaNombre) ? (
+          <EscudoRuta
+            numero={numeroRuta(rutaNombre)!}
+            accessibilityLabel={rutaNombre ?? undefined}
+          />
+        ) : undefined
+      }
       inferior={
         <PanelEncabezado>
           <View style={estilos.filaProgreso}>
@@ -890,13 +1103,19 @@ function Encabezado({
               <Text style={estilos.numeroProgreso}>{capturados}</Text>
               {` de ${total} ${plural(total, 'producto', 'productos')}`}
             </Text>
-            <IndicadorSincronizacion estado={sincronizacion} onReintentar={onReintentar} />
+            <IndicadorSincronizacion
+              estado={sincronizacion}
+              onReintentar={onReintentar}
+            />
           </View>
           <BarraAvance actual={capturados} total={total} />
           {completo && (
             <View style={estilos.lineaCompleto}>
               <Palomita color={COLORES.cian} tamano={ESPACIADO.lg} />
-              <Text style={estilos.textoCompleto} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+              <Text
+                style={estilos.textoCompleto}
+                maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+              >
                 Todo contado. Revisa y finaliza abajo.
               </Text>
             </View>
@@ -908,22 +1127,49 @@ function Encabezado({
         // Subrayada y con lápiz: se ve que se toca. Mismo lugar que el subtítulo normal.
         <Pulsable
           onPress={onCambiarFecha}
-          hitSlop={{ top: ESPACIADO.md, bottom: ESPACIADO.md, left: ESPACIADO.sm, right: ESPACIADO.sm }}
+          hitSlop={{
+            top: ESPACIADO.md,
+            bottom: ESPACIADO.md,
+            left: ESPACIADO.sm,
+            right: ESPACIADO.sm,
+          }}
           accessibilityRole="button"
           accessibilityLabel={`${salida}. Cambiar la fecha`}
           accessibilityHint="Lo contado se conserva"
-          style={({ pressed }) => [estilos.fechaTocable, pressed && estilos.fechaTocablePresionada]}
+          style={({ pressed }) => [
+            estilos.fechaTocable,
+            pressed && estilos.fechaTocablePresionada,
+          ]}
         >
-          <Text style={estilos.textoFechaTocable} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+          <Text
+            style={estilos.textoFechaTocable}
+            numberOfLines={1}
+            maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+          >
             {salida}
           </Text>
-          <Lapiz color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
+          <Lapiz
+            color={COLORES.marcaTenue}
+            tamano={ESPACIADO.md + ESPACIADO.xs}
+          />
         </Pulsable>
       )}
       {quienCuenta && (
-        <View style={estilos.lineaPersona} accessible accessibilityLabel={`Cuenta ${quienCuenta}`}>
-          <Glifo nombre="persona" color={COLORES.marcaTenue} tamano={ESPACIADO.md + ESPACIADO.xs} />
-          <Text style={estilos.textoPersona} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+        <View
+          style={estilos.lineaPersona}
+          accessible
+          accessibilityLabel={`Cuenta ${quienCuenta}`}
+        >
+          <Glifo
+            nombre="persona"
+            color={COLORES.marcaTenue}
+            tamano={ESPACIADO.md + ESPACIADO.xs}
+          />
+          <Text
+            style={estilos.textoPersona}
+            numberOfLines={1}
+            maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+          >
             Cuenta {quienCuenta}
           </Text>
         </View>
@@ -936,8 +1182,15 @@ function Encabezado({
  * Siempre visible, en una línea junto al progreso: se lee sin buscarlo y no
  * quita espacio a la lista. Con pendientes, tocarlo reintenta sin esperar.
  */
-function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincronizacion; onReintentar: () => void }) {
-  const { hayConexion, pendientes, fallidos, sincronizando, ultimoError } = estado;
+function IndicadorSincronizacion({
+  estado,
+  onReintentar,
+}: {
+  estado: EstadoSincronizacion;
+  onReintentar: () => void;
+}) {
+  const { hayConexion, pendientes, fallidos, sincronizando, ultimoError } =
+    estado;
 
   if (ultimoError?.tipo === 'sesion-expirada') {
     return (
@@ -947,7 +1200,10 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
         hitSlop={ESPACIADO.sm}
         style={[estilos.pildoraEstado, estilos.pildoraError]}
       >
-        <Text style={[estilos.guardado, estilos.guardadoError]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+        <Text
+          style={[estilos.guardado, estilos.guardadoError]}
+          maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+        >
           Sesión vencida · entra de nuevo
         </Text>
         <Chevron color={COLORES.errorTexto} tamano={ESPACIADO.lg} />
@@ -958,7 +1214,10 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
   let texto: string;
   let tono: 'normal' | 'atencion' | 'error' = 'normal';
   if (!hayConexion) {
-    texto = pendientes > 0 ? `Sin conexión · ${pendientes} por enviar` : 'Sin conexión · todo enviado';
+    texto =
+      pendientes > 0
+        ? `Sin conexión · ${pendientes} por enviar`
+        : 'Sin conexión · todo enviado';
     tono = 'atencion';
   } else if (fallidos > 0) {
     texto = `${fallidos} ${plural(fallidos, 'producto no aceptado', 'productos no aceptados')}`;
@@ -975,7 +1234,10 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
     texto = 'Al día';
   }
 
-  const reintentable = hayConexion && !sincronizando && (pendientes > 0 || ultimoError?.tipo === 'rechazo');
+  const reintentable =
+    hayConexion &&
+    !sincronizando &&
+    (pendientes > 0 || ultimoError?.tipo === 'rechazo');
   // Al día, en el tono del panel: no pide nada. Con algo pendiente, pastilla tintada del estado.
   const pildora = [
     estilos.pildoraEstado,
@@ -983,14 +1245,24 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
     tono === 'error' && estilos.pildoraError,
   ];
   const colorIcono =
-    tono === 'atencion' ? COLORES.discrepanciaTexto : tono === 'error' ? COLORES.errorTexto : COLORES.textoSobreColor;
+    tono === 'atencion'
+      ? COLORES.discrepanciaTexto
+      : tono === 'error'
+        ? COLORES.errorTexto
+        : COLORES.textoSobreColor;
   const alDia = tono === 'normal' && !sincronizando;
   const contenido = (
     <>
       {alDia && <Palomita color={COLORES.cian} tamano={ESPACIADO.lg} />}
-      {!hayConexion && <Glifo nombre="sinSenal" color={colorIcono} tamano={ESPACIADO.lg} />}
+      {!hayConexion && (
+        <Glifo nombre="sinSenal" color={colorIcono} tamano={ESPACIADO.lg} />
+      )}
       <Text
-        style={[estilos.guardado, tono === 'atencion' && estilos.guardadoAtencion, tono === 'error' && estilos.guardadoError]}
+        style={[
+          estilos.guardado,
+          tono === 'atencion' && estilos.guardadoAtencion,
+          tono === 'error' && estilos.guardadoError,
+        ]}
         numberOfLines={2}
         accessibilityLiveRegion="polite"
         maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
@@ -1023,7 +1295,13 @@ function IndicadorSincronizacion({ estado, onReintentar }: { estado: EstadoSincr
  * no comunica estado, y no toca las filas. Sin color, gris azulado. Completa,
  * el avance pasa a "Completa" en verde con su palomita.
  */
-function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conteo: EstadoConteo }) {
+function EncabezadoFamilia({
+  seccion,
+  conteo,
+}: {
+  seccion: SeccionFamilia;
+  conteo: EstadoConteo;
+}) {
   const { capturados, total } = progreso(seccion.productos, conteo);
   const completa = capturados === total;
   const tonos = seccion.color ? TONOS_COLOR_FAMILIA[seccion.color] : null;
@@ -1031,19 +1309,46 @@ function EncabezadoFamilia({ seccion, conteo }: { seccion: SeccionFamilia; conte
   // Sin color, la línea toma el fondo de la banda: todas miden lo mismo.
   const linea = tonos?.solido ?? fondoBanda;
   const textoNombre = tonos?.texto ?? COLORES.texto;
-  const textoPastilla = completa ? COLORES.capturadoHondo : (tonos?.texto ?? COLORES.textoSecundario);
+  const textoPastilla = completa
+    ? COLORES.capturadoHondo
+    : (tonos?.texto ?? COLORES.textoSecundario);
   return (
     <View style={estilos.encabezadoFamilia} accessibilityRole="header">
       <View style={[estilos.bandaFamilia, { backgroundColor: fondoBanda }]}>
-        <View style={[estilos.puntoFamilia, { backgroundColor: linea === fondoBanda ? COLORES.textoTerciario : linea }]} />
-        <Text style={[estilos.nombreFamilia, { color: textoNombre }]} numberOfLines={1}>
+        <View
+          style={[
+            estilos.puntoFamilia,
+            {
+              backgroundColor:
+                linea === fondoBanda ? COLORES.textoTerciario : linea,
+            },
+          ]}
+        />
+        <Text
+          style={[estilos.nombreFamilia, { color: textoNombre }]}
+          numberOfLines={1}
+        >
           {formatearNombreFamilia(seccion.titulo)}
         </Text>
-        <View style={[estilos.pastillaFamilia, completa && estilos.pastillaFamiliaCompleta]}>
-          {completa && <Palomita color={COLORES.capturadoHondo} tamano={ESPACIADO.md + ESPACIADO.xs} />}
+        <View
+          style={[
+            estilos.pastillaFamilia,
+            completa && estilos.pastillaFamiliaCompleta,
+          ]}
+        >
+          {completa && (
+            <Palomita
+              color={COLORES.capturadoHondo}
+              tamano={ESPACIADO.md + ESPACIADO.xs}
+            />
+          )}
           <Text
             style={[estilos.conteoFamilia, { color: textoPastilla }]}
-            accessibilityLabel={completa ? `Familia completa, ${total} de ${total}` : `${capturados} de ${total} capturados`}
+            accessibilityLabel={
+              completa
+                ? `Familia completa, ${total} de ${total}`
+                : `${capturados} de ${total} capturados`
+            }
           >
             {completa ? 'Completa' : `${capturados} de ${total}`}
           </Text>
@@ -1065,7 +1370,12 @@ interface PropsPanelPendientes {
 }
 
 /** Dice CUÁLES faltan, por nombre y con su empaque; tocar uno lleva a él. */
-function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPendientes) {
+function PanelPendientes({
+  visible,
+  pendientes,
+  onIr,
+  onCerrar,
+}: PropsPanelPendientes) {
   const porFamilia = useMemo(() => {
     const grupos = new Map<string, ProductoConteo[]>();
     for (const p of pendientes) {
@@ -1085,11 +1395,19 @@ function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPend
       titulo={n === 1 ? 'Falta 1 producto' : `Faltan ${n} productos`}
       detalle="Cuéntalos, o márcalos en 0 si no llevan, antes de finalizar. Toca uno para ir a él."
       estiloContenido={estilos.contenidoListaModal}
-      pie={<Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} />}
+      pie={
+        <Boton
+          texto="Seguir contando"
+          variante="secundario"
+          onPress={onCerrar}
+        />
+      }
     >
       {porFamilia.map(([familia, productos]) => (
         <View key={familia} style={estilos.grupoModal}>
-          <Text style={estilos.familiaModal}>{formatearNombreFamilia(familia)}</Text>
+          <Text style={estilos.familiaModal}>
+            {formatearNombreFamilia(familia)}
+          </Text>
           {productos.map((p) => (
             <RenglonIrAProducto key={p.code} producto={p} onIr={onIr} />
           ))}
@@ -1100,7 +1418,13 @@ function PanelPendientes({ visible, pendientes, onIr, onCerrar }: PropsPanelPend
 }
 
 /** Un producto al que se puede saltar: factor, nombre y flecha. */
-function RenglonIrAProducto({ producto, onIr }: { producto: ProductoConteo; onIr: (producto: ProductoConteo) => void }) {
+function RenglonIrAProducto({
+  producto,
+  onIr,
+}: {
+  producto: ProductoConteo;
+  onIr: (producto: ProductoConteo) => void;
+}) {
   const nombre = formatearNombreProducto(producto.nombre);
   return (
     <Pulsable
@@ -1108,7 +1432,10 @@ function RenglonIrAProducto({ producto, onIr }: { producto: ProductoConteo; onIr
       onda={ONDA.sobreClaro}
       accessibilityRole="button"
       accessibilityLabel={`Ir a ${nombre}`}
-      style={({ pressed }) => [estilos.pendiente, pressed && estilos.pendientePresionado]}
+      style={({ pressed }) => [
+        estilos.pendiente,
+        pressed && estilos.pendientePresionado,
+      ]}
     >
       <EtiquetaFactor producto={producto} />
       <Text style={estilos.nombrePendiente} numberOfLines={2}>
@@ -1163,17 +1490,23 @@ function PanelBloqueo({
         `${porqueServidor} Acércate a donde haya señal: lo pendiente se envía solo.`;
       break;
     case 'por-enviar':
-      titulo = pendientes > 0 ? `Faltan ${pendientes} por guardarse` : 'Revisando que todo esté guardado…';
+      titulo =
+        pendientes > 0
+          ? `Faltan ${pendientes} por guardarse`
+          : 'Revisando que todo esté guardado…';
       detalle = `${porqueServidor} ${sincronizando ? 'Enviando ahora…' : 'Se reintentará solo en unos segundos.'}`;
-      if (!sincronizando) accion = { texto: 'Reintentar ahora', onPress: onReintentar };
+      if (!sincronizando)
+        accion = { texto: 'Reintentar ahora', onPress: onReintentar };
       break;
     case 'rechazados':
       titulo = `No se ${plural(rechazados.length, 'aceptó', 'aceptaron')} ${rechazados.length} ${plural(rechazados.length, 'producto', 'productos')}`;
-      detalle = 'Vuelve a capturarlos (por ejemplo, en piezas sueltas) para poder finalizar. Toca uno para ir a él.';
+      detalle =
+        'Vuelve a capturarlos (por ejemplo, en piezas sueltas) para poder finalizar. Toca uno para ir a él.';
       break;
     case 'sesion-expirada':
       titulo = 'Tu sesión venció';
-      detalle = 'Entra de nuevo con tu PIN: lo contado sigue guardado en este teléfono y se enviará al volver.';
+      detalle =
+        'Entra de nuevo con tu PIN: lo contado sigue guardado en este teléfono y se enviará al volver.';
       accion = { texto: 'Entrar', onPress: () => router.replace('/login') };
       break;
     case 'error':
@@ -1196,12 +1529,19 @@ function PanelBloqueo({
       detalle={detalle}
       pie={
         <AccionesHoja>
-          <Boton texto="Seguir contando" variante="secundario" onPress={onCerrar} />
+          <Boton
+            texto="Seguir contando"
+            variante="secundario"
+            onPress={onCerrar}
+          />
           {accion && <Boton texto={accion.texto} onPress={accion.onPress} />}
         </AccionesHoja>
       }
     >
-      {bloqueo === 'rechazados' && rechazados.map((p) => <RenglonIrAProducto key={p.code} producto={p} onIr={onIr} />)}
+      {bloqueo === 'rechazados' &&
+        rechazados.map((p) => (
+          <RenglonIrAProducto key={p.code} producto={p} onIr={onIr} />
+        ))}
     </Hoja>
   );
 }
@@ -1230,11 +1570,17 @@ function PanelConfirmar({
   onCerrar,
 }: PropsPanelConfirmar) {
   const mutacion = useFinalizarSesion();
-  const [fase, setFase] = useState<'confirmando' | 'finalizando'>('confirmando');
+  const [fase, setFase] = useState<'confirmando' | 'finalizando'>(
+    'confirmando',
+  );
   const [error, setError] = useState<string | null>(null);
 
-  const conCantidad = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), p) === 'con-cantidad').length;
-  const enCero = productos.filter((p) => estadoFila(capturaDe(conteo, p.code), p) === 'en-cero').length;
+  const conCantidad = productos.filter(
+    (p) => estadoFila(capturaDe(conteo, p.code), p) === 'con-cantidad',
+  ).length;
+  const enCero = productos.filter(
+    (p) => estadoFila(capturaDe(conteo, p.code), p) === 'en-cero',
+  ).length;
 
   const ocupado = fase !== 'confirmando';
   // Pudo perderse la señal con el panel abierto.
@@ -1255,9 +1601,11 @@ function PanelConfirmar({
       {
         onSuccess: async (respuesta) => {
           descartarCola(eventoId, sesionId);
-          await (usuarioId ? olvidarCarga(usuarioId, { eventoId, sesionId }) : limpiarConteoLocal(eventoId, sesionId)).catch(
-            () => undefined,
-          );
+          await (
+            usuarioId
+              ? olvidarCarga(usuarioId, { eventoId, sesionId })
+              : limpiarConteoLocal(eventoId, sesionId)
+          ).catch(() => undefined);
           setFase('confirmando');
           sentir('exito');
           onCerrar();
@@ -1265,20 +1613,31 @@ function PanelConfirmar({
           // con la otra persona al lado. Se reemplaza el conteo: ya no se puede volver a él.
           if (respuesta?.evento?.estado === 'CONFLICTOS_PENDIENTES') {
             // `desdeConteo`: la pantalla abre diciendo qué pasó ("no coinciden en 3 productos").
-            router.replace({ pathname: '/discrepancias/[eventoId]', params: { eventoId, desdeConteo: '1' } });
+            router.replace({
+              pathname: '/discrepancias/[eventoId]',
+              params: { eventoId, desdeConteo: '1' },
+            });
             return;
           }
           // El inicio confirma que llegó y dice qué sigue: el cierre del conteo.
-          avisarConteoFinalizado({ tipo, estado: respuesta?.evento?.estado ?? null, productos: productos.length });
+          avisarConteoFinalizado({
+            tipo,
+            estado: respuesta?.evento?.estado ?? null,
+            productos: productos.length,
+          });
           volverAlInicio();
         },
         onError: (e) => {
           setFase('confirmando');
           sentir('error');
           if (e instanceof ErrorApi && e.estado === 401) {
-            setError('Tu sesión venció. Entra de nuevo: lo contado sigue guardado en este dispositivo.');
+            setError(
+              'Tu sesión venció. Entra de nuevo: lo contado sigue guardado en este dispositivo.',
+            );
           } else if (e instanceof ErrorRed) {
-            setError('Sin conexión: no se pudo finalizar. Tu conteo sigue guardado en este teléfono; inténtalo cuando haya señal.');
+            setError(
+              'Sin conexión: no se pudo finalizar. Tu conteo sigue guardado en este teléfono; inténtalo cuando haya señal.',
+            );
           } else {
             setError(e.message || 'No se pudo finalizar el conteo.');
           }
@@ -1296,7 +1655,12 @@ function PanelConfirmar({
       detalle="Después de finalizar ya no podrás cambiarlo."
       pie={
         <AccionesHoja>
-          <Boton texto="Seguir contando" variante="secundario" onPress={cerrar} deshabilitado={ocupado} />
+          <Boton
+            texto="Seguir contando"
+            variante="secundario"
+            onPress={cerrar}
+            deshabilitado={ocupado}
+          />
           <Boton
             texto="Finalizar conteo"
             onPress={finalizar}
@@ -1308,16 +1672,28 @@ function PanelConfirmar({
       }
     >
       {/* El resumen como lectura: tres cifras que se comparan de un vistazo. */}
-      <View style={estilos.resumen} accessible accessibilityLabel={`${productos.length} productos revisados: ${conCantidad} con cantidad y ${enCero} en cero`}>
+      <View
+        style={estilos.resumen}
+        accessible
+        accessibilityLabel={`${productos.length} productos revisados: ${conCantidad} con cantidad y ${enCero} en cero`}
+      >
         <CifraResumen valor={productos.length} rotulo="Revisados" />
-        <CifraResumen valor={conCantidad} rotulo="Con cantidad" tono="capturado" />
+        <CifraResumen
+          valor={conCantidad}
+          rotulo="Con cantidad"
+          tono="capturado"
+        />
         <CifraResumen valor={enCero} rotulo="No llevan" tono="pendiente" />
       </View>
 
       {!puedeFinalizar && !error && (
         <BloqueError
           tono="atencion"
-          titulo={bloqueo === 'sin-conexion' ? 'Se perdió la conexión' : 'Falta enviar parte del conteo'}
+          titulo={
+            bloqueo === 'sin-conexion'
+              ? 'Se perdió la conexión'
+              : 'Falta enviar parte del conteo'
+          }
           detalle={
             bloqueo === 'sin-conexion'
               ? 'Para finalizar necesitas señal: así se comparan los dos conteos.'
@@ -1332,14 +1708,35 @@ function PanelConfirmar({
 }
 
 /** Una cifra del resumen: el número domina, el rótulo debajo. */
-function CifraResumen({ valor, rotulo, tono }: { valor: number; rotulo: string; tono?: 'capturado' | 'pendiente' }) {
-  const color = tono === 'capturado' ? COLORES.capturadoHondo : tono === 'pendiente' ? COLORES.pendiente : COLORES.texto;
+function CifraResumen({
+  valor,
+  rotulo,
+  tono,
+}: {
+  valor: number;
+  rotulo: string;
+  tono?: 'capturado' | 'pendiente';
+}) {
+  const color =
+    tono === 'capturado'
+      ? COLORES.capturadoHondo
+      : tono === 'pendiente'
+        ? COLORES.pendiente
+        : COLORES.texto;
   return (
     <View style={estilos.cifraResumen}>
-      <Text style={[estilos.numeroResumen, { color }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+      <Text
+        style={[estilos.numeroResumen, { color }]}
+        maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+      >
         {valor}
       </Text>
-      <Text style={estilos.rotuloResumen} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+      <Text
+        style={estilos.rotuloResumen}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+      >
         {rotulo}
       </Text>
     </View>

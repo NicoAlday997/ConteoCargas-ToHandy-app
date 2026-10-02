@@ -26,9 +26,13 @@ export function formatearNombreProducto(nombre: string): string {
 function formatearPalabra(palabra: string): string {
   if (/\d/.test(palabra)) return palabra;
   const letras = [...palabra].filter((c) => LETRA.test(c)).join('');
-  if (letras === '' || letras !== letras.toUpperCase() || esSigla(letras)) return palabra;
+  if (letras === '' || letras !== letras.toUpperCase() || esSigla(letras))
+    return palabra;
   // Por tramo de letras: "COCA-COLA" → "Coca-Cola".
-  return palabra.replace(TRAMO_LETRAS, (tramo) => tramo.charAt(0) + tramo.slice(1).toLowerCase());
+  return palabra.replace(
+    TRAMO_LETRAS,
+    (tramo) => tramo.charAt(0) + tramo.slice(1).toLowerCase(),
+  );
 }
 
 function esSigla(letras: string): boolean {

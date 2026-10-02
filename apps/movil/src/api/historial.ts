@@ -107,10 +107,19 @@ export interface DetalleHistorialApi {
   familias: FamiliaConsolidadaApi[] | null;
 }
 
-export function listarHistorial(page: number, pageSize: number): Promise<PaginaHistorialApi | null> {
-  return peticion<PaginaHistorialApi | null>(`/historial?page=${page}&pageSize=${pageSize}`);
+export function listarHistorial(
+  page: number,
+  pageSize: number,
+): Promise<PaginaHistorialApi | null> {
+  return peticion<PaginaHistorialApi | null>(
+    `/historial?page=${page}&pageSize=${pageSize}`,
+  );
 }
 
-export function obtenerDetalleHistorial(eventoId: string): Promise<DetalleHistorialApi | null> {
-  return peticion<DetalleHistorialApi | null>(`/historial/${encodeURIComponent(eventoId)}`);
+export function obtenerDetalleHistorial(
+  eventoId: string,
+): Promise<DetalleHistorialApi | null> {
+  return peticion<DetalleHistorialApi | null>(
+    `/historial/${encodeURIComponent(eventoId)}`,
+  );
 }

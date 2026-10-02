@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { mesDe, moverMes, semanasDelMes, tituloMes } from './modelo-calendario.ts';
+import {
+  mesDe,
+  moverMes,
+  semanasDelMes,
+  tituloMes,
+} from './modelo-calendario.ts';
 
 describe('semanasDelMes', () => {
   it('septiembre 2026 empieza en martes y los domingos van en la última columna', () => {
@@ -35,8 +40,14 @@ describe('semanasDelMes', () => {
 
 describe('moverMes', () => {
   it('cruza el año hacia adelante y hacia atrás', () => {
-    assert.deepEqual(moverMes({ anio: 2026, mes: 12 }, 1), { anio: 2027, mes: 1 });
-    assert.deepEqual(moverMes({ anio: 2027, mes: 1 }, -1), { anio: 2026, mes: 12 });
+    assert.deepEqual(moverMes({ anio: 2026, mes: 12 }, 1), {
+      anio: 2027,
+      mes: 1,
+    });
+    assert.deepEqual(moverMes({ anio: 2027, mes: 1 }, -1), {
+      anio: 2026,
+      mes: 12,
+    });
   });
 });
 

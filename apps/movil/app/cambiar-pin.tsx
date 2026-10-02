@@ -5,17 +5,29 @@ import { Redirect, router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../src/api/cliente';
 import { useCambiarPin } from '../src/api/hooks-auth';
-import { cerrarSesion, obtenerPinTemporal, olvidarPinTemporal } from '../src/api/sesion';
 import {
-  Chevron,
-  Encabezado,
-  Pulsable,
-} from '../src/componentes/base';
-import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
+  cerrarSesion,
+  obtenerPinTemporal,
+  olvidarPinTemporal,
+} from '../src/api/sesion';
+import { Chevron, Encabezado, Pulsable } from '../src/componentes/base';
+import {
+  IndicadoresPin,
+  LONGITUD_PIN,
+} from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useBarraEstado } from '../src/theme/barra-estado';
 import { useLayout } from '../src/theme/breakpoints';
-import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO } from '../src/theme/tokens';
+import {
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TONOS,
+  TOQUE_MINIMO,
+} from '../src/theme/tokens';
 
 const ANCHO_MAXIMO_PIN = 440;
 
@@ -54,10 +66,13 @@ export default function PantallaCambiarPin() {
   };
 
   useEffect(() => {
-    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
-      cancelar();
-      return true;
-    });
+    const suscripcion = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        cancelar();
+        return true;
+      },
+    );
     return () => suscripcion.remove();
   });
 
@@ -95,7 +110,8 @@ export default function PantallaCambiarPin() {
             setCantidad(0);
             setAviso({
               titulo: 'Sin conexión',
-              detalle: 'Tu PIN no se cambió. Verifica la conexión y vuelve a confirmarlo.',
+              detalle:
+                'Tu PIN no se cambió. Verifica la conexión y vuelve a confirmarlo.',
               tono: 'discrepancia',
             });
             return;
@@ -121,7 +137,11 @@ export default function PantallaCambiarPin() {
     if (etapa === 'nuevo') {
       if (pin === pinActual) {
         reiniciar(
-          { titulo: 'Elige un PIN distinto', detalle: 'El PIN nuevo no puede ser igual al temporal.', tono: 'error' },
+          {
+            titulo: 'Elige un PIN distinto',
+            detalle: 'El PIN nuevo no puede ser igual al temporal.',
+            tono: 'error',
+          },
           true,
         );
         return;
@@ -135,7 +155,11 @@ export default function PantallaCambiarPin() {
 
     if (pin !== pinNuevoRef.current) {
       reiniciar(
-        { titulo: 'Los PIN no coinciden', detalle: 'Empieza de nuevo: teclea tu PIN nuevo.', tono: 'error' },
+        {
+          titulo: 'Los PIN no coinciden',
+          detalle: 'Empieza de nuevo: teclea tu PIN nuevo.',
+          tono: 'error',
+        },
         true,
       );
       return;
@@ -169,18 +193,35 @@ export default function PantallaCambiarPin() {
             disabled={enviando}
             accessibilityRole="button"
             accessibilityLabel="Cancelar y cerrar sesión"
-            style={({ pressed }) => [estilos.botonCancelar, pressed && estilos.botonCancelarPresionado]}
+            style={({ pressed }) => [
+              estilos.botonCancelar,
+              pressed && estilos.botonCancelarPresionado,
+            ]}
           >
             {({ pressed }) => (
               <>
-                <Chevron direccion="izquierda" color={pressed ? COLORES.textoSobreColor : undefined} />
-                <Text style={[estilos.textoBotonCancelar, pressed && estilos.textoInvertido]}>Cancelar</Text>
+                <Chevron
+                  direccion="izquierda"
+                  color={pressed ? COLORES.textoSobreColor : undefined}
+                />
+                <Text
+                  style={[
+                    estilos.textoBotonCancelar,
+                    pressed && estilos.textoInvertido,
+                  ]}
+                >
+                  Cancelar
+                </Text>
               </>
             )}
           </Pulsable>
           <View style={estilos.titulo}>
             <Encabezado
-              titulo={etapa === 'nuevo' ? 'Crea tu PIN nuevo' : 'Confirma tu PIN nuevo'}
+              titulo={
+                etapa === 'nuevo'
+                  ? 'Crea tu PIN nuevo'
+                  : 'Confirma tu PIN nuevo'
+              }
               subtitulo={
                 etapa === 'nuevo'
                   ? `Tu PIN actual es temporal. Teclea ${LONGITUD_PIN} dígitos que solo tú conozcas.`
@@ -198,8 +239,21 @@ export default function PantallaCambiarPin() {
               <Text style={estilos.textoGuardando}>Guardando…</Text>
             ) : (
               aviso && (
-                <View accessibilityRole="alert" style={[estilos.recuadroAviso, { backgroundColor: TONOS[aviso.tono].fondo }]}>
-                  <Text style={[estilos.tituloAviso, { color: TONOS[aviso.tono].texto }]}>{aviso.titulo}</Text>
+                <View
+                  accessibilityRole="alert"
+                  style={[
+                    estilos.recuadroAviso,
+                    { backgroundColor: TONOS[aviso.tono].fondo },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      estilos.tituloAviso,
+                      { color: TONOS[aviso.tono].texto },
+                    ]}
+                  >
+                    {aviso.titulo}
+                  </Text>
                   <Text style={estilos.detalleAviso}>{aviso.detalle}</Text>
                 </View>
               )
@@ -207,7 +261,11 @@ export default function PantallaCambiarPin() {
           </View>
         </View>
 
-        <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} />
+        <TecladoPin
+          onDigito={alDigito}
+          onBorrar={alBorrar}
+          deshabilitado={enviando}
+        />
       </View>
     </SafeAreaView>
   );

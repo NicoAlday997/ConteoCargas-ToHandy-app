@@ -12,7 +12,8 @@ import { clavesCargas } from './hooks-cargas';
 
 export const clavesCalendario = {
   noLaborables: ['calendario', 'no-laborables'] as const,
-  cargasDelDia: (fecha: string) => ['calendario', 'cargas-del-dia', fecha] as const,
+  cargasDelDia: (fecha: string) =>
+    ['calendario', 'cargas-del-dia', fecha] as const,
 };
 
 /** Un 403 o un 409 no se arreglan reintentando. */
@@ -37,14 +38,17 @@ function useInvalidarCalendario() {
   const cliente = useQueryClient();
   return () => {
     void cliente.invalidateQueries({ queryKey: clavesCalendario.noLaborables });
-    void cliente.invalidateQueries({ queryKey: clavesCargas.fechasDisponibles });
+    void cliente.invalidateQueries({
+      queryKey: clavesCargas.fechasDisponibles,
+    });
   };
 }
 
 export function useMarcarDiaNoLaborable() {
   const invalidar = useInvalidarCalendario();
   return useMutation({
-    mutationFn: ({ fecha, motivo }: { fecha: string; motivo: string }) => marcarDiaNoLaborable(fecha, motivo),
+    mutationFn: ({ fecha, motivo }: { fecha: string; motivo: string }) =>
+      marcarDiaNoLaborable(fecha, motivo),
     onSettled: invalidar,
   });
 }
@@ -76,8 +80,15 @@ export function useCargasDelDia(fecha: string | null) {
 export function useRecorrerCargas() {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: ({ fechaOrigen, fechaDestino, motivo }: { fechaOrigen: string; fechaDestino: string; motivo: string }) =>
-      recorrerCargas(fechaOrigen, fechaDestino, motivo),
+    mutationFn: ({
+      fechaOrigen,
+      fechaDestino,
+      motivo,
+    }: {
+      fechaOrigen: string;
+      fechaDestino: string;
+      motivo: string;
+    }) => recorrerCargas(fechaOrigen, fechaDestino, motivo),
     onSettled: () => {
       void cliente.invalidateQueries({ queryKey: ['calendario'] });
       void cliente.invalidateQueries({ queryKey: ['cargas'] });

@@ -25,7 +25,11 @@ export const clavesSupervisor = {
 const INTERVALO_COLA_MS = 60_000;
 
 /** Autorizadas que aún no están en Handy: listas, con error o con envío sin confirmar. */
-const ESTADOS_POR_ENVIAR: readonly EstadoCargaApi[] = ['LISTA_PARA_ENVIAR', 'ENVIO_INCIERTO', 'ERROR_ENVIO'];
+const ESTADOS_POR_ENVIAR: readonly EstadoCargaApi[] = [
+  'LISTA_PARA_ENVIAR',
+  'ENVIO_INCIERTO',
+  'ERROR_ENVIO',
+];
 
 /** Un 403 no se arregla reintentando: se muestra de inmediato. */
 function reintentar(fallos: number, error: unknown): boolean {
@@ -39,7 +43,8 @@ function reintentar(fallos: number, error: unknown): boolean {
  * en vez de tirar la cola completa.
  */
 async function leerCola() {
-  const items = (await listarCargasPorEstado('EN_ESPERA_AUTORIZACION'))?.items ?? [];
+  const items =
+    (await listarCargasPorEstado('EN_ESPERA_AUTORIZACION'))?.items ?? [];
   const tiempos = await Promise.all(
     items.map(async (c): Promise<[string, EventoConTiemposApi | null]> => {
       const id = c.id ?? '';
@@ -55,7 +60,9 @@ async function leerCola() {
 }
 
 async function leerPorEnviar() {
-  const paginas = await Promise.all(ESTADOS_POR_ENVIAR.map((estado) => listarCargasPorEstado(estado)));
+  const paginas = await Promise.all(
+    ESTADOS_POR_ENVIAR.map((estado) => listarCargasPorEstado(estado)),
+  );
   return armarPorEnviar(paginas.flatMap((p) => p?.items ?? []));
 }
 
@@ -103,7 +110,8 @@ export function useAutorizarCarga(eventoId: string) {
 export function useRechazarProductos(eventoId: string) {
   const invalidar = useInvalidarTrasAccion();
   return useMutation({
-    mutationFn: (productos: readonly ProductoRechazado[]) => rechazarProductos(eventoId, productos),
+    mutationFn: (productos: readonly ProductoRechazado[]) =>
+      rechazarProductos(eventoId, productos),
     onSettled: invalidar,
   });
 }
@@ -143,7 +151,9 @@ export function useCancelarCargaSupervisor(eventoId: string) {
   const invalidar = useInvalidarTrasAccion();
   return useMutation({
     mutationFn: ({ enHandy, motivo }: VariablesCancelar) =>
-      enHandy ? cancelarEnHandy(eventoId, motivo) : cancelarCarga(eventoId, motivo),
+      enHandy
+        ? cancelarEnHandy(eventoId, motivo)
+        : cancelarCarga(eventoId, motivo),
     onSettled: invalidar,
   });
 }

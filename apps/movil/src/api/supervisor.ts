@@ -11,8 +11,12 @@ import type { EstadoCargaApi, PaginaHistorialApi } from './historial';
 const TAMANO_PAGINA = 100;
 
 /** Cargas en un estado, de todas las rutas (el supervisor ve todo el historial). */
-export async function listarCargasPorEstado(estado: EstadoCargaApi): Promise<PaginaHistorialApi | null> {
-  return peticion<PaginaHistorialApi | null>(`/historial?estado=${estado}&page=1&pageSize=${TAMANO_PAGINA}`);
+export async function listarCargasPorEstado(
+  estado: EstadoCargaApi,
+): Promise<PaginaHistorialApi | null> {
+  return peticion<PaginaHistorialApi | null>(
+    `/historial?estado=${estado}&page=1&pageSize=${TAMANO_PAGINA}`,
+  );
 }
 
 /**
@@ -25,14 +29,22 @@ export interface EventoConTiemposApi {
   discrepancias: { fechaConfirmacion: string | null }[] | null;
 }
 
-export function obtenerTiemposEvento(eventoId: string): Promise<EventoConTiemposApi | null> {
-  return peticion<EventoConTiemposApi | null>(`/eventos-carga/${encodeURIComponent(eventoId)}`);
+export function obtenerTiemposEvento(
+  eventoId: string,
+): Promise<EventoConTiemposApi | null> {
+  return peticion<EventoConTiemposApi | null>(
+    `/eventos-carga/${encodeURIComponent(eventoId)}`,
+  );
 }
 
-const rutaEvento = (eventoId: string) => `/eventos-carga/${encodeURIComponent(eventoId)}`;
+const rutaEvento = (eventoId: string) =>
+  `/eventos-carga/${encodeURIComponent(eventoId)}`;
 
 export function autorizarCarga(eventoId: string): Promise<unknown> {
-  return peticion<unknown>(`${rutaEvento(eventoId)}/autorizar`, { method: 'POST', cuerpo: {} });
+  return peticion<unknown>(`${rutaEvento(eventoId)}/autorizar`, {
+    method: 'POST',
+    cuerpo: {},
+  });
 }
 
 export interface ProductoRechazado {
@@ -41,8 +53,14 @@ export interface ProductoRechazado {
 }
 
 /** Solo los productos indicados vuelven a resolverse; nunca la carga completa. */
-export function rechazarProductos(eventoId: string, productos: readonly ProductoRechazado[]): Promise<unknown> {
-  return peticion<unknown>(`${rutaEvento(eventoId)}/rechazar-productos`, { method: 'POST', cuerpo: { productos } });
+export function rechazarProductos(
+  eventoId: string,
+  productos: readonly ProductoRechazado[],
+): Promise<unknown> {
+  return peticion<unknown>(`${rutaEvento(eventoId)}/rechazar-productos`, {
+    method: 'POST',
+    cuerpo: { productos },
+  });
 }
 
 /**
@@ -50,11 +68,19 @@ export function rechazarProductos(eventoId: string, productos: readonly Producto
  * por el supervisor y sin confirmar, y la carga vuelve a diferencias por
  * resolver hasta que el vendedor o el contador la confirmen con su PIN.
  */
-export function modificarCantidad(eventoId: string, productoCode: string, cantidadNueva: number, motivo: string): Promise<unknown> {
-  return peticion<unknown>(`${rutaEvento(eventoId)}/productos/${encodeURIComponent(productoCode)}/modificar`, {
-    method: 'POST',
-    cuerpo: { cantidadNueva, motivo },
-  });
+export function modificarCantidad(
+  eventoId: string,
+  productoCode: string,
+  cantidadNueva: number,
+  motivo: string,
+): Promise<unknown> {
+  return peticion<unknown>(
+    `${rutaEvento(eventoId)}/productos/${encodeURIComponent(productoCode)}/modificar`,
+    {
+      method: 'POST',
+      cuerpo: { cantidadNueva, motivo },
+    },
+  );
 }
 
 export interface RespuestaEnviarApi {
@@ -65,8 +91,13 @@ export interface RespuestaEnviarApi {
   productosRechazados: string[] | null;
 }
 
-export function enviarCarga(eventoId: string): Promise<RespuestaEnviarApi | null> {
-  return peticion<RespuestaEnviarApi | null>(`${rutaEvento(eventoId)}/enviar`, { method: 'POST', cuerpo: {} });
+export function enviarCarga(
+  eventoId: string,
+): Promise<RespuestaEnviarApi | null> {
+  return peticion<RespuestaEnviarApi | null>(`${rutaEvento(eventoId)}/enviar`, {
+    method: 'POST',
+    cuerpo: {},
+  });
 }
 
 /** 409 de `cancelar-en-handy`: Handy ya no deja cancelar (el vendedor ya aceptó la ruta). */
@@ -77,7 +108,10 @@ export const CODIGO_HANDY_RECHAZO = 'HANDY_RECHAZO';
  * El servidor pide a Handy que cancele la ruta y solo si Handy acepta la marca
  * cancelada. Si Handy dice que no, nada cambia.
  */
-export function cancelarEnHandy(eventoId: string, motivo: string): Promise<unknown> {
+export function cancelarEnHandy(
+  eventoId: string,
+  motivo: string,
+): Promise<unknown> {
   return peticion<unknown>(`${rutaEvento(eventoId)}/cancelar-en-handy`, {
     method: 'POST',
     cuerpo: { motivo: motivo.trim() },

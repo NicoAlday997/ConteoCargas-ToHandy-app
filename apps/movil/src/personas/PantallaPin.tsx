@@ -4,7 +4,15 @@ import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BarraAccion, Boton, Encabezado, Tarjeta } from '../componentes/base';
-import { ANCHO_MAXIMO_LISTA, CIFRAS, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import {
+  ANCHO_MAXIMO_LISTA,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
 import { textoPinUnaVez } from './modelo-personas';
 
 /** Lo que llega del servidor tras un alta o un restablecimiento. */
@@ -30,14 +38,22 @@ export interface PinTemporal {
  * `PantallaModal` de donde salió (en vez de abrir otra encima): en iOS,
  * cerrar un modal y abrir otro a la vez puede dejar el segundo sin mostrarse.
  */
-export function PantallaPin({ datos, onListo }: { datos: PinTemporal; onListo: () => void }) {
+export function PantallaPin({
+  datos,
+  onListo,
+}: {
+  datos: PinTemporal;
+  onListo: () => void;
+}) {
   const { pin } = datos;
   // Cuál se copió: un PIN nuevo empieza sin copiar.
   const [copiadoDe, setCopiadoDe] = useState<string | null>(null);
   const copiado = copiadoDe === pin;
 
   const copiar = () => {
-    void Clipboard.setStringAsync(pin).then((ok) => setCopiadoDe(ok !== false ? pin : null));
+    void Clipboard.setStringAsync(pin).then((ok) =>
+      setCopiadoDe(ok !== false ? pin : null),
+    );
   };
 
   return (
@@ -66,10 +82,17 @@ export function PantallaPin({ datos, onListo }: { datos: PinTemporal; onListo: (
           />
         </Tarjeta>
         <Text style={estilos.aviso}>{textoPinUnaVez(datos.nombre)}</Text>
-        <Text style={estilos.nota}>Si se pierde, tendrás que restablecerlo desde su ficha en Personas.</Text>
+        <Text style={estilos.nota}>
+          Si se pierde, tendrás que restablecerlo desde su ficha en Personas.
+        </Text>
       </ScrollView>
       <BarraAccion>
-        <Boton texto="Ya se lo di" onPress={onListo} style={estilos.boton} accessibilityHint="Cierra esta pantalla; el PIN ya no se vuelve a mostrar" />
+        <Boton
+          texto="Ya se lo di"
+          onPress={onListo}
+          style={estilos.boton}
+          accessibilityHint="Cierra esta pantalla; el PIN ya no se vuelve a mostrar"
+        />
       </BarraAccion>
     </SafeAreaView>
   );

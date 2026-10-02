@@ -19,45 +19,78 @@ const AHORA = new Date('2026-09-30T16:00:00.000Z');
 
 describe('textoUltimaSincronizacion', () => {
   it('nunca sincronizado', () => {
-    assert.deepEqual(textoUltimaSincronizacion(null, AHORA), { texto: 'Nunca se ha sincronizado', vieja: true });
-  });
-
-  it('hoy a las 5:00 a.m., en la hora del negocio', () => {
-    assert.deepEqual(textoUltimaSincronizacion('2026-09-30T11:00:00.000Z', AHORA), {
-      texto: 'Última vez: hoy a las 5:00 a.m.',
-      vieja: false,
+    assert.deepEqual(textoUltimaSincronizacion(null, AHORA), {
+      texto: 'Nunca se ha sincronizado',
+      vieja: true,
     });
   });
 
+  it('hoy a las 5:00 a.m., en la hora del negocio', () => {
+    assert.deepEqual(
+      textoUltimaSincronizacion('2026-09-30T11:00:00.000Z', AHORA),
+      {
+        texto: 'Última vez: hoy a las 5:00 a.m.',
+        vieja: false,
+      },
+    );
+  });
+
   it('ayer por la noche, en 12 h', () => {
-    assert.equal(textoUltimaSincronizacion('2026-09-30T03:30:00.000Z', AHORA).texto, 'Última vez: ayer a las 9:30 p.m.');
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-30T03:30:00.000Z', AHORA).texto,
+      'Última vez: ayer a las 9:30 p.m.',
+    );
   });
 
   it('mediodía y medianoche', () => {
-    assert.equal(textoUltimaSincronizacion('2026-09-30T18:05:00.000Z', AHORA).texto, 'Última vez: hoy a las 12:05 p.m.');
-    assert.equal(textoUltimaSincronizacion('2026-09-30T06:00:00.000Z', AHORA).texto, 'Última vez: hoy a las 12:00 a.m.');
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-30T18:05:00.000Z', AHORA).texto,
+      'Última vez: hoy a las 12:05 p.m.',
+    );
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-30T06:00:00.000Z', AHORA).texto,
+      'Última vez: hoy a las 12:00 a.m.',
+    );
   });
 
   it('más atrás lleva la fecha corta', () => {
-    assert.equal(textoUltimaSincronizacion('2026-09-28T11:00:00.000Z', AHORA).texto, 'Última vez: el 28 sep a las 5:00 a.m.');
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-28T11:00:00.000Z', AHORA).texto,
+      'Última vez: el 28 sep a las 5:00 a.m.',
+    );
   });
 
   it('se marca vieja con más de 3 días', () => {
-    assert.equal(textoUltimaSincronizacion('2026-09-27T16:00:00.000Z', AHORA).vieja, false);
-    assert.equal(textoUltimaSincronizacion('2026-09-27T15:59:00.000Z', AHORA).vieja, true);
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-27T16:00:00.000Z', AHORA).vieja,
+      false,
+    );
+    assert.equal(
+      textoUltimaSincronizacion('2026-09-27T15:59:00.000Z', AHORA).vieja,
+      true,
+    );
   });
 });
 
 describe('resumirSincronizacion', () => {
   it('solo los renglones con algo que decir', () => {
     const resumen = resumirSincronizacion({
-      productos: { nuevos: 3, actualizados: 1, desactivados: 0, sinConfirmarEmpaque: 2 },
+      productos: {
+        nuevos: 3,
+        actualizados: 1,
+        desactivados: 0,
+        sinConfirmarEmpaque: 2,
+      },
       vendedores: { nuevos: 0, actualizados: 1, desactivados: 0 },
       sincronizadoEn: '2026-09-30T21:00:00.000Z',
     });
     assert.deepEqual(resumen, {
       titulo: 'Se actualizó el catálogo',
-      renglones: ['3 productos nuevos', '1 producto actualizado', '1 vendedor actualizado'],
+      renglones: [
+        '3 productos nuevos',
+        '1 producto actualizado',
+        '1 vendedor actualizado',
+      ],
       sinConfirmarEmpaque: 2,
       errorVendedores: null,
     });
@@ -65,7 +98,12 @@ describe('resumirSincronizacion', () => {
 
   it('sin cambios: todo al día', () => {
     const resumen = resumirSincronizacion({
-      productos: { nuevos: 0, actualizados: 0, desactivados: 0, sinConfirmarEmpaque: 0 },
+      productos: {
+        nuevos: 0,
+        actualizados: 0,
+        desactivados: 0,
+        sinConfirmarEmpaque: 0,
+      },
       vendedores: { nuevos: 0, actualizados: 0, desactivados: 0 },
       sincronizadoEn: null,
     });
@@ -75,42 +113,75 @@ describe('resumirSincronizacion', () => {
 
   it('los dados de baja también se dicen', () => {
     const resumen = resumirSincronizacion({
-      productos: { nuevos: 0, actualizados: 0, desactivados: 2, sinConfirmarEmpaque: 0 },
+      productos: {
+        nuevos: 0,
+        actualizados: 0,
+        desactivados: 2,
+        sinConfirmarEmpaque: 0,
+      },
       vendedores: { nuevos: 0, actualizados: 0, desactivados: 1 },
       sincronizadoEn: null,
     });
-    assert.deepEqual(resumen.renglones, ['2 productos dados de baja en Handy', '1 vendedor dado de baja en Handy']);
+    assert.deepEqual(resumen.renglones, [
+      '2 productos dados de baja en Handy',
+      '1 vendedor dado de baja en Handy',
+    ]);
   });
 
   it('vendedores que fallaron: el motivo', () => {
     const resumen = resumirSincronizacion({
-      productos: { nuevos: 1, actualizados: 0, desactivados: 0, sinConfirmarEmpaque: 0 },
+      productos: {
+        nuevos: 1,
+        actualizados: 0,
+        desactivados: 0,
+        sinConfirmarEmpaque: 0,
+      },
       vendedores: null,
       errorVendedores: 'Handy no esta disponible en este momento.',
       sincronizadoEn: null,
     });
-    assert.equal(resumen.errorVendedores, 'Handy no esta disponible en este momento.');
+    assert.equal(
+      resumen.errorVendedores,
+      'Handy no esta disponible en este momento.',
+    );
     assert.deepEqual(resumen.renglones, ['1 producto nuevo']);
   });
 });
 
 describe('textoSinConfirmar', () => {
   it('singular y plural', () => {
-    assert.equal(textoSinConfirmar(1), '1 producto no se puede contar hasta que confirmes cómo se vende.');
-    assert.equal(textoSinConfirmar(2), '2 productos no se pueden contar hasta que confirmes cómo se venden.');
+    assert.equal(
+      textoSinConfirmar(1),
+      '1 producto no se puede contar hasta que confirmes cómo se vende.',
+    );
+    assert.equal(
+      textoSinConfirmar(2),
+      '2 productos no se pueden contar hasta que confirmes cómo se venden.',
+    );
   });
 });
 
 describe('falloSincronizacion', () => {
   it('Handy caído: reintentable', () => {
-    const fallo = falloSincronizacion({ sinRed: false, estado: 502, codigo: 'HANDY_NO_DISPONIBLE' });
+    const fallo = falloSincronizacion({
+      sinRed: false,
+      estado: 502,
+      codigo: 'HANDY_NO_DISPONIBLE',
+    });
     assert.equal(fallo.titulo, 'Handy no respondió');
-    assert.equal(fallo.detalle, 'Vuelve a intentarlo en un momento; no se perdió nada.');
+    assert.equal(
+      fallo.detalle,
+      'Vuelve a intentarlo en un momento; no se perdió nada.',
+    );
     assert.equal(fallo.reintentable, true);
   });
 
   it('token inválido: no se arregla reintentando', () => {
-    const fallo = falloSincronizacion({ sinRed: false, estado: 502, codigo: 'HANDY_TOKEN_INVALIDO' });
+    const fallo = falloSincronizacion({
+      sinRed: false,
+      estado: 502,
+      codigo: 'HANDY_TOKEN_INVALIDO',
+    });
     assert.equal(fallo.titulo, 'Handy rechazó la conexión');
     assert.equal(fallo.reintentable, false);
   });
@@ -120,24 +191,41 @@ describe('falloSincronizacion', () => {
   });
 
   it('429 del candado: informativo, sin reintento inmediato', () => {
-    const fallo = falloSincronizacion({ sinRed: false, estado: 429, codigo: 'SINCRONIZACION_RECIENTE' });
-    assert.equal(fallo.detalle, 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.');
+    const fallo = falloSincronizacion({
+      sinRed: false,
+      estado: 429,
+      codigo: 'SINCRONIZACION_RECIENTE',
+    });
+    assert.equal(
+      fallo.detalle,
+      'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.',
+    );
     assert.equal(fallo.detalle, AVISO_SINCRONIZACION_RECIENTE);
     assert.equal(fallo.informativo, true);
     assert.equal(fallo.reintentable, false);
   });
 
   it('429 tras un intento fallido: no dice que alguien sincronizó', () => {
-    const fallo = falloSincronizacion({ sinRed: false, estado: 429, codigo: 'SINCRONIZACION_FALLIDA_RECIENTE' });
+    const fallo = falloSincronizacion({
+      sinRed: false,
+      estado: 429,
+      codigo: 'SINCRONIZACION_FALLIDA_RECIENTE',
+    });
     assert.equal(fallo.titulo, 'El intento anterior falló');
-    assert.equal(fallo.detalle, 'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.');
+    assert.equal(
+      fallo.detalle,
+      'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.',
+    );
     assert.equal(fallo.detalle, AVISO_SINCRONIZACION_FALLIDA_RECIENTE);
     assert.equal(fallo.informativo, true);
     assert.equal(fallo.reintentable, false);
   });
 
   it('los errores de verdad no son informativos', () => {
-    assert.equal(falloSincronizacion({ sinRed: false, estado: 502 }).informativo, false);
+    assert.equal(
+      falloSincronizacion({ sinRed: false, estado: 502 }).informativo,
+      false,
+    );
   });
 });
 
@@ -157,7 +245,10 @@ describe('remateSinPermiso', () => {
   });
 
   it('el contador no tiene ruta propia', () => {
-    assert.match(remateSinPermiso('CONTADOR', 2, 'Un supervisor') ?? '', /agregarlos a las rutas\.$/);
+    assert.match(
+      remateSinPermiso('CONTADOR', 2, 'Un supervisor') ?? '',
+      /agregarlos a las rutas\.$/,
+    );
   });
 
   it('sin productos nuevos, o para el supervisor: nada', () => {

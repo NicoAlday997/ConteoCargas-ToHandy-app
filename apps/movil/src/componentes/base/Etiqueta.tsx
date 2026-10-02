@@ -1,6 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BORDES, CIFRAS, COLORES, ESCALA_TEXTO, ESPACIADO, FUENTE, PLACA, RADIOS, TIPOGRAFIA, TONOS, type ColorTono } from '../../theme/tokens';
+import {
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESCALA_TEXTO,
+  ESPACIADO,
+  FUENTE,
+  PLACA,
+  RADIOS,
+  TIPOGRAFIA,
+  TONOS,
+  type ColorTono,
+} from '../../theme/tokens';
 
 /**
  * - Un estado (`capturado`, `discrepancia`…): bloque tintado del estado, texto oscuro del mismo tono.
@@ -50,16 +62,34 @@ const EM_CUATRO_CARACTERES = 3.5;
 const LETRA_DESTACADA = 17;
 const ANCHO_MINIMO: Record<TamanoEtiqueta, number> = {
   normal: Math.ceil(EM_CUATRO_CARACTERES * PLACA.fontSize) + 2 * ESPACIADO.md,
-  destacada: Math.ceil(EM_CUATRO_CARACTERES * LETRA_DESTACADA) + 2 * ESPACIADO.md,
-  grande: Math.ceil(EM_CUATRO_CARACTERES * TIPOGRAFIA.titulo.fontSize) + 2 * ESPACIADO.md,
+  destacada:
+    Math.ceil(EM_CUATRO_CARACTERES * LETRA_DESTACADA) + 2 * ESPACIADO.md,
+  grande:
+    Math.ceil(EM_CUATRO_CARACTERES * TIPOGRAFIA.titulo.fontSize) +
+    2 * ESPACIADO.md,
 };
 
 /** Sólido, fondo tintado y texto sobre ese fondo, por tono. */
-const COLORES_TONO: Record<TonoEtiqueta, { solido: string; fondo: string; texto: string }> = {
+const COLORES_TONO: Record<
+  TonoEtiqueta,
+  { solido: string; fondo: string; texto: string }
+> = {
   ...TONOS,
-  fuerte: { solido: COLORES.marca, fondo: COLORES.superficieHonda, texto: COLORES.texto },
-  neutro: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.texto },
-  referencia: { solido: COLORES.superficieHonda, fondo: COLORES.superficieHonda, texto: COLORES.textoSecundario },
+  fuerte: {
+    solido: COLORES.marca,
+    fondo: COLORES.superficieHonda,
+    texto: COLORES.texto,
+  },
+  neutro: {
+    solido: COLORES.superficieHonda,
+    fondo: COLORES.superficieHonda,
+    texto: COLORES.texto,
+  },
+  referencia: {
+    solido: COLORES.superficieHonda,
+    fondo: COLORES.superficieHonda,
+    texto: COLORES.textoSecundario,
+  },
 };
 
 export function Etiqueta({
@@ -74,9 +104,16 @@ export function Etiqueta({
   let apariencia;
   let colorTexto: string;
   if (relleno === 'contorno') {
-    apariencia = [estilos.contorno, { borderColor: tono === 'neutro' ? COLORES.borde : colores.solido }];
+    apariencia = [
+      estilos.contorno,
+      { borderColor: tono === 'neutro' ? COLORES.borde : colores.solido },
+    ];
     colorTexto = tono === 'neutro' ? COLORES.texto : colores.solido;
-  } else if (relleno === 'tintada' || tono === 'neutro' || tono === 'referencia') {
+  } else if (
+    relleno === 'tintada' ||
+    tono === 'neutro' ||
+    tono === 'referencia'
+  ) {
     apariencia = { backgroundColor: colores.fondo };
     colorTexto = colores.texto;
   } else if (tono === 'discrepancia') {
@@ -93,13 +130,19 @@ export function Etiqueta({
       style={[
         estilos.etiqueta,
         estilos[tamano],
-        anchoFijo ? [estilos.anchoFijo, { minWidth: ANCHO_MINIMO[tamano] }] : estilos.acotada,
+        anchoFijo
+          ? [estilos.anchoFijo, { minWidth: ANCHO_MINIMO[tamano] }]
+          : estilos.acotada,
         apariencia,
       ]}
       accessible={accessibilityLabel !== undefined}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text style={[estilos[`texto_${tamano}`], { color: colorTexto }]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+      <Text
+        style={[estilos[`texto_${tamano}`], { color: colorTexto }]}
+        numberOfLines={1}
+        maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+      >
         {texto}
       </Text>
     </View>

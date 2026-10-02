@@ -25,7 +25,8 @@ export interface CargaAbierta {
 }
 
 const PREFIJO = 'conteo_cargas';
-const claveCarga = (usuarioId: string) => `${PREFIJO}:carga_abierta:${usuarioId}`;
+const claveCarga = (usuarioId: string) =>
+  `${PREFIJO}:carga_abierta:${usuarioId}`;
 
 async function leerJson(clave: string): Promise<unknown> {
   try {
@@ -36,15 +37,29 @@ async function leerJson(clave: string): Promise<unknown> {
   }
 }
 
-export async function guardarCargaAbierta(usuarioId: string, carga: CargaAbierta): Promise<void> {
+export async function guardarCargaAbierta(
+  usuarioId: string,
+  carga: CargaAbierta,
+): Promise<void> {
   await AsyncStorage.setItem(claveCarga(usuarioId), JSON.stringify(carga));
 }
 
-export async function obtenerCargaAbierta(usuarioId: string): Promise<CargaAbierta | null> {
+export async function obtenerCargaAbierta(
+  usuarioId: string,
+): Promise<CargaAbierta | null> {
   const valor = await leerJson(claveCarga(usuarioId));
   if (typeof valor !== 'object' || valor === null) return null;
-  const { eventoId, sesionId, tipo, fechaOperativa } = valor as Record<string, unknown>;
-  if (typeof eventoId !== 'string' || !eventoId || typeof sesionId !== 'string' || !sesionId) return null;
+  const { eventoId, sesionId, tipo, fechaOperativa } = valor as Record<
+    string,
+    unknown
+  >;
+  if (
+    typeof eventoId !== 'string' ||
+    !eventoId ||
+    typeof sesionId !== 'string' ||
+    !sesionId
+  )
+    return null;
   return {
     eventoId,
     sesionId,
@@ -57,13 +72,23 @@ export async function obtenerCargaAbierta(usuarioId: string): Promise<CargaAbier
  * La carga se movió de día: el inicio debe mostrar la fecha nueva en
  * "Continuar carga". Solo si la guardada es esa misma carga.
  */
-export async function actualizarFechaCargaAbierta(usuarioId: string, eventoId: string, dia: string): Promise<void> {
+export async function actualizarFechaCargaAbierta(
+  usuarioId: string,
+  eventoId: string,
+  dia: string,
+): Promise<void> {
   const carga = await obtenerCargaAbierta(usuarioId);
   if (carga?.eventoId !== eventoId) return;
   await guardarCargaAbierta(usuarioId, { ...carga, fechaOperativa: dia });
 }
 
 /** Al finalizar: la sesión ya quedó cerrada en el servidor. */
-export async function olvidarCarga(usuarioId: string, carga: Pick<CargaAbierta, 'eventoId' | 'sesionId'>): Promise<void> {
-  await Promise.all([AsyncStorage.removeItem(claveCarga(usuarioId)), limpiarConteoLocal(carga.eventoId, carga.sesionId)]);
+export async function olvidarCarga(
+  usuarioId: string,
+  carga: Pick<CargaAbierta, 'eventoId' | 'sesionId'>,
+): Promise<void> {
+  await Promise.all([
+    AsyncStorage.removeItem(claveCarga(usuarioId)),
+    limpiarConteoLocal(carga.eventoId, carga.sesionId),
+  ]);
 }

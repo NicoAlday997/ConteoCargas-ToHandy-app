@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, FlatList, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown, SlideInLeft, SlideInRight } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  SlideInLeft,
+  SlideInRight,
+} from 'react-native-reanimated';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { ETIQUETAS_ROL } from '../src/api/auth';
@@ -26,7 +33,10 @@ import {
   SEPARACION_TARJETAS,
   Tarjeta,
 } from '../src/componentes/base';
-import { IndicadoresPin, LONGITUD_PIN } from '../src/componentes/IndicadoresPin';
+import {
+  IndicadoresPin,
+  LONGITUD_PIN,
+} from '../src/componentes/IndicadoresPin';
 import { TecladoPin } from '../src/componentes/TecladoPin';
 import { useLayout } from '../src/theme/breakpoints';
 import { useBarraEstado } from '../src/theme/barra-estado';
@@ -95,7 +105,11 @@ export default function PantallaLogin() {
         <Animated.View
           key="usuarios"
           style={estilos.paso}
-          entering={direccion === 'atras' ? SlideInLeft.duration(DURACION_TRANSICION_MS) : undefined}
+          entering={
+            direccion === 'atras'
+              ? SlideInLeft.duration(DURACION_TRANSICION_MS)
+              : undefined
+          }
         >
           <PasoUsuarios onElegir={elegir} />
         </Animated.View>
@@ -115,22 +129,36 @@ export default function PantallaLogin() {
 function BandaMarca({ titulo }: { titulo: string }) {
   const margenes = useSafeAreaInsets();
   return (
-    <View style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.xl }]}>
-      <View style={estilos.identidad} accessibilityRole="header" accessibilityLabel="Distribuidora Alday, control de cargas">
+    <View
+      style={[estilos.bandaMarca, { paddingTop: margenes.top + ESPACIADO.xl }]}
+    >
+      <View
+        style={estilos.identidad}
+        accessibilityRole="header"
+        accessibilityLabel="Distribuidora Alday, control de cargas"
+      >
         <View style={estilos.placaMarca}>
           <MarcaApp invertida tamano={TAMANO_MARCA} />
         </View>
         <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
         <Text style={estilos.lema}>Control de cargas</Text>
       </View>
-      <Text style={estilos.tituloBanda} accessibilityRole="header" numberOfLines={2}>
+      <Text
+        style={estilos.tituloBanda}
+        accessibilityRole="header"
+        numberOfLines={2}
+      >
         {titulo}
       </Text>
     </View>
   );
 }
 
-function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) {
+function PasoUsuarios({
+  onElegir,
+}: {
+  onElegir: (u: UsuarioElegible) => void;
+}) {
   const { columnas } = useLayout();
   const consulta = useUsuarios();
   const margenes = useSafeAreaInsets();
@@ -176,7 +204,12 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
         keyExtractor={(u) => u.id}
         numColumns={columnas}
         columnWrapperStyle={columnas > 1 ? estilos.filaColumnas : undefined}
-        contentContainerStyle={[estilos.contenidoLista, columnas === 1 && estilos.contenidoUnaColumna, estilos.separacionFilas, relleno]}
+        contentContainerStyle={[
+          estilos.contenidoLista,
+          columnas === 1 && estilos.contenidoUnaColumna,
+          estilos.separacionFilas,
+          relleno,
+        ]}
         ListEmptyComponent={
           // Sobre el cromo, el estado vacío va en su propia pieza blanca para leerse.
           <View style={estilos.piezaVacia}>
@@ -216,7 +249,13 @@ function PasoUsuarios({ onElegir }: { onElegir: (u: UsuarioElegible) => void }) 
   );
 }
 
-function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: () => void }) {
+function FilaUsuario({
+  usuario,
+  onPress,
+}: {
+  usuario: UsuarioElegible;
+  onPress: () => void;
+}) {
   const nombre = usuario.nombreCompleto?.trim() || 'Usuario sin nombre';
   const rol = usuario.rolApp ? ETIQUETAS_ROL[usuario.rolApp] : null;
 
@@ -228,7 +267,11 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
       accessibilityLabel={rol ? `${nombre}, ${rol}` : nombre}
       style={[estilos.filaUsuario, estilos.filaUsuarioContenido]}
     >
-      <Avatar nombre={nombre} fotoUrl={usuario.fotoUrl} tamano={TAMANO_AVATAR} />
+      <Avatar
+        nombre={nombre}
+        fotoUrl={usuario.fotoUrl}
+        tamano={TAMANO_AVATAR}
+      />
       <View style={estilos.datosUsuario}>
         <Text style={estilos.nombreUsuario} numberOfLines={2}>
           {nombre}
@@ -244,14 +287,30 @@ function FilaUsuario({ usuario, onPress }: { usuario: UsuarioElegible; onPress: 
 
 /** Mismo tamaño que una tarjeta de usuario, avatar incluido: al llegar la lista nada salta. */
 function SkeletonUsuarios({ columnas }: { columnas: number }) {
-  const filas = Array.from({ length: Math.ceil(FILAS_SKELETON / columnas) }, (_, i) => i);
+  const filas = Array.from(
+    { length: Math.ceil(FILAS_SKELETON / columnas) },
+    (_, i) => i,
+  );
   return (
     <Esqueleto etiqueta="Cargando usuarios" style={estilos.separacionFilas}>
       {filas.map((fila) => (
         <View key={fila} style={estilos.filaColumnas}>
           {Array.from({ length: columnas }, (_, col) => (
-            <View key={col} style={[estilos.filaUsuario, estilos.filaUsuarioContenido, estilos.filaSkeleton]}>
-              <View style={[estilos.avatar, estilos.avatarSkeleton, { width: TAMANO_AVATAR, height: TAMANO_AVATAR }]} />
+            <View
+              key={col}
+              style={[
+                estilos.filaUsuario,
+                estilos.filaUsuarioContenido,
+                estilos.filaSkeleton,
+              ]}
+            >
+              <View
+                style={[
+                  estilos.avatar,
+                  estilos.avatarSkeleton,
+                  { width: TAMANO_AVATAR, height: TAMANO_AVATAR },
+                ]}
+              />
               <View style={estilos.datosUsuario}>
                 <LineaEsqueleto nivel="titulo" ancho="65%" />
                 <LineaEsqueleto nivel="etiqueta" ancho="30%" />
@@ -268,7 +327,13 @@ function SkeletonUsuarios({ columnas }: { columnas: number }) {
 // Paso 2: captura del PIN (RF-02, RF-03)
 // ---------------------------------------------------------------------------
 
-function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: () => void }) {
+function PasoPin({
+  usuario,
+  onVolver,
+}: {
+  usuario: UsuarioElegible;
+  onVolver: () => void;
+}) {
   const { esTablet } = useLayout();
   const margenes = useSafeAreaInsets();
   const mutacionLogin = useLogin();
@@ -281,7 +346,9 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
 
   const enviando = mutacionLogin.isPending;
   const bloqueado = aviso?.tipo === 'bloqueado' || aviso?.tipo === 'inactivo';
-  const minutosBloqueo = useMinutosRestantes(aviso?.tipo === 'bloqueado' ? aviso.bloqueadoHasta : null);
+  const minutosBloqueo = useMinutosRestantes(
+    aviso?.tipo === 'bloqueado' ? aviso.bloqueadoHasta : null,
+  );
 
   // Al vencer el bloqueo se libera el teclado sin obligar a volver a la lista.
   useEffect(() => {
@@ -289,10 +356,13 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
   }, [aviso, minutosBloqueo]);
 
   useEffect(() => {
-    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
-      onVolver();
-      return true;
-    });
+    const suscripcion = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        onVolver();
+        return true;
+      },
+    );
     return () => suscripcion.remove();
   }, [onVolver]);
 
@@ -350,35 +420,64 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
 
   return (
     <View style={estilos.paso}>
-      <View style={[estilos.bandaPin, { paddingTop: margenes.top + ESPACIADO.sm }]}>
+      <View
+        style={[estilos.bandaPin, { paddingTop: margenes.top + ESPACIADO.sm }]}
+      >
         {/* En tablet, la misma columna que el teclado: nombre y teclas alineados. */}
-        <View style={[estilos.columnaPin, esTablet && estilos.columnaPinTablet]}>
+        <View
+          style={[estilos.columnaPin, esTablet && estilos.columnaPinTablet]}
+        >
           <Pulsable
             onPress={onVolver}
             accessibilityRole="button"
             accessibilityLabel="Volver y elegir otro usuario"
             escala={ESCALA_PRESIONADO_CONTROL}
-            style={({ pressed }) => [estilos.botonVolver, pressed && estilos.botonVolverPresionado]}
+            style={({ pressed }) => [
+              estilos.botonVolver,
+              pressed && estilos.botonVolverPresionado,
+            ]}
           >
             <View style={estilos.circuloVolver}>
-              <Chevron direccion="izquierda" color={COLORES.textoSobreColor} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+              <Chevron
+                direccion="izquierda"
+                color={COLORES.textoSobreColor}
+                tamano={ESPACIADO.lg + ESPACIADO.xs}
+              />
             </View>
             <Text style={estilos.textoBotonVolver}>Elegir otro usuario</Text>
           </Pulsable>
         </View>
       </View>
       <View
-        style={[estilos.contenidoPin, esTablet && estilos.contenidoPinTablet, { paddingBottom: ESPACIADO.xl + margenes.bottom }]}
+        style={[
+          estilos.contenidoPin,
+          esTablet && estilos.contenidoPinTablet,
+          { paddingBottom: ESPACIADO.xl + margenes.bottom },
+        ]}
       >
         <View style={estilos.quienEntra}>
-          <Avatar nombre={nombre} fotoUrl={usuario.fotoUrl} tamano={TAMANO_AVATAR_PIN} />
-          <Text style={estilos.nombrePin} accessibilityRole="header" numberOfLines={2}>
+          <Avatar
+            nombre={nombre}
+            fotoUrl={usuario.fotoUrl}
+            tamano={TAMANO_AVATAR_PIN}
+          />
+          <Text
+            style={estilos.nombrePin}
+            accessibilityRole="header"
+            numberOfLines={2}
+          >
             {nombre}
           </Text>
-          <Text style={estilos.subtituloBanda}>Ingresa tu PIN de {LONGITUD_PIN} dígitos</Text>
+          <Text style={estilos.subtituloBanda}>
+            Ingresa tu PIN de {LONGITUD_PIN} dígitos
+          </Text>
         </View>
         <View style={estilos.zonaIndicadores}>
-          <IndicadoresPin cantidad={enviando ? LONGITUD_PIN : cantidad} claveError={claveError} oscuro />
+          <IndicadoresPin
+            cantidad={enviando ? LONGITUD_PIN : cantidad}
+            claveError={claveError}
+            oscuro
+          />
           <View style={estilos.zonaAviso} accessibilityLiveRegion="polite">
             {enviando ? (
               <Text style={estilos.textoVerificando}>Verificando…</Text>
@@ -392,7 +491,12 @@ function PasoPin({ usuario, onVolver }: { usuario: UsuarioElegible; onVolver: ()
           // El panel ocupa el lugar del teclado: no hay nada que teclear hasta resolverlo.
           <PanelBloqueo aviso={aviso} minutos={minutosBloqueo} />
         ) : (
-          <TecladoPin onDigito={alDigito} onBorrar={alBorrar} deshabilitado={enviando} oscuro />
+          <TecladoPin
+            onDigito={alDigito}
+            onBorrar={alBorrar}
+            deshabilitado={enviando}
+            oscuro
+          />
         )}
       </View>
     </View>
@@ -406,7 +510,10 @@ function useMinutosRestantes(hasta: Date | null): number | null {
   useEffect(() => {
     if (!hasta) return;
     setAhora(Date.now());
-    const intervalo = setInterval(() => setAhora(Date.now()), INTERVALO_RELOJ_BLOQUEO_MS);
+    const intervalo = setInterval(
+      () => setAhora(Date.now()),
+      INTERVALO_RELOJ_BLOQUEO_MS,
+    );
     return () => clearInterval(intervalo);
   }, [hasta]);
 
@@ -425,7 +532,11 @@ function formatearHora(fecha: Date): string {
  * por color): el PIN es texto rojo; la red, un recuadro ámbar, porque el PIN
  * ni siquiera se revisó.
  */
-function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } | { tipo: 'inactivo' }> }) {
+function AvisoPin({
+  aviso,
+}: {
+  aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } | { tipo: 'inactivo' }>;
+}) {
   switch (aviso.tipo) {
     case 'pin-incorrecto': {
       const n = aviso.intentosRestantes;
@@ -438,7 +549,9 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
       }
       return (
         <View accessibilityRole="alert" style={estilos.recuadroError}>
-          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>PIN incorrecto</Text>
+          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>
+            PIN incorrecto
+          </Text>
           <Text style={estilos.detalleAviso}>{detalle}</Text>
         </View>
       );
@@ -446,14 +559,23 @@ function AvisoPin({ aviso }: { aviso: Exclude<ErrorLogin, { tipo: 'bloqueado' } 
     case 'red':
       return (
         <View accessibilityRole="alert" style={estilos.recuadroRed}>
-          <Text style={[estilos.tituloAviso, { color: COLORES.discrepanciaTexto }]}>Sin conexión</Text>
-          <Text style={estilos.detalleAviso}>Tu PIN no se llegó a revisar. Verifica la conexión y vuelve a teclearlo.</Text>
+          <Text
+            style={[estilos.tituloAviso, { color: COLORES.discrepanciaTexto }]}
+          >
+            Sin conexión
+          </Text>
+          <Text style={estilos.detalleAviso}>
+            Tu PIN no se llegó a revisar. Verifica la conexión y vuelve a
+            teclearlo.
+          </Text>
         </View>
       );
     case 'otro':
       return (
         <View accessibilityRole="alert" style={estilos.recuadroError}>
-          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>No se pudo iniciar sesión</Text>
+          <Text style={[estilos.tituloAviso, { color: COLORES.errorTexto }]}>
+            No se pudo iniciar sesión
+          </Text>
           <Text style={estilos.detalleAviso}>{aviso.mensaje}</Text>
         </View>
       );
@@ -472,7 +594,8 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
 
   if (aviso.tipo === 'bloqueado') {
     titulo = 'Usuario bloqueado temporalmente';
-    queHacer = 'Si necesitas entrar antes, pide a tu supervisor que restablezca tu PIN.';
+    queHacer =
+      'Si necesitas entrar antes, pide a tu supervisor que restablezca tu PIN.';
     if (aviso.bloqueadoHasta && minutos !== null) {
       const cuanto = minutos === 1 ? '1 minuto' : `${minutos} minutos`;
       cuando = `Se desbloquea en ${cuanto} (a las ${formatearHora(aviso.bloqueadoHasta)}).`;
@@ -483,10 +606,16 @@ function PanelBloqueo({ aviso, minutos }: PropsPanelBloqueo) {
 
   return (
     // Texto de lectura: alineado a la izquierda, aunque el resto del paso vaya centrado.
-    <View style={estilos.panelBloqueo} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+    <View
+      style={estilos.panelBloqueo}
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+    >
       <Text style={estilos.tituloPanelBloqueo}>{titulo}</Text>
       {cuando && <Text style={estilos.textoPanelBloqueo}>{cuando}</Text>}
-      <Text style={[estilos.textoPanelBloqueo, estilos.textoPanelAccion]}>{queHacer}</Text>
+      <Text style={[estilos.textoPanelBloqueo, estilos.textoPanelAccion]}>
+        {queHacer}
+      </Text>
     </View>
   );
 }

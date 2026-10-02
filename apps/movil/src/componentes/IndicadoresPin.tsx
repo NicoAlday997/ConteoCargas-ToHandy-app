@@ -41,7 +41,12 @@ type EstadoCirculo = 'vacio' | 'activo' | 'lleno' | 'error' | 'exito';
  * - error: contorno rojo y la fila se sacude (se percibe sin leer el mensaje);
  * - éxito: sólidos en verde.
  */
-export function IndicadoresPin({ cantidad, claveError, exito = false, oscuro = false }: Props) {
+export function IndicadoresPin({
+  cantidad,
+  claveError,
+  exito = false,
+  oscuro = false,
+}: Props) {
   const desplazamiento = useSharedValue(0);
   // El último error que ya se dejó de mostrar. Mientras `claveError` sea más
   // nuevo (y no se haya vuelto a teclear), los círculos van en rojo.
@@ -50,13 +55,15 @@ export function IndicadoresPin({ cantidad, claveError, exito = false, oscuro = f
 
   useEffect(() => {
     if (claveError === 0) return;
-    desplazamiento.set(withSequence(
-      withTiming(-DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
-      withTiming(DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
-      withTiming(-DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
-      withTiming(DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
-      withTiming(0, { duration: DURACION_TRAMO_MS }),
-    ));
+    desplazamiento.set(
+      withSequence(
+        withTiming(-DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
+        withTiming(DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
+        withTiming(-DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
+        withTiming(DESPLAZAMIENTO_SACUDIDA, { duration: DURACION_TRAMO_MS }),
+        withTiming(0, { duration: DURACION_TRAMO_MS }),
+      ),
+    );
     const t = setTimeout(() => setErrorVisto(claveError), DURACION_ERROR_MS);
     return () => clearTimeout(t);
   }, [claveError, desplazamiento]);
@@ -86,42 +93,89 @@ export function IndicadoresPin({ cantidad, claveError, exito = false, oscuro = f
   );
 }
 
-function Circulo({ estado, oscuro }: { estado: EstadoCirculo; oscuro: boolean }) {
+function Circulo({
+  estado,
+  oscuro,
+}: {
+  estado: EstadoCirculo;
+  oscuro: boolean;
+}) {
   const escala = useSharedValue(1);
   const relleno = useSharedValue(0);
   const solido = estado === 'lleno' || estado === 'exito';
 
   useEffect(() => {
-    escala.set(withSpring(estado === 'activo' ? ESCALA_ACTIVO : 1, RESORTES.seleccion));
-    relleno.set(solido ? withSpring(1, RESORTES.seleccion) : withTiming(0, { duration: 120 }));
+    escala.set(
+      withSpring(estado === 'activo' ? ESCALA_ACTIVO : 1, RESORTES.seleccion),
+    );
+    relleno.set(
+      solido
+        ? withSpring(1, RESORTES.seleccion)
+        : withTiming(0, { duration: 120 }),
+    );
   }, [estado, solido, escala, relleno]);
 
-  const estiloAro = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }));
-  const estiloRelleno = useAnimatedStyle(() => ({ transform: [{ scale: relleno.value }], opacity: relleno.value }));
+  const estiloAro = useAnimatedStyle(() => ({
+    transform: [{ scale: escala.value }],
+  }));
+  const estiloRelleno = useAnimatedStyle(() => ({
+    transform: [{ scale: relleno.value }],
+    opacity: relleno.value,
+  }));
 
   const paleta = oscuro ? OSCURO : CLARO;
   const colorAro =
-    estado === 'error' ? COLORES.error : estado === 'exito' ? COLORES.capturado : estado === 'vacio' ? paleta.vacio : paleta.activo;
+    estado === 'error'
+      ? COLORES.error
+      : estado === 'exito'
+        ? COLORES.capturado
+        : estado === 'vacio'
+          ? paleta.vacio
+          : paleta.activo;
   const colorRelleno = estado === 'exito' ? COLORES.capturado : paleta.lleno;
 
   return (
     <Animated.View
       style={[
         estilos.circulo,
-        { borderColor: colorAro, borderWidth: estado === 'activo' || estado === 'error' ? BORDES.medio + 0.5 : BORDES.medio },
-        estado === 'error' && { backgroundColor: oscuro ? 'rgba(209, 42, 60, 0.22)' : COLORES.errorFondo },
+        {
+          borderColor: colorAro,
+          borderWidth:
+            estado === 'activo' || estado === 'error'
+              ? BORDES.medio + 0.5
+              : BORDES.medio,
+        },
+        estado === 'error' && {
+          backgroundColor: oscuro
+            ? 'rgba(209, 42, 60, 0.22)'
+            : COLORES.errorFondo,
+        },
         estiloAro,
       ]}
     >
-      <Animated.View style={[estilos.relleno, { backgroundColor: colorRelleno }, estiloRelleno]} />
+      <Animated.View
+        style={[
+          estilos.relleno,
+          { backgroundColor: colorRelleno },
+          estiloRelleno,
+        ]}
+      />
     </Animated.View>
   );
 }
 
 /** Sobre el héroe: vacío en azul tenue, activo y lleno en blanco. */
-const OSCURO = { vacio: 'rgba(175, 196, 240, 0.55)', activo: COLORES.textoSobreColor, lleno: COLORES.textoSobreColor };
+const OSCURO = {
+  vacio: 'rgba(175, 196, 240, 0.55)',
+  activo: COLORES.textoSobreColor,
+  lleno: COLORES.textoSobreColor,
+};
 /** Sobre claro (una hoja): vacío en contorno, activo y lleno en azul señal. */
-const CLARO = { vacio: COLORES.borde, activo: COLORES.accion, lleno: COLORES.accion };
+const CLARO = {
+  vacio: COLORES.borde,
+  activo: COLORES.accion,
+  lleno: COLORES.accion,
+};
 
 const estilos = StyleSheet.create({
   fila: {

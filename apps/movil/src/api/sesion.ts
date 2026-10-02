@@ -18,7 +18,9 @@ export interface UsuarioSesion {
 
 const CLAVE_USUARIO = 'conteo_cargas_usuario';
 
-export async function guardarUsuarioSesion(usuario: UsuarioSesion): Promise<void> {
+export async function guardarUsuarioSesion(
+  usuario: UsuarioSesion,
+): Promise<void> {
   await SecureStore.setItemAsync(CLAVE_USUARIO, JSON.stringify(usuario));
 }
 
@@ -34,7 +36,10 @@ export async function obtenerUsuarioSesion(): Promise<UsuarioSesion | null> {
 
 export async function cerrarSesion(): Promise<void> {
   pinTemporal = null;
-  await Promise.all([borrarToken(), SecureStore.deleteItemAsync(CLAVE_USUARIO)]);
+  await Promise.all([
+    borrarToken(),
+    SecureStore.deleteItemAsync(CLAVE_USUARIO),
+  ]);
 }
 
 /**

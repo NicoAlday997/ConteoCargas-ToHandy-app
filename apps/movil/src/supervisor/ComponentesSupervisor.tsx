@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 
 import type { BandaTarjeta } from '../componentes/base';
 import type { ColorEstado } from '../theme/tokens';
-import { minutosEspera, nivelEspera, textoEspera, type NivelEspera } from './modelo-supervisor';
+import {
+  minutosEspera,
+  nivelEspera,
+  textoEspera,
+  type NivelEspera,
+} from './modelo-supervisor';
 
 /** Cada cuánto se recalcula "cuánto lleva esperando" en pantalla. */
 const TICK_ESPERA_MS = 30_000;
@@ -39,9 +44,15 @@ export function espera(desde: number | null, ahora: number): Espera {
   const minutos = minutosEspera(desde, ahora);
   const nivel = nivelEspera(minutos);
   if (minutos === null) return { nivel, titulo: 'Espera sin dato' };
-  return { nivel, titulo: `${nivel === 'detenida' ? 'Detenida' : 'Espera'} ${textoEspera(minutos)}` };
+  return {
+    nivel,
+    titulo: `${nivel === 'detenida' ? 'Detenida' : 'Espera'} ${textoEspera(minutos)}`,
+  };
 }
 
-export function bandaDeEspera(e: Espera, detalle?: string | null): BandaTarjeta {
+export function bandaDeEspera(
+  e: Espera,
+  detalle?: string | null,
+): BandaTarjeta {
   return { titulo: e.titulo, tono: TONO_ESPERA[e.nivel], detalle };
 }

@@ -1,6 +1,13 @@
 import { useId } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  RadialGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
 import { HALO, type Degradado as TipoDegradado } from '../../theme/tokens';
 
@@ -35,7 +42,12 @@ interface Props {
  * El fondo sólido del contenedor (en su estilo) es el que garantiza que el
  * texto se lea; esto solo decora encima.
  */
-export function Degradado({ degradado, halo = false, anillos = false, style }: Props) {
+export function Degradado({
+  degradado,
+  halo = false,
+  anillos = false,
+  style,
+}: Props) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const { x1, y1, x2, y2 } = vectorDeAngulo(degradado.angulo);
   const n = degradado.colores.length;
@@ -51,21 +63,48 @@ export function Degradado({ degradado, halo = false, anillos = false, style }: P
         <Defs>
           <LinearGradient id={`l${id}`} x1={x1} y1={y1} x2={x2} y2={y2}>
             {degradado.colores.map((color, i) => (
-              <Stop key={i} offset={degradado.paradas?.[i] ?? (n === 1 ? 0 : i / (n - 1))} stopColor={color} />
+              <Stop
+                key={i}
+                offset={degradado.paradas?.[i] ?? (n === 1 ? 0 : i / (n - 1))}
+                stopColor={color}
+              />
             ))}
           </LinearGradient>
           {halo && (
-            <RadialGradient id={`r${id}`} cx="88%" cy="0%" rx="75%" ry="70%" fx="88%" fy="0%">
-              <Stop offset={0} stopColor={HALO.color} stopOpacity={HALO.opacidad} />
+            <RadialGradient
+              id={`r${id}`}
+              cx="88%"
+              cy="0%"
+              rx="75%"
+              ry="70%"
+              fx="88%"
+              fy="0%"
+            >
+              <Stop
+                offset={0}
+                stopColor={HALO.color}
+                stopOpacity={HALO.opacidad}
+              />
               <Stop offset={1} stopColor={HALO.color} stopOpacity={0} />
             </RadialGradient>
           )}
         </Defs>
         <Rect x={0} y={0} width="100%" height="100%" fill={`url(#l${id})`} />
-        {halo && <Rect x={0} y={0} width="100%" height="100%" fill={`url(#r${id})`} />}
+        {halo && (
+          <Rect x={0} y={0} width="100%" height="100%" fill={`url(#r${id})`} />
+        )}
         {anillos &&
           RADIOS_ANILLOS.map((r, i) => (
-            <Circle key={r} cx="92%" cy="6%" r={r} fill="none" stroke="#FFFFFF" strokeOpacity={0.07 - i * 0.015} strokeWidth={1} />
+            <Circle
+              key={r}
+              cx="92%"
+              cy="6%"
+              r={r}
+              fill="none"
+              stroke="#FFFFFF"
+              strokeOpacity={0.07 - i * 0.015}
+              strokeWidth={1}
+            />
           ))}
       </Svg>
     </View>
@@ -81,5 +120,10 @@ function vectorDeAngulo(angulo: number) {
   const dx = Math.sin(rad) / 2;
   const dy = -Math.cos(rad) / 2;
   const redondear = (v: number) => `${Math.round(v * 1000) / 10}%`;
-  return { x1: redondear(0.5 - dx), y1: redondear(0.5 - dy), x2: redondear(0.5 + dx), y2: redondear(0.5 + dy) };
+  return {
+    x1: redondear(0.5 - dx),
+    y1: redondear(0.5 - dy),
+    x2: redondear(0.5 + dx),
+    y2: redondear(0.5 + dy),
+  };
 }

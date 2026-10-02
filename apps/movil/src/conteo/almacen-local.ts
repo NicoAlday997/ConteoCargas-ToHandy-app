@@ -47,10 +47,13 @@ export interface ConteoLocal {
 export type ItemEnviado = Pick<ItemLocal, 'productoCode' | 'capturadoEn'>;
 
 const PREFIJO = 'conteo_cargas';
-const claveConteo = (eventoId: string, sesionId: string) => `${PREFIJO}:conteo_local:${eventoId}:${sesionId}`;
+const claveConteo = (eventoId: string, sesionId: string) =>
+  `${PREFIJO}:conteo_local:${eventoId}:${sesionId}`;
 const claveProductos = (eventoId: string) => `${PREFIJO}:productos:${eventoId}`;
 
-export function esBorrado(item: Pick<ItemLocal, 'paquetes' | 'sueltas'>): boolean {
+export function esBorrado(
+  item: Pick<ItemLocal, 'paquetes' | 'sueltas'>,
+): boolean {
   return item.paquetes === null && item.sueltas === null;
 }
 
@@ -80,7 +83,11 @@ const esCantidad = (v: unknown): v is number | null =>
   v === null || (typeof v === 'number' && Number.isInteger(v) && v >= 0);
 
 /** Valida lo leído del almacenamiento: nunca confiar en un JSON guardado. */
-function conteoDesdeJson(eventoId: string, sesionId: string, valor: unknown): ConteoLocal | null {
+function conteoDesdeJson(
+  eventoId: string,
+  sesionId: string,
+  valor: unknown,
+): ConteoLocal | null {
   if (typeof valor !== 'object' || valor === null) return null;
   const crudo = valor as Record<string, unknown>;
 
@@ -88,9 +95,14 @@ function conteoDesdeJson(eventoId: string, sesionId: string, valor: unknown): Co
   if (typeof crudo.items === 'object' && crudo.items !== null) {
     for (const [code, item] of Object.entries(crudo.items)) {
       if (typeof item !== 'object' || item === null) continue;
-      const { paquetes, sueltas, capturadoEn, sincronizado, error } = item as Record<string, unknown>;
+      const { paquetes, sueltas, capturadoEn, sincronizado, error } =
+        item as Record<string, unknown>;
       if (!esCantidad(paquetes) || !esCantidad(sueltas)) continue;
-      if (typeof capturadoEn !== 'string' || Number.isNaN(Date.parse(capturadoEn))) continue;
+      if (
+        typeof capturadoEn !== 'string' ||
+        Number.isNaN(Date.parse(capturadoEn))
+      )
+        continue;
       items[code] = {
         productoCode: code,
         paquetes,
@@ -107,8 +119,14 @@ function conteoDesdeJson(eventoId: string, sesionId: string, valor: unknown): Co
     sesionId,
     items,
     totalProductos:
-      typeof crudo.totalProductos === 'number' && Number.isInteger(crudo.totalProductos) ? crudo.totalProductos : null,
-    ultimaSincronizacion: typeof crudo.ultimaSincronizacion === 'string' ? crudo.ultimaSincronizacion : null,
+      typeof crudo.totalProductos === 'number' &&
+      Number.isInteger(crudo.totalProductos)
+        ? crudo.totalProductos
+        : null,
+    ultimaSincronizacion:
+      typeof crudo.ultimaSincronizacion === 'string'
+        ? crudo.ultimaSincronizacion
+        : null,
   };
 }
 
@@ -124,7 +142,9 @@ export function guardarConteoLocal(
   eventoId: string,
   sesionId: string,
   items: Readonly<Record<string, ItemLocal>>,
-  extra: Partial<Pick<ConteoLocal, 'totalProductos' | 'ultimaSincronizacion'>> = {},
+  extra: Partial<
+    Pick<ConteoLocal, 'totalProductos' | 'ultimaSincronizacion'>
+  > = {},
 ): Promise<void> {
   const clave = claveConteo(eventoId, sesionId);
   return enSerie(clave, async () => {
@@ -134,16 +154,22 @@ export function guardarConteoLocal(
       sesionId,
       items,
       totalProductos: extra.totalProductos ?? previo?.totalProductos ?? null,
-      ultimaSincronizacion: extra.ultimaSincronizacion ?? previo?.ultimaSincronizacion ?? null,
+      ultimaSincronizacion:
+        extra.ultimaSincronizacion ?? previo?.ultimaSincronizacion ?? null,
     };
     await AsyncStorage.setItem(clave, JSON.stringify(conteo));
   });
 }
 
-export function obtenerConteoLocal(eventoId: string, sesionId: string): Promise<ConteoLocal | null> {
+export function obtenerConteoLocal(
+  eventoId: string,
+  sesionId: string,
+): Promise<ConteoLocal | null> {
   const clave = claveConteo(eventoId, sesionId);
   // Espera escrituras en curso: leer a medias devolvería un estado viejo.
-  return enSerie(clave, async () => conteoDesdeJson(eventoId, sesionId, await leerJson(clave)));
+  return enSerie(clave, async () =>
+    conteoDesdeJson(eventoId, sesionId, await leerJson(clave)),
+  );
 }
 
 /**
@@ -185,21 +211,36 @@ export function marcarSincronizados(
 }
 
 /** Solo tras finalizar la sesión con éxito: antes, esto es lo único que queda. */
-export function limpiarConteoLocal(eventoId: string, sesionId: string): Promise<void> {
+export function limpiarConteoLocal(
+  eventoId: string,
+  sesionId: string,
+): Promise<void> {
   const clave = claveConteo(eventoId, sesionId);
-  return enSerie(clave, () => AsyncStorage.multiRemove([clave, claveProductos(eventoId)]));
+  return enSerie(clave, () =>
+    AsyncStorage.multiRemove([clave, claveProductos(eventoId)]),
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Lista de productos: sin ella no se puede contar si la app se reabre sin señal.
 // ---------------------------------------------------------------------------
 
-export async function guardarProductosLocal(eventoId: string, respuesta: RespuestaProductos): Promise<void> {
-  await AsyncStorage.setItem(claveProductos(eventoId), JSON.stringify(respuesta));
+export async function guardarProductosLocal(
+  eventoId: string,
+  respuesta: RespuestaProductos,
+): Promise<void> {
+  await AsyncStorage.setItem(
+    claveProductos(eventoId),
+    JSON.stringify(respuesta),
+  );
 }
 
 /** La forma se valida después, en `normalizarProductos`: aquí solo se descarta lo que no es objeto. */
-export async function obtenerProductosLocal(eventoId: string): Promise<RespuestaProductos | null> {
+export async function obtenerProductosLocal(
+  eventoId: string,
+): Promise<RespuestaProductos | null> {
   const valor = await leerJson(claveProductos(eventoId));
-  return typeof valor === 'object' && valor !== null ? (valor as RespuestaProductos) : null;
+  return typeof valor === 'object' && valor !== null
+    ? (valor as RespuestaProductos)
+    : null;
 }

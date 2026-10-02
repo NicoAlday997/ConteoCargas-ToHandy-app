@@ -1,7 +1,23 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../theme/tokens';
 import { Etiqueta, type TonoEtiqueta } from './Etiqueta';
 import { Pulsable } from './Pulsable';
 
@@ -13,7 +29,11 @@ interface PropsTitulo {
    * A la derecha, en lugar del detalle: cuánto trabajo espera ("3 cargas"),
    * en una pastilla tintada del color de la tarea. Nunca en texto gris.
    */
-  contador?: { texto: string; tono: TonoEtiqueta; relleno?: 'solida' | 'tintada' } | null;
+  contador?: {
+    texto: string;
+    tono: TonoEtiqueta;
+    relleno?: 'solida' | 'tintada';
+  } | null;
   /** A la derecha, en lugar del detalle: una acción del grupo (p. ej. "Actualizar"). */
   accion?: { texto: string; onPress: () => void; accessibilityLabel?: string };
   /**
@@ -27,10 +47,20 @@ interface PropsTitulo {
  * Título que agrupa lo que viene debajo. El aire lo pone quien lo contiene:
  * más arriba (entre secciones) que abajo (hasta su contenido).
  */
-export function TituloSeccion({ texto, detalle, contador, accion, nivel = 'seccion' }: PropsTitulo) {
+export function TituloSeccion({
+  texto,
+  detalle,
+  contador,
+  accion,
+  nivel = 'seccion',
+}: PropsTitulo) {
   return (
     <View style={estilos.cabecera}>
-      <Text style={nivel === 'seccion' ? estilos.seccion : estilos.grupo} accessibilityRole="header" numberOfLines={2}>
+      <Text
+        style={nivel === 'seccion' ? estilos.seccion : estilos.grupo}
+        accessibilityRole="header"
+        numberOfLines={2}
+      >
         {texto}
       </Text>
       {accion ? (
@@ -39,12 +69,25 @@ export function TituloSeccion({ texto, detalle, contador, accion, nivel = 'secci
           accessibilityRole="button"
           accessibilityLabel={accion.accessibilityLabel}
           hitSlop={ESPACIADO.sm}
-          style={({ pressed }) => [estilos.accion, pressed && estilos.accionPresionada]}
+          style={({ pressed }) => [
+            estilos.accion,
+            pressed && estilos.accionPresionada,
+          ]}
         >
-          {({ pressed }) => <Text style={[estilos.textoAccion, pressed && estilos.textoInvertido]}>{accion.texto}</Text>}
+          {({ pressed }) => (
+            <Text
+              style={[estilos.textoAccion, pressed && estilos.textoInvertido]}
+            >
+              {accion.texto}
+            </Text>
+          )}
         </Pulsable>
       ) : contador ? (
-        <Etiqueta texto={contador.texto} tono={contador.tono} relleno={contador.relleno} />
+        <Etiqueta
+          texto={contador.texto}
+          tono={contador.tono}
+          relleno={contador.relleno}
+        />
       ) : detalle ? (
         <Text style={estilos.detalle}>{detalle}</Text>
       ) : null}
@@ -60,7 +103,10 @@ export function Seccion({
   children,
   style,
   ...titulo
-}: Partial<PropsTitulo> & { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+}: Partial<PropsTitulo> & {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
     <View style={[estilos.bloque, style]}>
       {titulo.texto ? <TituloSeccion {...(titulo as PropsTitulo)} /> : null}

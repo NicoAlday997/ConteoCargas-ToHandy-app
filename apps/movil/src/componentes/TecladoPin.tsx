@@ -41,19 +41,35 @@ interface Props {
  * que los círculos del PIN, y un blanco grande y centrado para el pulgar. Se
  * hunden con un resorte y se encienden al presionar.
  */
-export function TecladoPin({ onDigito, onBorrar, deshabilitado = false, oscuro = false }: Props) {
+export function TecladoPin({
+  onDigito,
+  onBorrar,
+  deshabilitado = false,
+  oscuro = false,
+}: Props) {
   return (
     <View style={estilos.teclado}>
       {FILAS.map((fila) => (
         <View key={fila.join('')} style={estilos.fila}>
           {fila.map((digito) => (
-            <Tecla key={digito} etiqueta={digito} onPress={() => onDigito(digito)} deshabilitado={deshabilitado} oscuro={oscuro} />
+            <Tecla
+              key={digito}
+              etiqueta={digito}
+              onPress={() => onDigito(digito)}
+              deshabilitado={deshabilitado}
+              oscuro={oscuro}
+            />
           ))}
         </View>
       ))}
       <View style={estilos.fila}>
         <View style={estilos.hueco} />
-        <Tecla etiqueta="0" onPress={() => onDigito('0')} deshabilitado={deshabilitado} oscuro={oscuro} />
+        <Tecla
+          etiqueta="0"
+          onPress={() => onDigito('0')}
+          deshabilitado={deshabilitado}
+          oscuro={oscuro}
+        />
         <Tecla
           etiqueta="Borrar"
           onPress={onBorrar}
@@ -77,7 +93,14 @@ interface PropsTecla {
   oscuro: boolean;
 }
 
-function Tecla({ etiqueta, onPress, deshabilitado, borrar = false, etiquetaAccesible, oscuro }: PropsTecla) {
+function Tecla({
+  etiqueta,
+  onPress,
+  deshabilitado,
+  borrar = false,
+  etiquetaAccesible,
+  oscuro,
+}: PropsTecla) {
   return (
     <Pulsable
       onPress={onPress}
@@ -91,17 +114,42 @@ function Tecla({ etiqueta, onPress, deshabilitado, borrar = false, etiquetaAcces
       onda={oscuro ? ONDA.sobreColor : ONDA.sobreClaro}
       style={({ pressed }) => [
         estilos.tecla,
-        borrar ? estilos.teclaBorrar : oscuro ? estilos.teclaOscura : estilos.teclaClara,
-        pressed && (oscuro ? estilos.teclaPresionadaOscura : estilos.teclaPresionada),
+        borrar
+          ? estilos.teclaBorrar
+          : oscuro
+            ? estilos.teclaOscura
+            : estilos.teclaClara,
+        pressed &&
+          (oscuro ? estilos.teclaPresionadaOscura : estilos.teclaPresionada),
         deshabilitado && estilos.teclaDeshabilitada,
       ]}
     >
       {({ pressed }) => {
-        const color = pressed && !borrar ? (oscuro ? COLORES.marca : COLORES.textoSobreColor) : oscuro ? COLORES.textoSobreColor : COLORES.texto;
+        const color =
+          pressed && !borrar
+            ? oscuro
+              ? COLORES.marca
+              : COLORES.textoSobreColor
+            : oscuro
+              ? COLORES.textoSobreColor
+              : COLORES.texto;
         return borrar ? (
-          <Glifo nombre="borrar" color={pressed ? (oscuro ? COLORES.marca : COLORES.textoSobreColor) : color} tamano={ESPACIADO.xl + ESPACIADO.xs} />
+          <Glifo
+            nombre="borrar"
+            color={
+              pressed
+                ? oscuro
+                  ? COLORES.marca
+                  : COLORES.textoSobreColor
+                : color
+            }
+            tamano={ESPACIADO.xl + ESPACIADO.xs}
+          />
         ) : (
-          <Text style={[estilos.textoDigito, { color }]} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+          <Text
+            style={[estilos.textoDigito, { color }]}
+            maxFontSizeMultiplier={ESCALA_TEXTO.control}
+          >
             {etiqueta}
           </Text>
         );

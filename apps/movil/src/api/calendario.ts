@@ -1,4 +1,7 @@
-import { normalizarPrevisualizacion, type PrevisualizacionRecorrido } from '../calendario/recorrer-cargas';
+import {
+  normalizarPrevisualizacion,
+  type PrevisualizacionRecorrido,
+} from '../calendario/recorrer-cargas';
 import { esDia } from '../conteo/fecha-operativa';
 import { peticion } from './cliente';
 
@@ -29,7 +32,9 @@ interface DiaNoLaborableApi {
 const base = '/admin/dias-no-laborables';
 
 /** Descarta renglones sin día válido; en orden. */
-export function normalizarDiasNoLaborables(filas: readonly DiaNoLaborableApi[] | null | undefined): DiaNoLaborable[] {
+export function normalizarDiasNoLaborables(
+  filas: readonly DiaNoLaborableApi[] | null | undefined,
+): DiaNoLaborable[] {
   return (filas ?? [])
     .flatMap((f) =>
       esDia(f.fecha)
@@ -37,7 +42,10 @@ export function normalizarDiasNoLaborables(filas: readonly DiaNoLaborableApi[] |
             {
               fecha: f.fecha,
               motivo: typeof f.motivo === 'string' ? f.motivo : '',
-              creadoPorNombre: typeof f.creadoPorNombre === 'string' ? f.creadoPorNombre : null,
+              creadoPorNombre:
+                typeof f.creadoPorNombre === 'string'
+                  ? f.creadoPorNombre
+                  : null,
             },
           ]
         : [],
@@ -47,11 +55,16 @@ export function normalizarDiasNoLaborables(filas: readonly DiaNoLaborableApi[] |
 
 /** De hoy en adelante (el servidor decide qué es hoy). */
 export async function listarDiasNoLaborables(): Promise<DiaNoLaborable[]> {
-  const respuesta = await peticion<{ dias: DiaNoLaborableApi[] | null } | null>(base);
+  const respuesta = await peticion<{ dias: DiaNoLaborableApi[] | null } | null>(
+    base,
+  );
   return normalizarDiasNoLaborables(respuesta?.dias);
 }
 
-export function marcarDiaNoLaborable(fecha: string, motivo: string): Promise<unknown> {
+export function marcarDiaNoLaborable(
+  fecha: string,
+  motivo: string,
+): Promise<unknown> {
   return peticion(base, { method: 'POST', cuerpo: { fecha, motivo } });
 }
 
@@ -60,16 +73,27 @@ export function quitarDiaNoLaborable(fecha: string): Promise<unknown> {
 }
 
 /** Las cargas de ese día: cuáles se recorrerían y a qué día sugiere el servidor. */
-export async function previsualizarRecorrido(fecha: string): Promise<PrevisualizacionRecorrido> {
-  const respuesta = await peticion<unknown>(`${base}/${encodeURIComponent(fecha)}/cargas`);
+export async function previsualizarRecorrido(
+  fecha: string,
+): Promise<PrevisualizacionRecorrido> {
+  const respuesta = await peticion<unknown>(
+    `${base}/${encodeURIComponent(fecha)}/cargas`,
+  );
   return normalizarPrevisualizacion(respuesta, fecha);
 }
 
 /** Mueve todas las cargas de `fechaOrigen` a `fechaDestino` en una sola transacción. */
-export async function recorrerCargas(fechaOrigen: string, fechaDestino: string, motivo: string): Promise<number> {
-  const respuesta = await peticion<{ movidas?: unknown } | null>('/admin/cargas/recorrer', {
-    method: 'POST',
-    cuerpo: { fechaOrigen, fechaDestino, motivo },
-  });
+export async function recorrerCargas(
+  fechaOrigen: string,
+  fechaDestino: string,
+  motivo: string,
+): Promise<number> {
+  const respuesta = await peticion<{ movidas?: unknown } | null>(
+    '/admin/cargas/recorrer',
+    {
+      method: 'POST',
+      cuerpo: { fechaOrigen, fechaDestino, motivo },
+    },
+  );
   return typeof respuesta?.movidas === 'number' ? respuesta.movidas : 0;
 }

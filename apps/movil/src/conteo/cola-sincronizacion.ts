@@ -1,6 +1,11 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 
-import { guardarItems, obtenerItemsSesion, type ItemEnvio, type ItemGuardadoApi } from '../api/cargas';
+import {
+  guardarItems,
+  obtenerItemsSesion,
+  type ItemEnvio,
+  type ItemGuardadoApi,
+} from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import {
   aplicarSincronizados,
@@ -70,17 +75,28 @@ function contar(items: Readonly<Record<string, ItemLocal>>) {
 
 function esTransitorio(error: unknown): boolean {
   if (error instanceof ErrorRed) return true;
-  return error instanceof ErrorApi && (error.estado >= 500 || error.estado === 408 || error.estado === 429);
+  return (
+    error instanceof ErrorApi &&
+    (error.estado >= 500 || error.estado === 408 || error.estado === 429)
+  );
 }
 
 /** Códigos que el servidor señaló en un rechazo por regla de negocio (409/404 del PATCH). */
 function productosRechazados(error: unknown): string[] {
-  if (!(error instanceof ErrorApi) || (error.estado !== 409 && error.estado !== 404)) return [];
+  if (
+    !(error instanceof ErrorApi) ||
+    (error.estado !== 409 && error.estado !== 404)
+  )
+    return [];
   const productos = error.cuerpo?.productos;
-  return Array.isArray(productos) ? productos.filter((p): p is string => typeof p === 'string') : [];
+  return Array.isArray(productos)
+    ? productos.filter((p): p is string => typeof p === 'string')
+    : [];
 }
 
-export function estaConectado(estado: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>): boolean {
+export function estaConectado(
+  estado: Pick<NetInfoState, 'isConnected' | 'isInternetReachable'>,
+): boolean {
   // `null` es "aún no se sabe": no se alarma al usuario por eso.
   return estado.isConnected !== false && estado.isInternetReachable !== false;
 }
@@ -112,11 +128,15 @@ export function reconciliar(
   for (const [code, local] of Object.entries(locales)) {
     const remoto = delServidor.get(code);
     if (!remoto) {
-      resultado[code] = local.error ? local : { ...local, sincronizado: esBorrado(local) };
+      resultado[code] = local.error
+        ? local
+        : { ...local, sincronizado: esBorrado(local) };
       continue;
     }
     const mismoValor =
-      !esBorrado(local) && (local.paquetes ?? 0) === (remoto.paquetes ?? 0) && (local.sueltas ?? 0) === (remoto.sueltas ?? 0);
+      !esBorrado(local) &&
+      (local.paquetes ?? 0) === (remoto.paquetes ?? 0) &&
+      (local.sueltas ?? 0) === (remoto.sueltas ?? 0);
     if (mismoValor) {
       resultado[code] = local.error ? local : { ...local, sincronizado: true };
     } else if (tiempo(local.capturadoEn) >= tiempo(remoto.capturadoEn)) {
@@ -137,14 +157,17 @@ function itemDesdeServidor(code: string, remoto: ItemGuardadoApi): ItemLocal {
     productoCode: code,
     paquetes: remoto.paquetes ?? 0,
     sueltas: remoto.sueltas ?? 0,
-    capturadoEn: remoto.capturadoEn ?? remoto.recibidoEn ?? new Date(0).toISOString(),
+    capturadoEn:
+      remoto.capturadoEn ?? remoto.recibidoEn ?? new Date(0).toISOString(),
     sincronizado: true,
     error: null,
   };
 }
 
 /** Cuerpo del `PATCH`: todo lo capturado, sin borrados ni lo que el servidor ya rechazó. */
-function itemsParaEnviar(items: Readonly<Record<string, ItemLocal>>): ItemEnvio[] {
+function itemsParaEnviar(
+  items: Readonly<Record<string, ItemLocal>>,
+): ItemEnvio[] {
   const envio: ItemEnvio[] = [];
   for (const item of Object.values(items)) {
     if (item.error || esBorrado(item)) continue;
@@ -159,10 +182,16 @@ function itemsParaEnviar(items: Readonly<Record<string, ItemLocal>>): ItemEnvio[
 }
 
 /** Lo que ve la pantalla: las capturas vigentes, sin los borrados. */
-export function conteoDesdeItems(items: Readonly<Record<string, ItemLocal>>): EstadoConteo {
+export function conteoDesdeItems(
+  items: Readonly<Record<string, ItemLocal>>,
+): EstadoConteo {
   const conteo: Record<string, CapturaProducto> = {};
   for (const item of Object.values(items)) {
-    if (!esBorrado(item)) conteo[item.productoCode] = { paquetes: item.paquetes, sueltas: item.sueltas };
+    if (!esBorrado(item))
+      conteo[item.productoCode] = {
+        paquetes: item.paquetes,
+        sueltas: item.sueltas,
+      };
   }
   return conteo;
 }
@@ -215,7 +244,9 @@ export class ColaSincronizacion {
   // ---- Local --------------------------------------------------------------
 
   private async cargar(): Promise<void> {
-    const local = await obtenerConteoLocal(this.eventoId, this.sesionId).catch(() => null);
+    const local = await obtenerConteoLocal(this.eventoId, this.sesionId).catch(
+      () => null,
+    );
     if (this.detenida) return;
     this.fijar({
       cargado: true,
@@ -229,7 +260,9 @@ export class ColaSincronizacion {
   private persistir(extra?: { totalProductos?: number }): Promise<void> {
     const items = this.estado.items;
     this.escrituras = this.escrituras
-      .then(() => guardarConteoLocal(this.eventoId, this.sesionId, items, extra))
+      .then(() =>
+        guardarConteoLocal(this.eventoId, this.sesionId, items, extra),
+      )
       // Si el disco falla se sigue intentando enviar: perder el dato dos veces sería peor.
       .catch(() => undefined);
     return this.escrituras;
@@ -263,7 +296,8 @@ export class ColaSincronizacion {
   /** Envía ya, sin esperar el reintento programado. */
   sincronizarAhora(): void {
     this.intentos = 0;
-    if (this.estado.ultimoError?.tipo === 'rechazo') this.fijar({ ultimoError: null });
+    if (this.estado.ultimoError?.tipo === 'rechazo')
+      this.fijar({ ultimoError: null });
     this.sincronizar();
   }
 
@@ -300,13 +334,22 @@ export class ColaSincronizacion {
 
     this.fijar({ sincronizando: true });
     const controlador = new AbortController();
-    const limite = setTimeout(() => controlador.abort(), TIEMPO_LIMITE_PETICION_MS);
+    const limite = setTimeout(
+      () => controlador.abort(),
+      TIEMPO_LIMITE_PETICION_MS,
+    );
     try {
       if (!this.reconciliado) {
-        const respuesta = await obtenerItemsSesion(this.eventoId, this.sesionId, controlador.signal);
+        const respuesta = await obtenerItemsSesion(
+          this.eventoId,
+          this.sesionId,
+          controlador.signal,
+        );
         if (this.detenida) return;
         this.reconciliado = true;
-        this.fijar({ items: reconciliar(this.estado.items, respuesta?.items ?? []) });
+        this.fijar({
+          items: reconciliar(this.estado.items, respuesta?.items ?? []),
+        });
         await this.persistir();
         if (this.estado.pendientes === 0) {
           this.exito();
@@ -316,13 +359,29 @@ export class ColaSincronizacion {
 
       const enviados: ItemEnviado[] = Object.values(this.estado.items)
         .filter((i) => !i.sincronizado && !i.error)
-        .map(({ productoCode, capturadoEn }) => ({ productoCode, capturadoEn }));
-      await guardarItems(this.eventoId, this.sesionId, itemsParaEnviar(this.estado.items), controlador.signal);
+        .map(({ productoCode, capturadoEn }) => ({
+          productoCode,
+          capturadoEn,
+        }));
+      await guardarItems(
+        this.eventoId,
+        this.sesionId,
+        itemsParaEnviar(this.estado.items),
+        controlador.signal,
+      );
       if (this.detenida) return;
 
       const ahora = new Date().toISOString();
-      this.fijar({ items: aplicarSincronizados(this.estado.items, enviados), ultimaSincronizacion: ahora });
-      await marcarSincronizados(this.eventoId, this.sesionId, enviados, ahora).catch(() => undefined);
+      this.fijar({
+        items: aplicarSincronizados(this.estado.items, enviados),
+        ultimaSincronizacion: ahora,
+      });
+      await marcarSincronizados(
+        this.eventoId,
+        this.sesionId,
+        enviados,
+        ahora,
+      ).catch(() => undefined);
       this.exito();
       // Lo capturado durante el envío sale en la siguiente vuelta.
       if (this.estado.pendientes > 0) this.repetir = true;
@@ -346,11 +405,16 @@ export class ColaSincronizacion {
       return;
     }
     if (error instanceof ErrorApi && error.estado === 401) {
-      this.fijar({ ultimoError: { tipo: 'sesion-expirada', mensaje: 'Tu sesión venció' } });
+      this.fijar({
+        ultimoError: { tipo: 'sesion-expirada', mensaje: 'Tu sesión venció' },
+      });
       return;
     }
 
-    const mensaje = error instanceof Error && error.message ? error.message : 'No se pudo guardar tu conteo.';
+    const mensaje =
+      error instanceof Error && error.message
+        ? error.message
+        : 'No se pudo guardar tu conteo.';
     const items = { ...this.estado.items };
     let marcados = 0;
     for (const code of productosRechazados(error)) {
@@ -414,7 +478,10 @@ function vigilarRed(): void {
   });
 }
 
-export function obtenerCola(eventoId: string, sesionId: string): ColaSincronizacion {
+export function obtenerCola(
+  eventoId: string,
+  sesionId: string,
+): ColaSincronizacion {
   const clave = `${eventoId}:${sesionId}`;
   let cola = colas.get(clave);
   // Una cola frenada por token vencido se rehace al volver a entrar.

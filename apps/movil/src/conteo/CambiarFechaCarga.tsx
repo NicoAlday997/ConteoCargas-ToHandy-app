@@ -3,7 +3,10 @@ import { useState } from 'react';
 import type { TipoCarga } from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useCambiarFechaOperativa } from '../api/hooks-cargas';
-import { SelectorFechaOperativa, type AvisoCambioFecha } from './SelectorFechaOperativa';
+import {
+  SelectorFechaOperativa,
+  type AvisoCambioFecha,
+} from './SelectorFechaOperativa';
 
 interface Props {
   visible: boolean;
@@ -81,7 +84,8 @@ export function ModalCambiarFecha({
 }
 
 function mensajeErrorCambioFecha(e: unknown): string {
-  if (e instanceof ErrorRed) return 'Sin conexión: no se cambió nada. Inténtalo cuando haya señal.';
+  if (e instanceof ErrorRed)
+    return 'Sin conexión: no se cambió nada. Inténtalo cuando haya señal.';
   // El servidor ya explica en español (otra carga ese día, ya finalizaste, etc.).
   if (e instanceof Error && e.message) return e.message;
   return 'Intenta de nuevo en un momento.';

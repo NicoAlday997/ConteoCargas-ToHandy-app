@@ -1,8 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { colorFamiliaDesdeApi, type ColorFamilia } from '../theme/colores-familia';
+import {
+  colorFamiliaDesdeApi,
+  type ColorFamilia,
+} from '../theme/colores-familia';
 import { ErrorApi } from './cliente';
-import { asignarColorFamilia, listarFamilias, type FamiliaColorApi } from './familias';
+import {
+  asignarColorFamilia,
+  listarFamilias,
+  type FamiliaColorApi,
+} from './familias';
 
 export const clavesFamilias = {
   lista: ['familias', 'lista'] as const,
@@ -15,11 +22,19 @@ export interface FamiliaConColor {
 }
 
 /** Descarta renglones sin nombre; un color fuera de la paleta se ve neutro. */
-export function normalizarFamilias(filas: FamiliaColorApi[] | null): FamiliaConColor[] {
+export function normalizarFamilias(
+  filas: FamiliaColorApi[] | null,
+): FamiliaConColor[] {
   return (filas ?? []).flatMap((f) => {
     const familia = f.familia?.trim();
     if (!familia) return [];
-    return [{ familia, color: colorFamiliaDesdeApi(f.color), productos: typeof f.productos === 'number' ? f.productos : 0 }];
+    return [
+      {
+        familia,
+        color: colorFamiliaDesdeApi(f.color),
+        productos: typeof f.productos === 'number' ? f.productos : 0,
+      },
+    ];
   });
 }
 
@@ -49,22 +64,37 @@ export function useFamilias(habilitado: boolean) {
 export function useAsignarColorFamilia() {
   const clienteConsultas = useQueryClient();
   return useMutation({
-    mutationFn: ({ familia, color }: { familia: string; color: ColorFamilia | null }) => asignarColorFamilia(familia, color),
+    mutationFn: ({
+      familia,
+      color,
+    }: {
+      familia: string;
+      color: ColorFamilia | null;
+    }) => asignarColorFamilia(familia, color),
     onMutate: async ({ familia, color }) => {
       await clienteConsultas.cancelQueries({ queryKey: clavesFamilias.lista });
-      const anterior = clienteConsultas.getQueryData<FamiliaColorApi[] | null>(clavesFamilias.lista);
-      clienteConsultas.setQueryData<FamiliaColorApi[] | null>(clavesFamilias.lista, (filas) =>
-        filas?.map((f) => (f.familia === familia ? { ...f, color } : f)) ?? filas,
+      const anterior = clienteConsultas.getQueryData<FamiliaColorApi[] | null>(
+        clavesFamilias.lista,
+      );
+      clienteConsultas.setQueryData<FamiliaColorApi[] | null>(
+        clavesFamilias.lista,
+        (filas) =>
+          filas?.map((f) => (f.familia === familia ? { ...f, color } : f)) ??
+          filas,
       );
       return { anterior };
     },
     onError: (_error, _variables, contexto) => {
-      if (contexto) clienteConsultas.setQueryData(clavesFamilias.lista, contexto.anterior);
+      if (contexto)
+        clienteConsultas.setQueryData(clavesFamilias.lista, contexto.anterior);
     },
     onSettled: () => {
-      void clienteConsultas.invalidateQueries({ queryKey: clavesFamilias.lista });
       void clienteConsultas.invalidateQueries({
-        predicate: (q) => q.queryKey[0] === 'cargas' && q.queryKey[2] === 'productos',
+        queryKey: clavesFamilias.lista,
+      });
+      void clienteConsultas.invalidateQueries({
+        predicate: (q) =>
+          q.queryKey[0] === 'cargas' && q.queryKey[2] === 'productos',
       });
     },
   });

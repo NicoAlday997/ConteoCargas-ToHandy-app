@@ -72,9 +72,18 @@ describe('diaRelativo', () => {
 
 describe('textoSalida', () => {
   it('dice hoy o mañana cuando aplica', () => {
-    assert.equal(textoSalida('2026-09-23', '2026-09-23'), 'Sale hoy, miércoles 23 de septiembre');
-    assert.equal(textoSalida('2026-09-24', '2026-09-23'), 'Sale mañana, jueves 24 de septiembre');
-    assert.equal(textoSalida('2026-09-22', '2026-09-23'), 'Sale el martes 22 de septiembre');
+    assert.equal(
+      textoSalida('2026-09-23', '2026-09-23'),
+      'Sale hoy, miércoles 23 de septiembre',
+    );
+    assert.equal(
+      textoSalida('2026-09-24', '2026-09-23'),
+      'Sale mañana, jueves 24 de septiembre',
+    );
+    assert.equal(
+      textoSalida('2026-09-22', '2026-09-23'),
+      'Sale el martes 22 de septiembre',
+    );
   });
 });
 
@@ -82,7 +91,10 @@ describe('deLaSalida', () => {
   it('usa las mismas palabras que textoSalida', () => {
     assert.equal(deLaSalida('2026-09-23', '2026-09-23'), 'de hoy');
     assert.equal(deLaSalida('2026-09-24', '2026-09-23'), 'de mañana');
-    assert.equal(deLaSalida('2026-09-26', '2026-09-23'), 'del sábado 26 de septiembre');
+    assert.equal(
+      deLaSalida('2026-09-26', '2026-09-23'),
+      'del sábado 26 de septiembre',
+    );
   });
 });
 
@@ -93,9 +105,18 @@ describe('formatos cortos', () => {
   });
 
   it('textoSalidaCorta: día abreviado, en un renglón', () => {
-    assert.equal(textoSalidaCorta('2026-09-26', '2026-09-25'), 'Sale mañana, sáb 26 de septiembre');
-    assert.equal(textoSalidaCorta('2026-09-25', '2026-09-25'), 'Sale hoy, vie 25 de septiembre');
-    assert.equal(textoSalidaCorta('2026-09-30', '2026-09-25'), 'Sale el mié 30 de septiembre');
+    assert.equal(
+      textoSalidaCorta('2026-09-26', '2026-09-25'),
+      'Sale mañana, sáb 26 de septiembre',
+    );
+    assert.equal(
+      textoSalidaCorta('2026-09-25', '2026-09-25'),
+      'Sale hoy, vie 25 de septiembre',
+    );
+    assert.equal(
+      textoSalidaCorta('2026-09-30', '2026-09-25'),
+      'Sale el mié 30 de septiembre',
+    );
   });
 });
 
@@ -116,7 +137,10 @@ describe('textoConfirmarCambioFecha', () => {
   });
 
   it('sin nada contado omite la frase de lo conservado', () => {
-    assert.equal(textoConfirmarCambioFecha('2026-09-27', 0).cuerpo, 'Solo cambia el día para el que sale el camión.');
+    assert.equal(
+      textoConfirmarCambioFecha('2026-09-27', 0).cuerpo,
+      'Solo cambia el día para el que sale el camión.',
+    );
   });
 });
 
@@ -143,7 +167,10 @@ describe('textoCambioFecha', () => {
   });
 
   it('sin nombre, no inventa uno', () => {
-    assert.equal(textoCambioFecha('2026-09-26', '2026-09-27', null), 'Fecha cambiada del 26 al 27 de septiembre');
+    assert.equal(
+      textoCambioFecha('2026-09-26', '2026-09-27', null),
+      'Fecha cambiada del 26 al 27 de septiembre',
+    );
   });
 });
 
@@ -151,12 +178,28 @@ describe('normalizarFechasDisponibles', () => {
   it('conserva la etiqueta del servidor y ordena por día', () => {
     assert.deepEqual(
       normalizarFechasDisponibles([
-        { fecha: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
-        { fecha: '2026-09-26', etiqueta: 'Hoy, sábado 26 de septiembre', esHoy: true },
+        {
+          fecha: '2026-09-28',
+          etiqueta: 'El lunes 28 de septiembre',
+          esHoy: false,
+        },
+        {
+          fecha: '2026-09-26',
+          etiqueta: 'Hoy, sábado 26 de septiembre',
+          esHoy: true,
+        },
       ]),
       [
-        { dia: '2026-09-26', etiqueta: 'Hoy, sábado 26 de septiembre', esHoy: true },
-        { dia: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
+        {
+          dia: '2026-09-26',
+          etiqueta: 'Hoy, sábado 26 de septiembre',
+          esHoy: true,
+        },
+        {
+          dia: '2026-09-28',
+          etiqueta: 'El lunes 28 de septiembre',
+          esHoy: false,
+        },
       ],
     );
   });
@@ -164,7 +207,11 @@ describe('normalizarFechasDisponibles', () => {
   it('descarta días inválidos y repetidos', () => {
     const fechas = normalizarFechasDisponibles([
       { fecha: '28/09/2026', etiqueta: 'x', esHoy: false },
-      { fecha: '2026-09-28', etiqueta: 'El lunes 28 de septiembre', esHoy: false },
+      {
+        fecha: '2026-09-28',
+        etiqueta: 'El lunes 28 de septiembre',
+        esHoy: false,
+      },
       { fecha: '2026-09-28', etiqueta: 'otra', esHoy: false },
       { fecha: null, etiqueta: 'x', esHoy: true },
     ]);

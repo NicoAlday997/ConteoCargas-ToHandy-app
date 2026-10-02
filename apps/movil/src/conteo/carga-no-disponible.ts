@@ -3,7 +3,11 @@ import { ErrorApi } from '../api/cliente';
 import { olvidarCarga, type CargaAbierta } from './almacen-conteo';
 import { limpiarConteoLocal } from './almacen-local';
 import { descartarCola } from './cola-sincronizacion';
-import { vigenciaDesdeEstadoHttp, vigenciaDesdeEvento, type VigenciaCarga } from './vigencia-carga';
+import {
+  vigenciaDesdeEstadoHttp,
+  vigenciaDesdeEvento,
+  type VigenciaCarga,
+} from './vigencia-carga';
 
 /**
  * La carga guardada en el teléfono puede desaparecer del servidor (se canceló,
@@ -20,15 +24,29 @@ export interface VerificacionCarga {
   estado: string | null;
 }
 
-export async function verificarCargaAbierta(carga: CargaAbierta): Promise<VerificacionCarga | 'sesion-vencida'> {
+export async function verificarCargaAbierta(
+  carga: CargaAbierta,
+): Promise<VerificacionCarga | 'sesion-vencida'> {
   const control = new AbortController();
-  const limite = setTimeout(() => control.abort(), TIEMPO_LIMITE_VERIFICACION_MS);
+  const limite = setTimeout(
+    () => control.abort(),
+    TIEMPO_LIMITE_VERIFICACION_MS,
+  );
   try {
     const respuesta = await obtenerEvento(carga.eventoId, control.signal);
-    return { vigencia: vigenciaDesdeEvento(respuesta, carga.sesionId), estado: respuesta?.evento?.estado ?? null };
+    return {
+      vigencia: vigenciaDesdeEvento(respuesta, carga.sesionId),
+      estado: respuesta?.evento?.estado ?? null,
+    };
   } catch (e) {
     if (e instanceof ErrorApi && e.estado === 401) return 'sesion-vencida';
-    return { vigencia: e instanceof ErrorApi ? vigenciaDesdeEstadoHttp(e.estado) : 'sin-verificar', estado: null };
+    return {
+      vigencia:
+        e instanceof ErrorApi
+          ? vigenciaDesdeEstadoHttp(e.estado)
+          : 'sin-verificar',
+      estado: null,
+    };
   } finally {
     clearTimeout(limite);
   }
@@ -40,9 +58,11 @@ export async function descartarCargaNoDisponible(
   carga: Pick<CargaAbierta, 'eventoId' | 'sesionId'>,
 ): Promise<void> {
   descartarCola(carga.eventoId, carga.sesionId);
-  await (usuarioId ? olvidarCarga(usuarioId, carga) : limpiarConteoLocal(carga.eventoId, carga.sesionId)).catch(
-    () => undefined,
-  );
+  await (
+    usuarioId
+      ? olvidarCarga(usuarioId, carga)
+      : limpiarConteoLocal(carga.eventoId, carga.sesionId)
+  ).catch(() => undefined);
 }
 
 // Aviso para el inicio cuando el conteo es quien la descubre: vive en memoria,

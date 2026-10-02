@@ -4,11 +4,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { COLORES_FAMILIA, TONOS_COLOR_FAMILIA, colorFamiliaDesdeApi, esColorFamiliaValido } from './colores-familia.ts';
+import {
+  COLORES_FAMILIA,
+  TONOS_COLOR_FAMILIA,
+  colorFamiliaDesdeApi,
+  esColorFamiliaValido,
+} from './colores-familia.ts';
 import { razonContraste } from './contraste.ts';
 import { COLORES } from './tokens.ts';
 
-const canales = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const canales = (hex: string) =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
 const FONDO_REFERENCIA_TINTES = '#E7E8E3';
 
@@ -45,13 +51,18 @@ describe('colores de familia', () => {
 
   it('es el mismo espejo que la paleta del backend', () => {
     const backend = readFileSync(
-      new URL('../../../backend/src/modules/catalogo/domain/colores-familia.ts', import.meta.url),
+      new URL(
+        '../../../backend/src/modules/catalogo/domain/colores-familia.ts',
+        import.meta.url,
+      ),
       'utf8',
     );
     for (const color of COLORES_FAMILIA) {
       const { solido, tinte, texto } = TONOS_COLOR_FAMILIA[color];
       assert.ok(
-        backend.includes(`${color}: { solido: '${solido}', tinte: '${tinte}', texto: '${texto}' }`),
+        backend.includes(
+          `${color}: { solido: '${solido}', tinte: '${tinte}', texto: '${texto}' }`,
+        ),
         `${color} no coincide con el backend`,
       );
     }

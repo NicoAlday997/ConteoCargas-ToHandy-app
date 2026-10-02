@@ -52,21 +52,40 @@ export function listarCuentasHandy(): Promise<CuentaHandyApi[] | null> {
   return peticion<CuentaHandyApi[] | null>('/admin/usuarios-handy');
 }
 
-export function crearPersona(datos: DatosAlta): Promise<{ usuario: UsuarioAdminApi | null; pinTemporal: string | null } | null> {
+export function crearPersona(
+  datos: DatosAlta,
+): Promise<{
+  usuario: UsuarioAdminApi | null;
+  pinTemporal: string | null;
+} | null> {
   return peticion(base, { method: 'POST', cuerpo: datos });
 }
 
-export function editarPersona(id: string, datos: DatosEdicion): Promise<UsuarioAdminApi | null> {
-  return peticion(`${base}/${encodeURIComponent(id)}`, { method: 'PATCH', cuerpo: datos });
+export function editarPersona(
+  id: string,
+  datos: DatosEdicion,
+): Promise<UsuarioAdminApi | null> {
+  return peticion(`${base}/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    cuerpo: datos,
+  });
 }
 
 /** Quita el bloqueo por intentos fallidos sin tocar el PIN. Nunca el propio. */
-export function desbloquearPersona(id: string): Promise<UsuarioAdminApi | null> {
-  return peticion(`${base}/${encodeURIComponent(id)}/desbloquear`, { method: 'POST' });
+export function desbloquearPersona(
+  id: string,
+): Promise<UsuarioAdminApi | null> {
+  return peticion(`${base}/${encodeURIComponent(id)}/desbloquear`, {
+    method: 'POST',
+  });
 }
 
-export function restablecerPinPersona(id: string): Promise<{ pinTemporal: string | null } | null> {
-  return peticion(`${base}/${encodeURIComponent(id)}/restablecer-pin`, { method: 'POST' });
+export function restablecerPinPersona(
+  id: string,
+): Promise<{ pinTemporal: string | null } | null> {
+  return peticion(`${base}/${encodeURIComponent(id)}/restablecer-pin`, {
+    method: 'POST',
+  });
 }
 
 /**
@@ -94,6 +113,12 @@ export interface PaginaAccesosApi {
 }
 
 /** Solo lectura: no hay (ni habrá) forma de editar o borrar un renglón. */
-export function listarAccesosPersona(id: string, page: number, pageSize: number): Promise<PaginaAccesosApi | null> {
-  return peticion(`${base}/${encodeURIComponent(id)}/accesos?page=${page}&pageSize=${pageSize}`);
+export function listarAccesosPersona(
+  id: string,
+  page: number,
+  pageSize: number,
+): Promise<PaginaAccesosApi | null> {
+  return peticion(
+    `${base}/${encodeURIComponent(id)}/accesos?page=${page}&pageSize=${pageSize}`,
+  );
 }

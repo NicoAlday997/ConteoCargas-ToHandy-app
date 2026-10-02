@@ -180,7 +180,11 @@ export interface Degradado {
 
 export const DEGRADADOS = {
   /** Cromo azul noche: de un azul con luz arriba a la noche profunda abajo. Su color plano: `marca`. */
-  marca: { colores: ['#133A9A', '#0A2463', '#061233'], paradas: [0, 0.55, 1], angulo: 165 },
+  marca: {
+    colores: ['#133A9A', '#0A2463', '#061233'],
+    paradas: [0, 0.55, 1],
+    angulo: 165,
+  },
   /**
    * Azul señal de la marca de la app (el logo, `MarcaApp`, un SVG de tamaño
    * fijo sin texto). Su color plano, el del botón principal: `accion`.
@@ -201,9 +205,11 @@ export const HALO = {
  */
 export const SOMBRAS = {
   /** Tarjeta o fila sobre el fondo claro. */
-  tarjeta: '0px 1px 2px rgba(11, 23, 51, 0.06), 0px 6px 16px rgba(16, 42, 110, 0.07)',
+  tarjeta:
+    '0px 1px 2px rgba(11, 23, 51, 0.06), 0px 6px 16px rgba(16, 42, 110, 0.07)',
   /** Una pieza que flota: la hoja que monta el héroe, un bloque destacado. */
-  elevada: '0px 2px 6px rgba(11, 23, 51, 0.06), 0px 14px 32px rgba(10, 36, 99, 0.14)',
+  elevada:
+    '0px 2px 6px rgba(11, 23, 51, 0.06), 0px 14px 32px rgba(10, 36, 99, 0.14)',
   /** La acción principal: la sombra toma el azul del botón. */
   accion: '0px 6px 16px rgba(22, 82, 240, 0.30)',
   /** Teclado acoplado abajo y hojas: la sombra sube. */
@@ -240,13 +246,40 @@ export type ColorTono = ColorEstado | 'marca' | 'accion';
  * - texto: texto oscuro sobre ese tinte (≥ 4.5:1).
  * Las pastillas de estado son siempre `fondo` + `texto`.
  */
-export const TONOS: Record<ColorTono, { solido: string; fondo: string; texto: string }> = {
-  marca: { solido: COLORES.accion, fondo: COLORES.azulSuave, texto: COLORES.accionHonda },
-  accion: { solido: COLORES.accion, fondo: COLORES.azulSuave, texto: COLORES.accionHonda },
-  capturado: { solido: COLORES.capturadoHondo, fondo: COLORES.capturadoFondo, texto: COLORES.capturadoTexto },
-  pendiente: { solido: COLORES.pendiente, fondo: COLORES.pendienteFondo, texto: COLORES.textoSecundario },
-  discrepancia: { solido: COLORES.discrepanciaTexto, fondo: COLORES.discrepanciaFondo, texto: COLORES.discrepanciaTexto },
-  error: { solido: COLORES.error, fondo: COLORES.errorFondo, texto: COLORES.errorTexto },
+export const TONOS: Record<
+  ColorTono,
+  { solido: string; fondo: string; texto: string }
+> = {
+  marca: {
+    solido: COLORES.accion,
+    fondo: COLORES.azulSuave,
+    texto: COLORES.accionHonda,
+  },
+  accion: {
+    solido: COLORES.accion,
+    fondo: COLORES.azulSuave,
+    texto: COLORES.accionHonda,
+  },
+  capturado: {
+    solido: COLORES.capturadoHondo,
+    fondo: COLORES.capturadoFondo,
+    texto: COLORES.capturadoTexto,
+  },
+  pendiente: {
+    solido: COLORES.pendiente,
+    fondo: COLORES.pendienteFondo,
+    texto: COLORES.textoSecundario,
+  },
+  discrepancia: {
+    solido: COLORES.discrepanciaTexto,
+    fondo: COLORES.discrepanciaFondo,
+    texto: COLORES.discrepanciaTexto,
+  },
+  error: {
+    solido: COLORES.error,
+    fondo: COLORES.errorFondo,
+    texto: COLORES.errorTexto,
+  },
 };
 
 /**
@@ -322,15 +355,55 @@ interface EstiloTexto {
  * - rotulo: rótulo de un campo de captura o de una unidad ("Paquetes", "piezas").
  */
 export const TIPOGRAFIA = {
-  numero: { fontFamily: FUENTE.extraNegrita, fontSize: 52, lineHeight: 58, letterSpacing: -1.2 },
-  display: { fontFamily: FUENTE.extraNegrita, fontSize: 30, lineHeight: 36, letterSpacing: -0.6 },
-  total: { fontFamily: FUENTE.extraNegrita, fontSize: 28, lineHeight: 32, letterSpacing: -0.4 },
-  titulo: { fontFamily: FUENTE.extraNegrita, fontSize: 24, lineHeight: 30, letterSpacing: -0.4 },
-  avance: { fontFamily: FUENTE.extraNegrita, fontSize: 36, lineHeight: 40, letterSpacing: -0.8 },
-  campo: { fontFamily: FUENTE.extraNegrita, fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  numero: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 52,
+    lineHeight: 58,
+    letterSpacing: -1.2,
+  },
+  display: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: -0.6,
+  },
+  total: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 28,
+    lineHeight: 32,
+    letterSpacing: -0.4,
+  },
+  titulo: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.4,
+  },
+  avance: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -0.8,
+  },
+  campo: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.2,
+  },
   tecla: { fontFamily: FUENTE.semiNegrita, fontSize: 26, lineHeight: 32 },
-  tituloBarra: { fontFamily: FUENTE.extraNegrita, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
-  tituloVacio: { fontFamily: FUENTE.extraNegrita, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 },
+  tituloBarra: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+  },
+  tituloVacio: {
+    fontFamily: FUENTE.extraNegrita,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+  },
   subtitulo: { fontFamily: FUENTE.negrita, fontSize: 16, lineHeight: 22 },
   cuerpo: { fontFamily: FUENTE.medio, fontSize: 16, lineHeight: 24 },
   familia: { fontFamily: FUENTE.extraNegrita, fontSize: 15, lineHeight: 20 },
@@ -399,7 +472,9 @@ export const DATO_AUSENTE = {
  * Para toda cifra que se compara con otra (cantidades, totales, progreso):
  * dígitos del mismo ancho, así las columnas quedan alineadas al recorrer la lista.
  */
-export const CIFRAS: Pick<TextStyle, 'fontVariant'> = { fontVariant: ['tabular-nums'] };
+export const CIFRAS: Pick<TextStyle, 'fontVariant'> = {
+  fontVariant: ['tabular-nums'],
+};
 
 /**
  * Geometría. Variada a propósito: no todo es cápsula ni todo es rectángulo.

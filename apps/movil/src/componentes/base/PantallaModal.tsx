@@ -18,7 +18,12 @@ interface Props {
  */
 export function PantallaModal({ visible, onCerrar, children }: Props) {
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCerrar}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onCerrar}
+    >
       <SafeAreaProvider>{children}</SafeAreaProvider>
     </Modal>
   );

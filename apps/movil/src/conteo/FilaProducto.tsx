@@ -1,6 +1,11 @@
 import { memo, useEffect, useRef } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Glifo, Palomita, Pulsable } from '../componentes/base';
 import {
@@ -58,14 +63,19 @@ const RELLENO_FACTOR = ESPACIADO.sm;
 
 function anchoFactor(tamanoLetra: number, escalaTexto: number): number {
   const escala = Math.min(escalaTexto, ESCALA_TEXTO.control);
-  return Math.ceil(EM_CUATRO_CARACTERES * tamanoLetra * escala) + 2 * RELLENO_FACTOR;
+  return (
+    Math.ceil(EM_CUATRO_CARACTERES * tamanoLetra * escala) + 2 * RELLENO_FACTOR
+  );
 }
 
 /** Unidad de un producto completo de más de 6 letras: sus primeras 5, sin puntos; el nombre está al lado. */
 const MAX_UNIDAD_FACTOR = 6;
 
 /** "Cajas" para lo que se vende completo; "Paquetes" / "Sueltas" para lo demás. */
-export function nombreCampo(producto: ProductoConteo, campo: CampoCaptura): string {
+export function nombreCampo(
+  producto: ProductoConteo,
+  campo: CampoCaptura,
+): string {
   if (campo === 'sueltas') return 'Sueltas';
   if (!seVendeCompleto(producto)) return 'Paquetes';
   const plural = unidadEnPlural(producto.unidadDescripcion);
@@ -199,12 +209,18 @@ export function EtiquetaFactor({
 }) {
   const factor = factorEfectivo(producto);
   const { fontScale } = useWindowDimensions();
-  const ancho = anchoFactor(grande ? estilos.textoFactorGrande.fontSize : estilos.textoFactor.fontSize, fontScale);
+  const ancho = anchoFactor(
+    grande ? estilos.textoFactorGrande.fontSize : estilos.textoFactor.fontSize,
+    fontScale,
+  );
   let texto: string;
   let accesible: string;
   if (seVendeCompleto(producto)) {
     const unidad = unidadEnSingular(producto.unidadDescripcion);
-    texto = unidad.length > MAX_UNIDAD_FACTOR ? unidad.slice(0, 5).toUpperCase() : unidad.toUpperCase();
+    texto =
+      unidad.length > MAX_UNIDAD_FACTOR
+        ? unidad.slice(0, 5).toUpperCase()
+        : unidad.toUpperCase();
     accesible = `Se vende por ${unidad} completa`;
   } else if (factor !== null) {
     texto = `C/${factor}`;
@@ -232,12 +248,19 @@ export function EtiquetaFactor({
 
   return (
     <View
-      style={[estilos.factor, grande && estilos.factorGrande, { minWidth: ancho, backgroundColor: fondo }]}
+      style={[
+        estilos.factor,
+        grande && estilos.factorGrande,
+        { minWidth: ancho, backgroundColor: fondo },
+      ]}
       accessible
       accessibilityLabel={accesible}
     >
       <Text
-        style={[grande ? estilos.textoFactorGrande : estilos.textoFactor, { color }]}
+        style={[
+          grande ? estilos.textoFactorGrande : estilos.textoFactor,
+          { color },
+        ]}
         numberOfLines={1}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >
@@ -266,7 +289,15 @@ interface Props {
   onCero: (code: string) => void;
 }
 
-function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, onAbrirCampo, onCero }: Props) {
+function FilaProductoBase({
+  producto,
+  captura,
+  campoActivo,
+  envio,
+  errorEnvio,
+  onAbrirCampo,
+  onCero,
+}: Props) {
   const factor = factorEfectivo(producto);
   const completo = seVendeCompleto(producto);
   const conPaquetes = admitePaquetes(producto);
@@ -274,13 +305,16 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
   // a la vista para poder borrarlas: el servidor las rechaza y hay que corregir.
   const conSueltas = admiteSueltas(producto) || (captura.sueltas ?? 0) > 0;
   const estado = estadoFila(captura, producto);
-  const aspecto: AspectoFila = campoActivo !== null ? 'tecleando' : ASPECTO_DE_ESTADO[estado];
+  const aspecto: AspectoFila =
+    campoActivo !== null ? 'tecleando' : ASPECTO_DE_ESTADO[estado];
   const colores = COLORES_ASPECTO[aspecto];
   const total = totalPiezas(captura, producto);
   const avisoSueltas = sueltasExcedenPaquete(captura.sueltas, factor);
   const destello = useDestello(estado);
   const nombre = formatearNombreProducto(producto.nombre);
-  const unidadTotal = completo ? unidadEnPlural(producto.unidadDescripcion) : 'piezas';
+  const unidadTotal = completo
+    ? unidadEnPlural(producto.unidadDescripcion)
+    : 'piezas';
 
   // Con cantidad, el "0" se bloquea: un toque perdido al pasar de fila no debe
   // borrar lo que ya se contó. Para corregir a cero se usa el teclado.
@@ -290,17 +324,42 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
   // arriba/abajo en TalkBack, rotor en VoiceOver): 73 productos no pueden
   // costar ~6 gestos cada uno. Lo visual no cambia.
   const acciones = [
-    ...(conPaquetes ? [{ name: 'paquetes', label: `Capturar ${nombreCampo(producto, 'paquetes')}` }] : []),
+    ...(conPaquetes
+      ? [
+          {
+            name: 'paquetes',
+            label: `Capturar ${nombreCampo(producto, 'paquetes')}`,
+          },
+        ]
+      : []),
     ...(conSueltas ? [{ name: 'sueltas', label: 'Capturar sueltas' }] : []),
-    ...(ceroBloqueado ? [] : [{ name: 'noLleva', label: 'No lleva, marcar en cero' }]),
+    ...(ceroBloqueado
+      ? []
+      : [{ name: 'noLleva', label: 'No lleva, marcar en cero' }]),
   ];
   const vozFila = [
     nombre,
-    aspecto === 'tecleando' ? 'capturando' : estado === 'sin-capturar' ? 'sin contar' : estado === 'en-cero' ? 'no lleva' : 'contado',
-    conPaquetes && captura.paquetes !== null ? `${nombreCampo(producto, 'paquetes')} ${captura.paquetes}` : null,
-    conSueltas && captura.sueltas !== null ? `sueltas ${captura.sueltas}` : null,
-    estado === 'con-cantidad' ? textoTotalAccesible(total, estado, unidadTotal) : null,
-    envio === 'por-enviar' ? 'por enviar' : envio === 'rechazado' ? `no se aceptó: ${errorEnvio ?? 'revisa la cantidad'}` : null,
+    aspecto === 'tecleando'
+      ? 'capturando'
+      : estado === 'sin-capturar'
+        ? 'sin contar'
+        : estado === 'en-cero'
+          ? 'no lleva'
+          : 'contado',
+    conPaquetes && captura.paquetes !== null
+      ? `${nombreCampo(producto, 'paquetes')} ${captura.paquetes}`
+      : null,
+    conSueltas && captura.sueltas !== null
+      ? `sueltas ${captura.sueltas}`
+      : null,
+    estado === 'con-cantidad'
+      ? textoTotalAccesible(total, estado, unidadTotal)
+      : null,
+    envio === 'por-enviar'
+      ? 'por enviar'
+      : envio === 'rechazado'
+        ? `no se aceptó: ${errorEnvio ?? 'revisa la cantidad'}`
+        : null,
     !producto.factorConfirmado ? 'empaque sin confirmar' : null,
     avisoSueltas ? 'las sueltas ya completan un paquete' : null,
   ]
@@ -312,27 +371,46 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
       style={[
         estilos.fila,
         { backgroundColor: colores.fondo, borderColor: colores.borde },
-        aspecto === 'no-lleva' ? null : aspecto === 'tecleando' ? estilos.filaTecleando : estilos.filaElevada,
+        aspecto === 'no-lleva'
+          ? null
+          : aspecto === 'tecleando'
+            ? estilos.filaTecleando
+            : estilos.filaElevada,
       ]}
       accessible
       accessibilityLabel={vozFila}
-      accessibilityHint={conPaquetes || conSueltas ? 'Toca dos veces para capturar. Más acciones con el gesto de acciones.' : undefined}
+      accessibilityHint={
+        conPaquetes || conSueltas
+          ? 'Toca dos veces para capturar. Más acciones con el gesto de acciones.'
+          : undefined
+      }
       accessibilityActions={[{ name: 'activate' }, ...acciones]}
       onAccessibilityAction={({ nativeEvent }) => {
         const accion = nativeEvent.actionName;
-        if (accion === 'activate') onAbrirCampo(producto.code, conPaquetes ? 'paquetes' : 'sueltas');
-        else if (accion === 'paquetes' || accion === 'sueltas') onAbrirCampo(producto.code, accion);
+        if (accion === 'activate')
+          onAbrirCampo(producto.code, conPaquetes ? 'paquetes' : 'sueltas');
+        else if (accion === 'paquetes' || accion === 'sueltas')
+          onAbrirCampo(producto.code, accion);
         else if (accion === 'noLleva') onCero(producto.code);
       }}
     >
       <Animated.View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, estilos.destello, { backgroundColor: COLOR_DESTELLO[estado] }, destello]}
+        style={[
+          StyleSheet.absoluteFill,
+          estilos.destello,
+          { backgroundColor: COLOR_DESTELLO[estado] },
+          destello,
+        ]}
       />
 
       <View style={estilos.encabezado}>
         <EtiquetaFactor producto={producto} aspecto={aspecto} />
-        <Text style={[estilos.nombre, { color: colores.nombre }]} numberOfLines={2} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+        <Text
+          style={[estilos.nombre, { color: colores.nombre }]}
+          numberOfLines={2}
+          maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+        >
           {nombre}
         </Text>
         <MarcaEnvio envio={envio} sobreMarca={aspecto === 'tecleando'} />
@@ -375,25 +453,38 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         <View
           style={[
             estilos.visor,
-            { backgroundColor: colores.visorFondo, borderColor: colores.visorBorde },
+            {
+              backgroundColor: colores.visorFondo,
+              borderColor: colores.visorBorde,
+            },
             colores.visorPunteado && estilos.visorVacio,
           ]}
           accessible
           accessibilityLabel={textoTotalAccesible(total, estado, unidadTotal)}
         >
           <Text
-            style={[estilos.numeroTotal, { color: colores.total }, estado === 'sin-capturar' && estilos.numeroVacio]}
+            style={[
+              estilos.numeroTotal,
+              { color: colores.total },
+              estado === 'sin-capturar' && estilos.numeroVacio,
+            ]}
             numberOfLines={1}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
             {total === null ? '—' : total}
           </Text>
           <Text
-            style={[estilos.unidadTotal, { color: colores.unidad }, estado === 'sin-capturar' && estilos.unidadVacia]}
+            style={[
+              estilos.unidadTotal,
+              { color: colores.unidad },
+              estado === 'sin-capturar' && estilos.unidadVacia,
+            ]}
             numberOfLines={1}
             maxFontSizeMultiplier={ESCALA_TEXTO.control}
           >
-            {estado === 'en-cero' && aspecto !== 'tecleando' ? 'No lleva' : unidadTotal}
+            {estado === 'en-cero' && aspecto !== 'tecleando'
+              ? 'No lleva'
+              : unidadTotal}
           </Text>
         </View>
 
@@ -403,13 +494,18 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
           tacto="seleccion"
           accessibilityRole="button"
           accessibilityLabel={`${nombre}: no lleva, marcar en cero`}
-          accessibilityState={{ disabled: ceroBloqueado, selected: estado === 'en-cero' }}
+          accessibilityState={{
+            disabled: ceroBloqueado,
+            selected: estado === 'en-cero',
+          }}
           hitSlop={ESPACIADO.xs}
           escala={ESCALA_PRESIONADO_CONTROL - 0.04}
           style={({ pressed }) => [
             estilos.botonCero,
             aspecto === 'tecleando' && estilos.botonCeroSobreMarca,
-            estado === 'en-cero' && aspecto !== 'tecleando' && estilos.botonCeroMarcado,
+            estado === 'en-cero' &&
+              aspecto !== 'tecleando' &&
+              estilos.botonCeroMarcado,
             pressed && estilos.botonCeroPresionado,
             ceroBloqueado && estilos.botonCeroBloqueado,
           ]}
@@ -419,7 +515,10 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
               style={[
                 estilos.textoCero,
                 (pressed || aspecto === 'tecleando') && estilos.textoInvertido,
-                estado === 'en-cero' && aspecto !== 'tecleando' && !pressed && estilos.textoCeroMarcado,
+                estado === 'en-cero' &&
+                  aspecto !== 'tecleando' &&
+                  !pressed &&
+                  estilos.textoCeroMarcado,
               ]}
               maxFontSizeMultiplier={ESCALA_TEXTO.control}
             >
@@ -433,10 +532,15 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
         <Aviso texto="Empaque sin confirmar: cuéntalo en sueltas y avisa al supervisor." />
       )}
       {avisoSueltas && factor !== null && (
-        <Aviso texto={`${captura.sueltas} sueltas ya completan un paquete de ${factor}. ¿Venía abierto?`} />
+        <Aviso
+          texto={`${captura.sueltas} sueltas ya completan un paquete de ${factor}. ¿Venía abierto?`}
+        />
       )}
       {envio === 'rechazado' && (
-        <Aviso texto={`No se aceptó: ${errorEnvio ?? 'revisa la cantidad'}. Vuelve a capturarlo.`} error />
+        <Aviso
+          texto={`No se aceptó: ${errorEnvio ?? 'revisa la cantidad'}. Vuelve a capturarlo.`}
+          error
+        />
       )}
     </View>
   );
@@ -444,7 +548,11 @@ function FilaProductoBase({ producto, captura, campoActivo, envio, errorEnvio, o
 
 export const FilaProducto = memo(FilaProductoBase);
 
-function textoTotalAccesible(total: number | null, estado: EstadoFila, unidad: string): string {
+function textoTotalAccesible(
+  total: number | null,
+  estado: EstadoFila,
+  unidad: string,
+): string {
   if (estado === 'sin-capturar') return 'Sin capturar';
   if (total === null) return 'Total no calculable';
   return `Total ${total} ${unidad}`;
@@ -480,14 +588,30 @@ function useDestello(estado: EstadoFila) {
  * llegó (↑) o lo que el servidor rechazó (!). Lo enviado no lleva marca: la
  * palomita de "contado" ya dice que está.
  */
-function MarcaEnvio({ envio, sobreMarca }: { envio: EnvioFila; sobreMarca: boolean }) {
+function MarcaEnvio({
+  envio,
+  sobreMarca,
+}: {
+  envio: EnvioFila;
+  sobreMarca: boolean;
+}) {
   if (envio === null || envio === 'enviado') return null;
   const porEnviar = envio === 'por-enviar';
-  const accesible = porEnviar ? 'Guardado en el teléfono, por enviar' : 'No se aceptó';
-  const color = sobreMarca ? COLORES.textoSobreColor : porEnviar ? COLORES.textoSecundario : COLORES.error;
+  const accesible = porEnviar
+    ? 'Guardado en el teléfono, por enviar'
+    : 'No se aceptó';
+  const color = sobreMarca
+    ? COLORES.textoSobreColor
+    : porEnviar
+      ? COLORES.textoSecundario
+      : COLORES.error;
   return (
     <View accessible accessibilityLabel={accesible}>
-      <Glifo nombre={porEnviar ? 'subir' : 'alto'} color={color} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+      <Glifo
+        nombre={porEnviar ? 'subir' : 'alto'}
+        color={color}
+        tamano={ESPACIADO.lg + ESPACIADO.xs}
+      />
     </View>
   );
 }
@@ -500,8 +624,14 @@ function Aviso({ texto, error = false }: { texto: string; error?: boolean }) {
   const color = error ? COLORES.errorTexto : COLORES.discrepanciaTexto;
   return (
     <View style={[estilos.aviso, error && estilos.avisoError]}>
-      <Glifo nombre={error ? 'alto' : 'alerta'} color={color} tamano={ESPACIADO.lg + 2} />
-      <Text style={[estilos.textoAviso, error && estilos.textoAvisoError]}>{texto}</Text>
+      <Glifo
+        nombre={error ? 'alto' : 'alerta'}
+        color={color}
+        tamano={ESPACIADO.lg + 2}
+      />
+      <Text style={[estilos.textoAviso, error && estilos.textoAvisoError]}>
+        {texto}
+      </Text>
     </View>
   );
 }
@@ -522,7 +652,16 @@ interface PropsCampo {
  * Sin borde: el fondo propio lo separa de la fila. El campo que se teclea va
  * en blanco con el número oscuro sobre la fila azul noche, con un aro azul luminoso.
  */
-function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProducto, aviso = false }: PropsCampo) {
+function Campo({
+  etiqueta,
+  valor,
+  activo,
+  fondo,
+  colorTexto,
+  onPress,
+  nombreProducto,
+  aviso = false,
+}: PropsCampo) {
   const color = activo ? COLORES.texto : colorTexto;
   return (
     <Pulsable
@@ -541,11 +680,19 @@ function Campo({ etiqueta, valor, activo, fondo, colorTexto, onPress, nombreProd
         pressed && !activo && estilos.campoPresionado,
       ]}
     >
-      <Text style={[estilos.etiquetaCampo, { color }]} numberOfLines={1} maxFontSizeMultiplier={ESCALA_TEXTO.control}>
+      <Text
+        style={[estilos.etiquetaCampo, { color }]}
+        numberOfLines={1}
+        maxFontSizeMultiplier={ESCALA_TEXTO.control}
+      >
         {etiqueta}
       </Text>
       <Text
-        style={[estilos.valorCampo, { color }, valor === null && estilos.valorVacio]}
+        style={[
+          estilos.valorCampo,
+          { color },
+          valor === null && estilos.valorVacio,
+        ]}
         numberOfLines={1}
         maxFontSizeMultiplier={ESCALA_TEXTO.control}
       >

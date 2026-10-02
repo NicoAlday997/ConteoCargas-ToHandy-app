@@ -15,14 +15,45 @@ import {
   TarjetaEsqueleto,
   type Persona,
 } from '../componentes/base';
-import { factorEfectivo, unidadCompleta, type ProductoConteo } from '../conteo/estado-conteo';
-import { formatearNombreFamilia, formatearNombreProducto } from '../conteo/formato-nombre';
+import {
+  factorEfectivo,
+  unidadCompleta,
+  type ProductoConteo,
+} from '../conteo/estado-conteo';
+import {
+  formatearNombreFamilia,
+  formatearNombreProducto,
+} from '../conteo/formato-nombre';
 import { diaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
 import { EtiquetaFactor } from '../conteo/FilaProducto';
-import { formatearCifra, formatearEnPaquetes, formatearTotalPiezas } from '../conteo/formato-cantidad';
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RITMO, TIPOGRAFIA, type ColorEstado } from '../theme/tokens';
-import { ANCHO_MAXIMO_LISTA, bandaDeEstado, DetalleCambiosFecha, DetalleCancelacion, volver } from './ComponentesHistorial';
-import type { CargaDetalle, FamiliaDetalle, ProductoDetalle } from './modelo-historial';
+import {
+  formatearCifra,
+  formatearEnPaquetes,
+  formatearTotalPiezas,
+} from '../conteo/formato-cantidad';
+import {
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FAMILIA,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+  type ColorEstado,
+} from '../theme/tokens';
+import {
+  ANCHO_MAXIMO_LISTA,
+  bandaDeEstado,
+  DetalleCambiosFecha,
+  DetalleCancelacion,
+  volver,
+} from './ComponentesHistorial';
+import type {
+  CargaDetalle,
+  FamiliaDetalle,
+  ProductoDetalle,
+} from './modelo-historial';
 
 /**
  * Vista consolidada de una carga: por familia, como se acomoda físicamente, y
@@ -37,22 +68,40 @@ export interface SeccionFamilia {
 }
 
 export function seccionesDeCarga(carga: CargaDetalle | null): SeccionFamilia[] {
-  return carga?.familias.map((familia) => ({ familia, data: familia.productos })) ?? [];
+  return (
+    carga?.familias.map((familia) => ({ familia, data: familia.productos })) ??
+    []
+  );
 }
 
 /**
  * El día al frente, como en un comprobante: es lo que se busca al abrir una
  * carga. La ruta y el tipo acompañan debajo.
  */
-export function titulosCarga({ evento }: CargaDetalle): { titulo: string; subtitulo: string } {
+export function titulosCarga({ evento }: CargaDetalle): {
+  titulo: string;
+  subtitulo: string;
+} {
   const tipo = evento.tipo ? ETIQUETAS_TIPO_CARGA[evento.tipo] : 'Carga';
   if (!evento.dia) return { titulo: evento.rutaNombre, subtitulo: tipo };
-  return { titulo: textoSalidaCorta(evento.dia, diaNegocio(new Date())), subtitulo: `${evento.rutaNombre} · ${tipo}` };
+  return {
+    titulo: textoSalidaCorta(evento.dia, diaNegocio(new Date())),
+    subtitulo: `${evento.rutaNombre} · ${tipo}`,
+  };
 }
 
 /** En la unidad en que se contó: paquetes y piezas, o la unidad de lo que se vende completo. */
-export function cantidadEnUnidad(piezas: number | null, producto: ProductoConteo): string {
-  return piezas === null ? 'Sin dato' : formatearEnPaquetes(piezas, factorEfectivo(producto), unidadCompleta(producto));
+export function cantidadEnUnidad(
+  piezas: number | null,
+  producto: ProductoConteo,
+): string {
+  return piezas === null
+    ? 'Sin dato'
+    : formatearEnPaquetes(
+        piezas,
+        factorEfectivo(producto),
+        unidadCompleta(producto),
+      );
 }
 
 /**
@@ -61,31 +110,57 @@ export function cantidadEnUnidad(piezas: number | null, producto: ProductoConteo
  * discrepancias; y quién participó. Día, ruta y tipo ya van en el encabezado.
  */
 export function ResumenCarga({ carga }: { carga: CargaDetalle }) {
-  const { evento, totalProductos, totalDiscrepancias, totalPiezas, sinResolver } = carga;
+  const {
+    evento,
+    totalProductos,
+    totalDiscrepancias,
+    totalPiezas,
+    sinResolver,
+  } = carga;
   const personas: Persona[] = [
     { rol: 'Contó', nombre: evento.vendedorNombre },
     { rol: 'Verificó', nombre: evento.contadorNombre },
   ];
-  if (evento.autorizadaPorNombre) personas.push({ rol: 'Autorizó', nombre: evento.autorizadaPorNombre });
+  if (evento.autorizadaPorNombre)
+    personas.push({ rol: 'Autorizó', nombre: evento.autorizadaPorNombre });
 
   return (
     <Tarjeta conAcento={bandaDeEstado(evento.estado)} style={estilos.resumen}>
       <View style={estilos.grupo}>
-        <View accessible accessibilityLabel={`${totalPiezas} piezas en total${sinResolver > 0 ? ', sin contar las que faltan por resolver' : ''}`}>
-          <Text style={estilos.rotulo}>{sinResolver > 0 ? 'Piezas resueltas' : 'Piezas en total'}</Text>
+        <View
+          accessible
+          accessibilityLabel={`${totalPiezas} piezas en total${sinResolver > 0 ? ', sin contar las que faltan por resolver' : ''}`}
+        >
+          <Text style={estilos.rotulo}>
+            {sinResolver > 0 ? 'Piezas resueltas' : 'Piezas en total'}
+          </Text>
           <Text style={estilos.numero}>{formatearCifra(totalPiezas)}</Text>
         </View>
         <View style={estilos.filaDatos}>
-          <Datos datos={[{ rotulo: 'Productos', valor: String(totalProductos), cifra: true }]} />
+          <Datos
+            datos={[
+              {
+                rotulo: 'Productos',
+                valor: String(totalProductos),
+                cifra: true,
+              },
+            ]}
+          />
           {totalDiscrepancias > 0 ? (
             <Etiqueta
-              texto={totalDiscrepancias === 1 ? '1 con discrepancia' : `${totalDiscrepancias} con discrepancia`}
+              texto={
+                totalDiscrepancias === 1
+                  ? '1 con discrepancia'
+                  : `${totalDiscrepancias} con discrepancia`
+              }
               tono="discrepancia"
             />
           ) : (
             <Etiqueta texto="Sin discrepancias" tono="capturado" />
           )}
-          {sinResolver > 0 && <Etiqueta texto={`${sinResolver} sin resolver`} tono="error" />}
+          {sinResolver > 0 && (
+            <Etiqueta texto={`${sinResolver} sin resolver`} tono="error" />
+          )}
         </View>
       </View>
       <View style={estilos.grupo}>
@@ -113,7 +188,9 @@ export function EncabezadoFamilia({ familia }: { familia: FamiliaDetalle }) {
       </Text>
       {familia.conDiscrepancia > 0 && (
         <Text style={estilos.discrepanciasFamilia}>
-          {familia.conDiscrepancia === 1 ? '1 con discrepancia' : `${familia.conDiscrepancia} con discrepancia`}
+          {familia.conDiscrepancia === 1
+            ? '1 con discrepancia'
+            : `${familia.conDiscrepancia} con discrepancia`}
         </Text>
       )}
     </View>
@@ -162,7 +239,9 @@ export function TarjetaProducto({
     <Tarjeta compacta tintada={tintada} style={estilos.fila}>
       <View style={estilos.lineaProducto}>
         <EtiquetaFactor producto={producto} />
-        <Text style={estilos.nombreProducto}>{formatearNombreProducto(producto.nombre)}</Text>
+        <Text style={estilos.nombreProducto}>
+          {formatearNombreProducto(producto.nombre)}
+        </Text>
       </View>
       {/* A la derecha y con dígitos del mismo ancho: las cantidades de todas las tarjetas quedan en columna. */}
       {sinResolver ? (
@@ -171,19 +250,38 @@ export function TarjetaProducto({
         </View>
       ) : (
         <View style={estilos.lineaCantidad}>
-          {factor !== null && cantidadFinal !== null && cantidadFinal >= factor && (
-            <Text style={estilos.totalPiezas}>{formatearTotalPiezas(cantidadFinal)}</Text>
-          )}
-          <Text style={estilos.cantidadFinal}>{cantidadEnUnidad(cantidadFinal, producto)}</Text>
+          {factor !== null &&
+            cantidadFinal !== null &&
+            cantidadFinal >= factor && (
+              <Text style={estilos.totalPiezas}>
+                {formatearTotalPiezas(cantidadFinal)}
+              </Text>
+            )}
+          <Text style={estilos.cantidadFinal}>
+            {cantidadEnUnidad(cantidadFinal, producto)}
+          </Text>
         </View>
       )}
       {discrepancia && (
-        <Tarjeta elevacion={0} tintada="discrepancia" compacta style={estilos.bloqueDiscrepancia}>
+        <Tarjeta
+          elevacion={0}
+          tintada="discrepancia"
+          compacta
+          style={estilos.bloqueDiscrepancia}
+        >
           <Text style={estilos.tituloDiscrepancia}>Tuvo discrepancia</Text>
           <Datos
             datos={[
-              { rotulo: 'Vendedor contó', valor: cantidadEnUnidad(discrepancia.vendedor, producto), cifra: true },
-              { rotulo: 'Contador contó', valor: cantidadEnUnidad(discrepancia.contador, producto), cifra: true },
+              {
+                rotulo: 'Vendedor contó',
+                valor: cantidadEnUnidad(discrepancia.vendedor, producto),
+                cifra: true,
+              },
+              {
+                rotulo: 'Contador contó',
+                valor: cantidadEnUnidad(discrepancia.contador, producto),
+                cifra: true,
+              },
             ]}
           />
           <View style={estilos.grupoDiscrepancia}>
@@ -201,7 +299,13 @@ export function TarjetaProducto({
   );
 }
 
-export function ErrorCarga({ error, onReintentar }: { error: unknown; onReintentar: () => void }) {
+export function ErrorCarga({
+  error,
+  onReintentar,
+}: {
+  error: unknown;
+  onReintentar: () => void;
+}) {
   if (error instanceof ErrorApi && error.estado === 403) {
     return (
       <EstadoVacio
@@ -243,7 +347,13 @@ export function ErrorCarga({ error, onReintentar }: { error: unknown; onReintent
 }
 
 /** La respuesta llegó pero no trae una carga identificable. */
-export function CargaIlegible({ onReintentar, reintentando }: { onReintentar: () => void; reintentando: boolean }) {
+export function CargaIlegible({
+  onReintentar,
+  reintentando,
+}: {
+  onReintentar: () => void;
+  reintentando: boolean;
+}) {
   return (
     <View style={estilos.contenedorAviso}>
       <BloqueError

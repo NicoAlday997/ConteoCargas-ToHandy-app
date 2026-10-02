@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useCrearPlantilla, usePlantillas } from '../../src/api/hooks-plantillas';
+import {
+  useCrearPlantilla,
+  usePlantillas,
+} from '../../src/api/hooks-plantillas';
 import {
   BarraAccion,
   BloqueError,
@@ -18,12 +27,28 @@ import {
   TarjetaEsqueleto,
 } from '../../src/componentes/base';
 import { textoProductos } from '../../src/factores/modelo-factores';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import { sesionVencida } from '../../src/plantillas/ComponentesPlantillas';
 import { ModalDatosPlantilla } from '../../src/plantillas/ModalDatosPlantilla';
-import { textoRutas, type Plantilla } from '../../src/plantillas/modelo-plantillas';
+import {
+  textoRutas,
+  type Plantilla,
+} from '../../src/plantillas/modelo-plantillas';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, ROTULO, TIPOGRAFIA } from '../../src/theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+} from '../../src/theme/tokens';
 
 /**
  * Plantillas de carga (solo Supervisor): qué productos ve el vendedor de cada
@@ -34,7 +59,10 @@ import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, ROTULO, TIPOG
 const TITULO = 'Plantillas de carga';
 
 function abrir(plantillaId: string) {
-  router.push({ pathname: '/plantillas/[plantillaId]', params: { plantillaId } });
+  router.push({
+    pathname: '/plantillas/[plantillaId]',
+    params: { plantillaId },
+  });
 }
 
 export default function PantallaPlantillas() {
@@ -90,7 +118,8 @@ function Lista() {
     }, [refetch]),
   );
 
-  const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const vencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (vencida) sesionVencida();
   }, [vencida]);
@@ -112,11 +141,14 @@ function Lista() {
     const sinRed = consulta.error instanceof ErrorRed;
     contenido = (
       <BloqueError
-        titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las plantillas'}
+        titulo={
+          sinRed ? 'Sin conexión' : 'No se pudieron cargar las plantillas'
+        }
         detalle={
           sinRed
             ? 'Para ver las plantillas necesitas señal: revísala y vuelve a intentarlo.'
-            : (consulta.error instanceof Error && consulta.error.message) || 'Intenta de nuevo en un momento.'
+            : (consulta.error instanceof Error && consulta.error.message) ||
+              'Intenta de nuevo en un momento.'
         }
         tono={sinRed ? 'atencion' : 'error'}
         onReintentar={() => void refetch()}
@@ -125,7 +157,10 @@ function Lista() {
       />
     );
   } else {
-    const { activas, inactivas } = consulta.data ?? { activas: [], inactivas: [] };
+    const { activas, inactivas } = consulta.data ?? {
+      activas: [],
+      inactivas: [],
+    };
     contenido = (
       <>
         {activas.length === 0 ? (
@@ -136,7 +171,14 @@ function Lista() {
             enLinea
           />
         ) : (
-          <Seccion texto="Activas" detalle={activas.length === 1 ? '1 plantilla' : `${activas.length} plantillas`}>
+          <Seccion
+            texto="Activas"
+            detalle={
+              activas.length === 1
+                ? '1 plantilla'
+                : `${activas.length} plantillas`
+            }
+          >
             {activas.map((p) => (
               <TarjetaPlantilla key={p.id} plantilla={p} />
             ))}
@@ -158,14 +200,20 @@ function Lista() {
       <ScrollView
         style={estilos.cuerpo}
         contentContainerStyle={estilos.contenido}
-        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={refrescar} />
+        }
       >
         {contenido}
       </ScrollView>
       {/* Abajo, al alcance del pulgar: la acción de la pantalla. */}
       {!consulta.isPending && !(consulta.isError && !consulta.data) && (
         <BarraAccion>
-          <Boton texto="Crear plantilla" onPress={abrirCreacion} style={estilos.botonBarra} />
+          <Boton
+            texto="Crear plantilla"
+            onPress={abrirCreacion}
+            style={estilos.botonBarra}
+          />
         </BarraAccion>
       )}
       <ModalDatosPlantilla
@@ -212,7 +260,9 @@ function TarjetaPlantilla({ plantilla }: { plantilla: Plantilla }) {
         </Text>
         <View style={estilos.cifra}>
           <Text style={estilos.numero}>{plantilla.totalProductos}</Text>
-          <Text style={estilos.unidad}>{plantilla.totalProductos === 1 ? 'producto' : 'productos'}</Text>
+          <Text style={estilos.unidad}>
+            {plantilla.totalProductos === 1 ? 'producto' : 'productos'}
+          </Text>
         </View>
         <Chevron />
       </View>
@@ -223,7 +273,11 @@ function TarjetaPlantilla({ plantilla }: { plantilla: Plantilla }) {
       )}
       <View>
         <Text style={estilos.rotulo}>Rutas</Text>
-        <Text style={plantilla.rutas.length > 0 ? estilos.rutas : estilos.sinRutas}>{rutas}</Text>
+        <Text
+          style={plantilla.rutas.length > 0 ? estilos.rutas : estilos.sinRutas}
+        >
+          {rutas}
+        </Text>
       </View>
     </Tarjeta>
   );
@@ -233,7 +287,12 @@ function EsqueletoLista() {
   return (
     <Esqueleto etiqueta="Cargando plantillas" style={estilos.esqueleto}>
       {[0, 1].map((i) => (
-        <TarjetaEsqueleto key={i} titulo="titulo" lineas={['30%', '60%']} cifra />
+        <TarjetaEsqueleto
+          key={i}
+          titulo="titulo"
+          lineas={['30%', '60%']}
+          cifra
+        />
       ))}
     </Esqueleto>
   );

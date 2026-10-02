@@ -4,7 +4,14 @@ import { router } from 'expo-router';
 import { ETIQUETAS_TIPO_CARGA } from '../api/cargas';
 import { useConflictosPendientes } from '../api/hooks-cargas';
 import { Chevron, Tarjeta } from '../componentes/base';
-import { CIFRAS, COLORES, ESCALA_TEXTO, ETIQUETA_DATO, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  ESCALA_TEXTO,
+  ETIQUETA_DATO,
+  RITMO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
 
 /**
  * Acceso directo a las cargas con diferencias por resolver donde el usuario
@@ -13,7 +20,10 @@ import { CIFRAS, COLORES, ESCALA_TEXTO, ETIQUETA_DATO, RITMO, TIPOGRAFIA } from 
  */
 export function AccesoConflictos() {
   const consulta = useConflictosPendientes(true);
-  const cargas = (consulta.data ?? []).filter((c): c is typeof c & { id: string } => typeof c.id === 'string' && c.id.length > 0);
+  const cargas = (consulta.data ?? []).filter(
+    (c): c is typeof c & { id: string } =>
+      typeof c.id === 'string' && c.id.length > 0,
+  );
 
   if (cargas.length === 0) return null;
 
@@ -24,12 +34,18 @@ export function AccesoConflictos() {
         const faltan = Math.max(0, total - (c.resueltas ?? 0));
         const tipo = c.tipo ? ETIQUETAS_TIPO_CARGA[c.tipo] : 'Carga';
         const ruta = c.rutaNombre?.trim() || 'Ruta sin nombre';
-        const cuantas = faltan === 1 ? 'Falta 1 diferencia' : `Faltan ${faltan} diferencias`;
+        const cuantas =
+          faltan === 1 ? 'Falta 1 diferencia' : `Faltan ${faltan} diferencias`;
         return (
           <Tarjeta
             key={c.id}
             conAcento={{ titulo: 'Resolver diferencias', tono: 'discrepancia' }}
-            onPress={() => router.push({ pathname: '/discrepancias/[eventoId]', params: { eventoId: c.id } })}
+            onPress={() =>
+              router.push({
+                pathname: '/discrepancias/[eventoId]',
+                params: { eventoId: c.id },
+              })
+            }
             accessibilityLabel={`Resolver diferencias de ${ruta}, ${tipo}. ${cuantas} de ${total}.`}
           >
             <View style={estilos.fila}>
@@ -41,10 +57,16 @@ export function AccesoConflictos() {
               </View>
               {/* Lo que falta domina: es lo que hay que hacer. */}
               <View style={estilos.cifra}>
-                <Text style={estilos.numero} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                <Text
+                  style={estilos.numero}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                >
                   {faltan}
                 </Text>
-                <Text style={estilos.unidad} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                <Text
+                  style={estilos.unidad}
+                  maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                >
                   de {total} por resolver
                 </Text>
               </View>

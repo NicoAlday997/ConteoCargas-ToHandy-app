@@ -1,18 +1,33 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { formatearNombreFamilia, formatearNombreProducto } from '../conteo/formato-nombre';
+import {
+  formatearNombreFamilia,
+  formatearNombreProducto,
+} from '../conteo/formato-nombre';
 import { router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { cerrarSesion } from '../api/sesion';
+import { Etiqueta, Tarjeta, Pulsable } from '../componentes/base';
 import {
-  Etiqueta,
-  Tarjeta,
-  Pulsable,
-} from '../componentes/base';
-import { textoEmpaque, type EmpaqueConfirmado } from '../factores/modelo-factores';
+  textoEmpaque,
+  type EmpaqueConfirmado,
+} from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
-import { BARRA_INFERIOR, BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FAMILIA, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  BARRA_INFERIOR,
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FAMILIA,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../theme/tokens';
 
 /** Piezas comunes de las pantallas de plantillas: filas de producto, casillas y avisos. */
 
@@ -35,13 +50,17 @@ export function avisoDeError(e: unknown, titulo: string): AvisoError | null {
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Para guardar las plantillas necesitas señal: revísala y vuelve a intentarlo.',
+      detalle:
+        'Para guardar las plantillas necesitas señal: revísala y vuelve a intentarlo.',
       tono: 'atencion',
     };
   }
   return {
     titulo,
-    detalle: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.',
+    detalle:
+      e instanceof Error && e.message
+        ? e.message
+        : 'Intenta de nuevo en un momento.',
     tono: 'error',
   };
 }
@@ -65,7 +84,12 @@ export function EncabezadoFamilia({
 }) {
   return (
     <View style={estilos.encabezadoFamilia}>
-      <View style={estilos.lineaFamilia} accessible accessibilityRole="header" accessibilityLabel={`${titulo}: ${detalle}`}>
+      <View
+        style={estilos.lineaFamilia}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${titulo}: ${detalle}`}
+      >
         <Text style={estilos.textoFamilia} numberOfLines={2}>
           {formatearNombreFamilia(titulo)}
         </Text>
@@ -76,11 +100,23 @@ export function EncabezadoFamilia({
           onPress={accion.onPress}
           accessibilityRole="button"
           accessibilityLabel={accion.accessibilityLabel}
-          hitSlop={{ top: (TOQUE_MINIMO - ALTO_BOTON_FAMILIA) / 2, bottom: (TOQUE_MINIMO - ALTO_BOTON_FAMILIA) / 2 }}
-          style={({ pressed }) => [estilos.botonFamilia, pressed && estilos.botonFamiliaPresionado]}
+          hitSlop={{
+            top: (TOQUE_MINIMO - ALTO_BOTON_FAMILIA) / 2,
+            bottom: (TOQUE_MINIMO - ALTO_BOTON_FAMILIA) / 2,
+          }}
+          style={({ pressed }) => [
+            estilos.botonFamilia,
+            pressed && estilos.botonFamiliaPresionado,
+          ]}
         >
           {({ pressed }) => (
-            <Text style={[estilos.textoBotonFamilia, pressed && estilos.textoInvertido]} numberOfLines={1}>
+            <Text
+              style={[
+                estilos.textoBotonFamilia,
+                pressed && estilos.textoInvertido,
+              ]}
+              numberOfLines={1}
+            >
               {accion.texto}
             </Text>
           )}
@@ -93,7 +129,12 @@ export function EncabezadoFamilia({
 export type ModoFila =
   | { tipo: 'lectura' }
   /** `tono`: rojo si marcar es para quitar, marca si es para agregar. */
-  | { tipo: 'seleccion'; marcado: boolean; tono: 'marca' | 'error'; onAlternar: () => void }
+  | {
+      tipo: 'seleccion';
+      marcado: boolean;
+      tono: 'marca' | 'error';
+      onAlternar: () => void;
+    }
   /** Ya está en la plantilla: se ve, pero no se puede marcar. */
   | { tipo: 'incluido' };
 
@@ -115,16 +156,31 @@ export function FilaProducto({
   const textoEmp = textoEmpaque(empaque);
   const datos = (
     <View style={estilos.cuerpoFila}>
-      <Text style={[estilos.nombre, modo.tipo === 'incluido' && estilos.nombreIncluido]} numberOfLines={2}>
+      <Text
+        style={[
+          estilos.nombre,
+          modo.tipo === 'incluido' && estilos.nombreIncluido,
+        ]}
+        numberOfLines={2}
+      >
         {formatearNombreProducto(nombre)}
       </Text>
       <View style={estilos.etiquetas}>
         {modo.tipo === 'incluido' ? (
           <Etiqueta texto="Ya está en la plantilla" tono="capturado" />
         ) : (
-          <Etiqueta texto={textoEmp} tono={empaque ? 'referencia' : 'pendiente'} />
+          <Etiqueta
+            texto={textoEmp}
+            tono={empaque ? 'referencia' : 'pendiente'}
+          />
         )}
-        {inactivo && <Etiqueta texto="Inactivo en Handy" tono="pendiente" relleno="contorno" />}
+        {inactivo && (
+          <Etiqueta
+            texto="Inactivo en Handy"
+            tono="pendiente"
+            relleno="contorno"
+          />
+        )}
       </View>
     </View>
   );
@@ -154,15 +210,29 @@ export function FilaProducto({
       onPress={onAlternar}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: marcado }}
-      accessibilityLabel={[nombre, textoEmp, inactivo ? 'Inactivo en Handy' : null].filter(Boolean).join('. ')}
+      accessibilityLabel={[
+        nombre,
+        textoEmp,
+        inactivo ? 'Inactivo en Handy' : null,
+      ]
+        .filter(Boolean)
+        .join('. ')}
       style={({ pressed }) => [
         estilos.fila,
         estilos.filaSeleccion,
-        marcado && (tono === 'error' ? estilos.filaMarcadaError : estilos.filaMarcadaMarca),
+        marcado &&
+          (tono === 'error'
+            ? estilos.filaMarcadaError
+            : estilos.filaMarcadaMarca),
         pressed && estilos.filaPresionada,
       ]}
     >
-      <View style={[estilos.caja, marcado && (tono === 'error' ? estilos.cajaError : estilos.cajaMarca)]}>
+      <View
+        style={[
+          estilos.caja,
+          marcado && (tono === 'error' ? estilos.cajaError : estilos.cajaMarca),
+        ]}
+      >
         {marcado && <View style={estilos.palomita} />}
       </View>
       {datos}

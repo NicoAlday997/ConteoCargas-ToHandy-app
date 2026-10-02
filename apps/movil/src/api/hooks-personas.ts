@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { ErrorApi } from './cliente';
 import {
@@ -18,7 +23,8 @@ export const clavesPersonas = {
   lista: ['personas', 'lista'] as const,
   cuentasHandy: ['personas', 'cuentas-handy'] as const,
   // Bajo `personas`: restablecer o desbloquear agrega un renglón y lo refresca.
-  accesosRecientes: (id: string) => ['personas', 'accesos', id, 'recientes'] as const,
+  accesosRecientes: (id: string) =>
+    ['personas', 'accesos', id, 'recientes'] as const,
   accesosTodos: (id: string) => ['personas', 'accesos', id, 'todos'] as const,
 };
 
@@ -70,20 +76,27 @@ function useRefrescarPersonas() {
 
 export function useCrearPersona() {
   const refrescar = useRefrescarPersonas();
-  return useMutation({ mutationFn: (datos: DatosAlta) => crearPersona(datos), onSuccess: refrescar });
+  return useMutation({
+    mutationFn: (datos: DatosAlta) => crearPersona(datos),
+    onSuccess: refrescar,
+  });
 }
 
 export function useEditarPersona() {
   const refrescar = useRefrescarPersonas();
   return useMutation({
-    mutationFn: ({ id, datos }: { id: string; datos: DatosEdicion }) => editarPersona(id, datos),
+    mutationFn: ({ id, datos }: { id: string; datos: DatosEdicion }) =>
+      editarPersona(id, datos),
     onSuccess: refrescar,
   });
 }
 
 export function useRestablecerPin() {
   const refrescar = useRefrescarPersonas();
-  return useMutation({ mutationFn: (id: string) => restablecerPinPersona(id), onSuccess: refrescar });
+  return useMutation({
+    mutationFn: (id: string) => restablecerPinPersona(id),
+    onSuccess: refrescar,
+  });
 }
 
 /**
@@ -92,7 +105,10 @@ export function useRestablecerPin() {
  */
 export function useDesbloquearPersona() {
   const refrescar = useRefrescarPersonas();
-  return useMutation({ mutationFn: (id: string) => desbloquearPersona(id), onSettled: refrescar });
+  return useMutation({
+    mutationFn: (id: string) => desbloquearPersona(id),
+    onSettled: refrescar,
+  });
 }
 
 /** Los que caben a la vista en la ficha; el resto, en "Ver todo". */
@@ -113,11 +129,14 @@ export function useAccesosRecientes(id: string) {
 export function useAccesosTodos(id: string) {
   return useInfiniteQuery({
     queryKey: clavesPersonas.accesosTodos(id),
-    queryFn: ({ pageParam }) => listarAccesosPersona(id, pageParam, TAMANO_PAGINA_ACCESOS),
+    queryFn: ({ pageParam }) =>
+      listarAccesosPersona(id, pageParam, TAMANO_PAGINA_ACCESOS),
     initialPageParam: 1,
     getNextPageParam: (ultima, _todas, paginaActual) => {
       const total = ultima?.total ?? 0;
-      return paginaActual * TAMANO_PAGINA_ACCESOS < total ? paginaActual + 1 : undefined;
+      return paginaActual * TAMANO_PAGINA_ACCESOS < total
+        ? paginaActual + 1
+        : undefined;
     },
     staleTime: 0,
     retry: reintentar,

@@ -14,10 +14,13 @@ describe('textoFranjaDiferencia', () => {
   });
 
   it('caso más largo: 12 paquetes y 11 piezas', () => {
-    assert.deepEqual(textoFranjaDiferencia(12 * 12 + 11, 12, null, 'Contador: más'), {
-      valor: '12 paquetes y 11 piezas',
-      detalle: 'Contador: más · (155 piezas)',
-    });
+    assert.deepEqual(
+      textoFranjaDiferencia(12 * 12 + 11, 12, null, 'Contador: más'),
+      {
+        valor: '12 paquetes y 11 piezas',
+        detalle: 'Contador: más · (155 piezas)',
+      },
+    );
   });
 
   it('sin factor no repite el total en piezas', () => {
@@ -28,6 +31,9 @@ describe('textoFranjaDiferencia', () => {
   });
 
   it('sin nada que decir abajo, sin detalle', () => {
-    assert.deepEqual(textoFranjaDiferencia(5, null, null, null), { valor: '5 piezas', detalle: null });
+    assert.deepEqual(textoFranjaDiferencia(5, null, null, null), {
+      valor: '5 piezas',
+      detalle: null,
+    });
   });
 });

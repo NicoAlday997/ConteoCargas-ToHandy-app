@@ -1,10 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { CODIGO_COLOR_INVALIDO } from '../../src/api/familias';
-import { useAsignarColorFamilia, useFamilias, type FamiliaConColor } from '../../src/api/hooks-familias';
+import {
+  useAsignarColorFamilia,
+  useFamilias,
+  type FamiliaConColor,
+} from '../../src/api/hooks-familias';
 import {
   BloqueError,
   Esqueleto,
@@ -16,7 +26,11 @@ import {
 } from '../../src/componentes/base';
 import { formatearNombreFamilia } from '../../src/conteo/formato-nombre';
 import { textoProductos } from '../../src/factores/modelo-factores';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import { sesionVencida } from '../../src/plantillas/ComponentesPlantillas';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import {
@@ -84,7 +98,9 @@ function Pantalla({ children }: { children: ReactNode }) {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior titulo={TITULO} marca={false}>
-        <NotaEncabezado>Se ven en el conteo, junto al nombre de cada familia.</NotaEncabezado>
+        <NotaEncabezado>
+          Se ven en el conteo, junto al nombre de cada familia.
+        </NotaEncabezado>
       </BarraSuperior>
       {children}
     </SafeAreaView>
@@ -106,7 +122,9 @@ function Lista() {
   const [errorAsignar, setErrorAsignar] = useState<string | null>(null);
   const [refrescando, setRefrescando] = useState(false);
 
-  const vencida = [consulta.error, asignar.error].some((e) => e instanceof ErrorApi && e.estado === 401);
+  const vencida = [consulta.error, asignar.error].some(
+    (e) => e instanceof ErrorApi && e.estado === 401,
+  );
   useEffect(() => {
     if (vencida) sesionVencida();
   }, [vencida]);
@@ -120,11 +138,19 @@ function Lista() {
       {
         onError: (e) => {
           const nombre = formatearNombreFamilia(familia.familia);
-          if (e instanceof ErrorRed) setErrorAsignar(`Sin conexión: no se guardó el color de ${nombre}.`);
-          else if (e instanceof ErrorApi && e.estado === 404) setErrorAsignar(`${nombre} ya no está en el catálogo.`);
-          else if (e instanceof ErrorApi && e.cuerpo?.codigo === CODIGO_COLOR_INVALIDO)
+          if (e instanceof ErrorRed)
+            setErrorAsignar(
+              `Sin conexión: no se guardó el color de ${nombre}.`,
+            );
+          else if (e instanceof ErrorApi && e.estado === 404)
+            setErrorAsignar(`${nombre} ya no está en el catálogo.`);
+          else if (
+            e instanceof ErrorApi &&
+            e.cuerpo?.codigo === CODIGO_COLOR_INVALIDO
+          )
             setErrorAsignar('Ese color no está en la paleta.');
-          else setErrorAsignar(e.message || `No se guardó el color de ${nombre}.`);
+          else
+            setErrorAsignar(e.message || `No se guardó el color de ${nombre}.`);
         },
       },
     );
@@ -144,11 +170,14 @@ function Lista() {
       <Pantalla>
         <View style={estilos.contenido}>
           <BloqueError
-            titulo={sinRed ? 'Sin conexión' : 'No se pudieron cargar las familias'}
+            titulo={
+              sinRed ? 'Sin conexión' : 'No se pudieron cargar las familias'
+            }
             detalle={
               sinRed
                 ? 'Para ver las familias necesitas señal: revísala.'
-                : (consulta.error instanceof Error && consulta.error.message) || null
+                : (consulta.error instanceof Error && consulta.error.message) ||
+                  null
             }
             tono={sinRed ? 'atencion' : 'error'}
             onReintentar={() => void consulta.refetch()}
@@ -176,7 +205,9 @@ function Lista() {
           />
         }
       >
-        {errorAsignar && <BloqueError titulo="No se guardó el color" detalle={errorAsignar} />}
+        {errorAsignar && (
+          <BloqueError titulo="No se guardó el color" detalle={errorAsignar} />
+        )}
         {familias.length === 0 ? (
           <EstadoVacio
             icono="caja"
@@ -187,27 +218,46 @@ function Lista() {
         ) : (
           <View style={estilos.tarjeta}>
             {familias.map((f) => (
-              <RenglonFamilia key={f.familia} familia={f} onPress={() => setAbierta(f)} />
+              <RenglonFamilia
+                key={f.familia}
+                familia={f}
+                onPress={() => setAbierta(f)}
+              />
             ))}
           </View>
         )}
       </ScrollView>
-      <HojaColores familia={abierta} onElegir={elegir} onCerrar={() => setAbierta(null)} />
+      <HojaColores
+        familia={abierta}
+        onElegir={elegir}
+        onCerrar={() => setAbierta(null)}
+      />
     </Pantalla>
   );
 }
 
-function RenglonFamilia({ familia, onPress }: { familia: FamiliaConColor; onPress: () => void }) {
+function RenglonFamilia({
+  familia,
+  onPress,
+}: {
+  familia: FamiliaConColor;
+  onPress: () => void;
+}) {
   const nombre = formatearNombreFamilia(familia.familia);
   return (
     <Pulsable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${nombre}, ${textoProductos(familia.productos)}. ${
-        familia.color ? `Color ${NOMBRES_COLOR_FAMILIA[familia.color]}` : 'Sin color'
+        familia.color
+          ? `Color ${NOMBRES_COLOR_FAMILIA[familia.color]}`
+          : 'Sin color'
       }`}
       accessibilityHint="Elegir el color de la familia"
-      style={({ pressed }) => [estilos.renglon, pressed && estilos.renglonPresionado]}
+      style={({ pressed }) => [
+        estilos.renglon,
+        pressed && estilos.renglonPresionado,
+      ]}
     >
       <View style={estilos.textosRenglon}>
         <Text style={estilos.nombre} numberOfLines={1}>
@@ -221,10 +271,20 @@ function RenglonFamilia({ familia, onPress }: { familia: FamiliaConColor; onPres
 }
 
 /** El círculo del color; sin color, un círculo de contorno punteado. */
-function Muestra({ color, lado }: { color: ColorFamilia | null; lado: number }) {
+function Muestra({
+  color,
+  lado,
+}: {
+  color: ColorFamilia | null;
+  lado: number;
+}) {
   const forma = { width: lado, height: lado, borderRadius: lado / 2 };
   if (color === null) return <View style={[forma, estilos.sinColor]} />;
-  return <View style={[forma, { backgroundColor: TONOS_COLOR_FAMILIA[color].solido }]} />;
+  return (
+    <View
+      style={[forma, { backgroundColor: TONOS_COLOR_FAMILIA[color].solido }]}
+    />
+  );
 }
 
 /**
@@ -268,9 +328,17 @@ function HojaColores({
             onPress={() => onElegir(mostrada, null)}
             accessibilityRole="button"
             accessibilityState={{ selected: mostrada.color === null }}
-            style={({ pressed }) => [estilos.opcionSinColor, pressed && estilos.renglonPresionado]}
+            style={({ pressed }) => [
+              estilos.opcionSinColor,
+              pressed && estilos.renglonPresionado,
+            ]}
           >
-            <View style={[estilos.anillo, mostrada.color === null && estilos.anilloActivo]}>
+            <View
+              style={[
+                estilos.anillo,
+                mostrada.color === null && estilos.anilloActivo,
+              ]}
+            >
               <Muestra color={null} lado={CIRCULO - ESPACIADO.sm} />
             </View>
             <Text style={estilos.textoSinColor}>Sin color</Text>
@@ -281,16 +349,32 @@ function HojaColores({
   );
 }
 
-function OpcionColor({ color, seleccionado, onPress }: { color: ColorFamilia; seleccionado: boolean; onPress: () => void }) {
+function OpcionColor({
+  color,
+  seleccionado,
+  onPress,
+}: {
+  color: ColorFamilia;
+  seleccionado: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pulsable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={NOMBRES_COLOR_FAMILIA[color]}
       accessibilityState={{ selected: seleccionado }}
-      style={({ pressed }) => [estilos.opcion, pressed && estilos.opcionPresionada]}
+      style={({ pressed }) => [
+        estilos.opcion,
+        pressed && estilos.opcionPresionada,
+      ]}
     >
-      <View style={[estilos.anillo, seleccionado && { borderColor: TONOS_COLOR_FAMILIA[color].solido }]}>
+      <View
+        style={[
+          estilos.anillo,
+          seleccionado && { borderColor: TONOS_COLOR_FAMILIA[color].solido },
+        ]}
+      >
         <Muestra color={color} lado={CIRCULO} />
       </View>
     </Pulsable>

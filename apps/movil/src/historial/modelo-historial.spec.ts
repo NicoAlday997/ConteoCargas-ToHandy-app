@@ -3,10 +3,21 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import type { CargaHistorialApi, ProductoConsolidadoApi } from '../api/historial.ts';
-import { agruparPorDia, cambiosFechaDe, normalizarDetalle } from './modelo-historial.ts';
+import type {
+  CargaHistorialApi,
+  ProductoConsolidadoApi,
+} from '../api/historial.ts';
+import {
+  agruparPorDia,
+  cambiosFechaDe,
+  normalizarDetalle,
+} from './modelo-historial.ts';
 
-function fila(id: string, fechaOperativa: string | null, extra: Partial<CargaHistorialApi> = {}): CargaHistorialApi {
+function fila(
+  id: string,
+  fechaOperativa: string | null,
+  extra: Partial<CargaHistorialApi> = {},
+): CargaHistorialApi {
   return {
     id,
     rutaNombre: 'Ruta 1',
@@ -24,7 +35,10 @@ function fila(id: string, fechaOperativa: string | null, extra: Partial<CargaHis
   };
 }
 
-function producto(code: string, extra: Partial<ProductoConsolidadoApi> = {}): ProductoConsolidadoApi {
+function producto(
+  code: string,
+  extra: Partial<ProductoConsolidadoApi> = {},
+): ProductoConsolidadoApi {
   return {
     productoCode: code,
     nombre: `Producto ${code}`,
@@ -47,7 +61,10 @@ function producto(code: string, extra: Partial<ProductoConsolidadoApi> = {}): Pr
 describe('agruparPorDia', () => {
   it('agrupa por fecha operativa del día más reciente al más viejo', () => {
     const grupos = agruparPorDia([
-      [fila('a', '2026-09-24T06:00:00.000Z'), fila('b', '2026-09-22T06:00:00.000Z')],
+      [
+        fila('a', '2026-09-24T06:00:00.000Z'),
+        fila('b', '2026-09-22T06:00:00.000Z'),
+      ],
       [fila('c', '2026-09-24T06:00:00.000Z', { tipo: 'RECARGA' })],
     ]);
     assert.deepEqual(
@@ -62,13 +79,18 @@ describe('agruparPorDia', () => {
   it('una fila repetida entre páginas cuenta una vez; sin id se descarta', () => {
     const grupos = agruparPorDia([
       [fila('a', '2026-09-24T06:00:00.000Z')],
-      [fila('a', '2026-09-24T06:00:00.000Z'), fila('', '2026-09-24T06:00:00.000Z')],
+      [
+        fila('a', '2026-09-24T06:00:00.000Z'),
+        fila('', '2026-09-24T06:00:00.000Z'),
+      ],
     ]);
     assert.equal(grupos[0].data.length, 1);
   });
 
   it('las cargas sin fecha van al final', () => {
-    const grupos = agruparPorDia([[fila('x', null), fila('a', '2026-09-20T06:00:00.000Z')]]);
+    const grupos = agruparPorDia([
+      [fila('x', null), fila('a', '2026-09-20T06:00:00.000Z')],
+    ]);
     assert.deepEqual(
       grupos.map((g) => g.dia),
       ['2026-09-20', null],
@@ -76,7 +98,9 @@ describe('agruparPorDia', () => {
   });
 
   it('lleva el número de discrepancias', () => {
-    const [grupo] = agruparPorDia([[fila('a', '2026-09-24T06:00:00.000Z', { productosConDiscrepancia: 3 })]]);
+    const [grupo] = agruparPorDia([
+      [fila('a', '2026-09-24T06:00:00.000Z', { productosConDiscrepancia: 3 })],
+    ]);
     assert.equal(grupo.data[0].discrepancias, 3);
   });
 });
@@ -153,7 +177,10 @@ describe('normalizarDetalle', () => {
             producto('C', { cantidadFinal: null, tuvoDiscrepancia: true }),
           ],
         },
-        { familia: 'Botanas', productos: [producto('D', { cantidadFinal: 100 })] },
+        {
+          familia: 'Botanas',
+          productos: [producto('D', { cantidadFinal: 100 })],
+        },
       ],
     });
     assert.equal(detalle?.totalPiezas, 124);
@@ -197,14 +224,27 @@ describe('cambiosFechaDe', () => {
           creadoEn: '2026-09-25T23:00:00.000Z',
         },
       ]),
-      [{ anterior: '2026-09-26', nueva: '2026-09-27', porNombre: 'Irvin Alday', motivo: null }],
+      [
+        {
+          anterior: '2026-09-26',
+          nueva: '2026-09-27',
+          porNombre: 'Irvin Alday',
+          motivo: null,
+        },
+      ],
     );
   });
 
   it('descarta un cambio con fechas ilegibles y tolera la ausencia del campo', () => {
     assert.deepEqual(
       cambiosFechaDe([
-        { fechaAnterior: null, fechaNueva: '2026-09-27T06:00:00.000Z', cambiadaPorNombre: 'X', motivo: null, creadoEn: null },
+        {
+          fechaAnterior: null,
+          fechaNueva: '2026-09-27T06:00:00.000Z',
+          cambiadaPorNombre: 'X',
+          motivo: null,
+          creadoEn: null,
+        },
       ]),
       [],
     );

@@ -34,9 +34,13 @@ export interface EstadoSincronizacionApi {
 
 /** Puede tardar varios segundos (varias páginas contra Handy): sin tiempo límite corto. */
 export function sincronizarConHandy(): Promise<ResultadoSincronizacionApi | null> {
-  return peticion<ResultadoSincronizacionApi | null>('/admin/sincronizacion', { method: 'POST' });
+  return peticion<ResultadoSincronizacionApi | null>('/admin/sincronizacion', {
+    method: 'POST',
+  });
 }
 
 export function consultarEstadoSincronizacion(): Promise<EstadoSincronizacionApi | null> {
-  return peticion<EstadoSincronizacionApi | null>('/admin/sincronizacion/estado');
+  return peticion<EstadoSincronizacionApi | null>(
+    '/admin/sincronizacion/estado',
+  );
 }

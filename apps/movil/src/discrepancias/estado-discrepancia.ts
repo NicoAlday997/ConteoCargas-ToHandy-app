@@ -6,7 +6,12 @@
  * siquiera ofrece confirmar a quien capturó; el servidor lo rechaza igual.
  */
 
-import { factorEfectivo, seVendeCompleto, type CapturaProducto, type ProductoConteo } from '../conteo/estado-conteo';
+import {
+  factorEfectivo,
+  seVendeCompleto,
+  type CapturaProducto,
+  type ProductoConteo,
+} from '../conteo/estado-conteo';
 
 /** Un lado de la discrepancia: lo que contó una sesión. */
 export interface ConteoLado {
@@ -32,17 +37,26 @@ export interface Discrepancia {
   confirmadaPorNombre: string | null;
 }
 
-export type EstadoDiscrepancia = 'sin-capturar' | 'por-confirmar' | 'confirmada';
+export type EstadoDiscrepancia =
+  'sin-capturar' | 'por-confirmar' | 'confirmada';
 
 export function estadoDe(d: Discrepancia): EstadoDiscrepancia {
   if (d.confirmadaPor !== null) return 'confirmada';
-  if (d.cantidadFinal === null || d.capturadaPor === null) return 'sin-capturar';
+  if (d.cantidadFinal === null || d.capturadaPor === null)
+    return 'sin-capturar';
   return 'por-confirmar';
 }
 
 /** Solo alguien distinto a quien capturó. Sin usuario conocido, nadie. */
-export function puedeConfirmar(d: Discrepancia, usuarioId: string | null): boolean {
-  return estadoDe(d) === 'por-confirmar' && usuarioId !== null && d.capturadaPor !== usuarioId;
+export function puedeConfirmar(
+  d: Discrepancia,
+  usuarioId: string | null,
+): boolean {
+  return (
+    estadoDe(d) === 'por-confirmar' &&
+    usuarioId !== null &&
+    d.capturadaPor !== usuarioId
+  );
 }
 
 export function diferencia(d: Discrepancia): number {
@@ -51,7 +65,11 @@ export function diferencia(d: Discrepancia): number {
 
 /** La cantidad final no es ninguno de los dos conteos. Dato útil, no error. */
 export function esAtipica(d: Discrepancia): boolean {
-  return d.cantidadFinal !== null && d.cantidadFinal !== d.primerConteo.piezas && d.cantidadFinal !== d.segundoConteo.piezas;
+  return (
+    d.cantidadFinal !== null &&
+    d.cantidadFinal !== d.primerConteo.piezas &&
+    d.cantidadFinal !== d.segundoConteo.piezas
+  );
 }
 
 /**
@@ -71,10 +89,16 @@ const ROLES: Record<string, string> = {
 export function etiquetaRol(lado: ConteoLado, respaldo: string): string {
   const tipo = lado.tipoSesion?.trim().toUpperCase();
   if (!tipo) return respaldo;
-  return ROLES[tipo] ?? tipo.charAt(0) + tipo.slice(1).toLowerCase().replace(/_/g, ' ');
+  return (
+    ROLES[tipo] ??
+    tipo.charAt(0) + tipo.slice(1).toLowerCase().replace(/_/g, ' ')
+  );
 }
 
-export function progresoResolucion(discrepancias: readonly Discrepancia[]): { resueltas: number; total: number } {
+export function progresoResolucion(discrepancias: readonly Discrepancia[]): {
+  resueltas: number;
+  total: number;
+} {
   return {
     resueltas: discrepancias.filter((d) => estadoDe(d) === 'confirmada').length,
     total: discrepancias.length,
@@ -86,7 +110,10 @@ export function progresoResolucion(discrepancias: readonly Discrepancia[]): { re
  * Sin factor efectivo todo son sueltas. Lo que se vende completo ya está en
  * su unidad: todo va a `paquetes` y no hay sueltas.
  */
-export function desglose(piezas: number, producto: ProductoConteo): { paquetes: number | null; sueltas: number | null } {
+export function desglose(
+  piezas: number,
+  producto: ProductoConteo,
+): { paquetes: number | null; sueltas: number | null } {
   if (seVendeCompleto(producto)) return { paquetes: piezas, sueltas: null };
   const factor = factorEfectivo(producto);
   if (factor === null) return { paquetes: null, sueltas: piezas };

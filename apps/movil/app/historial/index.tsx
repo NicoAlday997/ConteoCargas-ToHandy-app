@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { ETIQUETAS_TIPO_CARGA } from '../../src/api/cargas';
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
 import { useHistorial } from '../../src/api/hooks-historial';
-import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
+import {
+  cerrarSesion,
+  obtenerUsuarioSesion,
+  type UsuarioSesion,
+} from '../../src/api/sesion';
 import {
   BloqueError,
   Chevron,
@@ -20,15 +30,31 @@ import {
   TarjetaEsqueleto,
   type Dato,
 } from '../../src/componentes/base';
-import { diaNegocio, diaRelativo, formatearFechaCorta } from '../../src/conteo/fecha-operativa';
+import {
+  diaNegocio,
+  diaRelativo,
+  formatearFechaCorta,
+} from '../../src/conteo/fecha-operativa';
 import {
   ANCHO_MAXIMO_LISTA,
   bandaDeEstado,
   BarraSuperior,
   DetalleCancelacion,
 } from '../../src/historial/ComponentesHistorial';
-import { agruparPorDia, type FilaHistorial, type GrupoDia } from '../../src/historial/modelo-historial';
-import { CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RITMO, TIPOGRAFIA } from '../../src/theme/tokens';
+import {
+  agruparPorDia,
+  type FilaHistorial,
+  type GrupoDia,
+} from '../../src/historial/modelo-historial';
+import {
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../../src/theme/tokens';
 
 /**
  * Historial de cargas por fecha operativa (docs/06 §3.8). Lo primero que se
@@ -46,7 +72,9 @@ const ALCANCE_POR_ROL: Record<string, string> = {
 
 export default function PantallaHistorial() {
   // `undefined` mientras se lee la sesión.
-  const [usuario, setUsuario] = useState<UsuarioSesion | null | undefined>(undefined);
+  const [usuario, setUsuario] = useState<UsuarioSesion | null | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     let vigente = true;
@@ -60,7 +88,10 @@ export default function PantallaHistorial() {
 
   if (usuario === undefined) {
     return (
-      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView
+        style={estilos.pantalla}
+        edges={['left', 'right', 'bottom']}
+      >
         <BarraSuperior titulo="Historial de cargas" />
         <EsqueletoHistorial />
       </SafeAreaView>
@@ -69,7 +100,10 @@ export default function PantallaHistorial() {
 
   if (usuario === null) {
     return (
-      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView
+        style={estilos.pantalla}
+        edges={['left', 'right', 'bottom']}
+      >
         <BarraSuperior titulo="Historial de cargas" />
         <EstadoVacio
           icono="candado"
@@ -86,12 +120,16 @@ export default function PantallaHistorial() {
 
 function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
   const consulta = useHistorial(usuario.id);
-  const grupos = useMemo(() => agruparPorDia(consulta.data?.pages.map((p) => p?.items ?? []) ?? []), [consulta.data]);
+  const grupos = useMemo(
+    () => agruparPorDia(consulta.data?.pages.map((p) => p?.items ?? []) ?? []),
+    [consulta.data],
+  );
   const hoy = diaNegocio(new Date());
   const alcance = usuario.rolApp ? ALCANCE_POR_ROL[usuario.rolApp] : null;
   const [refrescando, setRefrescando] = useState(false);
 
-  const sesionVencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const sesionVencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (sesionVencida) void cerrarSesion().then(() => router.replace('/login'));
   }, [sesionVencida]);
@@ -133,7 +171,12 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
             ? 'Aquí aparecerán las cargas en cuanto se completen, agrupadas por el día en que sale el camión.'
             : 'Aquí aparecerán las cargas de las últimas 2 semanas en cuanto se completen, agrupadas por el día en que sale el camión.'
         }
-        accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
+        accion={{
+          texto: 'Actualizar',
+          onPress: refrescar,
+          cargando: refrescando,
+          textoCargando: 'Actualizando…',
+        }}
       />
     );
   } else {
@@ -144,12 +187,19 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
         sections={grupos}
         keyExtractor={(fila) => fila.id}
         stickySectionHeadersEnabled
-        renderSectionHeader={({ section }) => <EncabezadoDia grupo={section} hoy={hoy} />}
-        renderItem={({ item }) => <Fila fila={item} mostrarVendedor={usuario.rolApp !== 'VENDEDOR'} />}
-        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+        renderSectionHeader={({ section }) => (
+          <EncabezadoDia grupo={section} hoy={hoy} />
+        )}
+        renderItem={({ item }) => (
+          <Fila fila={item} mostrarVendedor={usuario.rolApp !== 'VENDEDOR'} />
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refrescando} onRefresh={refrescar} />
+        }
         onEndReachedThreshold={0.5}
         onEndReached={() => {
-          if (consulta.hasNextPage && !consulta.isFetchingNextPage) void consulta.fetchNextPage();
+          if (consulta.hasNextPage && !consulta.isFetchingNextPage)
+            void consulta.fetchNextPage();
         }}
         ListFooterComponent={
           consulta.isFetchingNextPage ? (
@@ -159,7 +209,11 @@ function ListaHistorial({ usuario }: { usuario: UsuarioSesion }) {
           ) : consulta.isFetchNextPageError ? (
             <BloqueError
               titulo="No se pudieron cargar más cargas"
-              detalle={consulta.error instanceof ErrorRed ? 'Sin conexión: revisa tu señal.' : 'Intenta de nuevo en un momento.'}
+              detalle={
+                consulta.error instanceof ErrorRed
+                  ? 'Sin conexión: revisa tu señal.'
+                  : 'Intenta de nuevo en un momento.'
+              }
               onReintentar={() => void consulta.fetchNextPage()}
               style={estilos.pie}
             />
@@ -186,9 +240,16 @@ function EncabezadoDia({ grupo, hoy }: { grupo: GrupoDia; hoy: string }) {
     <View style={estilos.encabezadoDia} accessibilityRole="header">
       <Text style={estilos.textoDia} numberOfLines={2}>
         {relativo ?? (grupo.dia ? formatearFechaCorta(grupo.dia) : 'Sin fecha')}
-        {relativo && grupo.dia && <Text style={estilos.relativo}> · {formatearFechaCorta(grupo.dia)}</Text>}
+        {relativo && grupo.dia && (
+          <Text style={estilos.relativo}>
+            {' '}
+            · {formatearFechaCorta(grupo.dia)}
+          </Text>
+        )}
       </Text>
-      <Text style={estilos.cantidadDia}>{cantidad === 1 ? '1 carga' : `${cantidad} cargas`}</Text>
+      <Text style={estilos.cantidadDia}>
+        {cantidad === 1 ? '1 carga' : `${cantidad} cargas`}
+      </Text>
     </View>
   );
 }
@@ -213,13 +274,25 @@ function EsqueletoHistorial() {
  * contó y verificó y cuántos productos, como rótulo y dato. Las discrepancias
  * solo aparecen cuando hubo: lo que resalta es lo que pide mirar.
  */
-function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor: boolean }) {
+function Fila({
+  fila,
+  mostrarVendedor,
+}: {
+  fila: FilaHistorial;
+  mostrarVendedor: boolean;
+}) {
   const conDiscrepancias = fila.discrepancias > 0;
   const tipo = fila.tipo ? ETIQUETAS_TIPO_CARGA[fila.tipo] : 'Carga';
   const datos: Dato[] = [];
-  if (mostrarVendedor) datos.push({ rotulo: 'Contó', valor: fila.vendedorNombre });
+  if (mostrarVendedor)
+    datos.push({ rotulo: 'Contó', valor: fila.vendedorNombre });
   datos.push({ rotulo: 'Verificó', valor: fila.contadorNombre });
-  if (fila.totalProductos !== null) datos.push({ rotulo: 'Productos', valor: String(fila.totalProductos), cifra: true });
+  if (fila.totalProductos !== null)
+    datos.push({
+      rotulo: 'Productos',
+      valor: String(fila.totalProductos),
+      cifra: true,
+    });
   const textoDiscrepancias = conDiscrepancias
     ? fila.discrepancias === 1
       ? '1 discrepancia'
@@ -229,7 +302,12 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
 
   return (
     <Tarjeta
-      onPress={() => router.push({ pathname: '/historial/[eventoId]', params: { eventoId: fila.id } })}
+      onPress={() =>
+        router.push({
+          pathname: '/historial/[eventoId]',
+          params: { eventoId: fila.id },
+        })
+      }
       // Las discrepancias son informativas, no restrictivas (docs/06 §3.8): el
       // detalle se abre igual, tenga o no.
       conAcento={banda}
@@ -238,8 +316,12 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
         `${fila.rutaNombre}, ${tipo}`,
         banda.titulo,
         fila.cancelacion?.motivo ? `Motivo: ${fila.cancelacion.motivo}` : null,
-        fila.cancelacion?.porNombre ? `Canceló ${fila.cancelacion.porNombre}` : null,
-        fila.totalProductos !== null ? `${fila.totalProductos} productos` : null,
+        fila.cancelacion?.porNombre
+          ? `Canceló ${fila.cancelacion.porNombre}`
+          : null,
+        fila.totalProductos !== null
+          ? `${fila.totalProductos} productos`
+          : null,
         textoDiscrepancias,
         'Ver detalle',
       ]
@@ -259,7 +341,9 @@ function Fila({ fila, mostrarVendedor }: { fila: FilaHistorial; mostrarVendedor:
             <Etiqueta texto={textoDiscrepancias} tono="discrepancia" />
           </View>
         )}
-        {fila.cancelacion && <DetalleCancelacion cancelacion={fila.cancelacion} />}
+        {fila.cancelacion && (
+          <DetalleCancelacion cancelacion={fila.cancelacion} />
+        )}
       </View>
     </Tarjeta>
   );

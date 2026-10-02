@@ -26,5 +26,8 @@ export function asignarColorFamilia(
   familia: string,
   color: string | null,
 ): Promise<{ familia: string | null; color: string | null } | null> {
-  return peticion(`${base}/${encodeURIComponent(familia)}/color`, { method: 'PUT', cuerpo: { color } });
+  return peticion(`${base}/${encodeURIComponent(familia)}/color`, {
+    method: 'PUT',
+    cuerpo: { color },
+  });
 }

@@ -1,7 +1,14 @@
 import type { CargaHistorialApi, EstadoCargaApi } from '../api/historial.ts';
-import type { EventoConTiemposApi, ProductoRechazado } from '../api/supervisor.ts';
+import type {
+  EventoConTiemposApi,
+  ProductoRechazado,
+} from '../api/supervisor.ts';
 import { estadoMotivo, type EstadoMotivo } from '../componentes/base/motivo.ts';
-import { normalizarFila, type CargaDetalle, type FilaHistorial } from '../historial/modelo-historial.ts';
+import {
+  normalizarFila,
+  type CargaDetalle,
+  type FilaHistorial,
+} from '../historial/modelo-historial.ts';
 
 /**
  * Lo que el panel del supervisor necesita, ya validado. Una carga esperando
@@ -27,7 +34,9 @@ export interface CargaEnEspera extends FilaHistorial {
  * el instante más reciente entre el cierre de las sesiones y la confirmación
  * de las diferencias, que es cuando dejó de depender de vendedor y contador.
  */
-export function inicioEspera(tiempos: EventoConTiemposApi | null): number | null {
+export function inicioEspera(
+  tiempos: EventoConTiemposApi | null,
+): number | null {
   let ultimo: number | null = null;
   const considerar = (iso: string | null | undefined) => {
     if (!iso) return;
@@ -35,7 +44,8 @@ export function inicioEspera(tiempos: EventoConTiemposApi | null): number | null
     if (Number.isFinite(t) && (ultimo === null || t > ultimo)) ultimo = t;
   };
   for (const s of tiempos?.sesiones ?? []) considerar(s?.finalizadaEn);
-  for (const d of tiempos?.discrepancias ?? []) considerar(d?.fechaConfirmacion);
+  for (const d of tiempos?.discrepancias ?? [])
+    considerar(d?.fechaConfirmacion);
   return ultimo;
 }
 
@@ -54,7 +64,10 @@ export function armarCola(
     const fila = normalizarFila(api);
     if (!fila || vistas.has(fila.id)) continue;
     vistas.add(fila.id);
-    cola.push({ ...fila, esperaDesde: inicioEspera(tiempos.get(fila.id) ?? null) });
+    cola.push({
+      ...fila,
+      esperaDesde: inicioEspera(tiempos.get(fila.id) ?? null),
+    });
   }
   return cola.sort((a, b) => {
     if (a.esperaDesde === b.esperaDesde) return 0;
@@ -65,7 +78,9 @@ export function armarCola(
 }
 
 /** Cargas autorizadas que aún no llegan a Handy, del día más reciente al más viejo. */
-export function armarPorEnviar(filas: readonly CargaHistorialApi[]): FilaHistorial[] {
+export function armarPorEnviar(
+  filas: readonly CargaHistorialApi[],
+): FilaHistorial[] {
   const vistas = new Set<string>();
   const resultado: FilaHistorial[] = [];
   for (const api of filas) {
@@ -75,7 +90,17 @@ export function armarPorEnviar(filas: readonly CargaHistorialApi[]): FilaHistori
     resultado.push(fila);
   }
   // aaaa-mm-dd se ordena bien como texto. Sin fecha, al final.
-  return resultado.sort((a, b) => (a.dia === b.dia ? 0 : a.dia === null ? 1 : b.dia === null ? -1 : a.dia < b.dia ? 1 : -1));
+  return resultado.sort((a, b) =>
+    a.dia === b.dia
+      ? 0
+      : a.dia === null
+        ? 1
+        : b.dia === null
+          ? -1
+          : a.dia < b.dia
+            ? 1
+            : -1,
+  );
 }
 
 /** A partir de aquí la espera ya se nota en la bodega. */
@@ -92,7 +117,10 @@ export const MINUTOS_DETENIDA = 45;
 export type NivelEspera = 'reciente' | 'atencion' | 'detenida' | 'desconocida';
 
 /** Minutos enteros entre `desde` y `ahora`. Un reloj adelantado nunca da negativo. */
-export function minutosEspera(desde: number | null, ahora: number): number | null {
+export function minutosEspera(
+  desde: number | null,
+  ahora: number,
+): number | null {
   if (desde === null) return null;
   return Math.max(0, Math.floor((ahora - desde) / 60_000));
 }
@@ -132,9 +160,15 @@ export function motivoValido(motivo: string): boolean {
  * Lo marcado para rechazar, listo para enviarse: solo si hay al menos uno y
  * todos tienen motivo. Nunca la carga completa: solo lo que se marcó.
  */
-export function rechazosParaEnviar(seleccion: Readonly<Record<string, string>>): ProductoRechazado[] | null {
-  const productos = Object.entries(seleccion).map(([productoCode, motivo]) => ({ productoCode, motivo: motivo.trim() }));
-  if (productos.length === 0 || productos.some((p) => !motivoValido(p.motivo))) return null;
+export function rechazosParaEnviar(
+  seleccion: Readonly<Record<string, string>>,
+): ProductoRechazado[] | null {
+  const productos = Object.entries(seleccion).map(([productoCode, motivo]) => ({
+    productoCode,
+    motivo: motivo.trim(),
+  }));
+  if (productos.length === 0 || productos.some((p) => !motivoValido(p.motivo)))
+    return null;
   return productos;
 }
 
@@ -155,7 +189,10 @@ export function codigosDeDetalle(detalle: string | null | undefined): string[] {
 }
 
 /** Código → nombre del producto en la carga, para no mostrar códigos sueltos. Sin coincidencia, el código. */
-export function nombresDeProductos(codes: readonly string[], carga: CargaDetalle | null): string[] {
+export function nombresDeProductos(
+  codes: readonly string[],
+  carga: CargaDetalle | null,
+): string[] {
   const nombres = new Map<string, string>();
   for (const familia of carga?.familias ?? []) {
     for (const p of familia.productos) nombres.set(p.code, p.nombre);
@@ -182,7 +219,11 @@ export function motivoCancelacionValido(motivo: string): boolean {
 
 /** Si el botón de confirmar se habilita, y el contador bajo el campo. */
 export function estadoMotivoCancelacion(motivo: string): EstadoMotivo {
-  return estadoMotivo(motivo, MOTIVO_MINIMO_CANCELACION, MOTIVO_MAXIMO_CANCELACION);
+  return estadoMotivo(
+    motivo,
+    MOTIVO_MINIMO_CANCELACION,
+    MOTIVO_MAXIMO_CANCELACION,
+  );
 }
 
 /**
@@ -196,8 +237,11 @@ export type AccionCancelacion = 'cancelar' | 'cancelar-en-handy';
  * cancelada, o con el envío sin confirmar (no se sabe si llegó a Handy; primero
  * se resuelve eso). Mismo criterio que el servidor.
  */
-export function accionCancelacion(estado: EstadoCargaApi | null): AccionCancelacion | null {
-  if (estado === null || estado === 'CANCELADA' || estado === 'ENVIO_INCIERTO') return null;
+export function accionCancelacion(
+  estado: EstadoCargaApi | null,
+): AccionCancelacion | null {
+  if (estado === null || estado === 'CANCELADA' || estado === 'ENVIO_INCIERTO')
+    return null;
   return estado === 'ENVIADA' ? 'cancelar-en-handy' : 'cancelar';
 }
 
@@ -211,11 +255,14 @@ export function accionCancelacion(estado: EstadoCargaApi | null): AccionCancelac
  * ENVIADA sí: la fecha es nuestro registro; la ruta en Handy no se toca.
  */
 export function puedeCambiarFecha(estado: EstadoCargaApi | null): boolean {
-  return estado !== null && estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO';
+  return (
+    estado !== null && estado !== 'CANCELADA' && estado !== 'ENVIO_INCIERTO'
+  );
 }
 
 /** Lo que se dice antes de confirmar el cambio de fecha de una carga ENVIADA. */
 export const AVISO_CAMBIO_FECHA_ENVIADA = {
   titulo: 'Esta carga ya se envió a Handy.',
-  detalle: 'Cambiar la fecha corrige tu historial; la ruta en Handy no se modifica.',
+  detalle:
+    'Cambiar la fecha corrige tu historial; la ruta en Handy no se modifica.',
 } as const;

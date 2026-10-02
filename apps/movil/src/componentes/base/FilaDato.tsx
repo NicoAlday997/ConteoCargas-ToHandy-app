@@ -1,6 +1,17 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ESPACIADO, ETIQUETA_DATO, FUENTE, TIPOGRAFIA, TONOS, type ColorEstado } from '../../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  DATO,
+  DATO_AUSENTE,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  TIPOGRAFIA,
+  TONOS,
+  type ColorEstado,
+} from '../../theme/tokens';
 
 interface Props {
   /** Qué es: rótulo pequeño, con mayúscula inicial, se retira, a la izquierda. */
@@ -37,20 +48,46 @@ export function FilaDato({
   // El tono de texto del estado, no su sólido: el ámbar sólido sobre gris no llega a 2:1.
   const color = tono ? { color: TONOS[tono].texto } : null;
   const texto = valor ?? ausente;
-  const estiloValor = valor === null ? estilos.valorAusente : principal ? estilos.valorPrincipal : estilos.valor;
+  const estiloValor =
+    valor === null
+      ? estilos.valorAusente
+      : principal
+        ? estilos.valorPrincipal
+        : estilos.valor;
 
   return (
     <View
-      style={[apilado ? estilos.apilado : estilos.fila, separado && estilos.separado]}
+      style={[
+        apilado ? estilos.apilado : estilos.fila,
+        separado && estilos.separado,
+      ]}
       accessible
-      accessibilityLabel={accessibilityLabel ?? [`${etiqueta}: ${texto}`, detalle].filter(Boolean).join(', ')}
+      accessibilityLabel={
+        accessibilityLabel ??
+        [`${etiqueta}: ${texto}`, detalle].filter(Boolean).join(', ')
+      }
     >
-      <Text style={[estilos.etiqueta, apilado && estilos.etiquetaApilada, color]} numberOfLines={apilado ? undefined : 2}>
+      <Text
+        style={[estilos.etiqueta, apilado && estilos.etiquetaApilada, color]}
+        numberOfLines={apilado ? undefined : 2}
+      >
         {etiqueta}
       </Text>
       <View style={apilado ? null : estilos.columnaValor}>
-        <Text style={[estiloValor, !apilado && estilos.alDerecha, valor !== null && color]}>{texto}</Text>
-        {detalle && <Text style={[estilos.detalle, !apilado && estilos.alDerecha]}>{detalle}</Text>}
+        <Text
+          style={[
+            estiloValor,
+            !apilado && estilos.alDerecha,
+            valor !== null && color,
+          ]}
+        >
+          {texto}
+        </Text>
+        {detalle && (
+          <Text style={[estilos.detalle, !apilado && estilos.alDerecha]}>
+            {detalle}
+          </Text>
+        )}
       </View>
     </View>
   );

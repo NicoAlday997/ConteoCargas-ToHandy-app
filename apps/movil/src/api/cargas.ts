@@ -1,4 +1,8 @@
-import { diaDesdeApi, normalizarFechasDisponibles, type FechaDisponible } from '../conteo/fecha-operativa';
+import {
+  diaDesdeApi,
+  normalizarFechasDisponibles,
+  type FechaDisponible,
+} from '../conteo/fecha-operativa';
 import { peticion } from './cliente';
 
 export type TipoCarga = 'INICIAL' | 'RECARGA';
@@ -71,7 +75,9 @@ export const CODIGO_FECHA_NO_DISPONIBLE = 'FECHA_NO_DISPONIBLE';
  * se trabaja) y la siguiente salida; al supervisor, los días hábiles de hoy
  * en adelante.
  */
-export async function listarFechasOperativasDisponibles(): Promise<FechaDisponible[]> {
+export async function listarFechasOperativasDisponibles(): Promise<
+  FechaDisponible[]
+> {
   const respuesta = await peticion<{
     opciones: { fecha?: unknown; etiqueta?: unknown; esHoy?: unknown }[] | null;
   } | null>('/eventos-carga/fechas-operativas-disponibles');
@@ -86,7 +92,8 @@ export interface DiaRecargableApi {
 }
 
 /** Por qué `dias-recargables` no trae días. */
-export type MotivoSinDiasRecargables = 'SIN_RUTA_ASIGNADA' | 'SIN_RUTA_ABIERTA' | 'RUTA_NO_RECONOCIDA';
+export type MotivoSinDiasRecargables =
+  'SIN_RUTA_ASIGNADA' | 'SIN_RUTA_ABIERTA' | 'RUTA_NO_RECONOCIDA';
 
 export interface DiasRecargables {
   /** `aaaa-mm-dd`, en orden. */
@@ -110,12 +117,18 @@ export async function listarDiasRecargables(): Promise<DiasRecargables> {
     motivo?: string | null;
     verificadoConHandy?: boolean | null;
   } | null>('/eventos-carga/dias-recargables');
-  const dias = (respuesta?.dias ?? []).map((d) => diaDesdeApi(d.fechaOperativa)).filter((d): d is string => d !== null);
+  const dias = (respuesta?.dias ?? [])
+    .map((d) => diaDesdeApi(d.fechaOperativa))
+    .filter((d): d is string => d !== null);
   const motivo = respuesta?.motivo;
   return {
     dias: [...new Set(dias)].sort(),
     motivo:
-      motivo === 'SIN_RUTA_ASIGNADA' || motivo === 'SIN_RUTA_ABIERTA' || motivo === 'RUTA_NO_RECONOCIDA' ? motivo : null,
+      motivo === 'SIN_RUTA_ASIGNADA' ||
+      motivo === 'SIN_RUTA_ABIERTA' ||
+      motivo === 'RUTA_NO_RECONOCIDA'
+        ? motivo
+        : null,
     verificadoConHandy: respuesta?.verificadoConHandy !== false,
   };
 }
@@ -178,26 +191,42 @@ export interface RespuestaFinalizarSesion {
 }
 
 /** `fechaOperativa` en `aaaa-mm-dd`: el día que eligió quien cuenta. */
-export function iniciarCarga(tipo: TipoCarga, fechaOperativa: string): Promise<RespuestaIniciarCarga | null> {
+export function iniciarCarga(
+  tipo: TipoCarga,
+  fechaOperativa: string,
+): Promise<RespuestaIniciarCarga | null> {
   return peticion<RespuestaIniciarCarga | null>('/eventos-carga', {
     method: 'POST',
     cuerpo: { tipo, fechaOperativa },
   });
 }
 
-export function obtenerEvento(eventoId: string, signal?: AbortSignal): Promise<RespuestaEvento | null> {
-  return peticion<RespuestaEvento | null>(`/eventos-carga/${encodeURIComponent(eventoId)}`, { signal });
+export function obtenerEvento(
+  eventoId: string,
+  signal?: AbortSignal,
+): Promise<RespuestaEvento | null> {
+  return peticion<RespuestaEvento | null>(
+    `/eventos-carga/${encodeURIComponent(eventoId)}`,
+    { signal },
+  );
 }
 
-export function obtenerProductos(eventoId: string): Promise<RespuestaProductos | null> {
-  return peticion<RespuestaProductos | null>(`/eventos-carga/${encodeURIComponent(eventoId)}/productos`);
+export function obtenerProductos(
+  eventoId: string,
+): Promise<RespuestaProductos | null> {
+  return peticion<RespuestaProductos | null>(
+    `/eventos-carga/${encodeURIComponent(eventoId)}/productos`,
+  );
 }
 
 export function abrirSesion(eventoId: string): Promise<SesionConteoApi | null> {
-  return peticion<SesionConteoApi | null>(`/eventos-carga/${encodeURIComponent(eventoId)}/sesiones`, {
-    method: 'POST',
-    cuerpo: {},
-  });
+  return peticion<SesionConteoApi | null>(
+    `/eventos-carga/${encodeURIComponent(eventoId)}/sesiones`,
+    {
+      method: 'POST',
+      cuerpo: {},
+    },
+  );
 }
 
 const rutaItems = (eventoId: string, sesionId: string) =>
@@ -222,10 +251,15 @@ export function obtenerItemsSesion(
   sesionId: string,
   signal?: AbortSignal,
 ): Promise<RespuestaItemsSesion | null> {
-  return peticion<RespuestaItemsSesion | null>(rutaItems(eventoId, sesionId), { signal });
+  return peticion<RespuestaItemsSesion | null>(rutaItems(eventoId, sesionId), {
+    signal,
+  });
 }
 
-export function finalizarSesion(eventoId: string, sesionId: string): Promise<RespuestaFinalizarSesion | null> {
+export function finalizarSesion(
+  eventoId: string,
+  sesionId: string,
+): Promise<RespuestaFinalizarSesion | null> {
   return peticion<RespuestaFinalizarSesion | null>(
     `/eventos-carga/${encodeURIComponent(eventoId)}/sesiones/${encodeURIComponent(sesionId)}/finalizar`,
     { method: 'POST', cuerpo: {} },
@@ -236,7 +270,8 @@ export function finalizarSesion(eventoId: string, sesionId: string): Promise<Res
 // Verificación (segundo conteo) y resolución de discrepancias
 // ---------------------------------------------------------------------------
 
-export type EstadoVerificacion = 'LISTA' | 'BLOQUEADA_CORTE_PENDIENTE' | 'EN_CURSO_PROPIA' | 'EN_CURSO_OTRO';
+export type EstadoVerificacion =
+  'LISTA' | 'BLOQUEADA_CORTE_PENDIENTE' | 'EN_CURSO_PROPIA' | 'EN_CURSO_OTRO';
 
 /** Fila de `GET /eventos-carga/pendientes-verificacion`. Nunca trae cantidades del vendedor. */
 export interface CargaPendienteApi {
@@ -316,41 +351,70 @@ export interface RespuestaConfirmarDiscrepancia {
   enEsperaAutorizacion: boolean | null;
 }
 
-const rutaEvento = (eventoId: string) => `/eventos-carga/${encodeURIComponent(eventoId)}`;
+const rutaEvento = (eventoId: string) =>
+  `/eventos-carga/${encodeURIComponent(eventoId)}`;
 
-export async function listarPendientesVerificacion(): Promise<CargaPendienteApi[]> {
-  const filas = await peticion<CargaPendienteApi[] | null>('/eventos-carga/pendientes-verificacion');
+export async function listarPendientesVerificacion(): Promise<
+  CargaPendienteApi[]
+> {
+  const filas = await peticion<CargaPendienteApi[] | null>(
+    '/eventos-carga/pendientes-verificacion',
+  );
   return Array.isArray(filas) ? filas : [];
 }
 
-export async function listarConflictosPendientes(): Promise<CargaConConflictosApi[]> {
-  const filas = await peticion<CargaConConflictosApi[] | null>('/eventos-carga/conflictos-pendientes');
+export async function listarConflictosPendientes(): Promise<
+  CargaConConflictosApi[]
+> {
+  const filas = await peticion<CargaConConflictosApi[] | null>(
+    '/eventos-carga/conflictos-pendientes',
+  );
   return Array.isArray(filas) ? filas : [];
 }
 
-export function desbloquearCarga(eventoId: string): Promise<RespuestaDesbloquear | null> {
-  return peticion<RespuestaDesbloquear | null>(`${rutaEvento(eventoId)}/desbloquear`, { method: 'POST', cuerpo: {} });
+export function desbloquearCarga(
+  eventoId: string,
+): Promise<RespuestaDesbloquear | null> {
+  return peticion<RespuestaDesbloquear | null>(
+    `${rutaEvento(eventoId)}/desbloquear`,
+    { method: 'POST', cuerpo: {} },
+  );
 }
 
-export async function obtenerDiscrepancias(eventoId: string): Promise<DiscrepanciaApi[]> {
-  const filas = await peticion<DiscrepanciaApi[] | null>(`${rutaEvento(eventoId)}/discrepancias`);
+export async function obtenerDiscrepancias(
+  eventoId: string,
+): Promise<DiscrepanciaApi[]> {
+  const filas = await peticion<DiscrepanciaApi[] | null>(
+    `${rutaEvento(eventoId)}/discrepancias`,
+  );
   return Array.isArray(filas) ? filas : [];
 }
 
 /** De qué carga se trata y quiénes contaron: encabezado de la resolución y "¿Quién confirma?". */
-export function obtenerContextoResolucion(eventoId: string): Promise<ContextoResolucionApi | null> {
-  return peticion<ContextoResolucionApi | null>(`${rutaEvento(eventoId)}/participantes`);
+export function obtenerContextoResolucion(
+  eventoId: string,
+): Promise<ContextoResolucionApi | null> {
+  return peticion<ContextoResolucionApi | null>(
+    `${rutaEvento(eventoId)}/participantes`,
+  );
 }
 
 const rutaDiscrepancia = (eventoId: string, productoCode: string) =>
   `${rutaEvento(eventoId)}/discrepancias/${encodeURIComponent(productoCode)}`;
 
 /** La cantidad final va en piezas: la app ya la convirtió con el mismo factor que el conteo. */
-export function capturarDiscrepancia(eventoId: string, productoCode: string, cantidadFinal: number): Promise<unknown> {
-  return peticion<unknown>(`${rutaDiscrepancia(eventoId, productoCode)}/capturar`, {
-    method: 'POST',
-    cuerpo: { cantidadFinal },
-  });
+export function capturarDiscrepancia(
+  eventoId: string,
+  productoCode: string,
+  cantidadFinal: number,
+): Promise<unknown> {
+  return peticion<unknown>(
+    `${rutaDiscrepancia(eventoId, productoCode)}/capturar`,
+    {
+      method: 'POST',
+      cuerpo: { cantidadFinal },
+    },
+  );
 }
 
 /**
@@ -367,10 +431,15 @@ export function confirmarDiscrepancia(
   pin: string,
   confirmaUsuarioAppId?: string,
 ): Promise<RespuestaConfirmarDiscrepancia | null> {
-  return peticion<RespuestaConfirmarDiscrepancia | null>(`${rutaDiscrepancia(eventoId, productoCode)}/confirmar`, {
-    method: 'POST',
-    cuerpo: confirmaUsuarioAppId ? { cantidadFinal, pin, confirmaUsuarioAppId } : { cantidadFinal, pin },
-  });
+  return peticion<RespuestaConfirmarDiscrepancia | null>(
+    `${rutaDiscrepancia(eventoId, productoCode)}/confirmar`,
+    {
+      method: 'POST',
+      cuerpo: confirmaUsuarioAppId
+        ? { cantidadFinal, pin, confirmaUsuarioAppId }
+        : { cantidadFinal, pin },
+    },
+  );
 }
 
 /**
@@ -378,7 +447,10 @@ export function confirmarDiscrepancia(
  * en el historial con quién, cuándo y por qué. El vendedor solo puede con la
  * suya mientras no la finalice (motivo opcional); el supervisor, con motivo.
  */
-export function cancelarCarga(eventoId: string, motivo?: string): Promise<unknown> {
+export function cancelarCarga(
+  eventoId: string,
+  motivo?: string,
+): Promise<unknown> {
   const limpio = motivo?.trim();
   return peticion<unknown>(`${rutaEvento(eventoId)}/cancelar`, {
     method: 'POST',
@@ -397,8 +469,11 @@ export function cambiarFechaOperativa(
   motivo?: string,
 ): Promise<{ evento: EventoCargaApi | null } | null> {
   const limpio = motivo?.trim();
-  return peticion<{ evento: EventoCargaApi | null } | null>(`${rutaEvento(eventoId)}/fecha-operativa`, {
-    method: 'PATCH',
-    cuerpo: limpio ? { fechaOperativa, motivo: limpio } : { fechaOperativa },
-  });
+  return peticion<{ evento: EventoCargaApi | null } | null>(
+    `${rutaEvento(eventoId)}/fecha-operativa`,
+    {
+      method: 'PATCH',
+      cuerpo: limpio ? { fechaOperativa, motivo: limpio } : { fechaOperativa },
+    },
+  );
 }

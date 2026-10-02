@@ -1,6 +1,12 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
-import { cambiarPin, listarUsuarios, login, type RespuestaLogin, type UsuarioSeleccionable } from './auth';
+import {
+  cambiarPin,
+  listarUsuarios,
+  login,
+  type RespuestaLogin,
+  type UsuarioSeleccionable,
+} from './auth';
 import { ErrorApi, ErrorRed } from './cliente';
 import { guardarUsuarioSesion, obtenerUsuarioSesion } from './sesion';
 import { guardarToken } from './token';
@@ -18,7 +24,10 @@ export function useUsuarios() {
     queryFn: listarUsuarios,
     staleTime: STALE_TIME_USUARIOS_MS,
     select: (usuarios): UsuarioElegible[] =>
-      usuarios.filter((u): u is UsuarioElegible => typeof u.id === 'string' && u.id.length > 0),
+      usuarios.filter(
+        (u): u is UsuarioElegible =>
+          typeof u.id === 'string' && u.id.length > 0,
+      ),
   });
 }
 
@@ -29,7 +38,10 @@ interface VariablesLogin {
 
 export function useLogin() {
   return useMutation({
-    mutationFn: async ({ usuarioAppId, pin }: VariablesLogin): Promise<RespuestaLogin> => {
+    mutationFn: async ({
+      usuarioAppId,
+      pin,
+    }: VariablesLogin): Promise<RespuestaLogin> => {
       const respuesta = await login(usuarioAppId, pin);
       if (!respuesta?.accessToken) {
         throw new Error('No se pudo iniciar la sesión. Intenta de nuevo.');
@@ -56,7 +68,8 @@ interface VariablesCambiarPin {
 
 export function useCambiarPin() {
   return useMutation({
-    mutationFn: ({ pinActual, pinNuevo }: VariablesCambiarPin) => cambiarPin(pinActual, pinNuevo),
+    mutationFn: ({ pinActual, pinNuevo }: VariablesCambiarPin) =>
+      cambiarPin(pinActual, pinNuevo),
     onSuccess: async () => {
       const usuario = await obtenerUsuarioSesion();
       if (usuario) {
@@ -83,14 +96,32 @@ export function clasificarErrorLogin(error: unknown): ErrorLogin {
     if (error.estado === 401) {
       const cuerpo = error.cuerpo;
       if (cuerpo?.codigo === 'USUARIO_BLOQUEADO') {
-        const hasta = typeof cuerpo.bloqueadoHasta === 'string' ? new Date(cuerpo.bloqueadoHasta) : null;
-        return { tipo: 'bloqueado', bloqueadoHasta: hasta && !Number.isNaN(hasta.getTime()) ? hasta : null };
+        const hasta =
+          typeof cuerpo.bloqueadoHasta === 'string'
+            ? new Date(cuerpo.bloqueadoHasta)
+            : null;
+        return {
+          tipo: 'bloqueado',
+          bloqueadoHasta:
+            hasta && !Number.isNaN(hasta.getTime()) ? hasta : null,
+        };
       }
       if (cuerpo?.codigo === 'USUARIO_INACTIVO') return { tipo: 'inactivo' };
       const intentos = cuerpo?.intentosRestantes;
-      return { tipo: 'pin-incorrecto', intentosRestantes: typeof intentos === 'number' ? intentos : null };
+      return {
+        tipo: 'pin-incorrecto',
+        intentosRestantes: typeof intentos === 'number' ? intentos : null,
+      };
     }
-    if (error.estado >= 500) return { tipo: 'otro', mensaje: 'Algo falló de nuestro lado. Intenta de nuevo en un momento.' };
+    if (error.estado >= 500)
+      return {
+        tipo: 'otro',
+        mensaje: 'Algo falló de nuestro lado. Intenta de nuevo en un momento.',
+      };
   }
-  return { tipo: 'otro', mensaje: error instanceof Error ? error.message : 'Ocurrió un error inesperado.' };
+  return {
+    tipo: 'otro',
+    mensaje:
+      error instanceof Error ? error.message : 'Ocurrió un error inesperado.',
+  };
 }

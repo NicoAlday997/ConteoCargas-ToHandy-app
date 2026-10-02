@@ -1,4 +1,11 @@
-import { ActivityIndicator, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import type { Tacto } from '../../theme/tacto';
 import {
@@ -89,7 +96,10 @@ export function Boton({
       tacto={tacto}
       onda={ONDA_VARIANTE[variante]}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? (detalle && grande ? `${textoVisible}. ${detalle}` : textoVisible)}
+      accessibilityLabel={
+        accessibilityLabel ??
+        (detalle && grande ? `${textoVisible}. ${detalle}` : textoVisible)
+      }
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inactivo, busy: cargando }}
       escala={grande ? ESCALA_PRESIONADO : ESCALA_PRESIONADO_CONTROL}
@@ -121,12 +131,22 @@ export function Boton({
                   </Text>
                 </View>
                 {detalle ? (
-                  <Text style={[estilos.detalle, { color: colorContenido }]} maxFontSizeMultiplier={ESCALA_TEXTO.compacto}>
+                  <Text
+                    style={[estilos.detalle, { color: colorContenido }]}
+                    maxFontSizeMultiplier={ESCALA_TEXTO.compacto}
+                  >
                     {detalle}
                   </Text>
                 ) : null}
               </View>
-              <View style={[estilos.circuloFlecha, variante === 'primario' ? estilos.circuloSobreColor : estilos.circuloClaro]}>
+              <View
+                style={[
+                  estilos.circuloFlecha,
+                  variante === 'primario'
+                    ? estilos.circuloSobreColor
+                    : estilos.circuloClaro,
+                ]}
+              >
                 <Flecha color={colorContenido} tamano={ESPACIADO.xl} />
               </View>
             </>

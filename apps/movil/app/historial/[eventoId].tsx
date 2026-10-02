@@ -9,9 +9,15 @@ import { cerrarSesion } from '../../src/api/sesion';
 import { EstadoVacio } from '../../src/componentes/base';
 import { CambiarFechaSupervisor } from '../../src/supervisor/CambiarFechaSupervisor';
 import { CancelarCargaSupervisor } from '../../src/supervisor/CancelarCargaSupervisor';
-import { accionCancelacion, puedeCambiarFecha } from '../../src/supervisor/modelo-supervisor';
+import {
+  accionCancelacion,
+  puedeCambiarFecha,
+} from '../../src/supervisor/modelo-supervisor';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import type { ProductoDetalle } from '../../src/historial/modelo-historial';
 import {
   CargaIlegible,
@@ -47,7 +53,8 @@ export default function PantallaDetalleHistorial() {
   const esSupervisor = useEsSupervisor();
   const [refrescando, setRefrescando] = useState(false);
 
-  const sesionVencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const sesionVencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (sesionVencida) void cerrarSesion().then(() => router.replace('/login'));
   }, [sesionVencida]);
@@ -79,7 +86,10 @@ export default function PantallaDetalleHistorial() {
   if (consulta.isError && !carga) {
     return (
       <Pantalla titulo="Carga">
-        <ErrorCarga error={consulta.error} onReintentar={() => void consulta.refetch()} />
+        <ErrorCarga
+          error={consulta.error}
+          onReintentar={() => void consulta.refetch()}
+        />
       </Pantalla>
     );
   }
@@ -87,7 +97,10 @@ export default function PantallaDetalleHistorial() {
   if (!carga) {
     return (
       <Pantalla titulo="Carga">
-        <CargaIlegible onReintentar={() => void consulta.refetch()} reintentando={consulta.isFetching} />
+        <CargaIlegible
+          onReintentar={() => void consulta.refetch()}
+          reintentando={consulta.isFetching}
+        />
       </Pantalla>
     );
   }
@@ -97,9 +110,12 @@ export default function PantallaDetalleHistorial() {
     void consulta.refetch().finally(() => setRefrescando(false));
   };
 
-  const irAlLogin = () => void cerrarSesion().then(() => router.replace('/login'));
+  const irAlLogin = () =>
+    void cerrarSesion().then(() => router.replace('/login'));
   const cancelar =
-    esSupervisor && (accionCancelacion(carga.evento.estado) !== null || puedeCambiarFecha(carga.evento.estado)) ? (
+    esSupervisor &&
+    (accionCancelacion(carga.evento.estado) !== null ||
+      puedeCambiarFecha(carga.evento.estado)) ? (
       <View style={estilos.pie}>
         <CambiarFechaSupervisor carga={carga} onSesionVencida={irAlLogin} />
         <CancelarCargaSupervisor carga={carga} onSesionVencida={irAlLogin} />
@@ -117,9 +133,16 @@ export default function PantallaDetalleHistorial() {
             icono="caja"
             titulo="Sin productos contados"
             detalle="Aquí aparecerán los productos por familia en cuanto se capturen en el conteo."
-            accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
+            accion={{
+              texto: 'Actualizar',
+              onPress: refrescar,
+              cargando: refrescando,
+              textoCargando: 'Actualizando…',
+            }}
           />
-          {cancelar && <View style={estilosVistaCarga.contenidoLista}>{cancelar}</View>}
+          {cancelar && (
+            <View style={estilosVistaCarga.contenidoLista}>{cancelar}</View>
+          )}
         </>
       ) : (
         <SectionList<ProductoDetalle, SeccionFamilia>
@@ -129,10 +152,14 @@ export default function PantallaDetalleHistorial() {
           keyExtractor={(p) => p.code}
           stickySectionHeadersEnabled
           initialNumToRender={30}
-          refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} />}
+          refreshControl={
+            <RefreshControl refreshing={refrescando} onRefresh={refrescar} />
+          }
           ListHeaderComponent={<ResumenCarga carga={carga} />}
           ListFooterComponent={cancelar}
-          renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section.familia} />}
+          renderSectionHeader={({ section }) => (
+            <EncabezadoFamilia familia={section.familia} />
+          )}
           renderItem={({ item }) => <TarjetaProducto producto={item} />}
         />
       )}

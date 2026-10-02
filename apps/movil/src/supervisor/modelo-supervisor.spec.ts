@@ -20,7 +20,10 @@ import {
   textoEspera,
 } from './modelo-supervisor.ts';
 
-function fila(id: string, extra: Partial<CargaHistorialApi> = {}): CargaHistorialApi {
+function fila(
+  id: string,
+  extra: Partial<CargaHistorialApi> = {},
+): CargaHistorialApi {
   return {
     id,
     rutaNombre: 'Ruta 1',
@@ -38,27 +41,41 @@ function fila(id: string, extra: Partial<CargaHistorialApi> = {}): CargaHistoria
   };
 }
 
-function tiempos(finalizadas: (string | null)[], confirmadas: (string | null)[] = []): EventoConTiemposApi {
+function tiempos(
+  finalizadas: (string | null)[],
+  confirmadas: (string | null)[] = [],
+): EventoConTiemposApi {
   return {
     evento: { estado: 'EN_ESPERA_AUTORIZACION' },
     sesiones: finalizadas.map((finalizadaEn) => ({ finalizadaEn })),
-    discrepancias: confirmadas.map((fechaConfirmacion) => ({ fechaConfirmacion })),
+    discrepancias: confirmadas.map((fechaConfirmacion) => ({
+      fechaConfirmacion,
+    })),
   };
 }
 
 describe('inicioEspera', () => {
   it('toma el cierre de sesión más reciente', () => {
-    const t = inicioEspera(tiempos(['2026-09-24T10:00:00.000Z', '2026-09-24T11:30:00.000Z']));
+    const t = inicioEspera(
+      tiempos(['2026-09-24T10:00:00.000Z', '2026-09-24T11:30:00.000Z']),
+    );
     assert.equal(t, Date.parse('2026-09-24T11:30:00.000Z'));
   });
 
   it('una diferencia confirmada después del conteo manda', () => {
-    const t = inicioEspera(tiempos(['2026-09-24T10:00:00.000Z', '2026-09-24T11:00:00.000Z'], ['2026-09-24T12:15:00.000Z', null]));
+    const t = inicioEspera(
+      tiempos(
+        ['2026-09-24T10:00:00.000Z', '2026-09-24T11:00:00.000Z'],
+        ['2026-09-24T12:15:00.000Z', null],
+      ),
+    );
     assert.equal(t, Date.parse('2026-09-24T12:15:00.000Z'));
   });
 
   it('ignora sesiones abiertas y fechas ilegibles', () => {
-    const t = inicioEspera(tiempos([null, 'no es fecha', '2026-09-24T09:00:00.000Z']));
+    const t = inicioEspera(
+      tiempos([null, 'no es fecha', '2026-09-24T09:00:00.000Z']),
+    );
     assert.equal(t, Date.parse('2026-09-24T09:00:00.000Z'));
   });
 
@@ -85,12 +102,18 @@ describe('armarCola', () => {
   });
 
   it('no usa fechaConteo para la espera', () => {
-    const [c] = armarCola([fila('a', { fechaConteo: '2026-09-20T00:00:00.000Z' })], new Map([['a', tiempos(['2026-09-24T12:00:00.000Z'])]]));
+    const [c] = armarCola(
+      [fila('a', { fechaConteo: '2026-09-20T00:00:00.000Z' })],
+      new Map([['a', tiempos(['2026-09-24T12:00:00.000Z'])]]),
+    );
     assert.equal(c?.esperaDesde, Date.parse('2026-09-24T12:00:00.000Z'));
   });
 
   it('descarta filas sin id y repetidas', () => {
-    const cola = armarCola([fila('a'), fila('a'), fila('', { id: null })], new Map());
+    const cola = armarCola(
+      [fila('a'), fila('a'), fila('', { id: null })],
+      new Map(),
+    );
     assert.equal(cola.length, 1);
   });
 });
@@ -136,7 +159,9 @@ describe('espera', () => {
 
 describe('rechazosParaEnviar', () => {
   it('solo lo marcado, con el motivo recortado', () => {
-    assert.deepEqual(rechazosParaEnviar({ A: '  faltan 2 cajas ' }), [{ productoCode: 'A', motivo: 'faltan 2 cajas' }]);
+    assert.deepEqual(rechazosParaEnviar({ A: '  faltan 2 cajas ' }), [
+      { productoCode: 'A', motivo: 'faltan 2 cajas' },
+    ]);
   });
 
   it('nada marcado o un motivo corto no se puede enviar', () => {
@@ -147,7 +172,11 @@ describe('rechazosParaEnviar', () => {
 
 describe('codigosDeDetalle', () => {
   it('lee los códigos del detalle del 409', () => {
-    assert.deepEqual(codigosDeDetalle('Productos rechazados: 101, 202,303'), ['101', '202', '303']);
+    assert.deepEqual(codigosDeDetalle('Productos rechazados: 101, 202,303'), [
+      '101',
+      '202',
+      '303',
+    ]);
   });
 
   it('sin detalle, nada', () => {
@@ -200,7 +229,10 @@ describe('estadoMotivoCancelacion', () => {
   });
 
   it('motivo corto: sigue deshabilitado y el contador dice cuánto lleva', () => {
-    assert.deepEqual(estadoMotivoCancelacion('error'), { suficiente: false, contador: '5/10' });
+    assert.deepEqual(estadoMotivoCancelacion('error'), {
+      suficiente: false,
+      contador: '5/10',
+    });
   });
 
   it('motivo lleno: el botón se habilita', () => {

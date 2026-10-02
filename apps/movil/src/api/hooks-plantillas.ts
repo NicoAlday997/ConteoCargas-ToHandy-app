@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { normalizarDetalle, normalizarLista } from '../plantillas/modelo-plantillas';
+import {
+  normalizarDetalle,
+  normalizarLista,
+} from '../plantillas/modelo-plantillas';
 import { ErrorApi } from './cliente';
 import {
   agregarProductos,
@@ -70,16 +73,22 @@ function useAlGuardar() {
   const clienteConsultas = useQueryClient();
   return (respuesta: PlantillaDetalleApi | null) => {
     const id = respuesta?.id;
-    if (id) clienteConsultas.setQueryData(clavesPlantillas.detalle(id), respuesta);
-    void clienteConsultas.invalidateQueries({ queryKey: clavesPlantillas.lista });
-    void clienteConsultas.invalidateQueries({ queryKey: clavesPlantillas.rutas });
+    if (id)
+      clienteConsultas.setQueryData(clavesPlantillas.detalle(id), respuesta);
+    void clienteConsultas.invalidateQueries({
+      queryKey: clavesPlantillas.lista,
+    });
+    void clienteConsultas.invalidateQueries({
+      queryKey: clavesPlantillas.rutas,
+    });
   };
 }
 
 export function useCrearPlantilla() {
   const alGuardar = useAlGuardar();
   return useMutation({
-    mutationFn: (datos: { nombre: string; descripcion: string | null }) => crearPlantilla(datos),
+    mutationFn: (datos: { nombre: string; descripcion: string | null }) =>
+      crearPlantilla(datos),
     onSuccess: alGuardar,
   });
 }
@@ -116,7 +125,9 @@ export function useAsignarRuta(id: string) {
     onSuccess: (respuesta) => {
       alGuardar(respuesta);
       // La plantilla que la ruta dejó también cambió: su detalle ya no la lista.
-      void clienteConsultas.invalidateQueries({ queryKey: ['plantillas', 'detalle'] });
+      void clienteConsultas.invalidateQueries({
+        queryKey: ['plantillas', 'detalle'],
+      });
     },
   });
 }

@@ -32,7 +32,19 @@ import { desglose } from '../discrepancias/estado-discrepancia';
 import type { ProductoDetalle } from '../historial/modelo-historial';
 import { cantidadEnUnidad } from '../historial/VistaCarga';
 import { useLayout } from '../theme/breakpoints';
-import { BORDES, CIFRAS, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, RITMO, ROTULO, TIPOGRAFIA, TOQUE_MINIMO } from '../theme/tokens';
+import {
+  BORDES,
+  CIFRAS,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  ROTULO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../theme/tokens';
 import { motivoValido, MOTIVO_MINIMO } from './modelo-supervisor';
 
 /** Igual que en el conteo: 9999 ya es un error de dedo. */
@@ -85,16 +97,25 @@ function Editor({
   const { esTablet, tecladoLateral } = useLayout();
   const modificar = useModificarCantidad(eventoId);
   // Se corrige desde la cantidad actual, no se recaptura de cero.
-  const [captura, setCaptura] = useState<CapturaProducto>(() => desglose(producto.cantidadFinal ?? 0, producto));
+  const [captura, setCaptura] = useState<CapturaProducto>(() =>
+    desglose(producto.cantidadFinal ?? 0, producto),
+  );
   const [edicion, setEdicion] = useState<Edicion | null>(() => {
     const campo = primerCampo(producto);
     const valor = desglose(producto.cantidadFinal ?? 0, producto)[campo];
-    return { campo, texto: valor === null ? '' : String(valor), reemplazar: true };
+    return {
+      campo,
+      texto: valor === null ? '' : String(valor),
+      reemplazar: true,
+    };
   });
   const edicionRef = useRef<Edicion | null>(edicion);
   const [motivo, setMotivo] = useState('');
   const [intentoGuardar, setIntentoGuardar] = useState(false);
-  const [error, setError] = useState<{ titulo: string; detalle: string } | null>(null);
+  const [error, setError] = useState<{
+    titulo: string;
+    detalle: string;
+  } | null>(null);
   const campoMotivo = useRef<TextInput>(null);
 
   const fijarEdicion = useCallback((nueva: Edicion | null) => {
@@ -103,13 +124,19 @@ function Editor({
   }, []);
 
   const capturaVisible = (): CapturaProducto =>
-    edicion ? { ...captura, [edicion.campo]: textoAValor(edicion.texto) } : captura;
+    edicion
+      ? { ...captura, [edicion.campo]: textoAValor(edicion.texto) }
+      : captura;
 
   const abrirCampo = (campo: CampoCaptura) => {
     const base = capturaVisible();
     setCaptura(base);
     campoMotivo.current?.blur();
-    fijarEdicion({ campo, texto: base[campo] === null ? '' : String(base[campo]), reemplazar: true });
+    fijarEdicion({
+      campo,
+      texto: base[campo] === null ? '' : String(base[campo]),
+      reemplazar: true,
+    });
   };
 
   const cerrarTeclado = useCallback(() => {
@@ -134,7 +161,11 @@ function Editor({
   const alBorrar = useCallback(() => {
     const actual = edicionRef.current;
     if (!actual) return;
-    fijarEdicion({ ...actual, texto: actual.reemplazar ? '' : actual.texto.slice(0, -1), reemplazar: false });
+    fijarEdicion({
+      ...actual,
+      texto: actual.reemplazar ? '' : actual.texto.slice(0, -1),
+      reemplazar: false,
+    });
   }, [fijarEdicion]);
 
   const visible = capturaVisible();
@@ -149,7 +180,11 @@ function Editor({
     if (!e) return;
     if (e.campo === 'paquetes' && e.texto === '' && admiteSueltas(producto)) {
       setCaptura((c) => ({ ...c, paquetes: textoAValor(e.texto) }));
-      fijarEdicion({ campo: 'sueltas', texto: visible.sueltas === null ? '' : String(visible.sueltas), reemplazar: true });
+      fijarEdicion({
+        campo: 'sueltas',
+        texto: visible.sueltas === null ? '' : String(visible.sueltas),
+        reemplazar: true,
+      });
       return;
     }
     cerrarTeclado();
@@ -167,7 +202,11 @@ function Editor({
     if (!puedeGuardar || nueva === null) return;
     setError(null);
     modificar.mutate(
-      { productoCode: producto.code, cantidadNueva: nueva, motivo: motivo.trim() },
+      {
+        productoCode: producto.code,
+        cantidadNueva: nueva,
+        motivo: motivo.trim(),
+      },
       {
         onSuccess: () => {
           fijarEdicion(null);
@@ -179,7 +218,10 @@ function Editor({
             return;
           }
           if (e instanceof ErrorRed) {
-            setError({ titulo: 'Sin conexión', detalle: 'La cantidad no se guardó. Inténtalo cuando haya señal.' });
+            setError({
+              titulo: 'Sin conexión',
+              detalle: 'La cantidad no se guardó. Inténtalo cuando haya señal.',
+            });
           } else if (e instanceof ErrorApi && e.estado === 409) {
             setError({
               titulo: 'La carga ya no espera tu autorización',
@@ -187,7 +229,10 @@ function Editor({
                 'Alguien la autorizó, rechazó productos o modificó otra cantidad hace un momento. Solo se puede modificar una cantidad por ronda. Cierra y revisa la lista.',
             });
           } else {
-            setError({ titulo: 'No se pudo guardar', detalle: e.message || 'Intenta de nuevo en un momento.' });
+            setError({
+              titulo: 'No se pudo guardar',
+              detalle: e.message || 'Intenta de nuevo en un momento.',
+            });
           }
         },
       },
@@ -207,7 +252,13 @@ function Editor({
       captura={visible}
       camposDisponibles={campos}
       onCambiarCampo={abrirCampo}
-      etiquetaSiguiente={edicion.campo === 'paquetes' && edicion.texto === '' && admiteSueltas(producto) ? 'Sueltas' : 'Motivo'}
+      etiquetaSiguiente={
+        edicion.campo === 'paquetes' &&
+        edicion.texto === '' &&
+        admiteSueltas(producto)
+          ? 'Sueltas'
+          : 'Motivo'
+      }
       siguienteConChevron
       lateral={tecladoLateral}
       teclasGrandes={esTablet}
@@ -220,36 +271,75 @@ function Editor({
   ) : null;
 
   let avisoCantidad: string | null = null;
-  if (intentoGuardar && nueva === null) avisoCantidad = 'Captura la cantidad nueva.';
-  else if (igual) avisoCantidad = 'Es la misma cantidad que ya tiene: no hay nada que modificar.';
+  if (intentoGuardar && nueva === null)
+    avisoCantidad = 'Captura la cantidad nueva.';
+  else if (igual)
+    avisoCantidad =
+      'Es la misma cantidad que ya tiene: no hay nada que modificar.';
 
   return (
     <PantallaModal visible onCerrar={cerrar}>
-      <SafeAreaView style={estilos.pantalla} edges={teclado && !tecladoLateral ? ['left', 'right'] : ['left', 'right', 'bottom']}>
-        <Encabezado titulo="Modificar cantidad" subtitulo={rutaNombre} onVolver={cerrar} etiquetaVolver="Cancelar y volver" />
+      <SafeAreaView
+        style={estilos.pantalla}
+        edges={
+          teclado && !tecladoLateral
+            ? ['left', 'right']
+            : ['left', 'right', 'bottom']
+        }
+      >
+        <Encabezado
+          titulo="Modificar cantidad"
+          subtitulo={rutaNombre}
+          onVolver={cerrar}
+          etiquetaVolver="Cancelar y volver"
+        />
         <View style={[estilos.cuerpo, tecladoLateral && estilos.cuerpoTablet]}>
           {/* Con el teclado del sistema (el motivo) el propio está cerrado: solo esta vista se aparta. */}
-          <PantallaConFormulario style={estilos.scroll} estiloContenido={estilos.contenido}>
+          <PantallaConFormulario
+            style={estilos.scroll}
+            estiloContenido={estilos.contenido}
+          >
             <Tarjeta compacta>
               <View style={estilos.lineaProducto}>
                 <EtiquetaFactor producto={producto} />
-                <Text style={estilos.nombreProducto}>{formatearNombreProducto(producto.nombre)}</Text>
+                <Text style={estilos.nombreProducto}>
+                  {formatearNombreProducto(producto.nombre)}
+                </Text>
               </View>
-              <FilaDato etiqueta="Cantidad actual" valor={actual === null ? null : cantidadEnUnidad(actual, producto)} ausente="Sin resolver" />
+              <FilaDato
+                etiqueta="Cantidad actual"
+                valor={
+                  actual === null ? null : cantidadEnUnidad(actual, producto)
+                }
+                ausente="Sin resolver"
+              />
             </Tarjeta>
 
             {/* Primero lo que pasa después: se lee antes de teclear nada. */}
-            <Tarjeta tintada="discrepancia" elevacion={0} compacta style={estilos.aviso}>
+            <Tarjeta
+              tintada="discrepancia"
+              elevacion={0}
+              compacta
+              style={estilos.aviso}
+            >
               <Text style={estilos.tituloAviso} accessibilityRole="header">
                 Tu cambio no queda aplicado todavía
               </Text>
               <Text style={estilos.textoAviso}>
-                Nadie, ni el supervisor, cambia una cantidad sin el respaldo de dos personas. Tu cantidad queda como
-                propuesta hasta que <Text style={estilos.negrita}>el vendedor o el contador la confirmen con su PIN</Text>.
+                Nadie, ni el supervisor, cambia una cantidad sin el respaldo de
+                dos personas. Tu cantidad queda como propuesta hasta que{' '}
+                <Text style={estilos.negrita}>
+                  el vendedor o el contador la confirmen con su PIN
+                </Text>
+                .
               </Text>
               <Text style={estilos.textoAviso}>
-                Al guardar, la carga <Text style={estilos.negrita}>sale de tu lista y vuelve a diferencias por resolver</Text>.
-                Regresará para tu autorización cuando la confirmen. Solo puedes modificar un producto por ronda.
+                Al guardar, la carga{' '}
+                <Text style={estilos.negrita}>
+                  sale de tu lista y vuelve a diferencias por resolver
+                </Text>
+                . Regresará para tu autorización cuando la confirmen. Solo
+                puedes modificar un producto por ronda.
               </Text>
             </Tarjeta>
 
@@ -265,23 +355,44 @@ function Editor({
                       onPress={() => abrirCampo(campo)}
                       accessibilityRole="button"
                       accessibilityLabel={`${nombreCampo(producto, campo)}: ${valor ?? 'sin capturar'}`}
-                      style={({ pressed }) => [estilos.campo, (activo || pressed) && estilos.campoActivo]}
+                      style={({ pressed }) => [
+                        estilos.campo,
+                        (activo || pressed) && estilos.campoActivo,
+                      ]}
                     >
                       {({ pressed }) => (
                         <>
-                          <Text style={[estilos.etiquetaCampo, (activo || pressed) && estilos.textoInvertido]}>
+                          <Text
+                            style={[
+                              estilos.etiquetaCampo,
+                              (activo || pressed) && estilos.textoInvertido,
+                            ]}
+                          >
                             {nombreCampo(producto, campo)}
                           </Text>
-                          <Text style={[estilos.valorCampo, (activo || pressed) && estilos.textoInvertido]}>{valor ?? '—'}</Text>
+                          <Text
+                            style={[
+                              estilos.valorCampo,
+                              (activo || pressed) && estilos.textoInvertido,
+                            ]}
+                          >
+                            {valor ?? '—'}
+                          </Text>
                         </>
                       )}
                     </Pulsable>
                   );
                 })}
                 {/* Lo completo ya está en su unidad: repetir "= 5 cajas" no aclara nada. */}
-                <Text style={estilos.total}>{nueva === null || seVendeCompleto(producto) ? '' : `= ${formatearPiezas(nueva)}`}</Text>
+                <Text style={estilos.total}>
+                  {nueva === null || seVendeCompleto(producto)
+                    ? ''
+                    : `= ${formatearPiezas(nueva)}`}
+                </Text>
               </View>
-              {avisoCantidad && <Text style={estilos.avisoCampo}>{avisoCantidad}</Text>}
+              {avisoCantidad && (
+                <Text style={estilos.avisoCampo}>{avisoCantidad}</Text>
+              )}
             </View>
 
             <CampoTexto
@@ -294,13 +405,25 @@ function Editor({
               maxLength={200}
               onFocus={cerrarTeclado}
               ayuda={`Mínimo ${MOTIVO_MINIMO} caracteres.`}
-              error={intentoGuardar && !motivoOk ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+              error={
+                intentoGuardar && !motivoOk
+                  ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).`
+                  : null
+              }
             />
 
-            {error && <BloqueError titulo={error.titulo} detalle={error.detalle} />}
+            {error && (
+              <BloqueError titulo={error.titulo} detalle={error.detalle} />
+            )}
 
             <View style={estilos.botones}>
-              <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={modificar.isPending} style={estilos.boton} />
+              <Boton
+                texto="Cancelar"
+                variante="secundario"
+                onPress={cerrar}
+                deshabilitado={modificar.isPending}
+                style={estilos.boton}
+              />
               <Boton
                 texto="Proponer cantidad"
                 onPress={guardar}
@@ -312,7 +435,11 @@ function Editor({
               />
             </View>
           </PantallaConFormulario>
-          {tecladoLateral ? <View style={estilos.lateral}>{teclado}</View> : teclado}
+          {tecladoLateral ? (
+            <View style={estilos.lateral}>{teclado}</View>
+          ) : (
+            teclado
+          )}
         </View>
       </SafeAreaView>
     </PantallaModal>

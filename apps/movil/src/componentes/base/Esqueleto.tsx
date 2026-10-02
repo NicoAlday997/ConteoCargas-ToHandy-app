@@ -1,5 +1,11 @@
 import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, View, type DimensionValue, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  type DimensionValue,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -8,7 +14,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { COLORES, ELEVACION, ESPACIADO, OPACIDAD, RADIOS, RITMO, TIPOGRAFIA, type NivelTipografia } from '../../theme/tokens';
+import {
+  COLORES,
+  ELEVACION,
+  ESPACIADO,
+  OPACIDAD,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  type NivelTipografia,
+} from '../../theme/tokens';
 
 /** Lento: indica que algo viene, no pide atención. */
 const DURACION_PULSO_MS = 800;
@@ -33,7 +48,11 @@ export function Esqueleto({
 
   useEffect(() => {
     if (reducido) return;
-    opacidad.value = withRepeat(withTiming(OPACIDAD.pulsoEsqueleto, { duration: DURACION_PULSO_MS }), -1, true);
+    opacidad.value = withRepeat(
+      withTiming(OPACIDAD.pulsoEsqueleto, { duration: DURACION_PULSO_MS }),
+      -1,
+      true,
+    );
   }, [opacidad, reducido]);
 
   const pulso = useAnimatedStyle(() => ({ opacity: opacidad.value }));
@@ -67,14 +86,35 @@ export function LineaEsqueleto({
   const alto = TIPOGRAFIA[nivel].lineHeight;
   return (
     <View style={[estilos.linea, { height: alto }]}>
-      <View style={[estilos.barra, { width: ancho, height: TIPOGRAFIA[nivel].fontSize }, sobreMarca && estilos.barraMarca]} />
+      <View
+        style={[
+          estilos.barra,
+          { width: ancho, height: TIPOGRAFIA[nivel].fontSize },
+          sobreMarca && estilos.barraMarca,
+        ]}
+      />
     </View>
   );
 }
 
 /** Bloque sólido del alto dado: un botón, un campo, una píldora. */
-export function BloqueEsqueleto({ alto, ancho = '100%', radio = RADIOS.medio }: { alto: number; ancho?: DimensionValue; radio?: number }) {
-  return <View style={[estilos.barra, { height: alto, width: ancho, borderRadius: radio }]} />;
+export function BloqueEsqueleto({
+  alto,
+  ancho = '100%',
+  radio = RADIOS.medio,
+}: {
+  alto: number;
+  ancho?: DimensionValue;
+  radio?: number;
+}) {
+  return (
+    <View
+      style={[
+        estilos.barra,
+        { height: alto, width: ancho, borderRadius: radio },
+      ]}
+    />
+  );
 }
 
 /**
@@ -102,7 +142,13 @@ export function TarjetaEsqueleto({
           <LineaEsqueleto key={i} nivel="etiqueta" ancho={ancho} />
         ))}
       </View>
-      {cifra && <BloqueEsqueleto alto={TIPOGRAFIA.display.lineHeight} ancho={ESPACIADO.xxxl} radio={RADIOS.chico} />}
+      {cifra && (
+        <BloqueEsqueleto
+          alto={TIPOGRAFIA.display.lineHeight}
+          ancho={ESPACIADO.xxxl}
+          radio={RADIOS.chico}
+        />
+      )}
     </View>
   );
 }

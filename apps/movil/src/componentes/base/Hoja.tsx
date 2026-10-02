@@ -12,11 +12,19 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, SlideInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  SlideInDown,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../../theme/breakpoints';
-import { COMPORTAMIENTO_TECLADO, PantallaConFormulario } from './PantallaConFormulario';
+import {
+  COMPORTAMIENTO_TECLADO,
+  PantallaConFormulario,
+} from './PantallaConFormulario';
 import {
   ANCHO_MODAL,
   COLORES,
@@ -97,7 +105,10 @@ export function Hoja({
   // pantalla sin las barras, y la hoja quedaba flotando sobre una franja de velo.
   // Se le da el alto completo de la pantalla para que llegue al borde.
   const { height: altoPantalla } = useWindowDimensions();
-  const altoAndroid = Platform.OS === 'android' ? { flex: 0, height: Dimensions.get('screen').height || altoPantalla } : null;
+  const altoAndroid =
+    Platform.OS === 'android'
+      ? { flex: 0, height: Dimensions.get('screen').height || altoPantalla }
+      : null;
   const cerrar = () => {
     if (!bloqueada) onCerrar();
   };
@@ -115,7 +126,14 @@ export function Hoja({
     ) : null;
 
   const pieConMargen = pie ? (
-    <View style={[estilos.pie, !esTablet && { paddingBottom: margenes.bottom + RITMO.margen }]}>{pie}</View>
+    <View
+      style={[
+        estilos.pie,
+        !esTablet && { paddingBottom: margenes.bottom + RITMO.margen },
+      ]}
+    >
+      {pie}
+    </View>
   ) : null;
   const pieDentro = formulario && !sinDesplazamiento;
 
@@ -148,8 +166,14 @@ export function Hoja({
       onRequestClose={cerrar}
     >
       {visible && (
-        <KeyboardAvoidingView style={[estilos.raiz, altoAndroid]} behavior={COMPORTAMIENTO_TECLADO}>
-          <Animated.View entering={ENTRADA_VELO} style={StyleSheet.absoluteFill}>
+        <KeyboardAvoidingView
+          style={[estilos.raiz, altoAndroid]}
+          behavior={COMPORTAMIENTO_TECLADO}
+        >
+          <Animated.View
+            entering={ENTRADA_VELO}
+            style={StyleSheet.absoluteFill}
+          >
             <Pressable
               style={estilos.velo}
               onPress={cerrarAlTocarFondo ? cerrar : undefined}
@@ -162,8 +186,17 @@ export function Hoja({
             style={[
               estilos.colocacion,
               esTablet
-                ? [estilos.colocacionDialogo, { paddingTop: margenes.top + RITMO.margen, paddingBottom: margenes.bottom + RITMO.margen }]
-                : [estilos.colocacionHoja, { paddingTop: margenes.top + ESPACIADO.xl }],
+                ? [
+                    estilos.colocacionDialogo,
+                    {
+                      paddingTop: margenes.top + RITMO.margen,
+                      paddingBottom: margenes.bottom + RITMO.margen,
+                    },
+                  ]
+                : [
+                    estilos.colocacionHoja,
+                    { paddingTop: margenes.top + ESPACIADO.xl },
+                  ],
             ]}
             pointerEvents="box-none"
           >
@@ -172,12 +205,19 @@ export function Hoja({
               style={[esTablet ? estilos.dialogo : estilos.hoja]}
               accessibilityViewIsModal
             >
-              {!esTablet && <View style={estilos.tirador} accessibilityElementsHidden importantForAccessibility="no" />}
+              {!esTablet && (
+                <View
+                  style={estilos.tirador}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              )}
               {cuerpo}
               {/* Con `formulario` el pie ya va dentro del desplazamiento. */}
               {pieConMargen && !pieDentro
                 ? pieConMargen
-                : !pieConMargen && !esTablet && <View style={{ height: margenes.bottom }} />}
+                : !pieConMargen &&
+                  !esTablet && <View style={{ height: margenes.bottom }} />}
             </Animated.View>
           </View>
         </KeyboardAvoidingView>
@@ -192,7 +232,13 @@ export function Hoja({
  * derecho. `apiladas` para textos largos o una acción destructiva: la salida
  * segura va hasta abajo, la más cercana al pulgar.
  */
-export function AccionesHoja({ children, apiladas = false }: { children: ReactNode; apiladas?: boolean }) {
+export function AccionesHoja({
+  children,
+  apiladas = false,
+}: {
+  children: ReactNode;
+  apiladas?: boolean;
+}) {
   const hijos = Children.toArray(children).filter(Boolean);
   return (
     <View style={apiladas ? estilos.accionesApiladas : estilos.acciones}>

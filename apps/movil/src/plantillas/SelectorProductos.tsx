@@ -20,8 +20,21 @@ import {
 import { contarPendientes, textoProductos } from '../factores/modelo-factores';
 import { ANCHO_MAXIMO_LISTA } from '../historial/ComponentesHistorial';
 import { COLORES, ESPACIADO, RITMO } from '../theme/tokens';
-import { avisoDeError, BarraAcciones, EncabezadoFamilia, FilaProducto, estilosPlantillas } from './ComponentesPlantillas';
-import { alternar, alternarVarios, familiasSelector, todosMarcados, type FamiliaSelector, type ProductoSelector } from './modelo-plantillas';
+import {
+  avisoDeError,
+  BarraAcciones,
+  EncabezadoFamilia,
+  FilaProducto,
+  estilosPlantillas,
+} from './ComponentesPlantillas';
+import {
+  alternar,
+  alternarVarios,
+  familiasSelector,
+  todosMarcados,
+  type FamiliaSelector,
+  type ProductoSelector,
+} from './modelo-plantillas';
 
 interface Props {
   visible: boolean;
@@ -47,7 +60,13 @@ export function SelectorProductos(props: Props) {
   );
 }
 
-function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgregados }: Props) {
+function Contenido({
+  plantillaId,
+  nombrePlantilla,
+  incluidos,
+  onCerrar,
+  onAgregados,
+}: Props) {
   const catalogo = useFactoresCatalogo(true);
   const agregar = useAgregarProductos(plantillaId);
   const [busqueda, setBusqueda] = useState('');
@@ -67,13 +86,19 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
   const guardar = () => {
     agregar.mutate([...seleccion], {
       onSuccess: (respuesta) => {
-        onAgregados(typeof respuesta?.agregados === 'number' ? respuesta.agregados : seleccion.size);
+        onAgregados(
+          typeof respuesta?.agregados === 'number'
+            ? respuesta.agregados
+            : seleccion.size,
+        );
         onCerrar();
       },
     });
   };
 
-  const error = agregar.isError ? avisoDeError(agregar.error, 'No se pudieron agregar') : null;
+  const error = agregar.isError
+    ? avisoDeError(agregar.error, 'No se pudieron agregar')
+    : null;
 
   let lista;
   if (catalogo.isPending) {
@@ -145,9 +170,17 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
             accion={
               section.disponibles.length > 1
                 ? {
-                    texto: todosMarcados(seleccion, section.disponibles) ? 'Desmarcar' : 'Marcar todos',
-                    onPress: () => setSeleccion((s) => alternarVarios(s, section.disponibles)),
-                    accessibilityLabel: todosMarcados(seleccion, section.disponibles)
+                    texto: todosMarcados(seleccion, section.disponibles)
+                      ? 'Desmarcar'
+                      : 'Marcar todos',
+                    onPress: () =>
+                      setSeleccion((s) =>
+                        alternarVarios(s, section.disponibles),
+                      ),
+                    accessibilityLabel: todosMarcados(
+                      seleccion,
+                      section.disponibles,
+                    )
                       ? `Desmarcar la familia ${section.titulo}`
                       : `Marcar los ${section.disponibles.length} productos de ${section.titulo} que faltan`,
                   }
@@ -166,7 +199,8 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
                     tipo: 'seleccion',
                     marcado: seleccion.has(item.code),
                     tono: 'marca',
-                    onAlternar: () => setSeleccion((s) => alternar(s, item.code)),
+                    onAlternar: () =>
+                      setSeleccion((s) => alternar(s, item.code)),
                   }
             }
           />
@@ -183,7 +217,10 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
         onVolver={cerrar}
         etiquetaVolver="Cerrar sin agregar"
       >
-        <NotaEncabezado>Marca los que debe ver el vendedor al contar. Los que ya están no se repiten.</NotaEncabezado>
+        <NotaEncabezado>
+          Marca los que debe ver el vendedor al contar. Los que ya están no se
+          repiten.
+        </NotaEncabezado>
       </Encabezado>
       {/* Fuera de la lista: si viviera en su encabezado, cada letra lo redibujaría y perdería el foco. */}
       <View style={estilos.buscador}>
@@ -192,22 +229,44 @@ function Contenido({ plantillaId, nombrePlantilla, incluidos, onCerrar, onAgrega
           valor={busqueda}
           onCambiar={setBusqueda}
           ejemplo="Nombre, familia o código"
-          ayuda={busqueda.trim() && catalogo.data ? `${textoProductos(encontrados)} encontrados` : null}
+          ayuda={
+            busqueda.trim() && catalogo.data
+              ? `${textoProductos(encontrados)} encontrados`
+              : null
+          }
           maxLength={60}
         />
       </View>
       {lista}
       <BarraAcciones>
-        {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono} />}
+        {error && (
+          <BloqueError
+            titulo={error.titulo}
+            detalle={error.detalle}
+            tono={error.tono}
+          />
+        )}
         <View style={estilosPlantillas.filaBotones}>
-          <Boton texto="Cancelar" variante="secundario" onPress={cerrar} deshabilitado={enviando} style={estilosPlantillas.botonFila} />
           <Boton
-            texto={seleccion.size === 0 ? 'Agregar' : `Agregar ${seleccion.size}`}
+            texto="Cancelar"
+            variante="secundario"
+            onPress={cerrar}
+            deshabilitado={enviando}
+            style={estilosPlantillas.botonFila}
+          />
+          <Boton
+            texto={
+              seleccion.size === 0 ? 'Agregar' : `Agregar ${seleccion.size}`
+            }
             onPress={guardar}
             deshabilitado={seleccion.size === 0}
             cargando={enviando}
             textoCargando="Agregando…"
-            accessibilityLabel={seleccion.size === 0 ? 'Agregar: marca al menos un producto' : `Agregar ${textoProductos(seleccion.size)}`}
+            accessibilityLabel={
+              seleccion.size === 0
+                ? 'Agregar: marca al menos un producto'
+                : `Agregar ${textoProductos(seleccion.size)}`
+            }
             style={estilosPlantillas.botonFila}
           />
         </View>

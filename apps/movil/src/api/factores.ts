@@ -47,8 +47,12 @@ export interface FactorCatalogoApi {
   fechaConfirmacionFactor: string | null;
 }
 
-export function listarFactoresPendientes(): Promise<FactorPendienteApi[] | null> {
-  return peticion<FactorPendienteApi[] | null>('/admin/sincronizacion/factores-pendientes');
+export function listarFactoresPendientes(): Promise<
+  FactorPendienteApi[] | null
+> {
+  return peticion<FactorPendienteApi[] | null>(
+    '/admin/sincronizacion/factores-pendientes',
+  );
 }
 
 export function listarFactores(): Promise<FactorCatalogoApi[] | null> {
@@ -56,15 +60,23 @@ export function listarFactores(): Promise<FactorCatalogoApi[] | null> {
 }
 
 /** Cuántas cargas aún no enviadas a Handy tienen conteos del producto. */
-export function contarCargasEnCurso(code: string): Promise<{ cargasEnCurso: number | null } | null> {
+export function contarCargasEnCurso(
+  code: string,
+): Promise<{ cargasEnCurso: number | null } | null> {
   return peticion<{ cargasEnCurso: number | null } | null>(
     `/admin/sincronizacion/productos/${encodeURIComponent(code)}/factor/cargas-en-curso`,
   );
 }
 
-export function confirmarFactor(code: string, confirmacion: ConfirmacionFactor): Promise<FactorConfirmadoApi | null> {
-  return peticion<FactorConfirmadoApi | null>(`/admin/sincronizacion/productos/${encodeURIComponent(code)}/factor`, {
-    method: 'PATCH',
-    cuerpo: confirmacion,
-  });
+export function confirmarFactor(
+  code: string,
+  confirmacion: ConfirmacionFactor,
+): Promise<FactorConfirmadoApi | null> {
+  return peticion<FactorConfirmadoApi | null>(
+    `/admin/sincronizacion/productos/${encodeURIComponent(code)}/factor`,
+    {
+      method: 'PATCH',
+      cuerpo: confirmacion,
+    },
+  );
 }

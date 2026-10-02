@@ -1,7 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
-import { COLORES, ELEVACION, ESCALA_PRESIONADO, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TONOS, TOQUE_MINIMO, type Tarea } from '../../theme/tokens';
+import {
+  COLORES,
+  ELEVACION,
+  ESCALA_PRESIONADO,
+  ESPACIADO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TONOS,
+  TOQUE_MINIMO,
+  type Tarea,
+} from '../../theme/tokens';
 import { Chevron, IconoTarea } from './Icono';
 import { Pulsable } from './Pulsable';
 
@@ -59,12 +71,30 @@ export function FilaMenu({
         <>
           {tarea && <IconoTarea tarea={tarea} invertido={pressed} />}
           <View style={estilos.textos}>
-            <Text style={[estilos.texto, salida && estilos.textoSalida]}>{cargando ? textoCargando : texto}</Text>
-            {detalle ? <Text style={[estilos.detalle, detalleAviso && estilos.detalleAviso]}>{detalle}</Text> : null}
+            <Text style={[estilos.texto, salida && estilos.textoSalida]}>
+              {cargando ? textoCargando : texto}
+            </Text>
+            {detalle ? (
+              <Text
+                style={[estilos.detalle, detalleAviso && estilos.detalleAviso]}
+              >
+                {detalle}
+              </Text>
+            ) : null}
           </View>
           {!salida && (
-            <View style={[estilos.circuloChevron, pressed && estilos.circuloChevronPresionado]}>
-              <Chevron color={pressed ? COLORES.textoSobreColor : COLORES.textoTerciario} tamano={ESPACIADO.lg + ESPACIADO.xs} />
+            <View
+              style={[
+                estilos.circuloChevron,
+                pressed && estilos.circuloChevronPresionado,
+              ]}
+            >
+              <Chevron
+                color={
+                  pressed ? COLORES.textoSobreColor : COLORES.textoTerciario
+                }
+                tamano={ESPACIADO.lg + ESPACIADO.xs}
+              />
             </View>
           )}
         </>

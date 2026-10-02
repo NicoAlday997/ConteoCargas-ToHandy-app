@@ -10,8 +10,12 @@ import type { RespuestaEvento } from '../api/cargas';
 export type VigenciaCarga = 'vigente' | 'no-disponible' | 'sin-verificar';
 
 /** `GET /eventos-carga/:id` respondió: ¿sigue abierta la sesión de este teléfono? */
-export function vigenciaDesdeEvento(respuesta: RespuestaEvento | null, sesionId: string): VigenciaCarga {
-  if (!respuesta?.evento || !Array.isArray(respuesta.sesiones)) return 'sin-verificar';
+export function vigenciaDesdeEvento(
+  respuesta: RespuestaEvento | null,
+  sesionId: string,
+): VigenciaCarga {
+  if (!respuesta?.evento || !Array.isArray(respuesta.sesiones))
+    return 'sin-verificar';
   // Al cancelar, el servidor cierra las sesiones abiertas; esto cubre igual el caso aunque alguna quedara abierta.
   if (respuesta.evento.estado === 'CANCELADA') return 'no-disponible';
   const sesion = respuesta.sesiones.find((s) => s.id === sesionId);

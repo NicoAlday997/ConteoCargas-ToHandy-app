@@ -1,4 +1,7 @@
-import { formatearEnPaquetes, formatearTotalPiezas } from '../conteo/formato-cantidad.ts';
+import {
+  formatearEnPaquetes,
+  formatearTotalPiezas,
+} from '../conteo/formato-cantidad.ts';
 
 /**
  * Los dos renglones de la franja de diferencia, sin React:

@@ -28,13 +28,23 @@ import {
   TIPOGRAFIA,
   TOQUE_MINIMO,
 } from '../theme/tokens';
-import { ayudaRol, cuentasLibres, cuerpoAlta, SIN_CUENTAS_LIBRES, validarAlta, type CuentaLibre } from './modelo-personas';
+import {
+  ayudaRol,
+  cuentasLibres,
+  cuerpoAlta,
+  SIN_CUENTAS_LIBRES,
+  validarAlta,
+  type CuentaLibre,
+} from './modelo-personas';
 import { PantallaPin, type PinTemporal } from './PantallaPin';
 
 const ROLES: readonly { rol: RolApp; descripcion: string }[] = [
   { rol: 'VENDEDOR', descripcion: 'Cuenta la carga de su ruta.' },
   { rol: 'CONTADOR', descripcion: 'Verifica lo que contó el vendedor.' },
-  { rol: 'SUPERVISOR', descripcion: 'Autoriza las cargas y administra la app.' },
+  {
+    rol: 'SUPERVISOR',
+    descripcion: 'Autoriza las cargas y administra la app.',
+  },
 ];
 
 const TAMANO_AVATAR = 40;
@@ -53,7 +63,13 @@ const TAMANO_AVATAR = 40;
  * Al guardar, el servidor devuelve el PIN temporal en claro: el formulario
  * cede su lugar a `PantallaPin`, de la que solo se sale con "Ya se lo di".
  */
-export function AltaPersona({ visible, onCerrar }: { visible: boolean; onCerrar: () => void }) {
+export function AltaPersona({
+  visible,
+  onCerrar,
+}: {
+  visible: boolean;
+  onCerrar: () => void;
+}) {
   const [pin, setPin] = useState<PinTemporal | null>(null);
   const terminar = () => {
     setPin(null);
@@ -63,12 +79,23 @@ export function AltaPersona({ visible, onCerrar }: { visible: boolean; onCerrar:
     // Con el PIN en pantalla, el atrás del sistema no hace nada.
     <PantallaModal visible={visible} onCerrar={pin ? () => {} : terminar}>
       {/* Montado solo mientras está abierto: cada alta empieza en blanco. */}
-      {visible && (pin ? <PantallaPin datos={pin} onListo={terminar} /> : <Formulario onCerrar={terminar} onCreada={setPin} />)}
+      {visible &&
+        (pin ? (
+          <PantallaPin datos={pin} onListo={terminar} />
+        ) : (
+          <Formulario onCerrar={terminar} onCreada={setPin} />
+        ))}
     </PantallaModal>
   );
 }
 
-function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (pin: PinTemporal) => void }) {
+function Formulario({
+  onCerrar,
+  onCreada,
+}: {
+  onCerrar: () => void;
+  onCreada: (pin: PinTemporal) => void;
+}) {
   const crear = useCrearPersona();
   const cuentas = useCuentasHandy(true);
   const [nombre, setNombre] = useState('');
@@ -95,7 +122,11 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
         const pin = respuesta?.pinTemporal;
         // Sin PIN en la respuesta no hay nada que entregar: que lo restablezca desde su ficha.
         if (!pin) return;
-        onCreada({ nombre: respuesta?.usuario?.nombreCompleto ?? cuerpo.nombreCompleto, pin, motivo: 'alta' });
+        onCreada({
+          nombre: respuesta?.usuario?.nombreCompleto ?? cuerpo.nombreCompleto,
+          pin,
+          motivo: 'alta',
+        });
       },
     });
   };
@@ -110,13 +141,34 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
 
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right']}>
-      <Encabezado variante="barra" titulo="Dar de alta" onVolver={onCerrar} etiquetaVolver="Cancelar y volver" />
+      <Encabezado
+        variante="barra"
+        titulo="Dar de alta"
+        onVolver={onCerrar}
+        etiquetaVolver="Cancelar y volver"
+      />
       <PantallaConFormulario
         estiloContenido={estilos.contenido}
         pie={
-          <BarraAccion nota={intento && !valido ? 'Falta completar lo marcado arriba.' : null}>
-            <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} deshabilitado={crear.isPending} style={estilos.boton} />
-            <Boton texto="Dar de alta" onPress={guardar} cargando={crear.isPending} textoCargando="Guardando…" style={estilos.boton} />
+          <BarraAccion
+            nota={
+              intento && !valido ? 'Falta completar lo marcado arriba.' : null
+            }
+          >
+            <Boton
+              texto="Cancelar"
+              variante="secundario"
+              onPress={onCerrar}
+              deshabilitado={crear.isPending}
+              style={estilos.boton}
+            />
+            <Boton
+              texto="Dar de alta"
+              onPress={guardar}
+              cargando={crear.isPending}
+              textoCargando="Guardando…"
+              style={estilos.boton}
+            />
           </BarraAccion>
         }
       >
@@ -134,10 +186,18 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
           <TituloSeccion texto="Qué hace en la app" nivel="grupo" />
           <View style={estilos.opciones} accessibilityRole="radiogroup">
             {ROLES.map((r) => (
-              <OpcionRol key={r.rol} rol={r.rol} descripcion={r.descripcion} seleccionado={rol === r.rol} onPress={() => elegirRol(r.rol)} />
+              <OpcionRol
+                key={r.rol}
+                rol={r.rol}
+                descripcion={r.descripcion}
+                seleccionado={rol === r.rol}
+                onPress={() => elegirRol(r.rol)}
+              />
             ))}
           </View>
-          {intento && errores.rol ? <Text style={estilos.error}>{errores.rol}</Text> : null}
+          {intento && errores.rol ? (
+            <Text style={estilos.error}>{errores.rol}</Text>
+          ) : null}
           {rol && (
             <Text style={estilos.ayudaRol} accessibilityLiveRegion="polite">
               {ayudaRol(rol)}
@@ -153,7 +213,13 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
             ) : cuentas.isError && !cuentas.data ? (
               <BloqueError
                 titulo="No se pudieron cargar las cuentas de Handy"
-                detalle={cuentas.error instanceof ErrorRed ? 'Revisa la señal.' : cuentas.error instanceof Error ? cuentas.error.message : null}
+                detalle={
+                  cuentas.error instanceof ErrorRed
+                    ? 'Revisa la señal.'
+                    : cuentas.error instanceof Error
+                      ? cuentas.error.message
+                      : null
+                }
                 onReintentar={() => void cuentas.refetch()}
                 reintentando={cuentas.isFetching}
               />
@@ -162,52 +228,106 @@ function Formulario({ onCerrar, onCreada }: { onCerrar: () => void; onCreada: (p
             ) : (
               <View style={estilos.opciones} accessibilityRole="radiogroup">
                 {libres.map((c) => (
-                  <OpcionCuenta key={c.idHandy} cuenta={c} seleccionada={cuentaId === c.idHandy} onPress={() => setCuentaId(c.idHandy)} />
+                  <OpcionCuenta
+                    key={c.idHandy}
+                    cuenta={c}
+                    seleccionada={cuentaId === c.idHandy}
+                    onPress={() => setCuentaId(c.idHandy)}
+                  />
                 ))}
               </View>
             )}
-            {intento && errores.cuenta && libres.length > 0 ? <Text style={estilos.error}>{errores.cuenta}</Text> : null}
+            {intento && errores.cuenta && libres.length > 0 ? (
+              <Text style={estilos.error}>{errores.cuenta}</Text>
+            ) : null}
           </View>
         )}
 
-        {errorGuardar && <BloqueError titulo="No se dio de alta" detalle={errorGuardar} />}
+        {errorGuardar && (
+          <BloqueError titulo="No se dio de alta" detalle={errorGuardar} />
+        )}
       </PantallaConFormulario>
     </SafeAreaView>
   );
 }
 
-function OpcionRol({ rol, descripcion, seleccionado, onPress }: { rol: RolApp; descripcion: string; seleccionado: boolean; onPress: () => void }) {
+function OpcionRol({
+  rol,
+  descripcion,
+  seleccionado,
+  onPress,
+}: {
+  rol: RolApp;
+  descripcion: string;
+  seleccionado: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pulsable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected: seleccionado }}
       accessibilityLabel={`${ETIQUETAS_ROL[rol]}. ${descripcion}`}
-      style={({ pressed }) => [estilos.opcion, seleccionado && estilos.opcionSeleccionada, pressed && estilos.opcionPresionada]}
+      style={({ pressed }) => [
+        estilos.opcion,
+        seleccionado && estilos.opcionSeleccionada,
+        pressed && estilos.opcionPresionada,
+      ]}
     >
       {({ pressed }) => (
         <>
-          <Text style={[estilos.tituloOpcion, pressed && estilos.textoInvertido]}>{ETIQUETAS_ROL[rol]}</Text>
-          <Text style={[estilos.descripcionOpcion, pressed && estilos.textoInvertido]}>{descripcion}</Text>
+          <Text
+            style={[estilos.tituloOpcion, pressed && estilos.textoInvertido]}
+          >
+            {ETIQUETAS_ROL[rol]}
+          </Text>
+          <Text
+            style={[
+              estilos.descripcionOpcion,
+              pressed && estilos.textoInvertido,
+            ]}
+          >
+            {descripcion}
+          </Text>
         </>
       )}
     </Pulsable>
   );
 }
 
-function OpcionCuenta({ cuenta, seleccionada, onPress }: { cuenta: CuentaLibre; seleccionada: boolean; onPress: () => void }) {
+function OpcionCuenta({
+  cuenta,
+  seleccionada,
+  onPress,
+}: {
+  cuenta: CuentaLibre;
+  seleccionada: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pulsable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected: seleccionada }}
       accessibilityLabel={`Cuenta de Handy ${cuenta.nombre}`}
-      style={({ pressed }) => [estilos.opcion, estilos.opcionCuenta, seleccionada && estilos.opcionSeleccionada, pressed && estilos.opcionPresionada]}
+      style={({ pressed }) => [
+        estilos.opcion,
+        estilos.opcionCuenta,
+        seleccionada && estilos.opcionSeleccionada,
+        pressed && estilos.opcionPresionada,
+      ]}
     >
       {({ pressed }) => (
         <>
-          <Avatar nombre={cuenta.nombre} fotoUrl={cuenta.fotoUrl} tamano={TAMANO_AVATAR} />
-          <Text style={[estilos.tituloCuenta, pressed && estilos.textoInvertido]} numberOfLines={2}>
+          <Avatar
+            nombre={cuenta.nombre}
+            fotoUrl={cuenta.fotoUrl}
+            tamano={TAMANO_AVATAR}
+          />
+          <Text
+            style={[estilos.tituloCuenta, pressed && estilos.textoInvertido]}
+            numberOfLines={2}
+          >
             {cuenta.nombre}
           </Text>
         </>

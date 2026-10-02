@@ -19,8 +19,19 @@ import {
   textoProductos,
 } from './modelo-factores.ts';
 
-function fila(code: string | null, nombre: string, familia: string | null, sugerido: number | null = null): FactorPendienteApi {
-  return { code, nombre, familia, modalidadVenta: 'POR_PIEZA', piezasPorPaqueteSugerido: sugerido };
+function fila(
+  code: string | null,
+  nombre: string,
+  familia: string | null,
+  sugerido: number | null = null,
+): FactorPendienteApi {
+  return {
+    code,
+    nombre,
+    familia,
+    modalidadVenta: 'POR_PIEZA',
+    piezasPorPaqueteSugerido: sugerido,
+  };
 }
 
 describe('agruparPendientes', () => {
@@ -44,12 +55,22 @@ describe('agruparPendientes', () => {
   });
 
   it('descarta filas sin código y códigos repetidos', () => {
-    const familias = agruparPendientes([fila(null, 'X', 'A'), fila(' ', 'Y', 'A'), fila('1', 'Z', 'A'), fila('1', 'Z2', 'A')]);
+    const familias = agruparPendientes([
+      fila(null, 'X', 'A'),
+      fila(' ', 'Y', 'A'),
+      fila('1', 'Z', 'A'),
+      fila('1', 'Z2', 'A'),
+    ]);
     assert.equal(contarPendientes(familias), 1);
   });
 
   it('una sugerencia fuera de rango se trata como "no se pudo extraer"', () => {
-    const [familia] = agruparPendientes([fila('1', 'A', 'F', 0), fila('2', 'B', 'F', 501), fila('3', 'C', 'F', 2.5), fila('4', 'D', 'F', 24)]);
+    const [familia] = agruparPendientes([
+      fila('1', 'A', 'F', 0),
+      fila('2', 'B', 'F', 501),
+      fila('3', 'C', 'F', 2.5),
+      fila('4', 'D', 'F', 24),
+    ]);
     assert.deepEqual(
       familia?.data.map((p) => p.sugerido),
       [null, null, null, 24],
@@ -77,16 +98,28 @@ describe('piezasDesdeTexto', () => {
 
 describe('resumenConfirmacion', () => {
   it('lo completo se envía 1 a 1: el c/70 del nombre no multiplica', () => {
-    assert.equal(resumenConfirmacion('COMPLETO', null), 'Al contar 5 paquetes, se enviarán 5 a Handy.');
-    assert.equal(resumenConfirmacion('COMPLETO', 70), 'Al contar 5 paquetes, se enviarán 5 a Handy.');
+    assert.equal(
+      resumenConfirmacion('COMPLETO', null),
+      'Al contar 5 paquetes, se enviarán 5 a Handy.',
+    );
+    assert.equal(
+      resumenConfirmacion('COMPLETO', 70),
+      'Al contar 5 paquetes, se enviarán 5 a Handy.',
+    );
   });
 
   it('por pieza multiplica por las piezas del paquete', () => {
-    assert.equal(resumenConfirmacion('POR_PIEZA', 12), 'Al contar 5 paquetes, se enviarán 60 piezas a Handy.');
+    assert.equal(
+      resumenConfirmacion('POR_PIEZA', 12),
+      'Al contar 5 paquetes, se enviarán 60 piezas a Handy.',
+    );
   });
 
   it('de una familia, el ejemplo aplica a cada producto', () => {
-    assert.equal(resumenConfirmacion('COMPLETO', null, true), 'Al contar 5 paquetes de cualquiera de ellos, se enviarán 5 a Handy.');
+    assert.equal(
+      resumenConfirmacion('COMPLETO', null, true),
+      'Al contar 5 paquetes de cualquiera de ellos, se enviarán 5 a Handy.',
+    );
   });
 });
 
@@ -97,7 +130,9 @@ describe('textoProductos', () => {
   });
 });
 
-function filaCatalogo(over: Partial<FactorCatalogoApi> & { code: string; nombre: string }): FactorCatalogoApi {
+function filaCatalogo(
+  over: Partial<FactorCatalogoApi> & { code: string; nombre: string },
+): FactorCatalogoApi {
   return {
     familia: null,
     modalidadVenta: 'POR_PIEZA',
@@ -121,13 +156,21 @@ describe('agruparCatalogo', () => {
         confirmadoPor: 'Ana',
         fechaConfirmacionFactor: '2026-09-24T18:00:00.000Z',
       }),
-      filaCatalogo({ code: '2', nombre: 'CANELS. c/60', familia: 'DULCES', piezasPorPaquete: 60 }),
+      filaCatalogo({
+        code: '2',
+        nombre: 'CANELS. c/60',
+        familia: 'DULCES',
+        piezasPorPaquete: 60,
+      }),
     ]);
     const [c60, c70] = familia.data;
     assert.deepEqual(c70.confirmado, { modalidad: 'COMPLETO', piezas: null });
     assert.equal(c70.sugerido, null);
     assert.equal(c70.confirmadoPor, 'Ana');
-    assert.equal(c70.fechaConfirmacion?.toISOString(), '2026-09-24T18:00:00.000Z');
+    assert.equal(
+      c70.fechaConfirmacion?.toISOString(),
+      '2026-09-24T18:00:00.000Z',
+    );
     assert.equal(c60.confirmado, null);
     assert.equal(c60.sugerido, 60);
     assert.equal(c60.confirmadoPor, null);
@@ -136,19 +179,40 @@ describe('agruparCatalogo', () => {
 
 describe('textoEmpaque', () => {
   it('dice el empaque en palabras claras', () => {
-    assert.equal(textoEmpaque({ modalidad: 'COMPLETO', piezas: null }), 'Se vende completo');
-    assert.equal(textoEmpaque({ modalidad: 'POR_PIEZA', piezas: 12 }), 'Por pieza, 12 por paquete');
+    assert.equal(
+      textoEmpaque({ modalidad: 'COMPLETO', piezas: null }),
+      'Se vende completo',
+    );
+    assert.equal(
+      textoEmpaque({ modalidad: 'POR_PIEZA', piezas: 12 }),
+      'Por pieza, 12 por paquete',
+    );
     assert.equal(textoEmpaque(null), 'Sin confirmar');
   });
 });
 
 describe('filtrarCatalogo', () => {
   const familias = agruparCatalogo([
-    filaCatalogo({ code: 'R1', nombre: 'PEPSI 1.5 LT C/12', familia: 'REFRESCOS' }),
-    filaCatalogo({ code: 'R2', nombre: 'MANZANITA 600 ML', familia: 'REFRESCOS' }),
-    filaCatalogo({ code: 'D1', nombre: 'Chiles JALAPEÑO', familia: 'ABARROTES' }),
+    filaCatalogo({
+      code: 'R1',
+      nombre: 'PEPSI 1.5 LT C/12',
+      familia: 'REFRESCOS',
+    }),
+    filaCatalogo({
+      code: 'R2',
+      nombre: 'MANZANITA 600 ML',
+      familia: 'REFRESCOS',
+    }),
+    filaCatalogo({
+      code: 'D1',
+      nombre: 'Chiles JALAPEÑO',
+      familia: 'ABARROTES',
+    }),
   ]);
-  const nombres = (texto: string) => filtrarCatalogo(familias, texto).flatMap((f) => f.data.map((p) => p.nombre));
+  const nombres = (texto: string) =>
+    filtrarCatalogo(familias, texto).flatMap((f) =>
+      f.data.map((p) => p.nombre),
+    );
 
   it('sin búsqueda devuelve todo', () => {
     assert.equal(nombres('  ').length, 3);
@@ -172,7 +236,12 @@ describe('filtrarCatalogo', () => {
 describe('corrección de un empaque confirmado', () => {
   it('precarga el factor vigente y lo marca como actual', () => {
     const [familia] = agruparCatalogo([
-      filaCatalogo({ code: '1', nombre: 'PEPSI C/12', piezasPorPaquete: 12, factorConfirmado: true }),
+      filaCatalogo({
+        code: '1',
+        nombre: 'PEPSI C/12',
+        piezasPorPaquete: 12,
+        factorConfirmado: true,
+      }),
     ]);
     const producto = productoAConfirmar(familia.data[0]);
     assert.equal(producto.sugerido, 12);
@@ -202,7 +271,11 @@ describe('planFamilia', () => {
     const plan = planFamilia(productos, 'COMPLETO');
     assert.deepEqual(
       plan.aConfirmar.map((p) => p.confirmacion),
-      [{ modalidadVenta: 'COMPLETO' }, { modalidadVenta: 'COMPLETO' }, { modalidadVenta: 'COMPLETO' }],
+      [
+        { modalidadVenta: 'COMPLETO' },
+        { modalidadVenta: 'COMPLETO' },
+        { modalidadVenta: 'COMPLETO' },
+      ],
     );
     assert.deepEqual(plan.sinNumero, []);
   });
@@ -225,6 +298,9 @@ describe('planFamilia', () => {
 
 describe('resumenPorPiezaDe', () => {
   it('multiplica por el número de ese producto', () => {
-    assert.equal(resumenPorPiezaDe('AGUA C/24', 24), 'Al contar 5 paquetes de AGUA C/24, se enviarán 120 piezas a Handy.');
+    assert.equal(
+      resumenPorPiezaDe('AGUA C/24', 24),
+      'Al contar 5 paquetes de AGUA C/24, se enviarán 120 piezas a Handy.',
+    );
   });
 });

@@ -4,7 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import { useEditarPlantilla, usePlantilla, useQuitarProductos } from '../../src/api/hooks-plantillas';
+import {
+  useEditarPlantilla,
+  usePlantilla,
+  useQuitarProductos,
+} from '../../src/api/hooks-plantillas';
 import { CODIGO_PLANTILLA_EN_USO } from '../../src/api/plantillas';
 import {
   BloqueError,
@@ -21,7 +25,10 @@ import {
 } from '../../src/componentes/base';
 import { formatearNombreProducto } from '../../src/conteo/formato-nombre';
 import { textoProductos } from '../../src/factores/modelo-factores';
-import { ANCHO_MAXIMO_LISTA, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import {
   avisoDeError,
   BarraAcciones,
@@ -46,7 +53,15 @@ import {
 import { SelectorProductos } from '../../src/plantillas/SelectorProductos';
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
-import { COLORES, ESPACIADO, FUENTE, RADIOS, RITMO, TIPOGRAFIA, TOQUE_MINIMO } from '../../src/theme/tokens';
+import {
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RADIOS,
+  RITMO,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../src/theme/tokens';
 
 /**
  * Detalle de una plantilla (solo Supervisor): sus productos por familia, en
@@ -109,7 +124,12 @@ function Pantalla({
 }) {
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
-      <Encabezado titulo={titulo} subtitulo={subtitulo} onVolver={volver} accion={accion}>
+      <Encabezado
+        titulo={titulo}
+        subtitulo={subtitulo}
+        onVolver={volver}
+        accion={accion}
+      >
         {nota ? <NotaEncabezado>{nota}</NotaEncabezado> : null}
       </Encabezado>
       {children}
@@ -134,9 +154,13 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const plantilla = consulta.data ?? null;
-  const incluidos = useMemo(() => codigosDe(plantilla?.familias ?? []), [plantilla]);
+  const incluidos = useMemo(
+    () => codigosDe(plantilla?.familias ?? []),
+    [plantilla],
+  );
 
-  const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const vencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (vencida) sesionVencida();
   }, [vencida]);
@@ -156,7 +180,8 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
   }
 
   if (!plantilla) {
-    const noExiste = consulta.error instanceof ErrorApi && consulta.error.estado === 404;
+    const noExiste =
+      consulta.error instanceof ErrorApi && consulta.error.estado === 404;
     const sinRed = consulta.error instanceof ErrorRed;
     return (
       <Pantalla titulo="Plantilla">
@@ -170,11 +195,15 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         ) : (
           <View style={estilos.aviso}>
             <BloqueError
-              titulo={sinRed ? 'Sin conexión' : 'No se pudo cargar la plantilla'}
+              titulo={
+                sinRed ? 'Sin conexión' : 'No se pudo cargar la plantilla'
+              }
               detalle={
                 sinRed
                   ? 'Para ver la plantilla necesitas señal: revísala y vuelve a intentarlo.'
-                  : (consulta.error instanceof Error && consulta.error.message) || 'Intenta de nuevo en un momento.'
+                  : (consulta.error instanceof Error &&
+                      consulta.error.message) ||
+                    'Intenta de nuevo en un momento.'
               }
               tono={sinRed ? 'atencion' : 'error'}
               onReintentar={() => void consulta.refetch()}
@@ -187,7 +216,9 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
     );
   }
 
-  const seleccionados = plantilla.familias.flatMap((f) => f.data).filter((p) => seleccion.has(p.code));
+  const seleccionados = plantilla.familias
+    .flatMap((f) => f.data)
+    .filter((p) => seleccion.has(p.code));
 
   const confirmarQuitar = () => {
     quitar.mutate(
@@ -206,8 +237,11 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
     );
   };
 
-  const errorQuitar = quitar.isError ? avisoDeError(quitar.error, 'No se pudieron quitar') : null;
-  const errorEstado = editar.isError && !editandoDatos ? errorDeEstado(editar.error) : null;
+  const errorQuitar = quitar.isError
+    ? avisoDeError(quitar.error, 'No se pudieron quitar')
+    : null;
+  const errorEstado =
+    editar.isError && !editandoDatos ? errorDeEstado(editar.error) : null;
 
   const encabezadoLista =
     modo === 'ver' ? (
@@ -219,15 +253,32 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
             detalle="Ninguna ruta puede usarla mientras esté desactivada. Puedes prepararla y activarla después."
             onReintentar={() => {
               editar.reset();
-              editar.mutate({ activa: true }, { onSuccess: () => setAviso('La plantilla está activa de nuevo.') });
+              editar.mutate(
+                { activa: true },
+                {
+                  onSuccess: () =>
+                    setAviso('La plantilla está activa de nuevo.'),
+                },
+              );
             }}
             textoReintentar="Activar"
             reintentando={editar.isPending}
           />
         )}
-        {errorEstado && <BloqueError titulo={errorEstado.titulo} detalle={errorEstado.detalle} tono={errorEstado.tono} />}
+        {errorEstado && (
+          <BloqueError
+            titulo={errorEstado.titulo}
+            detalle={errorEstado.detalle}
+            tono={errorEstado.tono}
+          />
+        )}
         {aviso && (
-          <Tarjeta tintada="capturado" compacta accessible accessibilityLabel={aviso}>
+          <Tarjeta
+            tintada="capturado"
+            compacta
+            accessible
+            accessibilityLabel={aviso}
+          >
             <Text style={estilos.textoAviso} accessibilityLiveRegion="polite">
               {aviso}
             </Text>
@@ -245,12 +296,21 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
           }}
         >
           <Tarjeta compacta>
-            <Text style={plantilla.rutas.length > 0 ? estilos.rutas : estilos.sinRutas}>
-              {plantilla.rutas.length > 0 ? textoRutas(plantilla.rutas) : 'Ninguna ruta la usa: ningún vendedor ve estos productos.'}
+            <Text
+              style={
+                plantilla.rutas.length > 0 ? estilos.rutas : estilos.sinRutas
+              }
+            >
+              {plantilla.rutas.length > 0
+                ? textoRutas(plantilla.rutas)
+                : 'Ninguna ruta la usa: ningún vendedor ve estos productos.'}
             </Text>
           </Tarjeta>
         </Seccion>
-        <Seccion texto="Productos" detalle={textoProductos(plantilla.totalProductos)}>
+        <Seccion
+          texto="Productos"
+          detalle={textoProductos(plantilla.totalProductos)}
+        >
           <View style={estilosPlantillas.filaBotones}>
             <Boton
               texto="Agregar"
@@ -275,7 +335,8 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
     ) : (
       <View style={estilos.encabezadoLista}>
         <Text style={estilos.instruccion}>
-          Marca los productos que quieres quitar. Las cargas ya iniciadas y el historial no cambian.
+          Marca los productos que quieres quitar. Las cargas ya iniciadas y el
+          historial no cambian.
         </Text>
       </View>
     );
@@ -315,7 +376,9 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         sections={plantilla.familias}
         keyExtractor={(p) => p.code}
         stickySectionHeadersEnabled={false}
-        refreshing={consulta.isRefetching && !editar.isPending && !quitar.isPending}
+        refreshing={
+          consulta.isRefetching && !editar.isPending && !quitar.isPending
+        }
         onRefresh={() => void consulta.refetch()}
         ListHeaderComponent={encabezadoLista}
         ListFooterComponent={pieLista}
@@ -324,7 +387,10 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
             icono="caja"
             titulo="La plantilla no tiene productos"
             detalle="Agrégale los que deben ver los vendedores de sus rutas al contar."
-            accion={{ texto: 'Agregar productos', onPress: () => setAgregando(true) }}
+            accion={{
+              texto: 'Agregar productos',
+              onPress: () => setAgregando(true),
+            }}
             enLinea
           />
         }
@@ -339,7 +405,8 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
                 modo === 'quitar' && codes.length > 1
                   ? {
                       texto: todos ? 'Desmarcar' : 'Marcar todos',
-                      onPress: () => setSeleccion((s) => alternarVarios(s, codes)),
+                      onPress: () =>
+                        setSeleccion((s) => alternarVarios(s, codes)),
                       accessibilityLabel: todos
                         ? `Desmarcar la familia ${section.titulo}`
                         : `Marcar los ${codes.length} productos de ${section.titulo} para quitarlos`,
@@ -360,7 +427,8 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
                     tipo: 'seleccion',
                     marcado: seleccion.has(item.code),
                     tono: 'error',
-                    onAlternar: () => setSeleccion((s) => alternar(s, item.code)),
+                    onAlternar: () =>
+                      setSeleccion((s) => alternar(s, item.code)),
                   }
                 : { tipo: 'lectura' }
             }
@@ -371,16 +439,27 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
       {modo === 'quitar' && (
         <BarraAcciones>
           <View style={estilosPlantillas.filaBotones}>
-            <Boton texto="Cancelar" variante="secundario" onPress={() => cambiarModo('ver')} style={estilosPlantillas.botonFila} />
             <Boton
-              texto={seleccion.size === 0 ? 'Quitar' : `Quitar ${seleccion.size}`}
+              texto="Cancelar"
+              variante="secundario"
+              onPress={() => cambiarModo('ver')}
+              style={estilosPlantillas.botonFila}
+            />
+            <Boton
+              texto={
+                seleccion.size === 0 ? 'Quitar' : `Quitar ${seleccion.size}`
+              }
               variante="peligro"
               onPress={() => {
                 quitar.reset();
                 setConfirmandoQuitar(true);
               }}
               deshabilitado={seleccion.size === 0}
-              accessibilityLabel={seleccion.size === 0 ? 'Quitar: marca al menos un producto' : `Quitar ${textoProductos(seleccion.size)}`}
+              accessibilityLabel={
+                seleccion.size === 0
+                  ? 'Quitar: marca al menos un producto'
+                  : `Quitar ${textoProductos(seleccion.size)}`
+              }
               style={estilosPlantillas.botonFila}
             />
           </View>
@@ -389,7 +468,11 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
 
       <ModalConfirmacion
         visible={confirmandoQuitar}
-        titulo={seleccionados.length === 1 ? '¿Quitar 1 producto?' : `¿Quitar ${textoProductos(seleccionados.length)}?`}
+        titulo={
+          seleccionados.length === 1
+            ? '¿Quitar 1 producto?'
+            : `¿Quitar ${textoProductos(seleccionados.length)}?`
+        }
         textoConfirmar="Quitar"
         textoCargando="Quitando…"
         variante="peligro"
@@ -400,19 +483,26 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
       >
         <Tarjeta elevacion={0} compacta>
           {seleccionados.slice(0, MAXIMO_LISTADOS).map((p) => (
-            <Text key={p.code} style={estilos.productoListado} numberOfLines={2}>
+            <Text
+              key={p.code}
+              style={estilos.productoListado}
+              numberOfLines={2}
+            >
               {formatearNombreProducto(p.nombre)}
             </Text>
           ))}
           {seleccionados.length > MAXIMO_LISTADOS && (
-            <Text style={estilos.detalleModal}>y {textoProductos(seleccionados.length - MAXIMO_LISTADOS)} más</Text>
+            <Text style={estilos.detalleModal}>
+              y {textoProductos(seleccionados.length - MAXIMO_LISTADOS)} más
+            </Text>
           )}
         </Tarjeta>
         <Text style={estilos.detalleModal}>
           {plantilla.rutas.length > 0
             ? `Las próximas cargas de ${textoRutas(plantilla.rutas)} ya no los mostrarán.`
             : 'Las cargas que usen esta plantilla ya no los mostrarán.'}{' '}
-          Lo ya contado no se pierde: las cargas iniciadas los conservan y el historial no cambia.
+          Lo ya contado no se pierde: las cargas iniciadas los conservan y el
+          historial no cambia.
         </Text>
       </ModalConfirmacion>
 
@@ -441,7 +531,8 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         }}
       >
         <Text style={estilos.detalleModal}>
-          Deja de poder asignarse a rutas. Sus productos se conservan y puedes volver a activarla cuando quieras.
+          Deja de poder asignarse a rutas. Sus productos se conservan y puedes
+          volver a activarla cuando quieras.
         </Text>
       </ModalConfirmacion>
 
@@ -449,14 +540,19 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         visible={editandoDatos}
         titulo="Editar plantilla"
         textoGuardar="Guardar"
-        inicial={{ nombre: plantilla.nombre, descripcion: plantilla.descripcion }}
+        inicial={{
+          nombre: plantilla.nombre,
+          descripcion: plantilla.descripcion,
+        }}
         guardando={editar.isPending}
         error={editar.error}
         onCerrar={() => {
           editar.reset();
           setEditandoDatos(false);
         }}
-        onGuardar={(datos) => editar.mutate(datos, { onSuccess: () => setEditandoDatos(false) })}
+        onGuardar={(datos) =>
+          editar.mutate(datos, { onSuccess: () => setEditandoDatos(false) })
+        }
       />
 
       <SelectorProductos
@@ -466,7 +562,11 @@ function Detalle({ plantillaId }: { plantillaId: string }) {
         incluidos={incluidos}
         onCerrar={() => setAgregando(false)}
         onAgregados={(cantidad) =>
-          setAviso(cantidad === 1 ? 'Se agregó 1 producto.' : `Se agregaron ${textoProductos(cantidad)}.`)
+          setAviso(
+            cantidad === 1
+              ? 'Se agregó 1 producto.'
+              : `Se agregaron ${textoProductos(cantidad)}.`,
+          )
         }
       />
 
@@ -498,7 +598,13 @@ function errorDeEstado(e: unknown) {
  * Desactivar va al final y en secundario: se usa poco. Con rutas que la usan
  * no se ofrece; se dice qué hacer primero.
  */
-function PieEstado({ plantilla, onDesactivar }: { plantilla: DetallePlantilla; onDesactivar: () => void }) {
+function PieEstado({
+  plantilla,
+  onDesactivar,
+}: {
+  plantilla: DetallePlantilla;
+  onDesactivar: () => void;
+}) {
   if (!plantilla.activa) return null;
   const enUso = plantilla.rutas.length > 0;
   return (
@@ -508,7 +614,12 @@ function PieEstado({ plantilla, onDesactivar }: { plantilla: DetallePlantilla; o
           ? `La usa${plantilla.rutas.length === 1 ? '' : 'n'} ${textoRutas(plantilla.rutas)}. Para desactivarla, primero asigna otra plantilla a ${plantilla.rutas.length === 1 ? 'esa ruta' : 'esas rutas'}.`
           : 'Ninguna ruta la usa. Desactivada deja de poder asignarse, pero conserva sus productos.'}
       </Text>
-      <Boton texto="Desactivar plantilla" variante="secundario" onPress={onDesactivar} deshabilitado={enUso} />
+      <Boton
+        texto="Desactivar plantilla"
+        variante="secundario"
+        onPress={onDesactivar}
+        deshabilitado={enUso}
+      />
     </Seccion>
   );
 }
@@ -520,10 +631,20 @@ function BotonEditar({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel="Editar nombre y descripción"
-      hitSlop={{ top: (TOQUE_MINIMO - ALTO_BOTON_EDITAR) / 2, bottom: (TOQUE_MINIMO - ALTO_BOTON_EDITAR) / 2 }}
-      style={({ pressed }) => [estilos.botonEditar, pressed && estilos.botonEditarPresionado]}
+      hitSlop={{
+        top: (TOQUE_MINIMO - ALTO_BOTON_EDITAR) / 2,
+        bottom: (TOQUE_MINIMO - ALTO_BOTON_EDITAR) / 2,
+      }}
+      style={({ pressed }) => [
+        estilos.botonEditar,
+        pressed && estilos.botonEditarPresionado,
+      ]}
     >
-      {({ pressed }) => <Text style={[estilos.textoEditar, pressed && estilos.textoInvertido]}>Editar</Text>}
+      {({ pressed }) => (
+        <Text style={[estilos.textoEditar, pressed && estilos.textoInvertido]}>
+          Editar
+        </Text>
+      )}
     </Pulsable>
   );
 }

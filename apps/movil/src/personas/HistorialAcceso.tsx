@@ -2,7 +2,11 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorRed } from '../api/cliente';
-import { ACCESOS_RECIENTES, useAccesosRecientes, useAccesosTodos } from '../api/hooks-personas';
+import {
+  ACCESOS_RECIENTES,
+  useAccesosRecientes,
+  useAccesosTodos,
+} from '../api/hooks-personas';
 import {
   BloqueError,
   Boton,
@@ -15,7 +19,14 @@ import {
   TarjetaEsqueleto,
   TituloSeccion,
 } from '../componentes/base';
-import { ANCHO_MAXIMO_LISTA, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import {
+  ANCHO_MAXIMO_LISTA,
+  COLORES,
+  ESPACIADO,
+  FUENTE,
+  RITMO,
+  TIPOGRAFIA,
+} from '../theme/tokens';
 import {
   normalizarAccesos,
   SIN_MOTIVO,
@@ -34,15 +45,27 @@ import type { Persona } from './modelo-personas';
  * corregir, se agrega un renglón nuevo que lo explique.
  */
 
-const NOTA_SOLO_LECTURA = 'Queda registro de cada restablecimiento y desbloqueo. No se puede editar ni borrar.';
+const NOTA_SOLO_LECTURA =
+  'Queda registro de cada restablecimiento y desbloqueo. No se puede editar ni borrar.';
 
 function textoError(error: unknown): string {
-  if (error instanceof ErrorRed) return 'Sin conexión: revisa tu señal y vuelve a intentarlo.';
-  return error instanceof Error && error.message ? error.message : 'Intenta de nuevo en un momento.';
+  if (error instanceof ErrorRed)
+    return 'Sin conexión: revisa tu señal y vuelve a intentarlo.';
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Intenta de nuevo en un momento.';
 }
 
 /** La sección de la ficha: los últimos movimientos y, si hay más, «Ver todo». */
-export function SeccionHistorialAcceso({ personaId, ahora, onVerTodo }: { personaId: string; ahora: number; onVerTodo: () => void }) {
+export function SeccionHistorialAcceso({
+  personaId,
+  ahora,
+  onVerTodo,
+}: {
+  personaId: string;
+  ahora: number;
+  onVerTodo: () => void;
+}) {
   const consulta = useAccesosRecientes(personaId);
   const movimientos = normalizarAccesos(consulta.data?.items);
   const total = consulta.data?.total ?? movimientos.length;
@@ -77,7 +100,13 @@ export function SeccionHistorialAcceso({ personaId, ahora, onVerTodo }: { person
     contenido = (
       <>
         <ListaMovimientos movimientos={movimientos} ahora={ahora} />
-        {total > ACCESOS_RECIENTES && <Boton texto={textoVerTodo(total)} variante="secundario" onPress={onVerTodo} />}
+        {total > ACCESOS_RECIENTES && (
+          <Boton
+            texto={textoVerTodo(total)}
+            variante="secundario"
+            onPress={onVerTodo}
+          />
+        )}
       </>
     );
   }
@@ -92,14 +121,27 @@ export function SeccionHistorialAcceso({ personaId, ahora, onVerTodo }: { person
 }
 
 /** Todo el historial, por páginas, al tocar «Ver todo». */
-export function PantallaHistorialAcceso({ persona, ahora, onVolver }: { persona: Persona; ahora: number; onVolver: () => void }) {
+export function PantallaHistorialAcceso({
+  persona,
+  ahora,
+  onVolver,
+}: {
+  persona: Persona;
+  ahora: number;
+  onVolver: () => void;
+}) {
   const consulta = useAccesosTodos(persona.id);
-  const movimientos = normalizarAccesos(consulta.data?.pages.flatMap((p) => p?.items ?? []));
+  const movimientos = normalizarAccesos(
+    consulta.data?.pages.flatMap((p) => p?.items ?? []),
+  );
 
   let contenido;
   if (consulta.isPending) {
     contenido = (
-      <Esqueleto etiqueta="Cargando historial de acceso" style={estilos.contenido}>
+      <Esqueleto
+        etiqueta="Cargando historial de acceso"
+        style={estilos.contenido}
+      >
         <TarjetaEsqueleto compacta />
         <TarjetaEsqueleto compacta />
       </Esqueleto>
@@ -122,12 +164,23 @@ export function PantallaHistorialAcceso({ persona, ahora, onVolver }: { persona:
         contentContainerStyle={estilos.contenido}
         data={movimientos}
         keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <Movimiento movimiento={item} ahora={ahora} />}
-        ListHeaderComponent={<Text style={estilos.nota}>{NOTA_SOLO_LECTURA}</Text>}
-        ListEmptyComponent={<EstadoVacio enLinea icono="candado" titulo="Sin movimientos de acceso" />}
+        renderItem={({ item }) => (
+          <Movimiento movimiento={item} ahora={ahora} />
+        )}
+        ListHeaderComponent={
+          <Text style={estilos.nota}>{NOTA_SOLO_LECTURA}</Text>
+        }
+        ListEmptyComponent={
+          <EstadoVacio
+            enLinea
+            icono="candado"
+            titulo="Sin movimientos de acceso"
+          />
+        }
         onEndReachedThreshold={0.5}
         onEndReached={() => {
-          if (consulta.hasNextPage && !consulta.isFetchingNextPage) void consulta.fetchNextPage();
+          if (consulta.hasNextPage && !consulta.isFetchingNextPage)
+            void consulta.fetchNextPage();
         }}
         ListFooterComponent={
           consulta.isFetchingNextPage ? (
@@ -148,13 +201,24 @@ export function PantallaHistorialAcceso({ persona, ahora, onVolver }: { persona:
 
   return (
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
-      <Encabezado variante="barra" titulo="Historial de acceso" subtitulo={persona.nombre} onVolver={onVolver} />
+      <Encabezado
+        variante="barra"
+        titulo="Historial de acceso"
+        subtitulo={persona.nombre}
+        onVolver={onVolver}
+      />
       {contenido}
     </SafeAreaView>
   );
 }
 
-function ListaMovimientos({ movimientos, ahora }: { movimientos: readonly MovimientoAcceso[]; ahora: number }) {
+function ListaMovimientos({
+  movimientos,
+  ahora,
+}: {
+  movimientos: readonly MovimientoAcceso[];
+  ahora: number;
+}) {
   return (
     <View style={estilos.lista}>
       {movimientos.map((m) => (
@@ -169,7 +233,13 @@ function ListaMovimientos({ movimientos, ahora }: { movimientos: readonly Movimi
  * «Emergencia»: nadie inició sesión para hacerlo, solo quedó el motivo, y no
  * debe confundirse con la acción normal de un supervisor.
  */
-function Movimiento({ movimiento: m, ahora }: { movimiento: MovimientoAcceso; ahora: number }) {
+function Movimiento({
+  movimiento: m,
+  ahora,
+}: {
+  movimiento: MovimientoAcceso;
+  ahora: number;
+}) {
   const titulo = tituloMovimiento(m);
   const cuando = textoMomento(m.fecha, ahora);
 
@@ -190,8 +260,12 @@ function Movimiento({ movimiento: m, ahora }: { movimiento: MovimientoAcceso; ah
             <View style={estilos.cabeza}>
               <Etiqueta texto="Emergencia" tono="error" relleno="solida" />
             </View>
-            <Text style={[estilos.titulo, estilos.tituloEmergencia]}>{titulo}</Text>
-            <Text style={estilos.motivo}>{m.motivo ? `«${m.motivo}»` : SIN_MOTIVO}</Text>
+            <Text style={[estilos.titulo, estilos.tituloEmergencia]}>
+              {titulo}
+            </Text>
+            <Text style={estilos.motivo}>
+              {m.motivo ? `«${m.motivo}»` : SIN_MOTIVO}
+            </Text>
             <Text style={estilos.cuandoEmergencia}>{cuando}</Text>
           </View>
         </View>
@@ -201,9 +275,17 @@ function Movimiento({ movimiento: m, ahora }: { movimiento: MovimientoAcceso; ah
 
   const extra = m.tipo === 'desbloqueo' ? textoBloqueoQuitado(m) : null;
   return (
-    <Tarjeta elevacion={0} compacta accessible accessibilityLabel={[titulo, extra, cuando].filter(Boolean).join('. ')}>
+    <Tarjeta
+      elevacion={0}
+      compacta
+      accessible
+      accessibilityLabel={[titulo, extra, cuando].filter(Boolean).join('. ')}
+    >
       <View style={estilos.fila}>
-        <Glifo nombre={m.tipo === 'pin' ? 'candado' : 'reloj'} color={COLORES.textoSecundario} />
+        <Glifo
+          nombre={m.tipo === 'pin' ? 'candado' : 'reloj'}
+          color={COLORES.textoSecundario}
+        />
         <View style={estilos.textos}>
           <Text style={estilos.titulo}>{titulo}</Text>
           {extra && <Text style={estilos.detalle}>{extra}</Text>}

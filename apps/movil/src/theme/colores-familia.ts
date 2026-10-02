@@ -62,7 +62,10 @@ export const NOMBRES_COLOR_FAMILIA: Record<ColorFamilia, string> = {
 };
 
 export function esColorFamiliaValido(valor: unknown): valor is ColorFamilia {
-  return typeof valor === 'string' && (COLORES_FAMILIA as readonly string[]).includes(valor);
+  return (
+    typeof valor === 'string' &&
+    (COLORES_FAMILIA as readonly string[]).includes(valor)
+  );
 }
 
 /** Lo que llega del servidor: un color que ya no esté en la paleta se ve neutro. */

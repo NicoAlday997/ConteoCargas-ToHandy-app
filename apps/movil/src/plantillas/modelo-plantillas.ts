@@ -65,13 +65,18 @@ function normalizarRutas(rutas: readonly RutaApi[] | null | undefined): Ruta[] {
     const id = texto(r?.id);
     if (!id || vistas.has(id)) continue;
     vistas.add(id);
-    resultado.push({ id, nombre: texto(r.nombre) ?? texto(r.codigo) ?? 'Ruta sin nombre' });
+    resultado.push({
+      id,
+      nombre: texto(r.nombre) ?? texto(r.codigo) ?? 'Ruta sin nombre',
+    });
   }
   return resultado;
 }
 
 /** `null` si la fila no trae id: sin id no se puede abrir. */
-function normalizarPlantilla(p: PlantillaResumenApi | null | undefined): Plantilla | null {
+function normalizarPlantilla(
+  p: PlantillaResumenApi | null | undefined,
+): Plantilla | null {
   const id = texto(p?.id);
   if (!p || !id) return null;
   return {
@@ -79,12 +84,16 @@ function normalizarPlantilla(p: PlantillaResumenApi | null | undefined): Plantil
     nombre: texto(p.nombre) ?? 'Plantilla sin nombre',
     descripcion: texto(p.descripcion),
     activa: p.activa !== false,
-    totalProductos: typeof p.totalProductos === 'number' && p.totalProductos >= 0 ? p.totalProductos : 0,
+    totalProductos:
+      typeof p.totalProductos === 'number' && p.totalProductos >= 0
+        ? p.totalProductos
+        : 0,
     rutas: normalizarRutas(p.rutas),
   };
 }
 
-const comparar = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true });
+const comparar = (a: string, b: string) =>
+  a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true });
 
 export interface ListaPlantillas {
   activas: Plantilla[];
@@ -92,26 +101,37 @@ export interface ListaPlantillas {
   inactivas: Plantilla[];
 }
 
-export function normalizarLista(filas: readonly PlantillaResumenApi[] | null | undefined): ListaPlantillas {
+export function normalizarLista(
+  filas: readonly PlantillaResumenApi[] | null | undefined,
+): ListaPlantillas {
   const todas = (filas ?? [])
     .map(normalizarPlantilla)
     .filter((p): p is Plantilla => p !== null)
     .sort((a, b) => comparar(a.nombre, b.nombre));
-  return { activas: todas.filter((p) => p.activa), inactivas: todas.filter((p) => !p.activa) };
+  return {
+    activas: todas.filter((p) => p.activa),
+    inactivas: todas.filter((p) => !p.activa),
+  };
 }
 
 function empaque(p: ProductoPlantillaApi): EmpaqueConfirmado | null {
   if (p.factorConfirmado !== true) return null;
-  if (p.modalidadVenta === 'COMPLETO') return { modalidad: 'COMPLETO', piezas: null };
+  if (p.modalidadVenta === 'COMPLETO')
+    return { modalidad: 'COMPLETO', piezas: null };
   if (p.modalidadVenta === 'POR_PIEZA') {
-    const piezas = typeof p.piezasPorPaquete === 'number' && p.piezasPorPaquete > 0 ? p.piezasPorPaquete : null;
+    const piezas =
+      typeof p.piezasPorPaquete === 'number' && p.piezasPorPaquete > 0
+        ? p.piezasPorPaquete
+        : null;
     return { modalidad: 'POR_PIEZA', piezas };
   }
   return null;
 }
 
 /** El orden de familias y productos lo da el servidor (el mismo del grid de conteo). */
-export function normalizarDetalle(api: PlantillaDetalleApi | null | undefined): DetallePlantilla | null {
+export function normalizarDetalle(
+  api: PlantillaDetalleApi | null | undefined,
+): DetallePlantilla | null {
   const plantilla = normalizarPlantilla(api);
   if (!plantilla || !api) return null;
   const vistos = new Set<string>();
@@ -123,15 +143,24 @@ export function normalizarDetalle(api: PlantillaDetalleApi | null | undefined): 
       const code = texto(p?.code);
       if (!p || !code || vistos.has(code)) continue;
       vistos.add(code);
-      data.push({ code, nombre: texto(p.nombre) ?? code, familia, empaque: empaque(p), activo: p.activo !== false });
+      data.push({
+        code,
+        nombre: texto(p.nombre) ?? code,
+        familia,
+        empaque: empaque(p),
+        activo: p.activo !== false,
+      });
     }
-    if (data.length > 0) familias.push({ familia, titulo: familia ?? 'Sin familia', data });
+    if (data.length > 0)
+      familias.push({ familia, titulo: familia ?? 'Sin familia', data });
   }
   // El total sale de lo que se ve: así el encabezado nunca contradice a la lista.
   return { ...plantilla, totalProductos: vistos.size, familias };
 }
 
-export function codigosDe(familias: readonly Familia<{ code: string }>[]): Set<string> {
+export function codigosDe(
+  familias: readonly Familia<{ code: string }>[],
+): Set<string> {
   return new Set(familias.flatMap((f) => f.data.map((p) => p.code)));
 }
 
@@ -140,7 +169,10 @@ export function codigosDe(familias: readonly Familia<{ code: string }>[]): Set<s
 // ---------------------------------------------------------------------------
 
 /** Marca o desmarca un producto. Devuelve un conjunto nuevo (estado de React). */
-export function alternar(seleccion: ReadonlySet<string>, code: string): Set<string> {
+export function alternar(
+  seleccion: ReadonlySet<string>,
+  code: string,
+): Set<string> {
   const nueva = new Set(seleccion);
   if (nueva.has(code)) nueva.delete(code);
   else nueva.add(code);
@@ -148,7 +180,10 @@ export function alternar(seleccion: ReadonlySet<string>, code: string): Set<stri
 }
 
 /** Si ya están todos los de la familia, los desmarca; si falta alguno, marca todos. */
-export function alternarVarios(seleccion: ReadonlySet<string>, codes: readonly string[]): Set<string> {
+export function alternarVarios(
+  seleccion: ReadonlySet<string>,
+  codes: readonly string[],
+): Set<string> {
   const nueva = new Set(seleccion);
   const todos = codes.length > 0 && codes.every((c) => nueva.has(c));
   for (const c of codes) {
@@ -158,7 +193,10 @@ export function alternarVarios(seleccion: ReadonlySet<string>, codes: readonly s
   return nueva;
 }
 
-export function todosMarcados(seleccion: ReadonlySet<string>, codes: readonly string[]): boolean {
+export function todosMarcados(
+  seleccion: ReadonlySet<string>,
+  codes: readonly string[],
+): boolean {
   return codes.length > 0 && codes.every((c) => seleccion.has(c));
 }
 
@@ -188,7 +226,11 @@ export function familiasSelector(
 ): FamiliaSelector[] {
   return filtrarCatalogo(catalogo, busqueda).map((f) => {
     const data = f.data.map((p) => ({ ...p, incluido: incluidos.has(p.code) }));
-    return { ...f, data, disponibles: data.filter((p) => !p.incluido).map((p) => p.code) };
+    return {
+      ...f,
+      data,
+      disponibles: data.filter((p) => !p.incluido).map((p) => p.code),
+    };
   });
 }
 
@@ -211,19 +253,31 @@ export interface RutaAsignable extends Ruta {
  * usan, luego las que se le pueden asignar y al final las que no tienen
  * vendedor. Dentro de cada grupo, por nombre.
  */
-export function rutasRespectoA(filas: readonly RutaConPlantillaApi[] | null | undefined, plantillaId: string): RutaAsignable[] {
+export function rutasRespectoA(
+  filas: readonly RutaConPlantillaApi[] | null | undefined,
+  plantillaId: string,
+): RutaAsignable[] {
   const rutas: RutaAsignable[] = [];
   for (const r of filas ?? []) {
     const id = texto(r?.id);
     if (!r || !id) continue;
-    const vendedores = (r.vendedores ?? []).map((v) => texto(v)).filter((v): v is string => v !== null);
+    const vendedores = (r.vendedores ?? [])
+      .map((v) => texto(v))
+      .filter((v): v is string => v !== null);
     const plantillas = (r.plantillas ?? []).filter((p) => texto(p?.id));
-    const usaEsta = plantillas.length === 1 && texto(plantillas[0]?.id) === plantillaId && r.sinPlantilla !== true;
-    const nombres = plantillas.map((p) => texto(p.nombre) ?? 'plantilla sin nombre');
+    const usaEsta =
+      plantillas.length === 1 &&
+      texto(plantillas[0]?.id) === plantillaId &&
+      r.sinPlantilla !== true;
+    const nombres = plantillas.map(
+      (p) => texto(p.nombre) ?? 'plantilla sin nombre',
+    );
     let actual: string;
     if (vendedores.length === 0) actual = 'Sin vendedor asignado';
-    else if (nombres.length === 0) actual = 'Sin plantilla: ve todo el catálogo';
-    else actual = `Usa ${nombres.join(' y ')}${r.sinPlantilla === true ? ' (un vendedor sin plantilla)' : ''}`;
+    else if (nombres.length === 0)
+      actual = 'Sin plantilla: ve todo el catálogo';
+    else
+      actual = `Usa ${nombres.join(' y ')}${r.sinPlantilla === true ? ' (un vendedor sin plantilla)' : ''}`;
     rutas.push({
       id,
       nombre: texto(r.nombre) ?? texto(r.codigo) ?? 'Ruta sin nombre',
@@ -234,7 +288,9 @@ export function rutasRespectoA(filas: readonly RutaConPlantillaApi[] | null | un
     });
   }
   const grupo = (r: RutaAsignable) => (r.usaEsta ? 0 : r.asignable ? 1 : 2);
-  return rutas.sort((a, b) => grupo(a) - grupo(b) || comparar(a.nombre, b.nombre));
+  return rutas.sort(
+    (a, b) => grupo(a) - grupo(b) || comparar(a.nombre, b.nombre),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +312,7 @@ export function textoCantidadRutas(cantidad: number): string {
 export function errorNombre(nombre: string): string | null {
   const limpio = nombre.trim();
   if (!limpio) return 'Escribe un nombre.';
-  if (limpio.length > NOMBRE_MAXIMO) return `Máximo ${NOMBRE_MAXIMO} caracteres.`;
+  if (limpio.length > NOMBRE_MAXIMO)
+    return `Máximo ${NOMBRE_MAXIMO} caracteres.`;
   return null;
 }

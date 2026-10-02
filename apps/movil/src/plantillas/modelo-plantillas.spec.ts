@@ -3,7 +3,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import type { PlantillaDetalleApi, RutaConPlantillaApi } from '../api/plantillas.ts';
+import type {
+  PlantillaDetalleApi,
+  RutaConPlantillaApi,
+} from '../api/plantillas.ts';
 import { agruparCatalogo } from '../factores/modelo-factores.ts';
 import {
   alternar,
@@ -20,10 +23,38 @@ import {
 describe('normalizarLista', () => {
   it('separa activas e inactivas, ordena por nombre y descarta filas sin id', () => {
     const lista = normalizarLista([
-      { id: 'b', nombre: 'Refrescos', descripcion: null, activa: true, totalProductos: 63, rutas: [] },
-      { id: 'c', nombre: 'Vieja', descripcion: ' ', activa: false, totalProductos: 3, rutas: null },
-      { id: 'a', nombre: 'Dulces', descripcion: 'Ruta 6', activa: true, totalProductos: 73, rutas: [{ id: 'r6', nombre: 'Ruta 6', codigo: 'R6' }] },
-      { id: null, nombre: 'Sin id', descripcion: null, activa: true, totalProductos: 0, rutas: [] },
+      {
+        id: 'b',
+        nombre: 'Refrescos',
+        descripcion: null,
+        activa: true,
+        totalProductos: 63,
+        rutas: [],
+      },
+      {
+        id: 'c',
+        nombre: 'Vieja',
+        descripcion: ' ',
+        activa: false,
+        totalProductos: 3,
+        rutas: null,
+      },
+      {
+        id: 'a',
+        nombre: 'Dulces',
+        descripcion: 'Ruta 6',
+        activa: true,
+        totalProductos: 73,
+        rutas: [{ id: 'r6', nombre: 'Ruta 6', codigo: 'R6' }],
+      },
+      {
+        id: null,
+        nombre: 'Sin id',
+        descripcion: null,
+        activa: true,
+        totalProductos: 0,
+        rutas: [],
+      },
     ]);
     assert.deepEqual(
       lista.activas.map((p) => p.nombre),
@@ -54,12 +85,49 @@ describe('normalizarDetalle', () => {
       {
         familia: 'REFRESCOS',
         productos: [
-          { code: '1', nombre: 'PEPSI', familia: 'REFRESCOS', modalidadVenta: 'POR_PIEZA', piezasPorPaquete: 12, factorConfirmado: true, activo: true },
-          { code: '2', nombre: 'VIEJO', familia: 'REFRESCOS', modalidadVenta: 'COMPLETO', piezasPorPaquete: null, factorConfirmado: false, activo: false },
-          { code: '1', nombre: 'REPETIDO', familia: 'REFRESCOS', modalidadVenta: null, piezasPorPaquete: null, factorConfirmado: null, activo: null },
+          {
+            code: '1',
+            nombre: 'PEPSI',
+            familia: 'REFRESCOS',
+            modalidadVenta: 'POR_PIEZA',
+            piezasPorPaquete: 12,
+            factorConfirmado: true,
+            activo: true,
+          },
+          {
+            code: '2',
+            nombre: 'VIEJO',
+            familia: 'REFRESCOS',
+            modalidadVenta: 'COMPLETO',
+            piezasPorPaquete: null,
+            factorConfirmado: false,
+            activo: false,
+          },
+          {
+            code: '1',
+            nombre: 'REPETIDO',
+            familia: 'REFRESCOS',
+            modalidadVenta: null,
+            piezasPorPaquete: null,
+            factorConfirmado: null,
+            activo: null,
+          },
         ],
       },
-      { familia: null, productos: [{ code: '3', nombre: 'CHICLE', familia: null, modalidadVenta: 'COMPLETO', piezasPorPaquete: null, factorConfirmado: true, activo: true }] },
+      {
+        familia: null,
+        productos: [
+          {
+            code: '3',
+            nombre: 'CHICLE',
+            familia: null,
+            modalidadVenta: 'COMPLETO',
+            piezasPorPaquete: null,
+            factorConfirmado: true,
+            activo: true,
+          },
+        ],
+      },
       { familia: 'VACIA', productos: [] },
     ],
   };
@@ -107,9 +175,36 @@ describe('selección', () => {
 
 describe('familiasSelector', () => {
   const catalogo = agruparCatalogo([
-    { code: '1', nombre: 'PEPSI 2L', familia: 'REFRESCOS', modalidadVenta: 'POR_PIEZA', piezasPorPaquete: 8, factorConfirmado: true, confirmadoPor: null, fechaConfirmacionFactor: null },
-    { code: '2', nombre: 'PEPSI 600', familia: 'REFRESCOS', modalidadVenta: 'POR_PIEZA', piezasPorPaquete: 12, factorConfirmado: true, confirmadoPor: null, fechaConfirmacionFactor: null },
-    { code: '3', nombre: 'CANELS c/70', familia: 'DULCES', modalidadVenta: 'COMPLETO', piezasPorPaquete: null, factorConfirmado: true, confirmadoPor: null, fechaConfirmacionFactor: null },
+    {
+      code: '1',
+      nombre: 'PEPSI 2L',
+      familia: 'REFRESCOS',
+      modalidadVenta: 'POR_PIEZA',
+      piezasPorPaquete: 8,
+      factorConfirmado: true,
+      confirmadoPor: null,
+      fechaConfirmacionFactor: null,
+    },
+    {
+      code: '2',
+      nombre: 'PEPSI 600',
+      familia: 'REFRESCOS',
+      modalidadVenta: 'POR_PIEZA',
+      piezasPorPaquete: 12,
+      factorConfirmado: true,
+      confirmadoPor: null,
+      fechaConfirmacionFactor: null,
+    },
+    {
+      code: '3',
+      nombre: 'CANELS c/70',
+      familia: 'DULCES',
+      modalidadVenta: 'COMPLETO',
+      piezasPorPaquete: null,
+      factorConfirmado: true,
+      confirmadoPor: null,
+      fechaConfirmacionFactor: null,
+    },
   ]);
 
   it('marca lo que ya está en la plantilla y solo ofrece el resto', () => {
@@ -136,10 +231,38 @@ describe('familiasSelector', () => {
 
 describe('rutasRespectoA', () => {
   const filas: RutaConPlantillaApi[] = [
-    { id: 'r3', nombre: 'Ruta 3', codigo: 'R3', vendedores: [], plantillas: [], sinPlantilla: false },
-    { id: 'r2', nombre: 'Ruta 2', codigo: 'R2', vendedores: ['Ana'], plantillas: [{ id: 'otra', nombre: 'Dulces' }], sinPlantilla: false },
-    { id: 'r10', nombre: 'Ruta 10', codigo: 'R10', vendedores: ['Luis'], plantillas: [], sinPlantilla: true },
-    { id: 'r1', nombre: 'Ruta 1', codigo: 'R1', vendedores: ['Irvin'], plantillas: [{ id: 'pl', nombre: 'Refrescos' }], sinPlantilla: false },
+    {
+      id: 'r3',
+      nombre: 'Ruta 3',
+      codigo: 'R3',
+      vendedores: [],
+      plantillas: [],
+      sinPlantilla: false,
+    },
+    {
+      id: 'r2',
+      nombre: 'Ruta 2',
+      codigo: 'R2',
+      vendedores: ['Ana'],
+      plantillas: [{ id: 'otra', nombre: 'Dulces' }],
+      sinPlantilla: false,
+    },
+    {
+      id: 'r10',
+      nombre: 'Ruta 10',
+      codigo: 'R10',
+      vendedores: ['Luis'],
+      plantillas: [],
+      sinPlantilla: true,
+    },
+    {
+      id: 'r1',
+      nombre: 'Ruta 1',
+      codigo: 'R1',
+      vendedores: ['Irvin'],
+      plantillas: [{ id: 'pl', nombre: 'Refrescos' }],
+      sinPlantilla: false,
+    },
   ];
 
   it('primero las que la usan, luego las asignables y al final las sin vendedor', () => {
@@ -160,7 +283,16 @@ describe('rutasRespectoA', () => {
 
   it('una ruta con un vendedor aún sin plantilla no cuenta como que ya la usa', () => {
     const [ruta] = rutasRespectoA(
-      [{ id: 'r1', nombre: 'Ruta 1', codigo: 'R1', vendedores: ['A', 'B'], plantillas: [{ id: 'pl', nombre: 'Refrescos' }], sinPlantilla: true }],
+      [
+        {
+          id: 'r1',
+          nombre: 'Ruta 1',
+          codigo: 'R1',
+          vendedores: ['A', 'B'],
+          plantillas: [{ id: 'pl', nombre: 'Refrescos' }],
+          sinPlantilla: true,
+        },
+      ],
       'pl',
     );
     assert.equal(ruta?.usaEsta, false);

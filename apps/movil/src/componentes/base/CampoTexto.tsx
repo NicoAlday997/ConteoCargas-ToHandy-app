@@ -1,9 +1,25 @@
 import { useCallback, useRef, useState, type Ref } from 'react';
-import { StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { useMostrarCampo } from './PantallaConFormulario';
 
-import { BORDES, COLORES, ESPACIADO, ETIQUETA_DATO, FUENTE, RADIOS, TIPOGRAFIA, TOQUE_MINIMO } from '../../theme/tokens';
+import {
+  BORDES,
+  COLORES,
+  ESPACIADO,
+  ETIQUETA_DATO,
+  FUENTE,
+  RADIOS,
+  TIPOGRAFIA,
+  TOQUE_MINIMO,
+} from '../../theme/tokens';
 
 interface Props {
   /** Qué se escribe: rótulo arriba, pegado al campo. */
@@ -69,7 +85,9 @@ export function CampoTexto({
 
   return (
     <View style={[estilos.contenedor, style]}>
-      <Text style={[estilos.etiqueta, enfocado && estilos.etiquetaEnfocada]}>{etiqueta}</Text>
+      <Text style={[estilos.etiqueta, enfocado && estilos.etiquetaEnfocada]}>
+        {etiqueta}
+      </Text>
       <TextInput
         ref={asignarRef}
         value={valor}
@@ -91,7 +109,9 @@ export function CampoTexto({
         }}
         onBlur={() => setEnfocado(false)}
         accessibilityLabel={etiqueta}
-        accessibilityHint={[accessibilityHint, pie].filter(Boolean).join('. ') || undefined}
+        accessibilityHint={
+          [accessibilityHint, pie].filter(Boolean).join('. ') || undefined
+        }
         style={[
           estilos.campo,
           multilinea && estilos.multilinea,
@@ -111,7 +131,10 @@ export function CampoTexto({
             </Text>
           ) : null}
           {contador ? (
-            <Text style={[estilos.ayuda, estilos.contador]} accessibilityLabel={`${contador.replace('/', ' de ')} caracteres`}>
+            <Text
+              style={[estilos.ayuda, estilos.contador]}
+              accessibilityLabel={`${contador.replace('/', ' de ')} caracteres`}
+            >
               {contador}
             </Text>
           ) : null}

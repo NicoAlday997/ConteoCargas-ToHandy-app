@@ -17,7 +17,15 @@
 const DESFASE_NEGOCIO_MS = -6 * 60 * 60 * 1000;
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
-const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_SEMANA = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+];
 const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const MESES = [
   'enero',
@@ -52,7 +60,12 @@ function desdeTexto(dia: string): Date | null {
   const [anio, mes, diaMes] = coincide.slice(1).map(Number);
   const fecha = new Date(Date.UTC(anio, mes - 1, diaMes, 12));
   // Rechaza días inexistentes (2026-02-30), que Date.UTC acomodaría en marzo.
-  if (fecha.getUTCFullYear() !== anio || fecha.getUTCMonth() !== mes - 1 || fecha.getUTCDate() !== diaMes) return null;
+  if (
+    fecha.getUTCFullYear() !== anio ||
+    fecha.getUTCMonth() !== mes - 1 ||
+    fecha.getUTCDate() !== diaMes
+  )
+    return null;
   return fecha;
 }
 
@@ -120,7 +133,10 @@ export function textoSalidaCorta(dia: string, hoy: string): string {
 }
 
 /** "Hoy", "Mañana" o "Ayer" respecto a `hoy`; `null` para cualquier otro día. */
-export function diaRelativo(dia: string, hoy: string): 'Hoy' | 'Mañana' | 'Ayer' | null {
+export function diaRelativo(
+  dia: string,
+  hoy: string,
+): 'Hoy' | 'Mañana' | 'Ayer' | null {
   if (dia === hoy) return 'Hoy';
   if (dia === sumarDias(hoy, 1)) return 'Mañana';
   if (dia === sumarDias(hoy, -1)) return 'Ayer';
@@ -156,7 +172,10 @@ function diaEnFrase(dia: string): string {
  * contado NO se pierde (la alternativa que el vendedor conocía era cancelar y
  * empezar de cero). Sin nada contado, esa frase sobra.
  */
-export function textoConfirmarCambioFecha(dia: string, productosContados: number): { titulo: string; cuerpo: string } {
+export function textoConfirmarCambioFecha(
+  dia: string,
+  productosContados: number,
+): { titulo: string; cuerpo: string } {
   const conservado =
     productosContados <= 0
       ? null
@@ -165,7 +184,9 @@ export function textoConfirmarCambioFecha(dia: string, productosContados: number
         : `Lo que llevas contado se conserva: los ${productosContados} productos siguen ahí.`;
   return {
     titulo: `¿Cambiar la salida al ${diaEnFrase(dia)}?`,
-    cuerpo: [conservado, 'Solo cambia el día para el que sale el camión.'].filter(Boolean).join(' '),
+    cuerpo: [conservado, 'Solo cambia el día para el que sale el camión.']
+      .filter(Boolean)
+      .join(' '),
   };
 }
 
@@ -173,7 +194,11 @@ export function textoConfirmarCambioFecha(dia: string, productosContados: number
  * "Fecha cambiada del 26 al 27 de septiembre por Irvin Alday". Si cruza de
  * mes o de año, cada fecha lleva lo suyo.
  */
-export function textoCambioFecha(anterior: string, nueva: string, porNombre: string | null): string {
+export function textoCambioFecha(
+  anterior: string,
+  nueva: string,
+  porNombre: string | null,
+): string {
   const a = desdeTexto(anterior);
   const n = desdeTexto(nueva);
   const quien = porNombre ? ` por ${porNombre}` : '';
@@ -186,7 +211,8 @@ export function textoCambioFecha(anterior: string, nueva: string, porNombre: str
       : a.getUTCMonth() !== n.getUTCMonth()
         ? conMes(a)
         : String(a.getUTCDate());
-  const hasta = a.getUTCFullYear() !== n.getUTCFullYear() ? conAnio(n) : conMes(n);
+  const hasta =
+    a.getUTCFullYear() !== n.getUTCFullYear() ? conAnio(n) : conMes(n);
   return `Fecha cambiada del ${desde} al ${hasta}${quien}`;
 }
 
@@ -206,15 +232,25 @@ export interface FechaDisponible {
  * "mañana".
  */
 export function normalizarFechasDisponibles(
-  opciones: readonly { fecha?: unknown; etiqueta?: unknown; esHoy?: unknown }[] | null | undefined,
+  opciones:
+    | readonly { fecha?: unknown; etiqueta?: unknown; esHoy?: unknown }[]
+    | null
+    | undefined,
 ): FechaDisponible[] {
   const vistas = new Set<string>();
   const fechas: FechaDisponible[] = [];
   for (const opcion of opciones ?? []) {
     if (!esDia(opcion.fecha) || vistas.has(opcion.fecha)) continue;
     vistas.add(opcion.fecha);
-    const etiqueta = typeof opcion.etiqueta === 'string' && opcion.etiqueta.trim() ? opcion.etiqueta.trim() : null;
-    fechas.push({ dia: opcion.fecha, etiqueta: etiqueta ?? formatearDia(opcion.fecha), esHoy: opcion.esHoy === true });
+    const etiqueta =
+      typeof opcion.etiqueta === 'string' && opcion.etiqueta.trim()
+        ? opcion.etiqueta.trim()
+        : null;
+    fechas.push({
+      dia: opcion.fecha,
+      etiqueta: etiqueta ?? formatearDia(opcion.fecha),
+      esHoy: opcion.esHoy === true,
+    });
   }
   return fechas.sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0));
 }

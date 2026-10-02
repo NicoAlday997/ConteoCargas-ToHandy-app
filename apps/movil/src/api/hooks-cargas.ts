@@ -1,9 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { guardarProductosLocal, obtenerProductosLocal } from '../conteo/almacen-local';
+import {
+  guardarProductosLocal,
+  obtenerProductosLocal,
+} from '../conteo/almacen-local';
 import { colorFamiliaDesdeApi } from '../theme/colores-familia';
-import { modalidadDesdeApi, type FamiliaConteo, type ProductoConteo } from '../conteo/estado-conteo';
-import { estadoDe, type ConteoLado, type Discrepancia } from '../discrepancias/estado-discrepancia';
+import {
+  modalidadDesdeApi,
+  type FamiliaConteo,
+  type ProductoConteo,
+} from '../conteo/estado-conteo';
+import {
+  estadoDe,
+  type ConteoLado,
+  type Discrepancia,
+} from '../discrepancias/estado-discrepancia';
 import {
   abrirSesion,
   cambiarFechaOperativa,
@@ -40,8 +51,10 @@ export const clavesCargas = {
   productos: (eventoId: string) => ['cargas', eventoId, 'productos'] as const,
   pendientesVerificacion: ['cargas', 'pendientes-verificacion'] as const,
   conflictosPendientes: ['cargas', 'conflictos-pendientes'] as const,
-  discrepancias: (eventoId: string) => ['cargas', eventoId, 'discrepancias'] as const,
-  contextoResolucion: (eventoId: string) => ['cargas', eventoId, 'contexto-resolucion'] as const,
+  discrepancias: (eventoId: string) =>
+    ['cargas', eventoId, 'discrepancias'] as const,
+  contextoResolucion: (eventoId: string) =>
+    ['cargas', eventoId, 'contexto-resolucion'] as const,
   fechasDisponibles: ['cargas', 'fechas-disponibles'] as const,
 };
 
@@ -60,7 +73,9 @@ export interface ProductosDeCarga {
 }
 
 /** Descarta lo que no se puede contar (sin código) en vez de romper la pantalla. */
-function normalizarProductos(respuesta: RespuestaProductos | null): ProductosDeCarga {
+function normalizarProductos(
+  respuesta: RespuestaProductos | null,
+): ProductosDeCarga {
   const familias: FamiliaConteo[] = [];
   const productos: ProductoConteo[] = [];
   const vistos = new Set<string>();
@@ -78,12 +93,17 @@ function normalizarProductos(respuesta: RespuestaProductos | null): ProductosDeC
         familia,
         unidadDescripcion: p.unidadDescripcion?.trim() ?? '',
         modalidadVenta: modalidadDesdeApi(p.modalidadVenta),
-        piezasPorPaquete: typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
+        piezasPorPaquete:
+          typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
         factorConfirmado: p.factorConfirmado === true,
       });
     }
     if (deFamilia.length > 0) {
-      familias.push({ familia, color: familia === null ? null : colorFamiliaDesdeApi(grupo.color), productos: deFamilia });
+      familias.push({
+        familia,
+        color: familia === null ? null : colorFamiliaDesdeApi(grupo.color),
+        productos: deFamilia,
+      });
       productos.push(...deFamilia);
     }
   }
@@ -95,10 +115,13 @@ function normalizarProductos(respuesta: RespuestaProductos | null): ProductosDeC
  * Sin señal se usa la copia guardada la última vez: si la app se cierra a
  * media carga en bodega, el conteo debe poder reabrirse ahí mismo.
  */
-async function productosConRespaldo(eventoId: string): Promise<RespuestaProductos | null> {
+async function productosConRespaldo(
+  eventoId: string,
+): Promise<RespuestaProductos | null> {
   try {
     const respuesta = await obtenerProductos(eventoId);
-    if (respuesta) void guardarProductosLocal(eventoId, respuesta).catch(() => undefined);
+    if (respuesta)
+      void guardarProductosLocal(eventoId, respuesta).catch(() => undefined);
     return respuesta;
   } catch (error) {
     if (error instanceof ErrorRed) {
@@ -147,7 +170,8 @@ export function useFechasOperativasDisponibles(habilitada: boolean) {
 
 export function useIniciarCarga() {
   return useMutation({
-    mutationFn: ({ tipo, fechaOperativa }: VariablesIniciarCarga) => iniciarCarga(tipo, fechaOperativa),
+    mutationFn: ({ tipo, fechaOperativa }: VariablesIniciarCarga) =>
+      iniciarCarga(tipo, fechaOperativa),
   });
 }
 
@@ -182,8 +206,12 @@ export function useCambiarFechaOperativa(eventoId: string) {
     mutationFn: ({ fechaOperativa, motivo }: VariablesCambiarFecha) =>
       cambiarFechaOperativa(eventoId, fechaOperativa, motivo),
     onSettled: () => {
-      void cliente.invalidateQueries({ queryKey: clavesCargas.evento(eventoId) });
-      void cliente.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion });
+      void cliente.invalidateQueries({
+        queryKey: clavesCargas.evento(eventoId),
+      });
+      void cliente.invalidateQueries({
+        queryKey: clavesCargas.pendientesVerificacion,
+      });
       void cliente.invalidateQueries({ queryKey: ['historial'] });
       void cliente.invalidateQueries({ queryKey: ['supervisor'] });
     },
@@ -203,7 +231,8 @@ interface VariablesFinalizarSesion {
 
 export function useFinalizarSesion() {
   return useMutation({
-    mutationFn: ({ eventoId, sesionId }: VariablesFinalizarSesion) => finalizarSesion(eventoId, sesionId),
+    mutationFn: ({ eventoId, sesionId }: VariablesFinalizarSesion) =>
+      finalizarSesion(eventoId, sesionId),
   });
 }
 
@@ -236,15 +265,23 @@ export function useDesbloquearCarga() {
   const cliente = useQueryClient();
   return useMutation({
     mutationFn: (eventoId: string) => desbloquearCarga(eventoId),
-    onSettled: () => cliente.invalidateQueries({ queryKey: clavesCargas.pendientesVerificacion }),
+    onSettled: () =>
+      cliente.invalidateQueries({
+        queryKey: clavesCargas.pendientesVerificacion,
+      }),
   });
 }
 
 function numeroONulo(valor: unknown): number | null {
-  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 0 ? valor : null;
+  return typeof valor === 'number' && Number.isInteger(valor) && valor >= 0
+    ? valor
+    : null;
 }
 
-function lado(api: LadoDiscrepanciaApi | null | undefined, piezas: number): ConteoLado {
+function lado(
+  api: LadoDiscrepanciaApi | null | undefined,
+  piezas: number,
+): ConteoLado {
   return {
     tipoSesion: typeof api?.tipoSesion === 'string' ? api.tipoSesion : null,
     piezas,
@@ -258,7 +295,11 @@ function normalizarDiscrepancias(filas: DiscrepanciaApi[]): Discrepancia[] {
   const resultado: Discrepancia[] = [];
   for (const f of filas) {
     const code = f.productoCode?.trim();
-    if (!code || typeof f.cantidadVendedorOriginal !== 'number' || typeof f.cantidadContadorOriginal !== 'number') {
+    if (
+      !code ||
+      typeof f.cantidadVendedorOriginal !== 'number' ||
+      typeof f.cantidadContadorOriginal !== 'number'
+    ) {
       continue;
     }
     resultado.push({
@@ -269,12 +310,14 @@ function normalizarDiscrepancias(filas: DiscrepanciaApi[]): Discrepancia[] {
         familia: null,
         unidadDescripcion: f.unidadDescripcion?.trim() ?? '',
         modalidadVenta: modalidadDesdeApi(f.modalidadVenta),
-        piezasPorPaquete: typeof f.piezasPorPaquete === 'number' ? f.piezasPorPaquete : null,
+        piezasPorPaquete:
+          typeof f.piezasPorPaquete === 'number' ? f.piezasPorPaquete : null,
         factorConfirmado: f.factorConfirmado === true,
       },
       primerConteo: lado(f.primerConteo, f.cantidadVendedorOriginal),
       segundoConteo: lado(f.segundoConteo, f.cantidadContadorOriginal),
-      cantidadFinal: typeof f.cantidadFinal === 'number' ? f.cantidadFinal : null,
+      cantidadFinal:
+        typeof f.cantidadFinal === 'number' ? f.cantidadFinal : null,
       capturadaPor: f.capturadaPor ?? null,
       capturadaPorNombre: f.capturadaPorNombre?.trim() || null,
       confirmadaPor: f.confirmadaPor ?? null,
@@ -294,7 +337,9 @@ export function useDiscrepancias(eventoId: string) {
     refetchInterval: (consulta) => {
       const filas = consulta.state.data;
       if (!filas) return false;
-      const pendientes = normalizarDiscrepancias(filas).some((d) => estadoDe(d) !== 'confirmada');
+      const pendientes = normalizarDiscrepancias(filas).some(
+        (d) => estadoDe(d) !== 'confirmada',
+      );
       return pendientes ? INTERVALO_DISCREPANCIAS_MS : false;
     },
   });
@@ -310,7 +355,10 @@ export function useCapturarDiscrepancia(eventoId: string) {
   return useMutation({
     mutationFn: ({ productoCode, cantidadFinal }: VariablesCapturar) =>
       capturarDiscrepancia(eventoId, productoCode, cantidadFinal),
-    onSettled: () => cliente.invalidateQueries({ queryKey: clavesCargas.discrepancias(eventoId) }),
+    onSettled: () =>
+      cliente.invalidateQueries({
+        queryKey: clavesCargas.discrepancias(eventoId),
+      }),
   });
 }
 
@@ -350,7 +398,13 @@ export function useContextoResolucion(eventoId: string) {
       fechaOperativa: datos?.fechaOperativa ?? null,
       participantes: (datos?.participantes ?? []).flatMap((p) =>
         p && typeof p.usuarioAppId === 'string'
-          ? [{ id: p.usuarioAppId, nombre: p.nombreCompleto?.trim() || 'Sin nombre', tipoSesion: p.tipoSesion ?? null }]
+          ? [
+              {
+                id: p.usuarioAppId,
+                nombre: p.nombreCompleto?.trim() || 'Sin nombre',
+                tipoSesion: p.tipoSesion ?? null,
+              },
+            ]
           : [],
       ),
     }),
@@ -360,11 +414,26 @@ export function useContextoResolucion(eventoId: string) {
 export function useConfirmarDiscrepancia(eventoId: string) {
   const cliente = useQueryClient();
   return useMutation({
-    mutationFn: ({ productoCode, cantidadFinal, pin, confirmaUsuarioAppId }: VariablesConfirmar) =>
-      confirmarDiscrepancia(eventoId, productoCode, cantidadFinal, pin, confirmaUsuarioAppId),
+    mutationFn: ({
+      productoCode,
+      cantidadFinal,
+      pin,
+      confirmaUsuarioAppId,
+    }: VariablesConfirmar) =>
+      confirmarDiscrepancia(
+        eventoId,
+        productoCode,
+        cantidadFinal,
+        pin,
+        confirmaUsuarioAppId,
+      ),
     onSettled: () => {
-      void cliente.invalidateQueries({ queryKey: clavesCargas.discrepancias(eventoId) });
-      void cliente.invalidateQueries({ queryKey: clavesCargas.conflictosPendientes });
+      void cliente.invalidateQueries({
+        queryKey: clavesCargas.discrepancias(eventoId),
+      });
+      void cliente.invalidateQueries({
+        queryKey: clavesCargas.conflictosPendientes,
+      });
     },
   });
 }

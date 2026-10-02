@@ -6,8 +6,18 @@ import { router } from 'expo-router';
 import type { RolApp } from '../api/auth';
 import { ErrorApi, ErrorRed } from '../api/cliente';
 import { useUsuarios } from '../api/hooks-auth';
-import { clavesSincronizacion, useEstadoSincronizacion, useSincronizarConHandy } from '../api/hooks-sincronizacion';
-import { AccionesHoja, BloqueError, Boton, FilaMenu, Hoja } from '../componentes/base';
+import {
+  clavesSincronizacion,
+  useEstadoSincronizacion,
+  useSincronizarConHandy,
+} from '../api/hooks-sincronizacion';
+import {
+  AccionesHoja,
+  BloqueError,
+  Boton,
+  FilaMenu,
+  Hoja,
+} from '../componentes/base';
 import { COLORES, RITMO, TIPOGRAFIA } from '../theme/tokens';
 import {
   falloSincronizacion,
@@ -64,7 +74,9 @@ export function AccesoSincronizacion({ rol }: { rol: RolApp | null }) {
   // TanStack limpia `error` al reintentar: mientras corre, la hoja sigue diciendo qué falló.
   const [ultimoFallo, setUltimoFallo] = useState<unknown>(null);
 
-  const ultima = estado.data ? textoUltimaSincronizacion(estado.data.ultimaSincronizacion, new Date()) : null;
+  const ultima = estado.data
+    ? textoUltimaSincronizacion(estado.data.ultimaSincronizacion, new Date())
+    : null;
 
   const correr = () => {
     sincronizar.mutate(undefined, {
@@ -73,7 +85,9 @@ export function AccesoSincronizacion({ rol }: { rol: RolApp | null }) {
         setUltimoFallo(error);
         // Alguien más acaba de sincronizar: su "Última vez" ya es la nuestra.
         if (error instanceof ErrorApi && error.estado === 429) {
-          void clienteConsultas.invalidateQueries({ queryKey: clavesSincronizacion.estado });
+          void clienteConsultas.invalidateQueries({
+            queryKey: clavesSincronizacion.estado,
+          });
         }
       },
       onSettled: () => setHojaAbierta(true),
@@ -104,15 +118,30 @@ export function AccesoSincronizacion({ rol }: { rol: RolApp | null }) {
         visible={hojaAbierta}
         onCerrar={cerrar}
         bloqueada={sincronizar.isPending}
-        titulo={ultimoFallo || sincronizar.isPending ? undefined : resumirSincronizacion(sincronizar.data).titulo}
+        titulo={
+          ultimoFallo || sincronizar.isPending
+            ? undefined
+            : resumirSincronizacion(sincronizar.data).titulo
+        }
         pie={
           <AccionesHoja>
-            <Boton texto="Listo" variante="secundario" deshabilitado={sincronizar.isPending} onPress={cerrar} />
+            <Boton
+              texto="Listo"
+              variante="secundario"
+              deshabilitado={sincronizar.isPending}
+              onPress={cerrar}
+            />
           </AccionesHoja>
         }
       >
         {hojaAbierta && (
-          <Contenido rol={rol} sincronizar={sincronizar} fallo={ultimoFallo} onReintentar={correr} onConfirmarAhora={confirmarAhora} />
+          <Contenido
+            rol={rol}
+            sincronizar={sincronizar}
+            fallo={ultimoFallo}
+            onReintentar={correr}
+            onConfirmarAhora={confirmarAhora}
+          />
         )}
       </Hoja>
     </>
@@ -136,13 +165,16 @@ function Contenido({
   // A quién avisarle sale de la lista de usuarios activos (la misma del login).
   const usuarios = useUsuarios();
   const supervisor = quienConfirma(
-    (usuarios.data ?? []).filter((u) => u.rolApp === 'SUPERVISOR').map((u) => u.nombreCompleto ?? ''),
+    (usuarios.data ?? [])
+      .filter((u) => u.rolApp === 'SUPERVISOR')
+      .map((u) => u.nombreCompleto ?? ''),
   );
 
   // Reintentando desde la hoja: el mismo bloque del fallo, con su indicador.
   if (error) {
     const fallo = falloDe(error);
-    if (fallo.informativo) return <Text style={estilos.renglon}>{fallo.detalle}</Text>;
+    if (fallo.informativo)
+      return <Text style={estilos.renglon}>{fallo.detalle}</Text>;
     return (
       <BloqueError
         titulo={fallo.titulo}
@@ -154,7 +186,13 @@ function Contenido({
   }
 
   const resumen = resumirSincronizacion(sincronizar.data);
-  const remate = esSupervisor ? null : remateSinPermiso(rol, sincronizar.data?.productos?.nuevos ?? 0, supervisor);
+  const remate = esSupervisor
+    ? null
+    : remateSinPermiso(
+        rol,
+        sincronizar.data?.productos?.nuevos ?? 0,
+        supervisor,
+      );
   return (
     <View style={estilos.contenido}>
       {resumen.renglones.length > 0 ? (
@@ -169,7 +207,11 @@ function Contenido({
         <Text style={estilos.renglon}>No había nada nuevo en Handy.</Text>
       )}
       {resumen.errorVendedores && (
-        <BloqueError tono="atencion" titulo="Los vendedores no se actualizaron" detalle={resumen.errorVendedores} />
+        <BloqueError
+          tono="atencion"
+          titulo="Los vendedores no se actualizaron"
+          detalle={resumen.errorVendedores}
+        />
       )}
       {/* Información, no una tarea suya: sin botón. */}
       {remate && <BloqueError tono="atencion" titulo={remate} />}

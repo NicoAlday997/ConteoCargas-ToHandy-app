@@ -1,6 +1,10 @@
 import type { RolApp } from '../api/auth';
 import type { ResultadoSincronizacionApi } from '../api/sincronizacion';
-import { diaNegocio, formatearFechaCorta, sumarDias } from '../conteo/fecha-operativa.ts';
+import {
+  diaNegocio,
+  formatearFechaCorta,
+  sumarDias,
+} from '../conteo/fecha-operativa.ts';
 
 /**
  * Textos de la sincronización con Handy: cuándo fue la última, qué trajo y qué
@@ -26,7 +30,10 @@ export interface UltimaSincronizacion {
 }
 
 /** "Última vez: hoy a las 5:00 a.m.", "…ayer a las 9:30 p.m." o "…el 24 sep a las 5:00 a.m.". */
-export function textoUltimaSincronizacion(iso: string | null | undefined, ahora: Date): UltimaSincronizacion {
+export function textoUltimaSincronizacion(
+  iso: string | null | undefined,
+  ahora: Date,
+): UltimaSincronizacion {
   const instante = iso ? new Date(iso) : null;
   if (!instante || Number.isNaN(instante.getTime())) {
     return { texto: 'Nunca se ha sincronizado', vieja: true };
@@ -34,16 +41,28 @@ export function textoUltimaSincronizacion(iso: string | null | undefined, ahora:
   const dia = diaNegocio(instante);
   const hoy = diaNegocio(ahora);
   const cuando =
-    dia === hoy ? 'hoy' : dia === sumarDias(hoy, -1) ? 'ayer' : `el ${formatearFechaCorta(dia)}`;
+    dia === hoy
+      ? 'hoy'
+      : dia === sumarDias(hoy, -1)
+        ? 'ayer'
+        : `el ${formatearFechaCorta(dia)}`;
   return {
     texto: `Última vez: ${cuando} a las ${horaDoce(instante)}`,
-    vieja: ahora.getTime() - instante.getTime() > DIAS_CATALOGO_VIEJO * MS_POR_DIA,
+    vieja:
+      ahora.getTime() - instante.getTime() > DIAS_CATALOGO_VIEJO * MS_POR_DIA,
   };
 }
 
-function cuenta(n: number | null | undefined, singular: string, plural: string, adjetivo: [string, string]): string | null {
+function cuenta(
+  n: number | null | undefined,
+  singular: string,
+  plural: string,
+  adjetivo: [string, string],
+): string | null {
   if (!n || n <= 0) return null;
-  return n === 1 ? `1 ${singular} ${adjetivo[0]}` : `${n} ${plural} ${adjetivo[1]}`;
+  return n === 1
+    ? `1 ${singular} ${adjetivo[0]}`
+    : `${n} ${plural} ${adjetivo[1]}`;
 }
 
 export interface ResumenSincronizacion {
@@ -55,18 +74,34 @@ export interface ResumenSincronizacion {
   errorVendedores: string | null;
 }
 
-export function resumirSincronizacion(r: ResultadoSincronizacionApi | null | undefined): ResumenSincronizacion {
+export function resumirSincronizacion(
+  r: ResultadoSincronizacionApi | null | undefined,
+): ResumenSincronizacion {
   const p = r?.productos;
   const v = r?.vendedores;
   const renglones = [
     cuenta(p?.nuevos, 'producto', 'productos', ['nuevo', 'nuevos']),
-    cuenta(p?.actualizados, 'producto', 'productos', ['actualizado', 'actualizados']),
-    cuenta(p?.desactivados, 'producto', 'productos', ['dado de baja en Handy', 'dados de baja en Handy']),
+    cuenta(p?.actualizados, 'producto', 'productos', [
+      'actualizado',
+      'actualizados',
+    ]),
+    cuenta(p?.desactivados, 'producto', 'productos', [
+      'dado de baja en Handy',
+      'dados de baja en Handy',
+    ]),
     cuenta(v?.nuevos, 'vendedor', 'vendedores', ['nuevo', 'nuevos']),
-    cuenta(v?.actualizados, 'vendedor', 'vendedores', ['actualizado', 'actualizados']),
-    cuenta(v?.desactivados, 'vendedor', 'vendedores', ['dado de baja en Handy', 'dados de baja en Handy']),
+    cuenta(v?.actualizados, 'vendedor', 'vendedores', [
+      'actualizado',
+      'actualizados',
+    ]),
+    cuenta(v?.desactivados, 'vendedor', 'vendedores', [
+      'dado de baja en Handy',
+      'dados de baja en Handy',
+    ]),
   ].filter((renglon): renglon is string => renglon !== null);
-  const errorVendedores = !v ? r?.errorVendedores?.trim() || 'No se pudieron actualizar los vendedores.' : null;
+  const errorVendedores = !v
+    ? r?.errorVendedores?.trim() || 'No se pudieron actualizar los vendedores.'
+    : null;
   return {
     titulo: renglones.length > 0 ? 'Se actualizó el catálogo' : 'Todo al día',
     renglones,
@@ -108,13 +143,15 @@ export function quienConfirma(supervisoresActivos: readonly string[]): string {
 }
 
 /** El 429 del candado de 2 minutos: no es un error, alguien más ya trajo lo nuevo. */
-export const AVISO_SINCRONIZACION_RECIENTE = 'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.';
+export const AVISO_SINCRONIZACION_RECIENTE =
+  'Alguien acaba de sincronizar. Espera un momento y vuelve a intentarlo.';
 
 /**
  * El 429 corto (20 s) tras un intento FALLIDO: no dice que alguien
  * sincronizó, porque no se sincronizó nada (y casi siempre fue uno mismo).
  */
-export const AVISO_SINCRONIZACION_FALLIDA_RECIENTE = 'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.';
+export const AVISO_SINCRONIZACION_FALLIDA_RECIENTE =
+  'El intento anterior falló. Espera unos segundos y vuelve a intentarlo.';
 
 export interface FalloSincronizacion {
   titulo: string;
@@ -129,16 +166,25 @@ export interface FalloSincronizacion {
  * Lo que se le dice a quien sincronizó si no pasa. `estado` y
  * `codigo` vienen del error de la API; `sinRed` si ni siquiera llegó al servidor.
  */
-export function falloSincronizacion(error: { sinRed: boolean; estado?: number; codigo?: string | null; mensaje?: string }): FalloSincronizacion {
+export function falloSincronizacion(error: {
+  sinRed: boolean;
+  estado?: number;
+  codigo?: string | null;
+  mensaje?: string;
+}): FalloSincronizacion {
   if (error.sinRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Para sincronizar necesitas señal: revísala y vuelve a intentarlo. No se perdió nada.',
+      detalle:
+        'Para sincronizar necesitas señal: revísala y vuelve a intentarlo. No se perdió nada.',
       reintentable: true,
       informativo: false,
     };
   }
-  if (error.estado === 429 && error.codigo === 'SINCRONIZACION_FALLIDA_RECIENTE') {
+  if (
+    error.estado === 429 &&
+    error.codigo === 'SINCRONIZACION_FALLIDA_RECIENTE'
+  ) {
     return {
       titulo: 'El intento anterior falló',
       detalle: AVISO_SINCRONIZACION_FALLIDA_RECIENTE,
@@ -147,7 +193,12 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
     };
   }
   if (error.estado === 429) {
-    return { titulo: 'Alguien acaba de sincronizar', detalle: AVISO_SINCRONIZACION_RECIENTE, reintentable: false, informativo: true };
+    return {
+      titulo: 'Alguien acaba de sincronizar',
+      detalle: AVISO_SINCRONIZACION_RECIENTE,
+      reintentable: false,
+      informativo: true,
+    };
   }
   if (error.codigo === 'HANDY_TOKEN_INVALIDO') {
     return {
@@ -168,7 +219,8 @@ export function falloSincronizacion(error: { sinRed: boolean; estado?: number; c
   }
   return {
     titulo: 'No se pudo sincronizar',
-    detalle: error.mensaje || 'Vuelve a intentarlo en un momento; no se perdió nada.',
+    detalle:
+      error.mensaje || 'Vuelve a intentarlo en un momento; no se perdió nada.',
     reintentable: true,
     informativo: false,
   };

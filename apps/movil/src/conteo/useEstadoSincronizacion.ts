@@ -1,7 +1,11 @@
 import { useSyncExternalStore } from 'react';
 import { useNetInfo } from '@react-native-community/netinfo';
 
-import { estaConectado, type ColaSincronizacion, type ErrorCola } from './cola-sincronizacion';
+import {
+  estaConectado,
+  type ColaSincronizacion,
+  type ErrorCola,
+} from './cola-sincronizacion';
 
 export interface EstadoSincronizacion {
   hayConexion: boolean;
@@ -14,7 +18,9 @@ export interface EstadoSincronizacion {
 }
 
 /** Estado de la red (NetInfo) junto con el de la cola de envío del conteo. */
-export function useEstadoSincronizacion(cola: ColaSincronizacion): EstadoSincronizacion {
+export function useEstadoSincronizacion(
+  cola: ColaSincronizacion,
+): EstadoSincronizacion {
   const red = useNetInfo();
   const estado = useSyncExternalStore(cola.suscribir, cola.obtenerEstado);
   return {

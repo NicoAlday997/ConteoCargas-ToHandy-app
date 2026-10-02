@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { DiaNoLaborable } from '../../src/api/calendario';
@@ -24,10 +30,25 @@ import {
   Chevron,
 } from '../../src/componentes/base';
 import { HojaRecorrer } from '../../src/calendario/HojaRecorrer';
-import { DIAS_CABECERA, mesDe, moverMes, semanasDelMes, tituloMes, type Mes } from '../../src/calendario/modelo-calendario';
+import {
+  DIAS_CABECERA,
+  mesDe,
+  moverMes,
+  semanasDelMes,
+  tituloMes,
+  type Mes,
+} from '../../src/calendario/modelo-calendario';
 import { diaNegocio, formatearDia } from '../../src/conteo/fecha-operativa';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
-import { avisoDeError, sesionVencida, type AvisoError } from '../../src/plantillas/ComponentesPlantillas';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
+import {
+  avisoDeError,
+  sesionVencida,
+  type AvisoError,
+} from '../../src/plantillas/ComponentesPlantillas';
 import { ModalConfirmacion } from '../../src/supervisor/ModalConfirmacion';
 import { useEsSupervisor } from '../../src/supervisor/useEsSupervisor';
 import {
@@ -54,7 +75,8 @@ import {
  */
 
 const TITULO = 'Días no laborables';
-const AYUDA = 'Los domingos ya están considerados. Aquí marca festivos, paros o cierres.';
+const AYUDA =
+  'Los domingos ya están considerados. Aquí marca festivos, paros o cierres.';
 const MOTIVO_MINIMO = 3;
 
 export default function PantallaDiasNoLaborables() {
@@ -112,11 +134,16 @@ function Lista() {
   const [errorQuitar, setErrorQuitar] = useState<AvisoError | null>(null);
   const [refrescando, setRefrescando] = useState(false);
   /** El día cuyas cargas se ofrece recorrer; `manual` si lo pidió el supervisor desde la lista. */
-  const [recorrido, setRecorrido] = useState<{ fecha: string; motivo: string; manual: boolean } | null>(null);
+  const [recorrido, setRecorrido] = useState<{
+    fecha: string;
+    motivo: string;
+    manual: boolean;
+  } | null>(null);
   const [avisoRecorrido, setAvisoRecorrido] = useState<string | null>(null);
   const cerrarRecorrido = useCallback(() => setRecorrido(null), []);
 
-  const vencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const vencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (vencida) sesionVencida();
   }, [vencida]);
@@ -126,7 +153,8 @@ function Lista() {
     setErrorQuitar(null);
     quitar.mutate(aQuitar.fecha, {
       onSuccess: () => setAQuitar(null),
-      onError: (e) => setErrorQuitar(avisoCalendario(e, 'No se pudo quitar el día')),
+      onError: (e) =>
+        setErrorQuitar(avisoCalendario(e, 'No se pudo quitar el día')),
     });
   };
 
@@ -148,7 +176,8 @@ function Lista() {
             detalle={
               sinRed
                 ? 'Para ver los días no laborables necesitas señal: revísala.'
-                : (consulta.error instanceof Error && consulta.error.message) || null
+                : (consulta.error instanceof Error && consulta.error.message) ||
+                  null
             }
             tono={sinRed ? 'atencion' : 'error'}
             onReintentar={() => void consulta.refetch()}
@@ -180,7 +209,10 @@ function Lista() {
           <BloqueError
             tono="exito"
             titulo={avisoRecorrido}
-            secundaria={{ texto: 'Entendido', onPress: () => setAvisoRecorrido(null) }}
+            secundaria={{
+              texto: 'Entendido',
+              onPress: () => setAvisoRecorrido(null),
+            }}
           />
         )}
         {dias.length === 0 ? (
@@ -198,7 +230,13 @@ function Lista() {
                 dia={dia}
                 primero={i === 0}
                 onQuitar={() => setAQuitar(dia)}
-                onRecorrer={() => setRecorrido({ fecha: dia.fecha, motivo: dia.motivo, manual: true })}
+                onRecorrer={() =>
+                  setRecorrido({
+                    fecha: dia.fecha,
+                    motivo: dia.motivo,
+                    manual: true,
+                  })
+                }
               />
             ))}
           </View>
@@ -206,7 +244,11 @@ function Lista() {
       </ScrollView>
       {/* Abajo, al alcance del pulgar: la acción de la pantalla. */}
       <BarraAccion>
-        <Boton texto="Marcar un día" onPress={() => setMarcando(true)} style={estilos.botonBarra} />
+        <Boton
+          texto="Marcar un día"
+          onPress={() => setMarcando(true)}
+          style={estilos.botonBarra}
+        />
       </BarraAccion>
       <ModalMarcar
         visible={marcando}
@@ -246,8 +288,8 @@ function Lista() {
       >
         {aQuitar && (
           <Text style={estilos.cuerpo}>
-            El {formatearDia(aQuitar.fecha).toLowerCase()} vuelve a ser día de trabajo y los vendedores podrán cargar
-            para ese día.
+            El {formatearDia(aQuitar.fecha).toLowerCase()} vuelve a ser día de
+            trabajo y los vendedores podrán cargar para ese día.
           </Text>
         )}
       </ModalConfirmacion>
@@ -272,13 +314,18 @@ function RenglonDia({
       <View style={estilos.textosRenglon}>
         <Text style={estilos.nombre}>{legible}</Text>
         <Text style={estilos.detalle}>{dia.motivo}</Text>
-        {dia.creadoPorNombre && <Text style={estilos.quien}>Marcado por {dia.creadoPorNombre}</Text>}
+        {dia.creadoPorNombre && (
+          <Text style={estilos.quien}>Marcado por {dia.creadoPorNombre}</Text>
+        )}
       </View>
       <Pulsable
         onPress={onRecorrer}
         accessibilityRole="button"
         accessibilityLabel={`Ver y recorrer las cargas del ${legible}`}
-        style={({ pressed }) => [estilos.quitar, pressed && estilos.recorrerPresionado]}
+        style={({ pressed }) => [
+          estilos.quitar,
+          pressed && estilos.recorrerPresionado,
+        ]}
       >
         <Text style={estilos.textoRecorrer}>Cargas</Text>
       </Pulsable>
@@ -286,7 +333,10 @@ function RenglonDia({
         onPress={onQuitar}
         accessibilityRole="button"
         accessibilityLabel={`Quitar ${legible}`}
-        style={({ pressed }) => [estilos.quitar, pressed && estilos.quitarPresionado]}
+        style={({ pressed }) => [
+          estilos.quitar,
+          pressed && estilos.quitarPresionado,
+        ]}
       >
         <Text style={estilos.textoQuitar}>Quitar</Text>
       </Pulsable>
@@ -320,7 +370,8 @@ function ModalMarcar({
   const [error, setError] = useState<AvisoError | null>(null);
 
   const motivoValido = motivo.trim().length >= MOTIVO_MINIMO;
-  const esMesActual = mes.anio === mesDe(hoy).anio && mes.mes === mesDe(hoy).mes;
+  const esMesActual =
+    mes.anio === mesDe(hoy).anio && mes.mes === mesDe(hoy).mes;
 
   const cerrar = () => {
     if (marcar.isPending) return;
@@ -355,15 +406,34 @@ function ModalMarcar({
       formulario
       pie={
         <AccionesHoja>
-          <Boton texto="Cancelar" variante="secundario" deshabilitado={marcar.isPending} onPress={cerrar} />
-          <Boton texto="Marcar día" cargando={marcar.isPending} textoCargando="Marcando…" onPress={guardar} />
+          <Boton
+            texto="Cancelar"
+            variante="secundario"
+            deshabilitado={marcar.isPending}
+            onPress={cerrar}
+          />
+          <Boton
+            texto="Marcar día"
+            cargando={marcar.isPending}
+            textoCargando="Marcando…"
+            onPress={guardar}
+          />
         </AccionesHoja>
       }
     >
       <View style={estilos.cabeceraMes}>
-        <BotonMes direccion="izquierda" etiqueta="Mes anterior" deshabilitado={esMesActual} onPress={() => setMes(moverMes(mes, -1))} />
+        <BotonMes
+          direccion="izquierda"
+          etiqueta="Mes anterior"
+          deshabilitado={esMesActual}
+          onPress={() => setMes(moverMes(mes, -1))}
+        />
         <Text style={estilos.tituloMes}>{tituloMes(mes)}</Text>
-        <BotonMes direccion="derecha" etiqueta="Mes siguiente" onPress={() => setMes(moverMes(mes, 1))} />
+        <BotonMes
+          direccion="derecha"
+          etiqueta="Mes siguiente"
+          onPress={() => setMes(moverMes(mes, 1))}
+        />
       </View>
       <View style={estilos.semana}>
         {DIAS_CABECERA.map((d, i) => (
@@ -378,7 +448,10 @@ function ModalMarcar({
           <View key={i} style={estilos.semana}>
             {semana.map((celda, j) => {
               if (!celda) return <View key={j} style={estilos.celda} />;
-              const inhabil = celda.dia < hoy || celda.esDomingo || marcados.includes(celda.dia);
+              const inhabil =
+                celda.dia < hoy ||
+                celda.esDomingo ||
+                marcados.includes(celda.dia);
               const elegido = celda.dia === dia;
               const esHoy = celda.dia === hoy;
               return (
@@ -400,14 +473,23 @@ function ModalMarcar({
                     inhabil && estilos.celdaInhabil,
                   ]}
                 >
-                  <Text style={[estilos.numeroDia, elegido && estilos.numeroElegido]}>{celda.numero}</Text>
+                  <Text
+                    style={[
+                      estilos.numeroDia,
+                      elegido && estilos.numeroElegido,
+                    ]}
+                  >
+                    {celda.numero}
+                  </Text>
                 </Pulsable>
               );
             })}
           </View>
         ))}
       </View>
-      <Text style={[estilos.cuerpo, intento && dia === null && estilos.textoError]}>
+      <Text
+        style={[estilos.cuerpo, intento && dia === null && estilos.textoError]}
+      >
         {dia ? formatearDia(dia) : 'Toca el día que no se trabaja.'}
       </Text>
       <CampoTexto
@@ -417,9 +499,19 @@ function ModalMarcar({
         ejemplo="Ej. Día de la Revolución"
         maxLength={200}
         ayuda={`Obligatorio. Mínimo ${MOTIVO_MINIMO} caracteres.`}
-        error={intento && !motivoValido ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).` : null}
+        error={
+          intento && !motivoValido
+            ? `Escribe el motivo (mínimo ${MOTIVO_MINIMO} caracteres).`
+            : null
+        }
       />
-      {error && <BloqueError titulo={error.titulo} detalle={error.detalle} tono={error.tono} />}
+      {error && (
+        <BloqueError
+          titulo={error.titulo}
+          detalle={error.detalle}
+          tono={error.tono}
+        />
+      )}
     </Hoja>
   );
 }
@@ -442,9 +534,17 @@ function BotonMes({
       accessibilityRole="button"
       accessibilityLabel={etiqueta}
       accessibilityState={{ disabled: deshabilitado }}
-      style={({ pressed }) => [estilos.botonMes, pressed && estilos.quitarPresionado, deshabilitado && estilos.celdaInhabil]}
+      style={({ pressed }) => [
+        estilos.botonMes,
+        pressed && estilos.quitarPresionado,
+        deshabilitado && estilos.celdaInhabil,
+      ]}
     >
-      <Chevron direccion={direccion} color={COLORES.texto} tamano={ESPACIADO.xxl} />
+      <Chevron
+        direccion={direccion}
+        color={COLORES.texto}
+        tamano={ESPACIADO.xxl}
+      />
     </Pulsable>
   );
 }
@@ -454,7 +554,8 @@ function avisoCalendario(e: unknown, titulo: string): AvisoError | null {
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Para guardar los días no laborables necesitas señal: revísala y vuelve a intentarlo.',
+      detalle:
+        'Para guardar los días no laborables necesitas señal: revísala y vuelve a intentarlo.',
       tono: 'atencion',
     };
   }

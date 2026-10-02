@@ -6,7 +6,10 @@ import type {
   EstadoCargaApi,
   ProductoConsolidadoApi,
 } from '../api/historial';
-import { modalidadDesdeApi, type ProductoConteo } from '../conteo/estado-conteo.ts';
+import {
+  modalidadDesdeApi,
+  type ProductoConteo,
+} from '../conteo/estado-conteo.ts';
 import { diaDesdeApi } from '../conteo/fecha-operativa.ts';
 
 /**
@@ -17,12 +20,21 @@ import { diaDesdeApi } from '../conteo/fecha-operativa.ts';
 /** El color comunica estado (docs/06 §1): verde listo, ámbar atención, rojo falla, gris en espera. */
 export type TonoEstado = 'exito' | 'atencion' | 'error' | 'neutro';
 
-export const ESTADOS_CARGA: Record<EstadoCargaApi, { etiqueta: string; tono: TonoEstado }> = {
+export const ESTADOS_CARGA: Record<
+  EstadoCargaApi,
+  { etiqueta: string; tono: TonoEstado }
+> = {
   BORRADOR: { etiqueta: 'Contando', tono: 'neutro' },
   EN_ESPERA_CONTADOR: { etiqueta: 'Espera verificación', tono: 'neutro' },
-  BLOQUEADA_CORTE_PENDIENTE: { etiqueta: 'Bloqueada: corte pendiente', tono: 'atencion' },
+  BLOQUEADA_CORTE_PENDIENTE: {
+    etiqueta: 'Bloqueada: corte pendiente',
+    tono: 'atencion',
+  },
   EN_COMPARACION: { etiqueta: 'En verificación', tono: 'neutro' },
-  CONFLICTOS_PENDIENTES: { etiqueta: 'Discrepancias por resolver', tono: 'atencion' },
+  CONFLICTOS_PENDIENTES: {
+    etiqueta: 'Discrepancias por resolver',
+    tono: 'atencion',
+  },
   EN_ESPERA_AUTORIZACION: { etiqueta: 'Espera autorización', tono: 'atencion' },
   LISTA_PARA_ENVIAR: { etiqueta: 'Lista para enviar', tono: 'exito' },
   ENVIADA: { etiqueta: 'Enviada a Handy', tono: 'exito' },
@@ -31,13 +43,24 @@ export const ESTADOS_CARGA: Record<EstadoCargaApi, { etiqueta: string; tono: Ton
   CANCELADA: { etiqueta: 'Cancelada', tono: 'error' },
 };
 
-export function estadoDeCarga(estado: EstadoCargaApi | null): { etiqueta: string; tono: TonoEstado } {
-  return (estado && ESTADOS_CARGA[estado]) || { etiqueta: 'Estado desconocido', tono: 'neutro' };
+export function estadoDeCarga(estado: EstadoCargaApi | null): {
+  etiqueta: string;
+  tono: TonoEstado;
+} {
+  return (
+    (estado && ESTADOS_CARGA[estado]) || {
+      etiqueta: 'Estado desconocido',
+      tono: 'neutro',
+    }
+  );
 }
 
-const texto = (valor: string | null | undefined): string | null => valor?.trim() || null;
+const texto = (valor: string | null | undefined): string | null =>
+  valor?.trim() || null;
 const entero = (valor: unknown): number | null =>
-  typeof valor === 'number' && Number.isInteger(valor) && valor >= 0 ? valor : null;
+  typeof valor === 'number' && Number.isInteger(valor) && valor >= 0
+    ? valor
+    : null;
 
 /** Quién canceló la carga y por qué. Solo existe en las CANCELADAS. */
 export interface Cancelacion {
@@ -55,7 +78,10 @@ export function cancelacionDe(api: {
   motivoCancelacion?: string | null;
 }): Cancelacion | null {
   if (api.estado !== 'CANCELADA') return null;
-  return { porNombre: texto(api.canceladaPorNombre), motivo: texto(api.motivoCancelacion) };
+  return {
+    porNombre: texto(api.canceladaPorNombre),
+    motivo: texto(api.motivoCancelacion),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +132,9 @@ export function normalizarFila(fila: CargaHistorialApi): FilaHistorial | null {
  * repetida en la página siguiente: cuenta una sola vez. Dentro del día se
  * respeta el orden del servidor.
  */
-export function agruparPorDia(paginas: readonly (readonly CargaHistorialApi[])[]): GrupoDia[] {
+export function agruparPorDia(
+  paginas: readonly (readonly CargaHistorialApi[])[],
+): GrupoDia[] {
   const vistas = new Set<string>();
   const grupos = new Map<string | null, FilaHistorial[]>();
   for (const pagina of paginas) {
@@ -121,7 +149,9 @@ export function agruparPorDia(paginas: readonly (readonly CargaHistorialApi[])[]
   }
   // aaaa-mm-dd se ordena bien como texto. Sin fecha, al final.
   return [...grupos.entries()]
-    .sort(([a], [b]) => (a === b ? 0 : a === null ? 1 : b === null ? -1 : a < b ? 1 : -1))
+    .sort(([a], [b]) =>
+      a === b ? 0 : a === null ? 1 : b === null ? -1 : a < b ? 1 : -1,
+    )
     .map(([dia, data]) => ({ dia, data }));
 }
 
@@ -177,13 +207,20 @@ export interface CambioFecha {
 }
 
 /** Descarta los cambios cuyas fechas no se pueden leer: sin ellas no dicen nada. */
-export function cambiosFechaDe(api: readonly CambioFechaApi[] | null | undefined): CambioFecha[] {
+export function cambiosFechaDe(
+  api: readonly CambioFechaApi[] | null | undefined,
+): CambioFecha[] {
   const cambios: CambioFecha[] = [];
   for (const c of api ?? []) {
     const anterior = diaDesdeApi(c.fechaAnterior);
     const nueva = diaDesdeApi(c.fechaNueva);
     if (!anterior || !nueva) continue;
-    cambios.push({ anterior, nueva, porNombre: texto(c.cambiadaPorNombre), motivo: texto(c.motivo) });
+    cambios.push({
+      anterior,
+      nueva,
+      porNombre: texto(c.cambiadaPorNombre),
+      motivo: texto(c.motivo),
+    });
   }
   return cambios;
 }
@@ -208,7 +245,8 @@ function normalizarProducto(p: ProductoConsolidadoApi): ProductoDetalle | null {
     familia: texto(p.familia),
     unidadDescripcion: texto(p.unidadDescripcion) ?? '',
     modalidadVenta: modalidadDesdeApi(p.modalidadVenta),
-    piezasPorPaquete: typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
+    piezasPorPaquete:
+      typeof p.piezasPorPaquete === 'number' ? p.piezasPorPaquete : null,
     factorConfirmado: p.factorConfirmado === true,
     cantidadFinal: entero(p.cantidadFinal),
     discrepancia:
@@ -224,7 +262,9 @@ function normalizarProducto(p: ProductoConsolidadoApi): ProductoDetalle | null {
 }
 
 /** `null` si la respuesta no trae una carga identificable. */
-export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle | null {
+export function normalizarDetalle(
+  api: DetalleHistorialApi | null,
+): CargaDetalle | null {
   const evento = api?.evento;
   const id = texto(evento?.id);
   if (!evento || !id) return null;
@@ -235,10 +275,18 @@ export function normalizarDetalle(api: DetalleHistorialApi | null): CargaDetalle
   let totalPiezas = 0;
   let sinResolver = 0;
   for (const grupo of api.familias ?? []) {
-    const productos = (grupo.productos ?? []).map(normalizarProducto).filter((p): p is ProductoDetalle => p !== null);
+    const productos = (grupo.productos ?? [])
+      .map(normalizarProducto)
+      .filter((p): p is ProductoDetalle => p !== null);
     if (productos.length === 0) continue;
-    const conDiscrepancia = productos.filter((p) => p.discrepancia !== null).length;
-    familias.push({ familia: texto(grupo.familia) ?? 'Sin familia', productos, conDiscrepancia });
+    const conDiscrepancia = productos.filter(
+      (p) => p.discrepancia !== null,
+    ).length;
+    familias.push({
+      familia: texto(grupo.familia) ?? 'Sin familia',
+      productos,
+      conDiscrepancia,
+    });
     totalProductos += productos.length;
     totalDiscrepancias += conDiscrepancia;
     for (const p of productos) {

@@ -4,7 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { ErrorApi, ErrorRed } from '../../src/api/cliente';
-import type { ConfirmacionFactor, ModalidadVentaApi } from '../../src/api/factores';
+import type {
+  ConfirmacionFactor,
+  ModalidadVentaApi,
+} from '../../src/api/factores';
 import {
   ErrorFamilia,
   useCargasEnCurso,
@@ -14,7 +17,11 @@ import {
   useFactoresPendientes,
   type ProgresoFamilia,
 } from '../../src/api/hooks-factores';
-import { cerrarSesion, obtenerUsuarioSesion, type UsuarioSesion } from '../../src/api/sesion';
+import {
+  cerrarSesion,
+  obtenerUsuarioSesion,
+  type UsuarioSesion,
+} from '../../src/api/sesion';
 import {
   BloqueError,
   Boton,
@@ -36,8 +43,14 @@ import {
   Pulsable,
 } from '../../src/componentes/base';
 import { TecladoPin } from '../../src/componentes/TecladoPin';
-import { diaNegocio, formatearFechaCorta } from '../../src/conteo/fecha-operativa';
-import { formatearNombreFamilia, formatearNombreProducto } from '../../src/conteo/formato-nombre';
+import {
+  diaNegocio,
+  formatearFechaCorta,
+} from '../../src/conteo/fecha-operativa';
+import {
+  formatearNombreFamilia,
+  formatearNombreProducto,
+} from '../../src/conteo/formato-nombre';
 import {
   contarPendientes,
   esMismoEmpaque,
@@ -61,7 +74,11 @@ import {
   type ProductoConConfirmacion,
   type ProductoPendiente,
 } from '../../src/factores/modelo-factores';
-import { ANCHO_MAXIMO_LISTA, BarraSuperior, volver } from '../../src/historial/ComponentesHistorial';
+import {
+  ANCHO_MAXIMO_LISTA,
+  BarraSuperior,
+  volver,
+} from '../../src/historial/ComponentesHistorial';
 import {
   BORDES,
   CIFRAS,
@@ -98,24 +115,34 @@ function sesionVencida() {
 }
 
 /** Qué decir de un error del servidor o de la red. */
-function detalleError(e: unknown): { titulo: string; detalle: string; sinRed: boolean } {
+function detalleError(e: unknown): {
+  titulo: string;
+  detalle: string;
+  sinRed: boolean;
+} {
   if (e instanceof ErrorRed) {
     return {
       titulo: 'Sin conexión',
-      detalle: 'Para guardar los empaques necesitas señal: revísala y vuelve a intentarlo.',
+      detalle:
+        'Para guardar los empaques necesitas señal: revísala y vuelve a intentarlo.',
       sinRed: true,
     };
   }
   return {
     titulo: 'No se pudo guardar',
-    detalle: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.',
+    detalle:
+      e instanceof Error && e.message
+        ? e.message
+        : 'Intenta de nuevo en un momento.',
     sinRed: false,
   };
 }
 
 export default function PantallaFactores() {
   // `undefined` mientras se lee la sesión.
-  const [usuario, setUsuario] = useState<UsuarioSesion | null | undefined>(undefined);
+  const [usuario, setUsuario] = useState<UsuarioSesion | null | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     let vigente = true;
@@ -129,7 +156,10 @@ export default function PantallaFactores() {
 
   if (usuario === undefined) {
     return (
-      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView
+        style={estilos.pantalla}
+        edges={['left', 'right', 'bottom']}
+      >
         <BarraSuperior titulo={TITULO} />
         <EsqueletoLista />
       </SafeAreaView>
@@ -138,7 +168,10 @@ export default function PantallaFactores() {
 
   if (usuario === null) {
     return (
-      <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView
+        style={estilos.pantalla}
+        edges={['left', 'right', 'bottom']}
+      >
         <BarraSuperior titulo={TITULO} />
         <EstadoVacio
           icono="candado"
@@ -180,10 +213,16 @@ function ListaFactores() {
   const consultaCatalogo = useFactoresCatalogo(pestana === 'todos');
   const pendientes = contarPendientes(consultaPendientes.data ?? []);
   const [busqueda, setBusqueda] = useState('');
-  const [seleccionado, setSeleccionado] = useState<ProductoAConfirmar | null>(null);
-  const [familiaAbierta, setFamiliaAbierta] = useState<FamiliaPendiente | null>(null);
+  const [seleccionado, setSeleccionado] = useState<ProductoAConfirmar | null>(
+    null,
+  );
+  const [familiaAbierta, setFamiliaAbierta] = useState<FamiliaPendiente | null>(
+    null,
+  );
 
-  const estados = [consultaPendientes.error, consultaCatalogo.error].map((e) => (e instanceof ErrorApi ? e.estado : null));
+  const estados = [consultaPendientes.error, consultaCatalogo.error].map((e) =>
+    e instanceof ErrorApi ? e.estado : null,
+  );
   const sinSesion = estados.includes(401);
   useEffect(() => {
     if (sinSesion) sesionVencida();
@@ -195,7 +234,11 @@ function ListaFactores() {
     <SafeAreaView style={estilos.pantalla} edges={['left', 'right', 'bottom']}>
       <BarraSuperior
         titulo={TITULO}
-        subtitulo={consultaPendientes.data && pendientes > 0 ? `${textoProductos(pendientes)} por confirmar` : null}
+        subtitulo={
+          consultaPendientes.data && pendientes > 0
+            ? `${textoProductos(pendientes)} por confirmar`
+            : null
+        }
       >
         <NotaEncabezado>
           {pestana === 'pendientes'
@@ -203,7 +246,11 @@ function ListaFactores() {
             : 'Toca cualquier producto para corregir cómo se vende.'}
         </NotaEncabezado>
       </BarraSuperior>
-      <Pestanas pestana={pestana} pendientes={consultaPendientes.data ? pendientes : null} onCambiar={setPestana} />
+      <Pestanas
+        pestana={pestana}
+        pendientes={consultaPendientes.data ? pendientes : null}
+        onCambiar={setPestana}
+      />
       {pestana === 'pendientes' ? (
         <ContenidoPendientes
           consulta={consultaPendientes}
@@ -219,8 +266,14 @@ function ListaFactores() {
           onElegir={(p) => setSeleccionado(productoAConfirmar(p))}
         />
       )}
-      <ModalConfirmarProducto producto={seleccionado} onCerrar={() => setSeleccionado(null)} />
-      <ModalFamilia familia={familiaAbierta} onCerrar={() => setFamiliaAbierta(null)} />
+      <ModalConfirmarProducto
+        producto={seleccionado}
+        onCerrar={() => setSeleccionado(null)}
+      />
+      <ModalFamilia
+        familia={familiaAbierta}
+        onCerrar={() => setFamiliaAbierta(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -276,10 +329,11 @@ function Pestanas({
   pendientes: number | null;
   onCambiar: (p: Pestana) => void;
 }) {
-  const opciones: { valor: Pestana; texto: string; contador: number | null }[] = [
-    { valor: 'pendientes', texto: 'Por confirmar', contador: pendientes },
-    { valor: 'todos', texto: 'Todos', contador: null },
-  ];
+  const opciones: { valor: Pestana; texto: string; contador: number | null }[] =
+    [
+      { valor: 'pendientes', texto: 'Por confirmar', contador: pendientes },
+      { valor: 'todos', texto: 'Todos', contador: null },
+    ];
   return (
     <View style={estilos.marcoPestanas}>
       <View style={estilos.pestanas} accessibilityRole="tablist">
@@ -291,12 +345,28 @@ function Pestanas({
               onPress={() => onCambiar(o.valor)}
               accessibilityRole="tab"
               accessibilityState={{ selected: activa }}
-              accessibilityLabel={o.contador !== null ? `${o.texto}: ${textoProductos(o.contador)}` : o.texto}
-              style={({ pressed }) => [estilos.pestana, activa && estilos.pestanaActiva, pressed && !activa && estilos.pestanaPresionada]}
+              accessibilityLabel={
+                o.contador !== null
+                  ? `${o.texto}: ${textoProductos(o.contador)}`
+                  : o.texto
+              }
+              style={({ pressed }) => [
+                estilos.pestana,
+                activa && estilos.pestanaActiva,
+                pressed && !activa && estilos.pestanaPresionada,
+              ]}
             >
-              <Text style={[estilos.textoPestana, activa && estilos.textoPestanaActiva]} numberOfLines={1}>
+              <Text
+                style={[
+                  estilos.textoPestana,
+                  activa && estilos.textoPestanaActiva,
+                ]}
+                numberOfLines={1}
+              >
                 {o.texto}
-                {o.contador !== null && o.contador > 0 ? ` (${o.contador})` : ''}
+                {o.contador !== null && o.contador > 0
+                  ? ` (${o.contador})`
+                  : ''}
               </Text>
             </Pulsable>
           );
@@ -321,7 +391,8 @@ function ContenidoPendientes({
   const { refrescando, refrescar } = useRefrescar(consulta);
 
   if (consulta.isPending) return <EsqueletoLista />;
-  if (consulta.isError && familias.length === 0) return <ErrorLista consulta={consulta} />;
+  if (consulta.isError && familias.length === 0)
+    return <ErrorLista consulta={consulta} />;
   if (familias.length === 0) {
     return (
       <EstadoVacio
@@ -343,9 +414,15 @@ function ContenidoPendientes({
       // Fijo, el encabezado taparía parte de los productos.
       stickySectionHeadersEnabled={false}
       renderSectionHeader={({ section }) => (
-        <EncabezadoFamilia familia={section} porConfirmar onAcciones={() => onAccionesFamilia(section)} />
+        <EncabezadoFamilia
+          familia={section}
+          porConfirmar
+          onAcciones={() => onAccionesFamilia(section)}
+        />
       )}
-      renderItem={({ item }) => <FilaPendiente producto={item} onPress={() => onElegir(item)} />}
+      renderItem={({ item }) => (
+        <FilaPendiente producto={item} onPress={() => onElegir(item)} />
+      )}
       refreshing={refrescando}
       onRefresh={refrescar}
     />
@@ -364,7 +441,10 @@ function ContenidoCatalogo({
   onElegir: (p: ProductoCatalogo) => void;
 }) {
   const { refrescando, refrescar } = useRefrescar(consulta);
-  const familias = useMemo(() => filtrarCatalogo(consulta.data ?? [], busqueda), [consulta.data, busqueda]);
+  const familias = useMemo(
+    () => filtrarCatalogo(consulta.data ?? [], busqueda),
+    [consulta.data, busqueda],
+  );
   const encontrados = contarPendientes(familias);
 
   let lista;
@@ -385,7 +465,12 @@ function ContenidoCatalogo({
         icono="caja"
         titulo="No hay productos activos"
         detalle="Sincroniza el catálogo con Handy para traerlos."
-        accion={{ texto: 'Actualizar', onPress: refrescar, cargando: refrescando, textoCargando: 'Actualizando…' }}
+        accion={{
+          texto: 'Actualizar',
+          onPress: refrescar,
+          cargando: refrescando,
+          textoCargando: 'Actualizando…',
+        }}
       />
     );
   } else {
@@ -399,8 +484,12 @@ function ContenidoCatalogo({
         // Tocar un producto con el teclado abierto lo abre a la primera.
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        renderSectionHeader={({ section }) => <EncabezadoFamilia familia={section} />}
-        renderItem={({ item }) => <FilaCatalogo producto={item} onPress={() => onElegir(item)} />}
+        renderSectionHeader={({ section }) => (
+          <EncabezadoFamilia familia={section} />
+        )}
+        renderItem={({ item }) => (
+          <FilaCatalogo producto={item} onPress={() => onElegir(item)} />
+        )}
         refreshing={refrescando}
         onRefresh={refrescar}
       />
@@ -416,7 +505,11 @@ function ContenidoCatalogo({
           valor={busqueda}
           onCambiar={onBuscar}
           ejemplo="Nombre, familia o código"
-          ayuda={busqueda.trim() && consulta.data ? `${textoProductos(encontrados)} encontrados` : null}
+          ayuda={
+            busqueda.trim() && consulta.data
+              ? `${textoProductos(encontrados)} encontrados`
+              : null
+          }
           maxLength={60}
         />
       </View>
@@ -427,7 +520,10 @@ function ContenidoCatalogo({
 
 function EsqueletoLista() {
   return (
-    <Esqueleto etiqueta="Cargando productos por confirmar" style={estilos.esqueleto}>
+    <Esqueleto
+      etiqueta="Cargando productos por confirmar"
+      style={estilos.esqueleto}
+    >
       <View style={estilos.encabezadoFamiliaEsqueleto}>
         <LineaEsqueleto nivel="titulo" ancho="45%" />
       </View>
@@ -460,11 +556,21 @@ function EncabezadoFamilia({
 }) {
   // Sin familia no hay nada en común entre ellos; con uno solo, basta su fila.
   // En el catálogo completo no hay acción de familia: corregir es uno por uno.
-  const conAcciones = onAcciones !== undefined && familia.familia !== null && familia.data.length > 1;
-  const cantidad = porConfirmar ? `${familia.data.length} por confirmar` : textoProductos(familia.data.length);
+  const conAcciones =
+    onAcciones !== undefined &&
+    familia.familia !== null &&
+    familia.data.length > 1;
+  const cantidad = porConfirmar
+    ? `${familia.data.length} por confirmar`
+    : textoProductos(familia.data.length);
   return (
     <View style={estilos.encabezadoFamilia}>
-      <View style={estilos.lineaFamilia} accessible accessibilityRole="header" accessibilityLabel={`${familia.titulo}: ${cantidad}`}>
+      <View
+        style={estilos.lineaFamilia}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${familia.titulo}: ${cantidad}`}
+      >
         <Text style={estilos.textoFamilia} numberOfLines={2}>
           {formatearNombreFamilia(familia.titulo)}
         </Text>
@@ -481,11 +587,23 @@ function EncabezadoFamilia({
           accessibilityLabel={`Confirmar toda la familia ${familia.titulo}`}
           accessibilityHint="Abre las opciones para confirmar todos sus productos de una vez"
           // A lo ancho ya pasa de TOQUE_MINIMO; a lo alto se completa sin hacer crecer la fila.
-          hitSlop={{ top: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2, bottom: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2 }}
-          style={({ pressed }) => [estilos.botonAcciones, pressed && estilos.botonAccionesPresionado]}
+          hitSlop={{
+            top: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2,
+            bottom: (TOQUE_MINIMO - ALTO_BOTON_ACCIONES) / 2,
+          }}
+          style={({ pressed }) => [
+            estilos.botonAcciones,
+            pressed && estilos.botonAccionesPresionado,
+          ]}
         >
           {({ pressed }) => (
-            <Text style={[estilos.textoBotonAcciones, pressed && estilos.textoInvertido]} numberOfLines={1}>
+            <Text
+              style={[
+                estilos.textoBotonAcciones,
+                pressed && estilos.textoInvertido,
+              ]}
+              numberOfLines={1}
+            >
               Confirmar todos
             </Text>
           )}
@@ -510,7 +628,13 @@ function EtiquetaSugerido({ sugerido }: { sugerido: number | null }) {
   );
 }
 
-function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onPress: () => void }) {
+function FilaPendiente({
+  producto,
+  onPress,
+}: {
+  producto: ProductoPendiente;
+  onPress: () => void;
+}) {
   return (
     <Tarjeta
       compacta
@@ -519,7 +643,9 @@ function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onP
       accessibilityLabel={[
         producto.nombre,
         producto.familia ? `Familia ${producto.familia}` : 'Sin familia',
-        producto.sugerido !== null ? `El nombre sugiere ${producto.sugerido} piezas` : 'El nombre no trae número de piezas',
+        producto.sugerido !== null
+          ? `El nombre sugiere ${producto.sugerido} piezas`
+          : 'El nombre no trae número de piezas',
       ].join('. ')}
       accessibilityHint="Confirmar cómo se vende"
     >
@@ -531,7 +657,9 @@ function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onP
       </View>
       <View style={estilos.lineaDatos}>
         <Text style={estilos.rotulo} numberOfLines={1}>
-          {producto.familia ? formatearNombreProducto(producto.familia) : 'Sin familia'}
+          {producto.familia
+            ? formatearNombreProducto(producto.familia)
+            : 'Sin familia'}
         </Text>
         <EtiquetaSugerido sugerido={producto.sugerido} />
       </View>
@@ -540,7 +668,13 @@ function FilaPendiente({ producto, onPress }: { producto: ProductoPendiente; onP
 }
 
 /** Un producto del catálogo completo: su empaque en palabras y quién lo confirmó. */
-function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPress: () => void }) {
+function FilaCatalogo({
+  producto,
+  onPress,
+}: {
+  producto: ProductoCatalogo;
+  onPress: () => void;
+}) {
   const empaque = textoEmpaque(producto.confirmado);
   const traza =
     producto.confirmado && producto.confirmadoPor
@@ -551,10 +685,19 @@ function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPre
       compacta
       onPress={onPress}
       style={estilos.fila}
-      accessibilityLabel={[producto.nombre, producto.familia ? `Familia ${producto.familia}` : 'Sin familia', empaque, traza]
+      accessibilityLabel={[
+        producto.nombre,
+        producto.familia ? `Familia ${producto.familia}` : 'Sin familia',
+        empaque,
+        traza,
+      ]
         .filter(Boolean)
         .join('. ')}
-      accessibilityHint={producto.confirmado ? 'Corregir cómo se vende' : 'Confirmar cómo se vende'}
+      accessibilityHint={
+        producto.confirmado
+          ? 'Corregir cómo se vende'
+          : 'Confirmar cómo se vende'
+      }
     >
       <View style={estilos.lineaNombre}>
         <Text style={estilos.nombre} numberOfLines={2}>
@@ -564,9 +707,14 @@ function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPre
       </View>
       <View style={estilos.lineaDatos}>
         <Text style={estilos.rotulo} numberOfLines={1}>
-          {producto.familia ? formatearNombreProducto(producto.familia) : 'Sin familia'}
+          {producto.familia
+            ? formatearNombreProducto(producto.familia)
+            : 'Sin familia'}
         </Text>
-        <Etiqueta texto={empaque} tono={producto.confirmado ? 'referencia' : 'pendiente'} />
+        <Etiqueta
+          texto={empaque}
+          tono={producto.confirmado ? 'referencia' : 'pendiente'}
+        />
       </View>
       {traza && (
         <Text style={estilos.traza} numberOfLines={1}>
@@ -583,16 +731,34 @@ function FilaCatalogo({ producto, onPress }: { producto: ProductoCatalogo; onPre
 
 type Paso = 'modalidad' | 'piezas' | 'resumen';
 
-function ModalConfirmarProducto({ producto, onCerrar }: { producto: ProductoAConfirmar | null; onCerrar: () => void }) {
+function ModalConfirmarProducto({
+  producto,
+  onCerrar,
+}: {
+  producto: ProductoAConfirmar | null;
+  onCerrar: () => void;
+}) {
   return (
     <Hoja visible={producto !== null} onCerrar={onCerrar}>
       {/* La clave reinicia los pasos al abrir otro producto. */}
-      {producto && <FlujoConfirmacion key={producto.code} producto={producto} onCerrar={onCerrar} />}
+      {producto && (
+        <FlujoConfirmacion
+          key={producto.code}
+          producto={producto}
+          onCerrar={onCerrar}
+        />
+      )}
     </Hoja>
   );
 }
 
-function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirmar; onCerrar: () => void }) {
+function FlujoConfirmacion({
+  producto,
+  onCerrar,
+}: {
+  producto: ProductoAConfirmar;
+  onCerrar: () => void;
+}) {
   const confirmar = useConfirmarFactor();
   // Se pregunta al abrir: al llegar al resumen ya se sabe si hay cargas afectadas.
   const cargasEnCurso = useCargasEnCurso(producto.code);
@@ -600,7 +766,9 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
   const [paso, setPaso] = useState<Paso>('modalidad');
   const [modalidad, setModalidad] = useState<ModalidadVentaApi | null>(null);
   // La sugerencia precargada: la primera tecla la reemplaza.
-  const [texto, setTexto] = useState(producto.sugerido !== null ? String(producto.sugerido) : '');
+  const [texto, setTexto] = useState(
+    producto.sugerido !== null ? String(producto.sugerido) : '',
+  );
   const [reemplazar, setReemplazar] = useState(producto.sugerido !== null);
 
   const enviando = confirmar.isPending;
@@ -620,7 +788,8 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
   const guardar = () => {
     let confirmacion: ConfirmacionFactor;
     if (modalidad === 'COMPLETO') confirmacion = { modalidadVenta: 'COMPLETO' };
-    else if (modalidad === 'POR_PIEZA' && piezas !== null) confirmacion = { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: piezas };
+    else if (modalidad === 'POR_PIEZA' && piezas !== null)
+      confirmacion = { modalidadVenta: 'POR_PIEZA', piezasPorPaquete: piezas };
     else return;
     confirmar.mutate(
       { code: producto.code, confirmacion },
@@ -656,7 +825,9 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
         <Text style={estilos.nombreModal} numberOfLines={3}>
           {formatearNombreProducto(producto.nombre)}
         </Text>
-        {producto.familia && <Text style={estilos.rotulo}>{producto.familia}</Text>}
+        {producto.familia && (
+          <Text style={estilos.rotulo}>{producto.familia}</Text>
+        )}
         {producto.actual && (
           <Text style={estilos.empaqueActual}>
             <Text style={estilos.negrita}>Hoy: </Text>
@@ -667,7 +838,11 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
 
       {paso === 'modalidad' && (
         <>
-          <Encabezado titulo="¿Cómo se vende este producto?" variante="plano" lineasTitulo={3} />
+          <Encabezado
+            titulo="¿Cómo se vende este producto?"
+            variante="plano"
+            lineasTitulo={3}
+          />
           <OpcionModalidad
             titulo="Se vende completo"
             descripcion="La bolsa o caja entera es una venta."
@@ -683,14 +858,23 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
             onPress={() => elegir('POR_PIEZA')}
           />
           <View style={estilos.botones}>
-            <Boton texto="Cancelar" variante="secundario" onPress={cerrar} style={estilos.botonFila} />
+            <Boton
+              texto="Cancelar"
+              variante="secundario"
+              onPress={cerrar}
+              style={estilos.botonFila}
+            />
           </View>
         </>
       )}
 
       {paso === 'piezas' && (
         <>
-          <Encabezado titulo="¿Cuántas piezas trae el paquete?" variante="plano" lineasTitulo={3} />
+          <Encabezado
+            titulo="¿Cuántas piezas trae el paquete?"
+            variante="plano"
+            lineasTitulo={3}
+          />
           <View style={estilos.lineaVisor}>
             <View
               style={estilos.visor}
@@ -698,7 +882,13 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
               accessibilityLabel={`Piezas por paquete: ${texto === '' ? 'sin capturar' : texto}`}
               accessibilityLiveRegion="polite"
             >
-              <Text style={[estilos.valorVisor, reemplazar && estilos.valorPorReemplazar]} numberOfLines={1}>
+              <Text
+                style={[
+                  estilos.valorVisor,
+                  reemplazar && estilos.valorPorReemplazar,
+                ]}
+                numberOfLines={1}
+              >
                 {texto === '' ? '—' : texto}
               </Text>
             </View>
@@ -720,7 +910,12 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
           </View>
           <TecladoPin onDigito={alDigito} onBorrar={alBorrar} />
           <View style={estilos.botones}>
-            <Boton texto="Atrás" variante="secundario" onPress={() => setPaso('modalidad')} style={estilos.botonFila} />
+            <Boton
+              texto="Atrás"
+              variante="secundario"
+              onPress={() => setPaso('modalidad')}
+              style={estilos.botonFila}
+            />
             <Boton
               texto="Continuar"
               onPress={() => {
@@ -737,23 +932,40 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
       {paso === 'resumen' && modalidad !== null && (
         <>
           <Encabezado titulo="Revisa antes de guardar" variante="plano" />
-          <ResumenModalidad modalidad={modalidad} piezas={modalidad === 'POR_PIEZA' ? piezas : null} />
-          {modalidad === 'COMPLETO' && producto.sugerido !== null && !corrige && (
+          <ResumenModalidad
+            modalidad={modalidad}
+            piezas={modalidad === 'POR_PIEZA' ? piezas : null}
+          />
+          {modalidad === 'COMPLETO' &&
+            producto.sugerido !== null &&
+            !corrige && (
+              <Text style={estilos.detalleModal}>
+                El {producto.sugerido} del nombre no se usa: solo distingue este
+                producto de otros parecidos.
+              </Text>
+            )}
+          {esMismoEmpaque(
+            producto.actual,
+            modalidad,
+            modalidad === 'POR_PIEZA' ? piezas : null,
+          ) ? (
             <Text style={estilos.detalleModal}>
-              El {producto.sugerido} del nombre no se usa: solo distingue este producto de otros parecidos.
+              Es el mismo empaque que ya tiene: guardar solo lo vuelve a
+              confirmar.
             </Text>
-          )}
-          {esMismoEmpaque(producto.actual, modalidad, modalidad === 'POR_PIEZA' ? piezas : null) ? (
-            <Text style={estilos.detalleModal}>Es el mismo empaque que ya tiene: guardar solo lo vuelve a confirmar.</Text>
           ) : (
             <>
-              {producto.actual && <AvisoCambioConfirmado actual={producto.actual} />}
+              {producto.actual && (
+                <AvisoCambioConfirmado actual={producto.actual} />
+              )}
               <AvisoCargasEnCurso consulta={cargasEnCurso} />
             </>
           )}
-          {confirmar.isError && !(confirmar.error instanceof ErrorApi && confirmar.error.estado === 401) && (
-            <AvisoError error={confirmar.error} />
-          )}
+          {confirmar.isError &&
+            !(
+              confirmar.error instanceof ErrorApi &&
+              confirmar.error.estado === 401
+            ) && <AvisoError error={confirmar.error} />}
           <View style={estilos.botones}>
             <Boton
               texto="Atrás"
@@ -766,7 +978,13 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
               style={estilos.botonFila}
             />
             <Boton
-              texto={confirmar.isError ? 'Reintentar' : corrige ? 'Guardar cambio' : 'Guardar'}
+              texto={
+                confirmar.isError
+                  ? 'Reintentar'
+                  : corrige
+                    ? 'Guardar cambio'
+                    : 'Guardar'
+              }
               onPress={guardar}
               cargando={enviando}
               textoCargando="Guardando…"
@@ -780,13 +998,18 @@ function FlujoConfirmacion({ producto, onCerrar }: { producto: ProductoAConfirma
 }
 
 /** Antes de guardar un cambio sobre algo ya confirmado: qué afecta y qué no. */
-function AvisoCambioConfirmado({ actual }: { actual: NonNullable<ProductoAConfirmar['actual']> }) {
+function AvisoCambioConfirmado({
+  actual,
+}: {
+  actual: NonNullable<ProductoAConfirmar['actual']>;
+}) {
   return (
     <Tarjeta tintada="discrepancia" compacta accessible>
       <Text style={estilos.tituloAviso}>Cambia un empaque ya confirmado</Text>
       <Text style={estilos.detalleModal}>
-        Hoy: {textoEmpaque(actual)}. El cambio decide cómo se calculan los conteos de este producto de aquí en adelante. Lo ya
-        enviado a Handy no se modifica.
+        Hoy: {textoEmpaque(actual)}. El cambio decide cómo se calculan los
+        conteos de este producto de aquí en adelante. Lo ya enviado a Handy no
+        se modifica.
       </Text>
     </Tarjeta>
   );
@@ -796,14 +1019,23 @@ function AvisoCambioConfirmado({ actual }: { actual: NonNullable<ProductoAConfir
  * Cargas sin enviar que ya contaron el producto: su total se calculó con el
  * empaque anterior y no se recalcula. No bloquea: el supervisor decide.
  */
-function AvisoCargasEnCurso({ consulta }: { consulta: ReturnType<typeof useCargasEnCurso> }) {
+function AvisoCargasEnCurso({
+  consulta,
+}: {
+  consulta: ReturnType<typeof useCargasEnCurso>;
+}) {
   if (consulta.isPending) {
-    return <Text style={estilos.textoAviso}>Revisando si hay cargas sin enviar con este producto…</Text>;
+    return (
+      <Text style={estilos.textoAviso}>
+        Revisando si hay cargas sin enviar con este producto…
+      </Text>
+    );
   }
   if (consulta.isError || consulta.data === null) {
     return (
       <Text style={estilos.textoAviso}>
-        No se pudo revisar si hay cargas sin enviar con este producto. Si hay alguna, revísala antes de enviarla.
+        No se pudo revisar si hay cargas sin enviar con este producto. Si hay
+        alguna, revísala antes de enviarla.
       </Text>
     );
   }
@@ -812,10 +1044,14 @@ function AvisoCargasEnCurso({ consulta }: { consulta: ReturnType<typeof useCarga
   return (
     <Tarjeta tintada="discrepancia" compacta accessible>
       <Text style={estilos.tituloAviso}>
-        {cantidad === 1 ? 'Hay 1 carga sin enviar' : `Hay ${textoCargas(cantidad)} sin enviar`} con este producto
+        {cantidad === 1
+          ? 'Hay 1 carga sin enviar'
+          : `Hay ${textoCargas(cantidad)} sin enviar`}{' '}
+        con este producto
       </Text>
       <Text style={estilos.detalleModal}>
-        Sus conteos se calcularon con el empaque anterior y no se recalculan solos. Revísalas antes de enviarlas a Handy.
+        Sus conteos se calcularon con el empaque anterior y no se recalculan
+        solos. Revísalas antes de enviarlas a Handy.
       </Text>
     </Tarjeta>
   );
@@ -830,7 +1066,13 @@ interface PropsOpcion {
 }
 
 /** Una opción grande: el contorno la marca como algo que se toca, igual que una tecla. */
-function OpcionModalidad({ titulo, descripcion, ejemplo, seleccionada, onPress }: PropsOpcion) {
+function OpcionModalidad({
+  titulo,
+  descripcion,
+  ejemplo,
+  seleccionada,
+  onPress,
+}: PropsOpcion) {
   return (
     <Pulsable
       onPress={onPress}
@@ -845,9 +1087,22 @@ function OpcionModalidad({ titulo, descripcion, ejemplo, seleccionada, onPress }
     >
       {({ pressed }) => (
         <>
-          <Text style={[estilos.tituloOpcion, pressed && estilos.textoInvertido]}>{titulo}</Text>
-          <Text style={[estilos.descripcionOpcion, pressed && estilos.textoInvertido]}>{descripcion}</Text>
-          <Text style={[estilos.ejemploOpcion, pressed && estilos.textoInvertido]}>
+          <Text
+            style={[estilos.tituloOpcion, pressed && estilos.textoInvertido]}
+          >
+            {titulo}
+          </Text>
+          <Text
+            style={[
+              estilos.descripcionOpcion,
+              pressed && estilos.textoInvertido,
+            ]}
+          >
+            {descripcion}
+          </Text>
+          <Text
+            style={[estilos.ejemploOpcion, pressed && estilos.textoInvertido]}
+          >
             <Text style={estilos.rotuloEjemplo}>Ejemplo: </Text>
             {ejemplo}
           </Text>
@@ -858,12 +1113,35 @@ function OpcionModalidad({ titulo, descripcion, ejemplo, seleccionada, onPress }
 }
 
 /** Lo que se eligió y, en grande, lo que va a pasar con un conteo de ejemplo. */
-function ResumenModalidad({ modalidad, piezas, deVarios = false }: { modalidad: ModalidadVentaApi; piezas: number | null; deVarios?: boolean }) {
-  const datos: Dato[] = [{ rotulo: 'Cómo se vende', valor: modalidad === 'COMPLETO' ? 'Completo' : 'Por pieza' }];
-  if (modalidad === 'POR_PIEZA') datos.push({ rotulo: 'Piezas por paquete', valor: piezas !== null ? String(piezas) : null, cifra: true });
+function ResumenModalidad({
+  modalidad,
+  piezas,
+  deVarios = false,
+}: {
+  modalidad: ModalidadVentaApi;
+  piezas: number | null;
+  deVarios?: boolean;
+}) {
+  const datos: Dato[] = [
+    {
+      rotulo: 'Cómo se vende',
+      valor: modalidad === 'COMPLETO' ? 'Completo' : 'Por pieza',
+    },
+  ];
+  if (modalidad === 'POR_PIEZA')
+    datos.push({
+      rotulo: 'Piezas por paquete',
+      valor: piezas !== null ? String(piezas) : null,
+      cifra: true,
+    });
   const frase = resumenConfirmacion(modalidad, piezas, deVarios);
   return (
-    <Tarjeta elevacion={0} compacta accessible accessibilityLabel={`${datos.map((d) => `${d.rotulo}: ${d.valor}`).join('. ')}. ${frase}`}>
+    <Tarjeta
+      elevacion={0}
+      compacta
+      accessible
+      accessibilityLabel={`${datos.map((d) => `${d.rotulo}: ${d.valor}`).join('. ')}. ${frase}`}
+    >
       <Datos datos={datos} />
       <Text style={estilos.fraseResumen}>{frase}</Text>
     </Tarjeta>
@@ -874,21 +1152,46 @@ function ResumenModalidad({ modalidad, piezas, deVarios = false }: { modalidad: 
 // Toda una familia de una vez: menú (completos o por pieza) → confirmación
 // ---------------------------------------------------------------------------
 
-function ModalFamilia({ familia, onCerrar }: { familia: FamiliaPendiente | null; onCerrar: () => void }) {
+function ModalFamilia({
+  familia,
+  onCerrar,
+}: {
+  familia: FamiliaPendiente | null;
+  onCerrar: () => void;
+}) {
   return (
     <Hoja visible={familia !== null} onCerrar={onCerrar}>
-      {familia && <FlujoFamilia key={familia.titulo} familia={familia} onCerrar={onCerrar} />}
+      {familia && (
+        <FlujoFamilia
+          key={familia.titulo}
+          familia={familia}
+          onCerrar={onCerrar}
+        />
+      )}
     </Hoja>
   );
 }
 
-function FlujoFamilia({ familia, onCerrar }: { familia: FamiliaPendiente; onCerrar: () => void }) {
+function FlujoFamilia({
+  familia,
+  onCerrar,
+}: {
+  familia: FamiliaPendiente;
+  onCerrar: () => void;
+}) {
   // La lista de la familia al abrir: si alguien confirma uno mientras tanto, esto no cambia bajo el dedo.
   const [productos] = useState(familia.data);
   const [modalidad, setModalidad] = useState<ModalidadVentaApi | null>(null);
 
   if (modalidad === null) {
-    return <MenuFamilia titulo={familia.titulo} productos={productos} onElegir={setModalidad} onCerrar={onCerrar} />;
+    return (
+      <MenuFamilia
+        titulo={familia.titulo}
+        productos={productos}
+        onElegir={setModalidad}
+        onCerrar={onCerrar}
+      />
+    );
   }
   return (
     <ConfirmacionFamilia
@@ -918,7 +1221,8 @@ function MenuFamilia({
     <View style={estilos.modal}>
       <Encabezado titulo={titulo} variante="plano" lineasTitulo={3} />
       <Text style={estilos.detalleModal}>
-        {textoProductos(total)} por confirmar. Elige cómo se venden; antes de guardar se pide confirmar.
+        {textoProductos(total)} por confirmar. Elige cómo se venden; antes de
+        guardar se pide confirmar.
       </Text>
       <GrupoMenu>
         <FilaMenu
@@ -940,11 +1244,17 @@ function MenuFamilia({
       </GrupoMenu>
       {aConfirmar.length === 0 && (
         <Text style={estilos.textoAviso}>
-          Ninguno dice en el nombre cuántas piezas trae: si se venden por pieza, confírmalos uno por uno.
+          Ninguno dice en el nombre cuántas piezas trae: si se venden por pieza,
+          confírmalos uno por uno.
         </Text>
       )}
       <View style={estilos.botones}>
-        <Boton texto="Cancelar" variante="secundario" onPress={onCerrar} style={estilos.botonFila} />
+        <Boton
+          texto="Cancelar"
+          variante="secundario"
+          onPress={onCerrar}
+          style={estilos.botonFila}
+        />
       </View>
     </View>
   );
@@ -965,7 +1275,10 @@ function ConfirmacionFamilia({
 }) {
   const [progreso, setProgreso] = useState<ProgresoFamilia | null>(null);
   const confirmar = useConfirmarFamilia(setProgreso);
-  const { aConfirmar, sinNumero } = useMemo(() => planFamilia(productos, modalidad), [productos, modalidad]);
+  const { aConfirmar, sinNumero } = useMemo(
+    () => planFamilia(productos, modalidad),
+    [productos, modalidad],
+  );
   // Los que ya se guardaron en intentos anteriores: reintentar sigue desde ahí.
   const [guardados, setGuardados] = useState(0);
   const total = aConfirmar.length;
@@ -981,12 +1294,14 @@ function ConfirmacionFamilia({
       onError: (e) => {
         if (!(e instanceof ErrorFamilia)) return;
         setGuardados((g) => g + e.guardados);
-        if (e.causa instanceof ErrorApi && e.causa.estado === 401) sesionVencida();
+        if (e.causa instanceof ErrorApi && e.causa.estado === 401)
+          sesionVencida();
       },
     });
   };
 
-  const error = confirmar.error instanceof ErrorFamilia ? confirmar.error : null;
+  const error =
+    confirmar.error instanceof ErrorFamilia ? confirmar.error : null;
   const causa = error?.causa ?? confirmar.error;
   const hechos = guardados + (progreso?.hechos ?? 0);
 
@@ -995,15 +1310,26 @@ function ConfirmacionFamilia({
       {modalidad === 'COMPLETO' ? (
         <DetalleFamiliaCompleta titulo={titulo} productos={aConfirmar} />
       ) : (
-        <DetalleFamiliaPorPieza titulo={titulo} productos={aConfirmar} sinNumero={sinNumero} />
-      )}
-      {confirmar.isError && !(causa instanceof ErrorApi && causa.estado === 401) && (
-        <AvisoError
-          error={causa}
-          titulo={guardados > 0 ? `Se guardaron ${guardados} de ${total}` : undefined}
-          nota={guardados > 0 ? 'Reintentar sigue con los que faltan.' : undefined}
+        <DetalleFamiliaPorPieza
+          titulo={titulo}
+          productos={aConfirmar}
+          sinNumero={sinNumero}
         />
       )}
+      {confirmar.isError &&
+        !(causa instanceof ErrorApi && causa.estado === 401) && (
+          <AvisoError
+            error={causa}
+            titulo={
+              guardados > 0
+                ? `Se guardaron ${guardados} de ${total}`
+                : undefined
+            }
+            nota={
+              guardados > 0 ? 'Reintentar sigue con los que faltan.' : undefined
+            }
+          />
+        )}
       <View style={estilos.botones}>
         {/* Con algo ya guardado, volver al menú ofrecería una lista que ya no es cierta. */}
         <Boton
@@ -1014,10 +1340,16 @@ function ConfirmacionFamilia({
           style={estilos.botonFila}
         />
         <Boton
-          texto={confirmar.isError ? 'Reintentar' : `Confirmar ${textoProductos(total)}`}
+          texto={
+            confirmar.isError
+              ? 'Reintentar'
+              : `Confirmar ${textoProductos(total)}`
+          }
           onPress={guardar}
           cargando={enviando}
-          textoCargando={progreso ? `Guardando ${hechos} de ${total}…` : 'Guardando…'}
+          textoCargando={
+            progreso ? `Guardando ${hechos} de ${total}…` : 'Guardando…'
+          }
           style={estilos.botonFila}
         />
       </View>
@@ -1025,20 +1357,32 @@ function ConfirmacionFamilia({
   );
 }
 
-function DetalleFamiliaCompleta({ titulo, productos }: { titulo: string; productos: readonly ProductoConConfirmacion[] }) {
+function DetalleFamiliaCompleta({
+  titulo,
+  productos,
+}: {
+  titulo: string;
+  productos: readonly ProductoConConfirmacion[];
+}) {
   const conNumero = productos.filter((p) => p.sugerido !== null).length;
   return (
     <>
-      <Encabezado titulo={`¿Toda la familia ${titulo} se vende completa?`} variante="plano" lineasTitulo={3} />
+      <Encabezado
+        titulo={`¿Toda la familia ${titulo} se vende completa?`}
+        variante="plano"
+        lineasTitulo={3}
+      />
       <Text style={estilos.detalleModal}>
-        Se confirmarán <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text> como “se vende completo”: la bolsa
-        o caja entera es una venta y nunca se abre.
+        Se confirmarán{' '}
+        <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text>{' '}
+        como “se vende completo”: la bolsa o caja entera es una venta y nunca se
+        abre.
       </Text>
       <ResumenModalidad modalidad="COMPLETO" piezas={null} deVarios />
       {conNumero > 0 && (
         <Text style={estilos.detalleModal}>
-          {conNumero === 1 ? '1 de ellos trae' : `${conNumero} de ellos traen`} un número en el nombre (como c/70): no se usará
-          para multiplicar.
+          {conNumero === 1 ? '1 de ellos trae' : `${conNumero} de ellos traen`}{' '}
+          un número en el nombre (como c/70): no se usará para multiplicar.
         </Text>
       )}
       <Tarjeta elevacion={0} compacta>
@@ -1049,7 +1393,10 @@ function DetalleFamiliaCompleta({ titulo, productos }: { titulo: string; product
           </Text>
         ))}
       </Tarjeta>
-      <Text style={estilos.detalleModal}>Si alguno se abre y se vende por pieza, vuelve atrás y confírmalo primero por separado.</Text>
+      <Text style={estilos.detalleModal}>
+        Si alguno se abre y se vende por pieza, vuelve atrás y confírmalo
+        primero por separado.
+      </Text>
     </>
   );
 }
@@ -1066,14 +1413,25 @@ function DetalleFamiliaPorPieza({
   const ejemplo = productos[0];
   return (
     <>
-      <Encabezado titulo={`¿Toda la familia ${titulo} se vende por pieza?`} variante="plano" lineasTitulo={3} />
+      <Encabezado
+        titulo={`¿Toda la familia ${titulo} se vende por pieza?`}
+        variante="plano"
+        lineasTitulo={3}
+      />
       <Text style={estilos.detalleModal}>
-        Se confirmarán <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text> como “se vende por pieza”, cada
-        uno con las piezas que dice su propio nombre.
+        Se confirmarán{' '}
+        <Text style={estilos.negrita}>{textoProductos(productos.length)}</Text>{' '}
+        como “se vende por pieza”, cada uno con las piezas que dice su propio
+        nombre.
       </Text>
       {ejemplo && ejemplo.sugerido !== null && (
         <Tarjeta elevacion={0} compacta accessible>
-          <Text style={estilos.fraseResumen}>{resumenPorPiezaDe(formatearNombreProducto(ejemplo.nombre), ejemplo.sugerido)}</Text>
+          <Text style={estilos.fraseResumen}>
+            {resumenPorPiezaDe(
+              formatearNombreProducto(ejemplo.nombre),
+              ejemplo.sugerido,
+            )}
+          </Text>
         </Tarjeta>
       )}
       <Tarjeta elevacion={0} compacta>
@@ -1085,28 +1443,40 @@ function DetalleFamiliaPorPieza({
             accessible
             accessibilityLabel={`${p.nombre}: ${p.sugerido} piezas por paquete`}
           >
-            <Text style={[estilos.productoFamilia, estilos.nombreProductoFamilia]} numberOfLines={2}>
+            <Text
+              style={[estilos.productoFamilia, estilos.nombreProductoFamilia]}
+              numberOfLines={2}
+            >
               {formatearNombreProducto(p.nombre)}
             </Text>
-            <Text style={estilos.piezasProductoFamilia}>{p.sugerido} por paquete</Text>
+            <Text style={estilos.piezasProductoFamilia}>
+              {p.sugerido} por paquete
+            </Text>
           </View>
         ))}
       </Tarjeta>
       <Text style={estilos.detalleModal}>
-        Los números salen del nombre. Si alguno no coincide con lo que trae el paquete, vuelve atrás y confírmalo primero por
-        separado.
+        Los números salen del nombre. Si alguno no coincide con lo que trae el
+        paquete, vuelve atrás y confírmalo primero por separado.
       </Text>
       {sinNumero.length > 0 && (
         <Tarjeta tintada="discrepancia" compacta accessible>
           <Text style={estilos.tituloAviso}>
-            {sinNumero.length === 1 ? '1 se queda sin confirmar' : `${sinNumero.length} se quedan sin confirmar`}
+            {sinNumero.length === 1
+              ? '1 se queda sin confirmar'
+              : `${sinNumero.length} se quedan sin confirmar`}
           </Text>
           <Text style={estilos.detalleModal}>
-            Su nombre no dice cuántas piezas trae. Seguirá{sinNumero.length === 1 ? '' : 'n'} en la lista para confirmarlo
+            Su nombre no dice cuántas piezas trae. Seguirá
+            {sinNumero.length === 1 ? '' : 'n'} en la lista para confirmarlo
             {sinNumero.length === 1 ? '' : 's'} uno por uno:
           </Text>
           {sinNumero.map((p) => (
-            <Text key={p.code} style={estilos.productoFamilia} numberOfLines={2}>
+            <Text
+              key={p.code}
+              style={estilos.productoFamilia}
+              numberOfLines={2}
+            >
               {formatearNombreProducto(p.nombre)}
             </Text>
           ))}
@@ -1117,7 +1487,15 @@ function DetalleFamiliaPorPieza({
 }
 
 /** El error de un guardado: sin señal es aviso, lo demás es error. */
-function AvisoError({ error, titulo, nota }: { error: unknown; titulo?: string; nota?: string }) {
+function AvisoError({
+  error,
+  titulo,
+  nota,
+}: {
+  error: unknown;
+  titulo?: string;
+  nota?: string;
+}) {
   const info = detalleError(error);
   return (
     <BloqueError

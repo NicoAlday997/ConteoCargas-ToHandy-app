@@ -8,7 +8,11 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { sentir, type Tacto } from '../../theme/tacto';
 import { RESORTES } from '../../theme/tokens';
@@ -37,7 +41,9 @@ interface Props extends Omit<PressableProps, 'style' | 'children' | 'onPress'> {
    * Sin ella no se mueve: la respuesta es solo tonal.
    */
   escala?: number;
-  style?: StyleProp<ViewStyle> | ((estado: PressableStateCallbackType) => StyleProp<ViewStyle>);
+  style?:
+    | StyleProp<ViewStyle>
+    | ((estado: PressableStateCallbackType) => StyleProp<ViewStyle>);
   children?: ReactNode | ((estado: PressableStateCallbackType) => ReactNode);
 }
 
@@ -64,7 +70,9 @@ export function Pulsable({
   const ultimoToque = useRef(0);
   const [presionado, setPresionado] = useState(false);
   const tamano = useSharedValue(1);
-  const estiloEscala = useAnimatedStyle(() => ({ transform: [{ scale: tamano.value }] }));
+  const estiloEscala = useAnimatedStyle(() => ({
+    transform: [{ scale: tamano.value }],
+  }));
 
   const alTocar = (evento: GestureResponderEvent) => {
     if (!onPress) return;
@@ -88,7 +96,8 @@ export function Pulsable({
       onPress={alTocar}
       onPressIn={(evento) => {
         setPresionado(true);
-        if (escala !== undefined) tamano.set(withSpring(escala, RESORTES.presion));
+        if (escala !== undefined)
+          tamano.set(withSpring(escala, RESORTES.presion));
         onPressIn?.(evento);
       }}
       onPressOut={(evento) => {
@@ -96,8 +105,14 @@ export function Pulsable({
         if (escala !== undefined) tamano.set(withSpring(1, RESORTES.presion));
         onPressOut?.(evento);
       }}
-      android_ripple={Platform.OS === 'android' && onda && !disabled ? { color: onda, foreground: true } : undefined}
-      style={escala !== undefined ? [estiloResuelto, estiloEscala] : estiloResuelto}
+      android_ripple={
+        Platform.OS === 'android' && onda && !disabled
+          ? { color: onda, foreground: true }
+          : undefined
+      }
+      style={
+        escala !== undefined ? [estiloResuelto, estiloEscala] : estiloResuelto
+      }
     >
       {hijos}
     </PressableAnimado>

@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useBarraEstado } from '../../theme/barra-estado';
@@ -82,12 +88,26 @@ export function Encabezado({
     return (
       <View style={estilos.plano}>
         <View style={estilos.fila}>
-          {onVolver && <BotonVolver onVolver={onVolver} etiqueta={etiquetaVolver} sobreMarca={false} />}
-          <View style={[estilos.titulos, onVolver && estilos.titulosConVolverPlano]}>
-            <Text style={estilos.tituloPlano} accessibilityRole="header" numberOfLines={lineas}>
+          {onVolver && (
+            <BotonVolver
+              onVolver={onVolver}
+              etiqueta={etiquetaVolver}
+              sobreMarca={false}
+            />
+          )}
+          <View
+            style={[estilos.titulos, onVolver && estilos.titulosConVolverPlano]}
+          >
+            <Text
+              style={estilos.tituloPlano}
+              accessibilityRole="header"
+              numberOfLines={lineas}
+            >
               {titulo}
             </Text>
-            {subtitulo ? <Text style={estilos.subtituloPlano}>{subtitulo}</Text> : null}
+            {subtitulo ? (
+              <Text style={estilos.subtituloPlano}>{subtitulo}</Text>
+            ) : null}
             {children}
           </View>
           {accion}
@@ -99,10 +119,18 @@ export function Encabezado({
 
   return (
     <ContextoMarca.Provider value>
-      <View style={[estilos.heroe, { paddingTop: margenes.top + ESPACIADO.md }]}>
+      <View
+        style={[estilos.heroe, { paddingTop: margenes.top + ESPACIADO.md }]}
+      >
         <Degradado degradado={DEGRADADOS.marca} halo />
         <View style={estilos.fila}>
-          {onVolver && <BotonVolver onVolver={onVolver} etiqueta={etiquetaVolver} sobreMarca />}
+          {onVolver && (
+            <BotonVolver
+              onVolver={onVolver}
+              etiqueta={etiquetaVolver}
+              sobreMarca
+            />
+          )}
           <View style={[estilos.titulos, onVolver && estilos.titulosConVolver]}>
             <Text
               style={estilos.titulo}
@@ -122,13 +150,24 @@ export function Encabezado({
           {accion}
         </View>
         {inferior}
-        <View pointerEvents="none" style={[estilos.montura, { backgroundColor: fondoInferior }]} />
+        <View
+          pointerEvents="none"
+          style={[estilos.montura, { backgroundColor: fondoInferior }]}
+        />
       </View>
     </ContextoMarca.Provider>
   );
 }
 
-function BotonVolver({ onVolver, etiqueta, sobreMarca }: { onVolver: () => void; etiqueta: string; sobreMarca: boolean }) {
+function BotonVolver({
+  onVolver,
+  etiqueta,
+  sobreMarca,
+}: {
+  onVolver: () => void;
+  etiqueta: string;
+  sobreMarca: boolean;
+}) {
   return (
     <Pulsable
       onPress={onVolver}
@@ -139,10 +178,17 @@ function BotonVolver({ onVolver, etiqueta, sobreMarca }: { onVolver: () => void;
       style={({ pressed }) => [
         estilos.botonVolver,
         sobreMarca ? estilos.botonVolverMarca : estilos.botonVolverClaro,
-        pressed && (sobreMarca ? estilos.botonVolverPresionadoMarca : estilos.botonVolverPresionado),
+        pressed &&
+          (sobreMarca
+            ? estilos.botonVolverPresionadoMarca
+            : estilos.botonVolverPresionado),
       ]}
     >
-      <Chevron direccion="izquierda" tamano={ESPACIADO.xl - ESPACIADO.xs} color={sobreMarca ? COLORES.textoSobreColor : COLORES.texto} />
+      <Chevron
+        direccion="izquierda"
+        tamano={ESPACIADO.xl - ESPACIADO.xs}
+        color={sobreMarca ? COLORES.textoSobreColor : COLORES.texto}
+      />
     </Pulsable>
   );
 }
@@ -177,7 +223,13 @@ const CURVA_AVANCE = Easing.bezier(...CURVA_SALIDA);
  *   7 de 14  → 0.5  × canal: exactamente la mitad.
  *   14 de 14 → 1    × canal: el extremo derecho.
  */
-export function BarraAvance({ actual, total }: { actual: number; total: number }) {
+export function BarraAvance({
+  actual,
+  total,
+}: {
+  actual: number;
+  total: number;
+}) {
   const avance = fraccionAvance(actual, total);
   const reducirMovimiento = useReducedMotion();
   const largo = useSharedValue(avance);
@@ -185,9 +237,14 @@ export function BarraAvance({ actual, total }: { actual: number; total: number }
   useEffect(() => {
     largo.value = reducirMovimiento
       ? avance
-      : withTiming(avance, { duration: MOVIMIENTO.carril, easing: CURVA_AVANCE });
+      : withTiming(avance, {
+          duration: MOVIMIENTO.carril,
+          easing: CURVA_AVANCE,
+        });
   }, [avance, largo, reducirMovimiento]);
-  const estiloRelleno = useAnimatedStyle(() => ({ width: largo.value * anchoCanal.value }));
+  const estiloRelleno = useAnimatedStyle(() => ({
+    width: largo.value * anchoCanal.value,
+  }));
   const alMedirCanal = (e: LayoutChangeEvent) => {
     anchoCanal.value = e.nativeEvent.layout.width;
   };
@@ -214,10 +271,19 @@ export function useSobreMarca(): boolean {
 }
 
 /** Contexto dentro del encabezado: se retira frente al título y al subtítulo. */
-export function NotaEncabezado({ children, lineas = 2 }: { children: ReactNode; lineas?: number }) {
+export function NotaEncabezado({
+  children,
+  lineas = 2,
+}: {
+  children: ReactNode;
+  lineas?: number;
+}) {
   const sobreMarca = useSobreMarca();
   return (
-    <Text style={[estilos.nota, sobreMarca && estilos.notaMarca]} numberOfLines={lineas}>
+    <Text
+      style={[estilos.nota, sobreMarca && estilos.notaMarca]}
+      numberOfLines={lineas}
+    >
       {children}
     </Text>
   );

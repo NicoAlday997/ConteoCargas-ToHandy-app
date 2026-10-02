@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
-import { ETIQUETAS_TIPO_CARGA, type CargaPendienteApi, type TipoCarga } from '../api/cargas';
+import {
+  ETIQUETAS_TIPO_CARGA,
+  type CargaPendienteApi,
+  type TipoCarga,
+} from '../api/cargas';
 import { ErrorApi, ErrorRed } from '../api/cliente';
-import { useAbrirSesion, useDesbloquearCarga, usePendientesVerificacion } from '../api/hooks-cargas';
+import {
+  useAbrirSesion,
+  useDesbloquearCarga,
+  usePendientesVerificacion,
+} from '../api/hooks-cargas';
 import {
   AccionesHoja,
   BloqueError,
@@ -24,7 +32,12 @@ import {
 } from '../componentes/base';
 import type { CargaAbierta } from '../conteo/almacen-conteo';
 import { estaConectado } from '../conteo/cola-sincronizacion';
-import { diaDesdeApi, diaNegocio, horaNegocio, textoSalidaCorta } from '../conteo/fecha-operativa';
+import {
+  diaDesdeApi,
+  diaNegocio,
+  horaNegocio,
+  textoSalidaCorta,
+} from '../conteo/fecha-operativa';
 import {
   COLORES,
   SOMBRAS,
@@ -61,8 +74,13 @@ function normalizar(fila: CargaPendienteApi): CargaEnCola | null {
   if (!fila.id) return null;
   const fecha = fila.fechaConteo ? new Date(fila.fechaConteo) : null;
   let estado: CargaEnCola['estado'] = 'lista';
-  if (fila.estadoVerificacion === 'BLOQUEADA_CORTE_PENDIENTE' || fila.bloqueadaPorCorte) estado = 'bloqueada';
-  else if (fila.estadoVerificacion === 'EN_CURSO_PROPIA' && fila.miSesionId) estado = 'propia';
+  if (
+    fila.estadoVerificacion === 'BLOQUEADA_CORTE_PENDIENTE' ||
+    fila.bloqueadaPorCorte
+  )
+    estado = 'bloqueada';
+  else if (fila.estadoVerificacion === 'EN_CURSO_PROPIA' && fila.miSesionId)
+    estado = 'propia';
   else if (fila.estadoVerificacion === 'EN_CURSO_OTRO') estado = 'otro';
   return {
     id: fila.id,
@@ -71,7 +89,8 @@ function normalizar(fila: CargaPendienteApi): CargaEnCola | null {
     tipo: fila.tipo,
     fechaConteo: fecha && !Number.isNaN(fecha.getTime()) ? fecha : null,
     fechaOperativa: diaDesdeApi(fila.fechaOperativa),
-    totalProductos: typeof fila.totalProductos === 'number' ? fila.totalProductos : null,
+    totalProductos:
+      typeof fila.totalProductos === 'number' ? fila.totalProductos : null,
     estado,
     miSesionId: fila.miSesionId,
     verificandoPor: fila.verificandoPor?.trim() || null,
@@ -96,15 +115,23 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
   const abrir = useAbrirSesion();
   const [bloqueada, setBloqueada] = useState<CargaEnCola | null>(null);
   const [abriendo, setAbriendo] = useState<string | null>(null);
-  const [error, setError] = useState<{ mensaje: string; sinRed: boolean } | null>(null);
+  const [error, setError] = useState<{
+    mensaje: string;
+    sinRed: boolean;
+  } | null>(null);
 
-  const sesionVencida = consulta.error instanceof ErrorApi && consulta.error.estado === 401;
+  const sesionVencida =
+    consulta.error instanceof ErrorApi && consulta.error.estado === 401;
   useEffect(() => {
     if (sesionVencida) onSesionVencida();
   }, [sesionVencida, onSesionVencida]);
 
-  const cargas = (consulta.data ?? []).map(normalizar).filter((c): c is CargaEnCola => c !== null);
-  const listas = cargas.filter((c) => c.estado === 'lista' || c.estado === 'propia');
+  const cargas = (consulta.data ?? [])
+    .map(normalizar)
+    .filter((c): c is CargaEnCola => c !== null);
+  const listas = cargas.filter(
+    (c) => c.estado === 'lista' || c.estado === 'propia',
+  );
   const bloqueadas = cargas.filter((c) => c.estado === 'bloqueada');
   const deOtros = cargas.filter((c) => c.estado === 'otro');
 
@@ -132,7 +159,8 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
     setAbriendo(carga.id);
     try {
       const sesion = await abrir.mutateAsync(carga.id);
-      if (!sesion?.id) throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
+      if (!sesion?.id)
+        throw new Error('No se pudo abrir tu conteo. Intenta de nuevo.');
       setBloqueada(null);
       onAbrir({
         eventoId: carga.id,
@@ -143,10 +171,13 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       });
     } catch (e) {
       if (e instanceof ErrorApi && e.estado === 401) return onSesionVencida();
-      if (e instanceof ErrorRed) return setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
+      if (e instanceof ErrorRed)
+        return setError({ mensaje: MENSAJE_SIN_RED, sinRed: true });
       if (e instanceof ErrorApi && e.estado === 409) {
         // El servidor revisa el corte al abrir: puede haberse bloqueado recién.
-        const actualizada = (await consulta.refetch()).data?.map(normalizar).find((c) => c?.id === carga.id);
+        const actualizada = (await consulta.refetch()).data
+          ?.map(normalizar)
+          .find((c) => c?.id === carga.id);
         if (actualizada?.estado === 'bloqueada') {
           setBloqueada(actualizada);
           return;
@@ -154,7 +185,13 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
       }
       // El aviso vive en la lista: el panel se cierra para que se lea.
       setBloqueada(null);
-      setError({ mensaje: e instanceof Error && e.message ? e.message : 'Intenta de nuevo en un momento.', sinRed: false });
+      setError({
+        mensaje:
+          e instanceof Error && e.message
+            ? e.message
+            : 'Intenta de nuevo en un momento.',
+        sinRed: false,
+      });
     } finally {
       setAbriendo(null);
     }
@@ -162,7 +199,10 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
 
   if (consulta.isPending) {
     return (
-      <Esqueleto etiqueta="Cargando cargas por verificar" style={estilos.contenedor}>
+      <Esqueleto
+        etiqueta="Cargando cargas por verificar"
+        style={estilos.contenedor}
+      >
         <LineaEsqueleto nivel="subtitulo" ancho="50%" />
         <TarjetaEsqueleto compacta titulo="titulo" />
         <TarjetaEsqueleto compacta titulo="titulo" />
@@ -212,15 +252,33 @@ export function ColaVerificacion({ onAbrir, onSesionVencida }: Props) {
 
       {error && (
         <BloqueError
-          titulo={error.sinRed ? 'Sin conexión' : 'No se pudo abrir la verificación'}
+          titulo={
+            error.sinRed ? 'Sin conexión' : 'No se pudo abrir la verificación'
+          }
           detalle={error.mensaje}
           tono={error.sinRed ? 'atencion' : 'error'}
         />
       )}
 
-      <Grupo titulo="Listas para verificar" tono="fuerte" cargas={listas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
-      <Grupo titulo="Bloqueadas por corte pendiente" tono="discrepancia" cargas={bloqueadas} abriendo={abriendo} onPress={(c) => void verificar(c)} />
-      <Grupo titulo="Las verifica otra persona" cargas={deOtros} abriendo={abriendo} />
+      <Grupo
+        titulo="Listas para verificar"
+        tono="fuerte"
+        cargas={listas}
+        abriendo={abriendo}
+        onPress={(c) => void verificar(c)}
+      />
+      <Grupo
+        titulo="Bloqueadas por corte pendiente"
+        tono="discrepancia"
+        cargas={bloqueadas}
+        abriendo={abriendo}
+        onPress={(c) => void verificar(c)}
+      />
+      <Grupo
+        titulo="Las verifica otra persona"
+        cargas={deOtros}
+        abriendo={abriendo}
+      />
 
       <PanelBloqueada
         carga={bloqueada}
@@ -252,9 +310,28 @@ function Grupo({
   if (cargas.length === 0) return null;
   const cifra = String(cargas.length);
   return (
-    <Seccion texto={titulo} contador={tono ? { texto: cifra, tono, relleno: tono === 'fuerte' ? 'solida' : 'tintada' } : null} detalle={cifra} nivel="grupo">
+    <Seccion
+      texto={titulo}
+      contador={
+        tono
+          ? {
+              texto: cifra,
+              tono,
+              relleno: tono === 'fuerte' ? 'solida' : 'tintada',
+            }
+          : null
+      }
+      detalle={cifra}
+      nivel="grupo"
+    >
       {cargas.map((c) => (
-        <FilaCarga key={c.id} carga={c} abriendo={abriendo === c.id} deshabilitada={abriendo !== null} onPress={onPress} />
+        <FilaCarga
+          key={c.id}
+          carga={c}
+          abriendo={abriendo === c.id}
+          deshabilitada={abriendo !== null}
+          onPress={onPress}
+        />
       ))}
     </Seccion>
   );
@@ -274,9 +351,13 @@ function FilaCarga({
   const tipo = carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga';
   const hora = carga.fechaConteo ? horaNegocio(carga.fechaConteo) : null;
   // Con el mismo peso que la ruta: una fecha equivocada pasaba por el contador sin que la notara.
-  const salida = carga.fechaOperativa ? textoSalidaCorta(carga.fechaOperativa, diaNegocio(new Date())) : null;
+  const salida = carga.fechaOperativa
+    ? textoSalidaCorta(carga.fechaOperativa, diaNegocio(new Date()))
+    : null;
   const detalle = [
-    carga.totalProductos !== null ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}` : null,
+    carga.totalProductos !== null
+      ? `${carga.totalProductos} ${carga.totalProductos === 1 ? 'producto' : 'productos'}`
+      : null,
     hora ? `terminó a las ${hora}` : null,
   ]
     .filter(Boolean)
@@ -294,11 +375,16 @@ function FilaCarga({
       break;
     case 'bloqueada':
       accion = 'Ver';
-      estado = { texto: 'Corte de venta pendiente en Handy', tono: 'discrepancia' };
+      estado = {
+        texto: 'Corte de venta pendiente en Handy',
+        tono: 'discrepancia',
+      };
       break;
     case 'otro':
       estado = {
-        texto: carga.verificandoPor ? `La verifica ${carga.verificandoPor}` : 'La verifica otra persona',
+        texto: carga.verificandoPor
+          ? `La verifica ${carga.verificandoPor}`
+          : 'La verifica otra persona',
         tono: 'pendiente',
       };
       break;
@@ -311,12 +397,20 @@ function FilaCarga({
     <>
       <View style={estilos.cuerpoFila}>
         <View>
-          <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>{tipo}</Text>
-          <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={1}>
+          <Text style={[estilos.tipo, presionada && estilos.textoInvertido]}>
+            {tipo}
+          </Text>
+          <Text
+            style={[estilos.ruta, presionada && estilos.textoInvertido]}
+            numberOfLines={1}
+          >
             {carga.rutaNombre}
           </Text>
           {salida && (
-            <Text style={[estilos.ruta, presionada && estilos.textoInvertido]} numberOfLines={2}>
+            <Text
+              style={[estilos.ruta, presionada && estilos.textoInvertido]}
+              numberOfLines={2}
+            >
               {salida}
             </Text>
           )}
@@ -324,9 +418,19 @@ function FilaCarga({
         <Datos
           invertido={presionada}
           datos={[
-            { rotulo: 'Contó', valor: carga.vendedorNombre, ausente: 'Sin nombre' },
+            {
+              rotulo: 'Contó',
+              valor: carga.vendedorNombre,
+              ausente: 'Sin nombre',
+            },
             ...(carga.totalProductos !== null
-              ? [{ rotulo: 'Productos', valor: String(carga.totalProductos), cifra: true }]
+              ? [
+                  {
+                    rotulo: 'Productos',
+                    valor: String(carga.totalProductos),
+                    cifra: true,
+                  },
+                ]
               : []),
             ...(hora ? [{ rotulo: 'Terminó', valor: hora, cifra: true }] : []),
           ]}
@@ -339,7 +443,11 @@ function FilaCarga({
       </View>
       {accion && (
         <View style={estilos.accion}>
-          <Text style={[estilos.textoAccion, presionada && estilos.textoInvertido]}>{accion}</Text>
+          <Text
+            style={[estilos.textoAccion, presionada && estilos.textoInvertido]}
+          >
+            {accion}
+          </Text>
           <Chevron color={presionada ? COLORES.textoSobreColor : undefined} />
         </View>
       )}
@@ -348,7 +456,11 @@ function FilaCarga({
 
   if (!onPress) {
     return (
-      <View style={[estilos.fila, estilos.filaInactiva]} accessible accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${salida ? `${salida}. ` : ''}${estado?.texto ?? ''}`}>
+      <View
+        style={[estilos.fila, estilos.filaInactiva]}
+        accessible
+        accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${salida ? `${salida}. ` : ''}${estado?.texto ?? ''}`}
+      >
         {contenido(false)}
       </View>
     );
@@ -362,14 +474,21 @@ function FilaCarga({
       accessibilityRole="button"
       accessibilityLabel={`${carga.rutaNombre}, ${tipo}. ${salida ? `${salida}. ` : ''}${carga.vendedorNombre ? `Contó ${carga.vendedorNombre}. ` : ''}${detalle}. ${estado?.texto ?? ''}`}
       accessibilityState={{ disabled: deshabilitada, busy: abriendo }}
-      style={({ pressed }) => [estilos.fila, pressed && estilos.filaPresionada, deshabilitada && !abriendo && estilos.deshabilitado]}
+      style={({ pressed }) => [
+        estilos.fila,
+        pressed && estilos.filaPresionada,
+        deshabilitada && !abriendo && estilos.deshabilitado,
+      ]}
     >
       {({ pressed }) => contenido(pressed)}
     </Pulsable>
   );
 }
 
-type ResultadoReintento = { tipo: 'sigue'; mensaje: string } | { tipo: 'libre' } | { tipo: 'error'; mensaje: string };
+type ResultadoReintento =
+  | { tipo: 'sigue'; mensaje: string }
+  | { tipo: 'libre' }
+  | { tipo: 'error'; mensaje: string };
 
 /**
  * Explica por qué no se puede verificar y ofrece reintentar: el servidor vuelve
@@ -404,13 +523,18 @@ function PanelBloqueada({
         else
           setResultado({
             tipo: 'sigue',
-            mensaje: r?.mensaje || 'El vendedor todavía no cierra su corte de venta pendiente en Handy.',
+            mensaje:
+              r?.mensaje ||
+              'El vendedor todavía no cierra su corte de venta pendiente en Handy.',
           });
       },
       onError: (e) =>
         setResultado({
           tipo: 'error',
-          mensaje: e instanceof ErrorRed ? 'Sin conexión. Revisa tu señal y reintenta.' : e.message || 'Intenta de nuevo en un momento.',
+          mensaje:
+            e instanceof ErrorRed
+              ? 'Sin conexión. Revisa tu señal y reintenta.'
+              : e.message || 'Intenta de nuevo en un momento.',
         }),
     });
   };
@@ -424,10 +548,19 @@ function PanelBloqueada({
       onCerrar={cerrar}
       bloqueada={desbloquear.isPending}
       titulo={libre ? 'Ya se puede verificar' : 'No se puede verificar todavía'}
-      detalle={carga ? `${carga.rutaNombre} · ${carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga'}` : null}
+      detalle={
+        carga
+          ? `${carga.rutaNombre} · ${carga.tipo ? ETIQUETAS_TIPO_CARGA[carga.tipo] : 'Carga'}`
+          : null
+      }
       pie={
         <AccionesHoja>
-          <Boton texto="Cerrar" variante="secundario" onPress={cerrar} deshabilitado={desbloquear.isPending || abriendo} />
+          <Boton
+            texto="Cerrar"
+            variante="secundario"
+            onPress={cerrar}
+            deshabilitado={desbloquear.isPending || abriendo}
+          />
           {libre && carga ? (
             <Boton
               texto="Verificar ahora"
@@ -440,26 +573,51 @@ function PanelBloqueada({
               }}
             />
           ) : (
-            <Boton texto="Reintentar" cargando={desbloquear.isPending} textoCargando="Consultando…" onPress={reintentar} />
+            <Boton
+              texto="Reintentar"
+              cargando={desbloquear.isPending}
+              textoCargando="Consultando…"
+              onPress={reintentar}
+            />
           )}
         </AccionesHoja>
       }
     >
       {libre ? (
-        <BloqueError tono="exito" titulo="Corte cerrado" detalle={`${vendedor} ya cerró su corte de venta. Puedes empezar tu conteo.`} />
+        <BloqueError
+          tono="exito"
+          titulo="Corte cerrado"
+          detalle={`${vendedor} ya cerró su corte de venta. Puedes empezar tu conteo.`}
+        />
       ) : (
         <>
           <Text style={estilos.textoModal}>
-            {vendedor} tiene un corte de venta pendiente en Handy: una ruta anterior que no ha cerrado. Hasta que lo cierre,
-            esta carga no se puede verificar.
+            {vendedor} tiene un corte de venta pendiente en Handy: una ruta
+            anterior que no ha cerrado. Hasta que lo cierre, esta carga no se
+            puede verificar.
           </Text>
-          <Text style={estilos.textoModal}>Cuando te avise que ya lo cerró, toca Reintentar.</Text>
+          <Text style={estilos.textoModal}>
+            Cuando te avise que ya lo cerró, toca Reintentar.
+          </Text>
         </>
       )}
       <View style={estilos.zonaResultado} accessibilityLiveRegion="polite">
-        {desbloquear.isPending && <Text style={estilos.textoModal}>Consultando a Handy…</Text>}
-        {resultado?.tipo === 'sigue' && <BloqueError titulo="Sigue pendiente" detalle={resultado.mensaje} tono="atencion" />}
-        {resultado?.tipo === 'error' && <BloqueError titulo="No se pudo consultar a Handy" detalle={resultado.mensaje} />}
+        {desbloquear.isPending && (
+          <Text style={estilos.textoModal}>Consultando a Handy…</Text>
+        )}
+        {resultado?.tipo === 'sigue' && (
+          <BloqueError
+            titulo="Sigue pendiente"
+            detalle={resultado.mensaje}
+            tono="atencion"
+          />
+        )}
+        {resultado?.tipo === 'error' && (
+          <BloqueError
+            titulo="No se pudo consultar a Handy"
+            detalle={resultado.mensaje}
+          />
+        )}
       </View>
     </Hoja>
   );

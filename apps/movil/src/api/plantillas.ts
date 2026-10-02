@@ -39,7 +39,9 @@ export interface ProductoPlantillaApi {
 
 /** `GET /admin/plantillas/:id` y la respuesta de toda mutación. */
 export interface PlantillaDetalleApi extends PlantillaResumenApi {
-  familias: { familia: string | null; productos: ProductoPlantillaApi[] | null }[] | null;
+  familias:
+    | { familia: string | null; productos: ProductoPlantillaApi[] | null }[]
+    | null;
 }
 
 /** Fila de `GET /admin/plantillas/rutas`. */
@@ -61,23 +63,41 @@ const rutaPlantilla = (id: string) => `${base}/${encodeURIComponent(id)}`;
 
 /** Todas, activas e inactivas: las inactivas se listan aparte para poder reactivarlas. */
 export function listarPlantillas(): Promise<PlantillaResumenApi[] | null> {
-  return peticion<PlantillaResumenApi[] | null>(`${base}?incluirInactivas=true`);
+  return peticion<PlantillaResumenApi[] | null>(
+    `${base}?incluirInactivas=true`,
+  );
 }
 
-export function obtenerPlantilla(id: string): Promise<PlantillaDetalleApi | null> {
+export function obtenerPlantilla(
+  id: string,
+): Promise<PlantillaDetalleApi | null> {
   return peticion<PlantillaDetalleApi | null>(rutaPlantilla(id));
 }
 
-export function listarRutasConPlantilla(): Promise<RutaConPlantillaApi[] | null> {
+export function listarRutasConPlantilla(): Promise<
+  RutaConPlantillaApi[] | null
+> {
   return peticion<RutaConPlantillaApi[] | null>(`${base}/rutas`);
 }
 
-export function crearPlantilla(datos: { nombre: string; descripcion: string | null }): Promise<PlantillaDetalleApi | null> {
-  return peticion<PlantillaDetalleApi | null>(base, { method: 'POST', cuerpo: datos });
+export function crearPlantilla(datos: {
+  nombre: string;
+  descripcion: string | null;
+}): Promise<PlantillaDetalleApi | null> {
+  return peticion<PlantillaDetalleApi | null>(base, {
+    method: 'POST',
+    cuerpo: datos,
+  });
 }
 
-export function editarPlantilla(id: string, datos: DatosPlantilla): Promise<PlantillaDetalleApi | null> {
-  return peticion<PlantillaDetalleApi | null>(rutaPlantilla(id), { method: 'PATCH', cuerpo: datos });
+export function editarPlantilla(
+  id: string,
+  datos: DatosPlantilla,
+): Promise<PlantillaDetalleApi | null> {
+  return peticion<PlantillaDetalleApi | null>(rutaPlantilla(id), {
+    method: 'PATCH',
+    cuerpo: datos,
+  });
 }
 
 /** Además de la plantilla: cuántos entraron y cuántos ya estaban. */
@@ -86,15 +106,33 @@ export interface RespuestaAgregarApi extends PlantillaDetalleApi {
   yaEstaban: number | null;
 }
 
-export function agregarProductos(id: string, codes: string[]): Promise<RespuestaAgregarApi | null> {
-  return peticion<RespuestaAgregarApi | null>(`${rutaPlantilla(id)}/productos`, { method: 'POST', cuerpo: { codes } });
+export function agregarProductos(
+  id: string,
+  codes: string[],
+): Promise<RespuestaAgregarApi | null> {
+  return peticion<RespuestaAgregarApi | null>(
+    `${rutaPlantilla(id)}/productos`,
+    { method: 'POST', cuerpo: { codes } },
+  );
 }
 
-export function quitarProductos(id: string, codes: string[]): Promise<PlantillaDetalleApi | null> {
-  return peticion<PlantillaDetalleApi | null>(`${rutaPlantilla(id)}/productos/quitar`, { method: 'POST', cuerpo: { codes } });
+export function quitarProductos(
+  id: string,
+  codes: string[],
+): Promise<PlantillaDetalleApi | null> {
+  return peticion<PlantillaDetalleApi | null>(
+    `${rutaPlantilla(id)}/productos/quitar`,
+    { method: 'POST', cuerpo: { codes } },
+  );
 }
 
 /** La ruta pasa a usar esta plantilla (deja la que tenía). */
-export function asignarARuta(id: string, rutaId: string): Promise<PlantillaDetalleApi | null> {
-  return peticion<PlantillaDetalleApi | null>(`${rutaPlantilla(id)}/rutas/${encodeURIComponent(rutaId)}`, { method: 'PUT' });
+export function asignarARuta(
+  id: string,
+  rutaId: string,
+): Promise<PlantillaDetalleApi | null> {
+  return peticion<PlantillaDetalleApi | null>(
+    `${rutaPlantilla(id)}/rutas/${encodeURIComponent(rutaId)}`,
+    { method: 'PUT' },
+  );
 }

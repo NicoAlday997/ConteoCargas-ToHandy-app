@@ -58,8 +58,12 @@ export function tituloMes({ anio, mes }: Mes): string {
 export function semanasDelMes({ anio, mes }: Mes): (CeldaDia | null)[][] {
   const diasDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
   // getUTCDay: 0 = domingo. Con lunes primero, el domingo va en la columna 6.
-  const columnaDelUno = (new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay() + 6) % 7;
-  const celdas: (CeldaDia | null)[] = Array.from({ length: columnaDelUno }, () => null);
+  const columnaDelUno =
+    (new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay() + 6) % 7;
+  const celdas: (CeldaDia | null)[] = Array.from(
+    { length: columnaDelUno },
+    () => null,
+  );
   for (let numero = 1; numero <= diasDelMes; numero += 1) {
     celdas.push({
       dia: `${anio}-${dos(mes)}-${dos(numero)}`,
@@ -69,6 +73,7 @@ export function semanasDelMes({ anio, mes }: Mes): (CeldaDia | null)[][] {
   }
   while (celdas.length % 7 !== 0) celdas.push(null);
   const semanas: (CeldaDia | null)[][] = [];
-  for (let i = 0; i < celdas.length; i += 7) semanas.push(celdas.slice(i, i + 7));
+  for (let i = 0; i < celdas.length; i += 7)
+    semanas.push(celdas.slice(i, i + 7));
   return semanas;
 }

@@ -77,8 +77,15 @@ export function seVendeCompleto(producto: ProductoConteo): boolean {
  */
 export function factorEfectivo(producto: ProductoConteo): number | null {
   const { piezasPorPaquete, factorConfirmado } = producto;
-  if (!factorConfirmado || seVendeCompleto(producto) || piezasPorPaquete === null) return null;
-  return Number.isInteger(piezasPorPaquete) && piezasPorPaquete >= 1 ? piezasPorPaquete : null;
+  if (
+    !factorConfirmado ||
+    seVendeCompleto(producto) ||
+    piezasPorPaquete === null
+  )
+    return null;
+  return Number.isInteger(piezasPorPaquete) && piezasPorPaquete >= 1
+    ? piezasPorPaquete
+    : null;
 }
 
 /**
@@ -127,7 +134,10 @@ export function estaCapturado(captura: CapturaProducto): boolean {
  * `null` si el producto no está capturado, si trae paquetes sin factor, o
  * sueltas de algo que se vende completo (el backend rechaza ambos).
  */
-export function totalPiezas(captura: CapturaProducto, producto: ProductoConteo): number | null {
+export function totalPiezas(
+  captura: CapturaProducto,
+  producto: ProductoConteo,
+): number | null {
   if (!estaCapturado(captura)) return null;
   const paquetes = captura.paquetes ?? 0;
   const sueltas = captura.sueltas ?? 0;
@@ -137,7 +147,10 @@ export function totalPiezas(captura: CapturaProducto, producto: ProductoConteo):
   return paquetes * factor + sueltas;
 }
 
-export function estadoFila(captura: CapturaProducto, producto: ProductoConteo): EstadoFila {
+export function estadoFila(
+  captura: CapturaProducto,
+  producto: ProductoConteo,
+): EstadoFila {
   if (!estaCapturado(captura)) return 'sin-capturar';
   const total = totalPiezas(captura, producto);
   // Un total incalculable no es "cero": algo se capturó y hay que revisarlo.
@@ -155,7 +168,10 @@ export function progreso(
   productos: readonly ProductoConteo[],
   estado: EstadoConteo,
 ): { capturados: number; total: number } {
-  const capturados = productos.reduce((n, p) => (estaCapturado(capturaDe(estado, p.code)) ? n + 1 : n), 0);
+  const capturados = productos.reduce(
+    (n, p) => (estaCapturado(capturaDe(estado, p.code)) ? n + 1 : n),
+    0,
+  );
   return { capturados, total: productos.length };
 }
 
@@ -163,8 +179,13 @@ export function progreso(
  * `true` cuando las sueltas ya completan un paquete. No es un error (a veces
  * el paquete viene abierto), solo un aviso. Sin factor nunca aplica.
  */
-export function sueltasExcedenPaquete(sueltas: number | null, piezasPorPaquete: number | null): boolean {
-  return sueltas !== null && piezasPorPaquete !== null && sueltas >= piezasPorPaquete;
+export function sueltasExcedenPaquete(
+  sueltas: number | null,
+  piezasPorPaquete: number | null,
+): boolean {
+  return (
+    sueltas !== null && piezasPorPaquete !== null && sueltas >= piezasPorPaquete
+  );
 }
 
 export function fijarCampo(
@@ -184,12 +205,16 @@ export function fijarCampo(
 }
 
 /** El gesto más repetido del día: "revisado, no lleva". */
-export function fijarCero(estado: EstadoConteo, producto: ProductoConteo): EstadoConteo {
+export function fijarCero(
+  estado: EstadoConteo,
+  producto: ProductoConteo,
+): EstadoConteo {
   const cero: CapturaProducto = {
     paquetes: admitePaquetes(producto) ? 0 : null,
     sueltas: admiteSueltas(producto) ? 0 : null,
   };
   const actual = capturaDe(estado, producto.code);
-  if (actual.paquetes === cero.paquetes && actual.sueltas === cero.sueltas) return estado;
+  if (actual.paquetes === cero.paquetes && actual.sueltas === cero.sueltas)
+    return estado;
   return { ...estado, [producto.code]: cero };
 }

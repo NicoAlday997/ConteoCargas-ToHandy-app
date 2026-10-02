@@ -53,12 +53,16 @@ export class ErrorRed extends Error {
   }
 }
 
-async function leerCuerpoError(respuesta: Response): Promise<CuerpoErrorApi | null> {
+async function leerCuerpoError(
+  respuesta: Response,
+): Promise<CuerpoErrorApi | null> {
   const texto = await respuesta.text().catch(() => '');
   if (!texto) return null;
   try {
     const json: unknown = JSON.parse(texto);
-    return typeof json === 'object' && json !== null ? (json as CuerpoErrorApi) : null;
+    return typeof json === 'object' && json !== null
+      ? (json as CuerpoErrorApi)
+      : null;
   } catch {
     return { mensaje: texto };
   }
@@ -68,7 +72,10 @@ async function leerCuerpoError(respuesta: Response): Promise<CuerpoErrorApi | nu
  * Cliente HTTP propio (nunca hacia Handy directo: el backend es el único
  * que conoce el token de integración de Handy).
  */
-export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {}): Promise<T> {
+export async function peticion<T>(
+  ruta: string,
+  opciones: OpcionesPeticion = {},
+): Promise<T> {
   if (!URL_BASE) {
     throw new Error('EXPO_PUBLIC_API_URL no está configurada');
   }
@@ -109,7 +116,8 @@ export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {})
     throw new ErrorApi(
       respuesta.status,
       cuerpoError,
-      cuerpoError?.mensaje || `Error ${respuesta.status}: ${respuesta.statusText}`,
+      cuerpoError?.mensaje ||
+        `Error ${respuesta.status}: ${respuesta.statusText}`,
     );
   }
 

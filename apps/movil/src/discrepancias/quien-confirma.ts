@@ -29,7 +29,9 @@ export function candidatosConfirmar(
 ): Participante[] {
   const candidatos = participantes.filter((p) => p.id !== capturadaPor);
   const propio = candidatos.find((p) => p.id === usuarioSesionId);
-  return propio ? [propio, ...candidatos.filter((p) => p !== propio)] : candidatos;
+  return propio
+    ? [propio, ...candidatos.filter((p) => p !== propio)]
+    : candidatos;
 }
 
 /**
@@ -37,7 +39,10 @@ export function candidatosConfirmar(
  * puede confirmar; si no, la única otra persona posible. Con varias, nadie:
  * que la persona se elija a sí misma.
  */
-export function confirmadorInicial(candidatos: readonly Participante[], usuarioSesionId: string | null): string | null {
+export function confirmadorInicial(
+  candidatos: readonly Participante[],
+  usuarioSesionId: string | null,
+): string | null {
   if (candidatos.some((p) => p.id === usuarioSesionId)) return usuarioSesionId;
   return candidatos.length === 1 ? candidatos[0].id : null;
 }

@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import {
   CIFRAS,
@@ -80,8 +86,20 @@ export function Tarjeta({
   const contenido = conAcento ? (
     <>
       <View style={estilos.banda}>
-        <View style={[estilos.bloqueEstado, { backgroundColor: TONOS[conAcento.tono].fondo }]}>
-          <Text style={[estilos.tituloBanda, { color: TONOS[conAcento.tono].texto }]} accessibilityRole="header" numberOfLines={2}>
+        <View
+          style={[
+            estilos.bloqueEstado,
+            { backgroundColor: TONOS[conAcento.tono].fondo },
+          ]}
+        >
+          <Text
+            style={[
+              estilos.tituloBanda,
+              { color: TONOS[conAcento.tono].texto },
+            ]}
+            accessibilityRole="header"
+            numberOfLines={2}
+          >
             {conAcento.titulo}
           </Text>
         </View>
@@ -99,7 +117,12 @@ export function Tarjeta({
 
   if (!onPress) {
     return (
-      <View style={estilo} accessible={accessible} accessibilityLabel={accessibilityLabel} accessibilityHint={accessibilityHint}>
+      <View
+        style={estilo}
+        accessible={accessible}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+      >
         {contenido}
       </View>
     );

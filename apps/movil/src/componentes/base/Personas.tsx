@@ -1,6 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CIFRAS, COLORES, DATO, DATO_AUSENTE, ETIQUETA_DATO, RITMO } from '../../theme/tokens';
+import {
+  CIFRAS,
+  COLORES,
+  DATO,
+  DATO_AUSENTE,
+  ETIQUETA_DATO,
+  RITMO,
+} from '../../theme/tokens';
 
 /** Un dato con su rótulo: "RUTA" + "Norte 3", "PRODUCTOS" + "42". */
 export interface Dato {
@@ -45,11 +52,18 @@ export function Datos({ datos, invertido = false }: PropsDatos) {
           accessible
           accessibilityLabel={`${rotulo}: ${valor ?? ausente.toLowerCase()}`}
         >
-          <Text style={[estilos.rotulo, invertido && estilos.invertido]} numberOfLines={1}>
+          <Text
+            style={[estilos.rotulo, invertido && estilos.invertido]}
+            numberOfLines={1}
+          >
             {rotulo}
           </Text>
           <Text
-            style={[valor === null ? estilos.ausente : estilos.valor, cifra && CIFRAS, invertido && estilos.invertido]}
+            style={[
+              valor === null ? estilos.ausente : estilos.valor,
+              cifra && CIFRAS,
+              invertido && estilos.invertido,
+            ]}
             numberOfLines={1}
           >
             {valor ?? ausente}
@@ -61,8 +75,22 @@ export function Datos({ datos, invertido = false }: PropsDatos) {
 }
 
 /** Personas de una carga ("Contó", "Verificó"), con la misma jerarquía que cualquier dato. */
-export function Personas({ personas, invertido = false }: { personas: readonly Persona[]; invertido?: boolean }) {
-  return <Datos datos={personas.map(({ rol, nombre }) => ({ rotulo: rol, valor: nombre }))} invertido={invertido} />;
+export function Personas({
+  personas,
+  invertido = false,
+}: {
+  personas: readonly Persona[];
+  invertido?: boolean;
+}) {
+  return (
+    <Datos
+      datos={personas.map(({ rol, nombre }) => ({
+        rotulo: rol,
+        valor: nombre,
+      }))}
+      invertido={invertido}
+    />
+  );
 }
 
 const estilos = StyleSheet.create({
