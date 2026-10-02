@@ -190,7 +190,12 @@ export default function PantallaInicio() {
             importantForAccessibility="no-hide-descendants"
           >
             <MarcaApp invertida tamano={ESPACIADO.xl + ESPACIADO.sm} />
-            <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
+            <View>
+              <Text style={estilos.nombreApp}>AldayGo</Text>
+              <Text style={estilos.empresa}>
+                Distribuidora y Comercializadora Alday
+              </Text>
+            </View>
           </View>
           <View style={[estilos.columna, estilos.identidad]}>
             <View style={estilos.textosIdentidad}>
@@ -1180,6 +1185,11 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.subtitulo,
     fontFamily: FUENTE.extraNegrita,
     color: COLORES.textoSobreColor,
+  },
+  // La empresa bajo el nombre: apoyo, no competidor.
+  empresa: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.marcaTenue,
   },
   identidad: {
     paddingHorizontal: RITMO.margen,

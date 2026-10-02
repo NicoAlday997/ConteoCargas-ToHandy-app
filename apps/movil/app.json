@@ -1,16 +1,18 @@
 {
   "expo": {
-    "name": "movil",
-    "slug": "movil",
-    "scheme": "conteocargas",
+    "name": "AldayGo",
+    "slug": "aldaygo",
+    "scheme": "aldaygo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "mx.alday.conteocargas"
     },
     "android": {
+      "package": "mx.alday.conteocargas",
       "adaptiveIcon": {
         "backgroundColor": "#0A2463",
         "foregroundImage": "./assets/android-icon-foreground.png",

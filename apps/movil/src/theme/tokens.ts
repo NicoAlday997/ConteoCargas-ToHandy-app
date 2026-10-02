@@ -93,6 +93,8 @@ export const COLORES = {
   marcaProfunda: '#061233',
   /** Texto que se retira sobre el cromo (≥ 6.5:1 sobre marca y marcaHonda). */
   marcaTenue: '#AFC4F0',
+  /** Un paso más atrás que marcaTenue (la descripción bajo la empresa en la entrada; ≥ 4.5:1 en todo el degradado). */
+  marcaRetirada: '#9AB1E5',
   /** Presionado o seleccionado sobre claro. */
   marcaTinte: '#E4ECFF',
   /** Botón de volver y teclas sobre el cromo: un tono arriba, para que se vea tocable. */

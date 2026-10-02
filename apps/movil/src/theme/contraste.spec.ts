@@ -111,6 +111,12 @@ describe('contraste: el único degradado con texto encima (héroe, login, inicio
         razonContraste(COLORES.marcaTenue, color).toFixed(2),
       );
     });
+    it(`azul retirado (descripción de la entrada) sobre el héroe (${color}) ≥ ${MINIMO_TEXTO}:1`, () => {
+      assert.ok(
+        razonContraste(COLORES.marcaRetirada, color) >= MINIMO_TEXTO,
+        razonContraste(COLORES.marcaRetirada, color).toFixed(2),
+      );
+    });
   }
 });
 

@@ -124,7 +124,7 @@ export default function PantallaLogin() {
 
 /**
  * Encabezado de la entrada: la marca (cubo sobre placa azul), el nombre de la
- * app con su lema y la instrucción. Centrado: es la portada del producto.
+ * app, la empresa y la descripción en tres escalones, y la instrucción. Centrado: es la portada del producto.
  */
 function BandaMarca({ titulo }: { titulo: string }) {
   const margenes = useSafeAreaInsets();
@@ -135,13 +135,16 @@ function BandaMarca({ titulo }: { titulo: string }) {
       <View
         style={estilos.identidad}
         accessibilityRole="header"
-        accessibilityLabel="Distribuidora Alday, control de cargas"
+        accessibilityLabel="AldayGo, Distribuidora y Comercializadora Alday, conteo de cargas"
       >
         <View style={estilos.placaMarca}>
           <MarcaApp invertida tamano={TAMANO_MARCA} />
         </View>
-        <Text style={estilos.nombreApp}>Distribuidora Alday</Text>
-        <Text style={estilos.lema}>Control de cargas</Text>
+        <Text style={estilos.nombreApp}>AldayGo</Text>
+        <Text style={estilos.empresa}>
+          Distribuidora y Comercializadora Alday
+        </Text>
+        <Text style={estilos.descripcion}>Conteo de cargas</Text>
       </View>
       <Text
         style={estilos.tituloBanda}
@@ -649,9 +652,15 @@ const estilos = StyleSheet.create({
     ...TIPOGRAFIA.display,
     color: COLORES.textoSobreColor,
   },
-  lema: {
+  // La empresa apoya al nombre: más chica, más ligera y en tono tenue.
+  empresa: {
     ...TIPOGRAFIA.cuerpo,
     color: COLORES.marcaTenue,
+  },
+  // La descripción, el último escalón: todavía más chica y más retirada.
+  descripcion: {
+    ...TIPOGRAFIA.micro,
+    color: COLORES.marcaRetirada,
   },
   tituloBanda: {
     ...TIPOGRAFIA.tituloBarra,
