@@ -613,6 +613,19 @@ model ComparacionCarga {
 // misma. Juntos dejan una cadena lineal por producto. Que la nueva sea del
 // mismo producto y comparacion que la que reemplaza lo valida el caso de uso.
 // Prisma no conoce el trigger ni el indice parcial: no los dejes borrar.
+//
+// PENDIENTE AL CONSTRUIR EL STEPPER: agregar `revisadoPorId` (el supervisor que
+// hizo la revision, FK a UsuarioApp). Hoy la tabla NO guarda quien reviso, asi
+// que no puede atribuir una revision a nadie; mientras no exista la columna,
+// no presentes ninguna revision como "hecha por" alguien.
+//
+// Como saber la revision VIGENTE de un producto (no es obvio): de las
+// revisiones con el mismo `comparacionCargaId` y `productoCode`, es la unica
+// cuyo `id` no aparece en el `reemplazaAId` de ningun otro renglon, es decir,
+// la que tiene `reemplazadaPor` nulo. En Prisma:
+//   where: { comparacionCargaId, productoCode, reemplazadaPor: { is: null } }
+// La cadena lineal garantiza que hay a lo mas una. No sirve "la de
+// `fechaRevision` mas reciente": la fecha no es lo que define el reemplazo.
 model RevisionSupervisor {
   id                     String            @id @default(cuid())
   comparacionCargaId     String
