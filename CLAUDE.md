@@ -21,6 +21,8 @@ Antes de trabajar en este repo, consulta la documentación en `/docs`:
 - **Confirmación cruzada de discrepancias:** ninguna discrepancia puede resolverse sin que una persona capture la cantidad final y una **persona distinta** la confirme con su propio PIN. Rechazar cualquier intento de autoconfirmación.
 - **Arquitectura hexagonal:** la lógica de dominio (`apps/backend/src/modules/*/domain`, `.../application`) no debe importar nada de infraestructura (Prisma, HTTP hacia Handy, Firebase). Los detalles técnicos viven solo en `.../infrastructure`.
 - **Autenticación propia:** los usuarios de la app (Vendedor, Contador, Supervisor) tienen un sistema de PIN independiente de las cuentas de Handy. Solo el rol Vendedor está vinculado a un `usuario_handy_id` fijo, asignado por un administrador.
+- **Tablas de solo agregar:** `historiales_restablecimiento_pin`, `historiales_desbloqueo`, `cambios_fecha_operativa`, `cambios_factor_empaque` y `revisiones_supervisor` no se actualizan ni se borran nunca (un trigger en Postgres lo rechaza); una corrección es un renglón nuevo — en `revisiones_supervisor`, una revisión nueva con `reemplazaAId`. `registros_sincronizacion` solo admite cerrar la corrida una vez. Los triggers son SQL manual que Prisma no conoce: si una migración generada trae `DROP TRIGGER`/`DROP FUNCTION` sobre ellos, borra esas líneas. Salida de emergencia en `docs/07-despliegue.md` §13.
+- **Dos escrituras que dependen una de otra van en una transacción** dentro del adaptador Prisma (un método del puerto por operación atómica). Ninguna llamada a Handy va dentro de una transacción. Las transiciones de estado de una carga se siguen validando con `puedeTransicionar` (`estados-carga.ts`) en el caso de uso, aunque la escritura ocurra dentro de la transacción.
 - **Auditoría pareja:** cualquier carga debe ser consultable en el historial con el mismo nivel de detalle, tenga o no discrepancia — no restringir el acceso al detalle basado en si "coincidió" el conteo.
 
 ## Roles del sistema
@@ -30,6 +32,11 @@ Antes de trabajar en este repo, consulta la documentación en `/docs`:
 | Vendedor | Iniciar carga inicial y recargas de su ruta asignada. |
 | Contador | Verificar (segundo conteo) cargas ya contadas por el vendedor. |
 | Supervisor | Todo lo del Contador, más historial completo, revisión tipo stepper sobre cargas cerradas, centro de alertas y administración de usuarios. |
+
+## Pruebas
+
+- `npm test` (en `apps/backend` y en `apps/movil`): unitarias, sin base de datos ni Docker.
+- `npm run test:db` (solo `apps/backend`): pruebas `*.db-spec.ts` contra Postgres real, en la base aparte `handy_conteo_test`. **Necesita Docker levantado** (`docker compose up -d` en `apps/backend`). Córrela antes de cada commit que toque `prisma/schema.prisma`, una migración (sobre todo SQL manual: triggers, índices parciales, `CHECK`), un `$transaction` de un adaptador Prisma o una tabla de solo agregar. Detalle en `docs/07-despliegue.md` §13.3.
 
 ## Stack
 

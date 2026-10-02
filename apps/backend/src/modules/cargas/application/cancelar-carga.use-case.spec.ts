@@ -64,7 +64,10 @@ class FakeCargaRepository implements CargaRepository {
   }
 
   // --- Metodos del puerto que este caso de uso no usa. ----------------------
-  crearEvento(): never {
+  crearEventoConSesion(): never {
+    throw new Error('no usado en estas pruebas');
+  }
+  confirmarDiscrepancia(): never {
     throw new Error('no usado en estas pruebas');
   }
   buscarCargaInicialDeFecha(): never {

@@ -204,32 +204,28 @@ export class ConfirmarCantidadFinalUseCase {
       return { exito: false, ...rechazo };
     }
 
-    // 7. Persistir la confirmacion cruzada (paso 2).
-    const actualizada = await this.cargas.actualizarDiscrepancia(
+    // 7. Persistir la confirmacion cruzada (paso 2) y, si con esto quedaron
+    //    TODAS las discrepancias del evento resueltas, avanzar el evento a
+    //    EN_ESPERA_AUTORIZACION (RF-16), no a LISTA_PARA_ENVIAR: todavia falta
+    //    que un supervisor autorice el envio. Las dos escrituras van en una
+    //    sola transaccion (si falla la segunda, no queda la primera). La
+    //    decision se toma aqui y no en el adaptador, y la transicion se sigue
+    //    validando contra la maquina de estados del dominio, con el estado
+    //    leido dentro de la transaccion.
+    //    `enEsperaAutorizacion` dice si fue ESTA confirmacion la que movio el
+    //    evento, no solo si ya estaba ahi.
+    let enEsperaAutorizacion = false;
+    const { discrepancia: actualizada } = await this.cargas.confirmarDiscrepancia(
       entrada.eventoId,
       entrada.productoCode,
-      {
-        confirmadaPor: entrada.usuarioAppId,
-        fechaConfirmacion: ahora,
+      { confirmadaPor: entrada.usuarioAppId, fechaConfirmacion: ahora },
+      (estadoActual, discrepanciasTras) => {
+        enEsperaAutorizacion =
+          todasResueltas(discrepanciasTras.map(aEstadoDiscrepancia)) &&
+          puedeTransicionar(estadoActual, 'EN_ESPERA_AUTORIZACION');
+        return enEsperaAutorizacion ? 'EN_ESPERA_AUTORIZACION' : null;
       },
     );
-
-    // 8. Si con esto quedaron TODAS las discrepancias del evento resueltas, el
-    //    evento avanza a EN_ESPERA_AUTORIZACION (RF-16), no a LISTA_PARA_ENVIAR:
-    //    todavia falta que un supervisor autorice el envio. La transicion se
-    //    valida siempre contra la maquina de estados del dominio.
-    const tras = await this.cargas.listarDiscrepancias(entrada.eventoId);
-    let enEsperaAutorizacion = false;
-    if (
-      todasResueltas(tras.map(aEstadoDiscrepancia)) &&
-      puedeTransicionar(evento.estado, 'EN_ESPERA_AUTORIZACION')
-    ) {
-      await this.cargas.cambiarEstado(
-        entrada.eventoId,
-        'EN_ESPERA_AUTORIZACION',
-      );
-      enEsperaAutorizacion = true;
-    }
 
     return { exito: true, discrepancia: actualizada, enEsperaAutorizacion };
   }

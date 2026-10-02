@@ -2,7 +2,8 @@ import type { EstadoCarga } from '@prisma/client';
 
 import type {
   CargaRepository,
-  DatosActualizarDiscrepancia,
+  DatosConfirmarDiscrepancia,
+  DecidirEstadoTrasConfirmar,
   Discrepancia,
   EventoCarga,
   SesionConteo,
@@ -45,7 +46,7 @@ class FakeCargaRepository implements CargaRepository {
   readonly actualizaciones: Array<{
     eventoId: string;
     productoCode: string;
-    datos: DatosActualizarDiscrepancia;
+    datos: DatosConfirmarDiscrepancia;
   }> = [];
   readonly cambiosDeEstado: Array<{ eventoId: string; estado: EstadoCarga }> =
     [];
@@ -66,18 +67,14 @@ class FakeCargaRepository implements CargaRepository {
     return evento ? { ...evento } : null;
   }
 
-  async cambiarEstado(
-    eventoId: string,
-    nuevoEstado: EstadoCarga,
-  ): Promise<EventoCarga> {
-    const evento = this.eventos.get(eventoId);
-    if (!evento) {
-      throw new Error(`evento ${eventoId} inexistente`);
-    }
-    evento.estado = nuevoEstado;
-    this.cambiosDeEstado.push({ eventoId, estado: nuevoEstado });
-    return { ...evento };
-  }
+  /**
+   * Simula que, entre la lectura del caso de uso y la transaccion, alguien
+   * movio el evento a este estado (p. ej. lo cancelo). Es el estado que ve
+   * `decidirEstado` al bloquear el evento.
+   */
+  estadoAlBloquear: EstadoCarga | null = null;
+  /** Falla el segundo paso (el cambio de estado), con la confirmacion ya hecha. */
+  fallaAlCambiarEstado: Error | null = null;
 
   async listarDiscrepancias(eventoId: string): Promise<Discrepancia[]> {
     return (this.discrepanciasPorEvento.get(eventoId) ?? []).map((d) => ({
@@ -85,37 +82,68 @@ class FakeCargaRepository implements CargaRepository {
     }));
   }
 
-  async actualizarDiscrepancia(
+  /**
+   * Imita la transaccion del adaptador real: trabaja sobre copias y solo
+   * "confirma" (las guarda y anota en las bitacoras) si los dos pasos salen.
+   * Que la base de verdad lo haga asi lo prueba
+   * `prisma-carga.repository.db-spec.ts` (`npm run test:db`).
+   */
+  async confirmarDiscrepancia(
     eventoId: string,
     productoCode: string,
-    datos: DatosActualizarDiscrepancia,
-  ): Promise<Discrepancia> {
-    this.actualizaciones.push({ eventoId, productoCode, datos: { ...datos } });
-    const lista = this.discrepanciasPorEvento.get(eventoId) ?? [];
+    datos: DatosConfirmarDiscrepancia,
+    decidirEstado: DecidirEstadoTrasConfirmar,
+  ): Promise<{ discrepancia: Discrepancia; evento: EventoCarga }> {
+    const original = this.eventos.get(eventoId);
+    if (!original) {
+      throw new Error(`evento ${eventoId} inexistente`);
+    }
+    const evento = { ...original };
+    if (this.estadoAlBloquear !== null) {
+      evento.estado = this.estadoAlBloquear;
+    }
+    const lista = (this.discrepanciasPorEvento.get(eventoId) ?? []).map(
+      (d) => ({ ...d }),
+    );
     const discrepancia = lista.find((d) => d.productoCode === productoCode);
     if (!discrepancia) {
       throw new Error(`discrepancia ${productoCode} inexistente`);
     }
-    if (datos.cantidadFinal !== undefined) {
-      discrepancia.cantidadFinal = datos.cantidadFinal;
+    discrepancia.confirmadaPor = datos.confirmadaPor;
+    discrepancia.fechaConfirmacion = datos.fechaConfirmacion;
+
+    const nuevoEstado = decidirEstado(
+      evento.estado,
+      lista.map((d) => ({ ...d })),
+    );
+    if (nuevoEstado !== null) {
+      if (this.fallaAlCambiarEstado !== null) {
+        throw this.fallaAlCambiarEstado; // rollback: no se guardo nada
+      }
+      evento.estado = nuevoEstado;
     }
-    if (datos.capturadaPor !== undefined) {
-      discrepancia.capturadaPor = datos.capturadaPor;
+
+    // Commit.
+    this.eventos.set(eventoId, evento);
+    this.discrepanciasPorEvento.set(eventoId, lista);
+    this.actualizaciones.push({ eventoId, productoCode, datos: { ...datos } });
+    if (nuevoEstado !== null) {
+      this.cambiosDeEstado.push({ eventoId, estado: nuevoEstado });
     }
-    if (datos.fechaCaptura !== undefined) {
-      discrepancia.fechaCaptura = datos.fechaCaptura;
-    }
-    if (datos.confirmadaPor !== undefined) {
-      discrepancia.confirmadaPor = datos.confirmadaPor;
-    }
-    if (datos.fechaConfirmacion !== undefined) {
-      discrepancia.fechaConfirmacion = datos.fechaConfirmacion;
-    }
-    return { ...discrepancia };
+    return { discrepancia: { ...discrepancia }, evento: { ...evento } };
+  }
+
+  // Las dos escrituras por separado quedarian fuera de la transaccion: si el
+  // caso de uso vuelve a usarlas, la prueba truena.
+  cambiarEstado(): never {
+    throw new Error('no usado: el cambio de estado va en confirmarDiscrepancia');
+  }
+  actualizarDiscrepancia(): never {
+    throw new Error('no usado: la confirmacion va en confirmarDiscrepancia');
   }
 
   // --- Metodos del puerto que este caso de uso no usa. ----------------------
-  async crearEvento(): Promise<EventoCarga> {
+  async crearEventoConSesion(): Promise<never> {
     throw new Error('no usado en estas pruebas');
   }
   async marcarComoEnviada(): Promise<EventoCarga> {
@@ -523,6 +551,57 @@ describe('ConfirmarCantidadFinalUseCase', () => {
     const evento = await repo.buscarEventoPorId('ev-1');
     expect(evento?.estado).toBe('CONFLICTOS_PENDIENTES');
   });
+  it('si falla el cambio de estado (segundo paso), la confirmacion tampoco queda', async () => {
+    repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+    repo.fallaAlCambiarEstado = new Error('se cayo la conexion');
+
+    await expect(
+      useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          pin: PINES['contador-1'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      ),
+    ).rejects.toThrow('se cayo la conexion');
+
+    // Nada a medias: ni confirmada ni avanzada. Se puede volver a confirmar.
+    expect(repo.actualizaciones).toEqual([]);
+    expect(repo.cambiosDeEstado).toEqual([]);
+    const [discrepancia] = await repo.listarDiscrepancias('ev-1');
+    expect(discrepancia.confirmadaPor).toBeNull();
+    expect((await repo.buscarEventoPorId('ev-1'))?.estado).toBe(
+      'CONFLICTOS_PENDIENTES',
+    );
+  });
+
+  it('la transicion se valida con la maquina de estados sobre el estado leido en la transaccion', async () => {
+    repo.sembrarDiscrepancias('ev-1', [capturadaPorVendedor()]);
+    // Alguien cancelo la carga mientras se tecleaba el PIN: CANCELADA es
+    // terminal y `puedeTransicionar` no la deja pasar a EN_ESPERA_AUTORIZACION.
+    repo.estadoAlBloquear = 'CANCELADA';
+
+    const resultado = exigirExito(
+      await useCase.ejecutar(
+        {
+          eventoId: 'ev-1',
+          productoCode: 'P1',
+          usuarioAppId: 'contador-1',
+          pin: PINES['contador-1'],
+          cantidadFinal: 11,
+        },
+        AHORA,
+      ),
+    );
+
+    expect(resultado.enEsperaAutorizacion).toBe(false);
+    expect(repo.cambiosDeEstado).toEqual([]);
+    expect((await repo.buscarEventoPorId('ev-1'))?.estado).toBe('CANCELADA');
+  });
+
   describe('en el mismo dispositivo (quien tiene la sesion pasa el telefono)', () => {
     beforeEach(() => {
       repo.sembrarParticipantes('ev-1', ['vendedor-1', 'contador-1']);

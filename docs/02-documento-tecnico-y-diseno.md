@@ -144,10 +144,11 @@ Comparacion_Carga (vista de auditoría por evento de carga)
 - verificado_supervisor (bool), resultado_verificacion (COINCIDE|DISCREPANCIA)
 - supervisor_usuario_app_id, fecha_verificacion
 
-Revision_Supervisor
+Revision_Supervisor (solo se agrega)
 - comparacion_carga_id, producto_code
 - resultado (CORRECTO|INCORRECTO), cantidad_real_encontrada (si INCORRECTO)
 - fecha_revision
+- reemplaza_a_id (la revisión que corrige; nulo en la primera)
 
 Alerta
 - tipo, urgencia (ALTA|MEDIA|BAJA), entidad_relacionada, mensaje
@@ -167,6 +168,7 @@ Dispositivo_Push
   - **Supervisor:** cualquier carga no enviada, con motivo obligatorio (mínimo 10 caracteres).
   - **Contador:** nunca.
   - `ENVIADA → CANCELADA` solo existe vía cancelación en Handy (`DELETE /route/{id}`, ver 4.1): si Handy la rechaza, la carga sigue `ENVIADA` y no cambia nada.
+- **Tablas de solo agregar.** `Historial_Restablecimiento_Pin`, `Historial_Desbloqueo`, `Cambio_Fecha_Operativa`, `Cambio_Factor_Empaque` y `Revision_Supervisor` no aceptan `UPDATE`, `DELETE` ni `TRUNCATE`; `Registro_Sincronizacion` solo acepta, una vez, el `UPDATE` que cierra la corrida (`terminada_en` y `exito`). Lo imponen triggers creados con SQL manual (migración `historial_solo_agregar`). Una revisión del supervisor equivocada se corrige con una revisión **nueva** que la reemplaza (`reemplaza_a_id`), nunca editando la anterior. Salida de emergencia y prueba: `docs/07-despliegue.md` §13.
 - La unicidad "una `INICIAL` por ruta y `fecha_operativa`" es un índice único parcial (`WHERE tipo = 'INICIAL' AND estado <> 'CANCELADA'`) creado con SQL manual (migraciones `fecha_operativa` e `indice_inicial_sin_canceladas`); Prisma no soporta índices parciales en el esquema.
 
 ## 4. Integración con API de Handy (REST v2)

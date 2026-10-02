@@ -15,6 +15,9 @@ import {
   CargaInicialSinTerminarError,
   CargaRepository,
   type DatosActualizarDiscrepancia,
+  type DatosConfirmarDiscrepancia,
+  type DatosSesionInicial,
+  type DecidirEstadoTrasConfirmar,
   type DatosCambiarFechaOperativa,
   type DatosRecorrerFechaOperativa,
   type DatosCrearEvento,
@@ -64,28 +67,47 @@ export class PrismaCargaRepository extends CargaRepository {
     super();
   }
 
-  async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
+  async crearEventoConSesion(
+    datos: DatosCrearEvento,
+    sesion: DatosSesionInicial,
+  ): Promise<{ evento: EventoCarga; sesion: SesionConteo }> {
     try {
-      const row = await this.prisma.eventoCarga.create({
-        data: {
-          // `rutaId`, `plantillaId` y `tipoOperacion` son SNAPSHOT del momento:
-          // se copian de la asignacion vigente y no cambian si el vendedor se
-          // reasigna despues.
-          rutaId: datos.rutaId,
-          plantillaId: datos.plantillaId,
-          tipoOperacion: datos.tipoOperacion,
-          tipo: datos.tipo,
-          usuarioHandyId: datos.usuarioHandyId,
-          fechaConteo: datos.fechaConteo,
-          fechaOperativa: datos.fechaOperativa,
-          // `estado` se queda en el default `BORRADOR` del esquema.
-        },
+      // Una transaccion: si la sesion no se puede crear, el evento tampoco
+      // queda (una INICIAL sin sesion bloquearia la ruta).
+      return await this.prisma.$transaction(async (tx) => {
+        const evento = await tx.eventoCarga.create({
+          data: {
+            // `rutaId`, `plantillaId` y `tipoOperacion` son SNAPSHOT del
+            // momento: se copian de la asignacion vigente y no cambian si el
+            // vendedor se reasigna despues.
+            rutaId: datos.rutaId,
+            plantillaId: datos.plantillaId,
+            tipoOperacion: datos.tipoOperacion,
+            tipo: datos.tipo,
+            usuarioHandyId: datos.usuarioHandyId,
+            fechaConteo: datos.fechaConteo,
+            fechaOperativa: datos.fechaOperativa,
+            // `estado` se queda en el default `BORRADOR` del esquema.
+          },
+        });
+        const creada = await tx.sesionConteo.create({
+          data: {
+            eventoCargaId: evento.id,
+            tipo: sesion.tipo,
+            usuarioAppId: sesion.usuarioAppId,
+            // `estado` se queda en el default `ABIERTA` del esquema.
+          },
+        });
+        return {
+          evento: this.aEventoCarga(evento),
+          sesion: this.aSesionConteo(creada),
+        };
       });
-      return this.aEventoCarga(row);
     } catch (error) {
-      // P2002 = violacion de unicidad. En `eventos_carga` solo puede venir de
+      // P2002 = violacion de unicidad. Del alta del evento solo puede venir de
       // uno de los dos indices parciales de la INICIAL: "una sin terminar por
-      // ruta" o "una por ruta y fecha operativa".
+      // ruta" o "una por ruta y fecha operativa". La sesion acaba de nacer con
+      // un evento nuevo, asi que su `(eventoCargaId, usuarioAppId)` no choca.
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -236,7 +258,7 @@ export class PrismaCargaRepository extends CargaRepository {
         return this.aEventoCarga(row);
       });
     } catch (error) {
-      // Mismo indice parcial que en `crearEvento`: una INICIAL por ruta y fecha.
+      // Mismo indice parcial que en `crearEventoConSesion`: una INICIAL por ruta y fecha.
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -271,7 +293,7 @@ export class PrismaCargaRepository extends CargaRepository {
         // Sesiones e items no se tocan: cuelgan de la sesion, no de la fecha.
       });
     } catch (error) {
-      // Mismo indice parcial que en `crearEvento`: una INICIAL por ruta y fecha.
+      // Mismo indice parcial que en `crearEventoConSesion`: una INICIAL por ruta y fecha.
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -422,6 +444,53 @@ export class PrismaCargaRepository extends CargaRepository {
       },
     });
     return this.aDiscrepancia(row);
+  }
+
+  async confirmarDiscrepancia(
+    eventoId: string,
+    productoCode: string,
+    datos: DatosConfirmarDiscrepancia,
+    decidirEstado: DecidirEstadoTrasConfirmar,
+  ): Promise<{ discrepancia: Discrepancia; evento: EventoCarga }> {
+    return this.prisma.$transaction(async (tx) => {
+      // Bloquea el evento hasta el final de la transaccion: dos confirmaciones
+      // simultaneas de las dos ultimas discrepancias se forman en fila, y la
+      // segunda ve ya confirmada la primera. Sin esto, cada una veria la otra
+      // pendiente y ninguna avanzaria el evento.
+      const [bloqueado] = await tx.$queryRaw<{ estado: EstadoCarga }[]>`
+        SELECT "estado" FROM "eventos_carga" WHERE "id" = ${eventoId} FOR UPDATE`;
+      if (bloqueado === undefined) {
+        throw new Error(`evento ${eventoId} inexistente`);
+      }
+      const row = await tx.discrepanciaResuelta.update({
+        where: {
+          eventoCargaId_productoCode: { eventoCargaId: eventoId, productoCode },
+        },
+        data: {
+          confirmadaPor: datos.confirmadaPor,
+          fechaConfirmacion: datos.fechaConfirmacion,
+        },
+      });
+      const todas = await tx.discrepanciaResuelta.findMany({
+        where: { eventoCargaId: eventoId },
+        orderBy: { productoCode: 'asc' },
+      });
+      const nuevoEstado = decidirEstado(
+        bloqueado.estado,
+        todas.map((r) => this.aDiscrepancia(r)),
+      );
+      const evento =
+        nuevoEstado === null
+          ? await tx.eventoCarga.findUniqueOrThrow({ where: { id: eventoId } })
+          : await tx.eventoCarga.update({
+              where: { id: eventoId },
+              data: { estado: nuevoEstado },
+            });
+      return {
+        discrepancia: this.aDiscrepancia(row),
+        evento: this.aEventoCarga(evento),
+      };
+    });
   }
 
   async reabrirDiscrepancia(

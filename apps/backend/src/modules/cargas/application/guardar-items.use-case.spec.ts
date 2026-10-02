@@ -2,7 +2,6 @@ import type {
   CapturaGuardada,
   CargaRepository,
   DatosActualizarDiscrepancia,
-  DatosCrearEvento,
   Discrepancia,
   DiscrepanciaAGuardar,
   EventoCarga,
@@ -72,7 +71,10 @@ class FakeCargaRepository implements CargaRepository {
     this.guardados.push({ sesionId, items: items.map((i) => ({ ...i })) });
   }
 
-  crearEvento(_datos: DatosCrearEvento): Promise<EventoCarga> {
+  crearEventoConSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
+  confirmarDiscrepancia(): never {
     throw new Error('no usado en esta prueba');
   }
   /** Solo importa el estado: una carga CANCELADA no acepta items. */

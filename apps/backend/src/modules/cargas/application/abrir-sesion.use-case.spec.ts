@@ -11,7 +11,6 @@ import type {
 import type {
   CargaRepository,
   DatosActualizarDiscrepancia,
-  DatosCrearEvento,
   Discrepancia,
   DiscrepanciaAGuardar,
   EventoCarga,
@@ -120,7 +119,10 @@ class FakeCargaRepository implements CargaRepository {
     };
   }
 
-  crearEvento(_datos: DatosCrearEvento): Promise<EventoCarga> {
+  crearEventoConSesion(): never {
+    throw new Error('no usado en esta prueba');
+  }
+  confirmarDiscrepancia(): never {
     throw new Error('no usado en esta prueba');
   }
   cambiarEstado(): Promise<EventoCarga> {

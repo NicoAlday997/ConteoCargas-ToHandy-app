@@ -129,7 +129,10 @@ class FakeCargaRepository implements CargaRepository {
   }
 
   // --- Metodos del puerto que este caso de uso no usa. ----------------------
-  async crearEvento(): Promise<EventoCarga> {
+  crearEventoConSesion(): never {
+    throw new Error('no usado en estas pruebas');
+  }
+  confirmarDiscrepancia(): never {
     throw new Error('no usado en estas pruebas');
   }
   async crearSesion(): Promise<never> {

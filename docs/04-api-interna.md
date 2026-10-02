@@ -143,7 +143,7 @@ Retry-After: 15
 - La corrida automática de las 5:00 no se frena por el candado, pero se registra y cuenta para él.
 - Para la app no es un error: lo muestra como aviso, sin alarma.
 
-**Bitácora.** Cada sincronización deja una fila en `registros_sincronizacion`: `origen` (`MANUAL` | `AUTOMATICA`), `usuarioAppId` (quién la pidió, del JWT; `null` en la automática), `iniciadaEn`, `terminadaEn` y `exito`.
+**Bitácora.** Cada sincronización deja una fila en `registros_sincronizacion`: `origen` (`MANUAL` | `AUTOMATICA`), `usuarioAppId` (quién la pidió, del JWT; `null` en la automática), `iniciadaEn`, `terminadaEn` y `exito`. La fila nunca se borra y, una vez cerrada (`terminadaEn` y `exito`), no se modifica: lo impone un trigger en la base (`docs/07-despliegue.md` §13).
 
 Sustituye a `POST /admin/sincronizacion/productos` y `POST /admin/sincronizacion/usuarios-handy`, que se retiraron: con un solo punto de entrada el botón y la corrida automática no pueden divergir.
 

@@ -598,6 +598,21 @@ model ComparacionCarga {
   @@map("comparaciones_carga")
 }
 
+// SOLO SE AGREGA, NUNCA SE EDITA NI SE BORRA (para quien construya el stepper).
+// Una revision es el registro de un juicio hecho en un momento. Si el
+// supervisor se equivoco, la correccion es una revision NUEVA con
+// `reemplazaAId` apuntando a la anterior; la vieja se queda como estaba. Mismo
+// principio que las cargas: no se borran, se cancelan. La vigente de un
+// producto es la que nadie reemplaza.
+//
+// Lo impone la base, no solo la costumbre: un trigger creado con SQL manual en
+// la migracion `historial_solo_agregar` rechaza UPDATE, DELETE y TRUNCATE (un
+// `update` de Prisma aqui truena). Y un indice unico parcial, tambien manual,
+// deja una sola revision ORIGINAL (`reemplazaAId` nulo) por producto de cada
+// comparacion; `@unique` en `reemplazaAId` impide reemplazar dos veces la
+// misma. Juntos dejan una cadena lineal por producto. Que la nueva sea del
+// mismo producto y comparacion que la que reemplaza lo valida el caso de uso.
+// Prisma no conoce el trigger ni el indice parcial: no los dejes borrar.
 model RevisionSupervisor {
   id                     String            @id @default(cuid())
   comparacionCargaId     String
@@ -605,11 +620,19 @@ model RevisionSupervisor {
   resultado              ResultadoRevision
   cantidadRealEncontrada Int?
   fechaRevision          DateTime          @default(now())
+  // `null` en la primera revision del producto; en una correccion, la que
+  // corrige.
+  reemplazaAId           String?           @unique
 
-  comparacionCarga ComparacionCarga @relation(fields: [comparacionCargaId], references: [id], onDelete: Cascade)
-  producto         Producto         @relation(fields: [productoCode], references: [code])
+  // Restrict: el trigger rechaza cualquier DELETE aqui, asi que un borrado en
+  // cascada desde la comparacion fallaria igual; asi el error es el de la
+  // llave foranea y no uno del trigger a media cascada.
+  comparacionCarga ComparacionCarga    @relation(fields: [comparacionCargaId], references: [id], onDelete: Restrict)
+  producto         Producto            @relation(fields: [productoCode], references: [code])
+  reemplazaA       RevisionSupervisor? @relation("RevisionReemplazo", fields: [reemplazaAId], references: [id], onDelete: Restrict)
+  reemplazadaPor   RevisionSupervisor? @relation("RevisionReemplazo")
 
-  @@unique([comparacionCargaId, productoCode])
+  @@index([comparacionCargaId, productoCode])
   @@map("revisiones_supervisor")
 }
 
@@ -622,6 +645,13 @@ enum OrigenSincronizacion {
 /// Bitacora de cada sincronizacion con Handy: quien la pidio y cuando. Es
 /// tambien el candado global de 2 minutos (docs/04 §1.3): la fila se crea al
 /// EMPEZAR, asi que una corrida en curso ya bloquea a la siguiente.
+///
+/// Historia una vez cerrada: un trigger creado con SQL manual en la migracion
+/// `historial_solo_agregar` rechaza DELETE y TRUNCATE siempre, y como UNICO
+/// UPDATE deja llenar `terminadaEn` y `exito` una sola vez, cuando los dos
+/// siguen en nulo (sin tocar ninguna otra columna). Borrar una sincronizacion
+/// fallida esconderia el fallo, y reescribir la fila manipularia el candado.
+/// Prisma no conoce el trigger: no lo dejes borrar.
 model RegistroSincronizacion {
   id           String               @id @default(cuid())
   origen       OrigenSincronizacion
@@ -632,7 +662,10 @@ model RegistroSincronizacion {
   terminadaEn  DateTime?
   exito        Boolean?
 
-  usuarioApp UsuarioApp? @relation(fields: [usuarioAppId], references: [id])
+  // Restrict y no SetNull (el default de una relacion opcional): poner en nulo
+  // `usuarioAppId` es un UPDATE que el trigger rechaza, y ademas borraria
+  // quien pidio la sincronizacion.
+  usuarioApp UsuarioApp? @relation(fields: [usuarioAppId], references: [id], onDelete: Restrict)
 
   @@index([iniciadaEn])
   @@map("registros_sincronizacion")

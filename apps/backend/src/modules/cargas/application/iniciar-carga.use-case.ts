@@ -210,19 +210,27 @@ export class IniciarCargaUseCase {
       }
     }
 
-    // 4. Evento en BORRADOR. rutaId y plantillaId quedan como snapshot; hoy
-    //    todas las rutas operan en AUTOVENTA (docs/02 seccion 3).
-    let evento: EventoCarga;
+    // 4. Evento en BORRADOR y la sesion del primer conteo, en una sola
+    //    transaccion: una carga sin sesion seria una INICIAL sin terminar que
+    //    nadie puede continuar y que bloquearia la ruta. En autoventa el primero
+    //    siempre es el vendedor; el contador abrira la suya al verificar.
+    //    rutaId y plantillaId quedan como snapshot; hoy todas las rutas operan
+    //    en AUTOVENTA (docs/02 seccion 3). Nace en BORRADOR, el estado inicial
+    //    de la maquina de estados: no hay transicion que validar.
+    let creado: { evento: EventoCarga; sesion: SesionConteo };
     try {
-      evento = await this.cargas.crearEvento({
-        rutaId: asignacion.rutaId,
-        plantillaId: asignacion.plantillaId,
-        tipo: entrada.tipo,
-        usuarioHandyId: entrada.usuarioHandyId,
-        tipoOperacion: 'AUTOVENTA',
-        fechaConteo: ahora,
-        fechaOperativa,
-      });
+      creado = await this.cargas.crearEventoConSesion(
+        {
+          rutaId: asignacion.rutaId,
+          plantillaId: asignacion.plantillaId,
+          tipo: entrada.tipo,
+          usuarioHandyId: entrada.usuarioHandyId,
+          tipoOperacion: 'AUTOVENTA',
+          fechaConteo: ahora,
+          fechaOperativa,
+        },
+        { tipo: 'VENDEDOR', usuarioAppId: entrada.usuarioAppId },
+      );
     } catch (error) {
       // Carrera: otra solicitud creo la INICIAL entre la consulta y el alta; la
       // base de datos la rechazo por uno de los indices unicos. Misma respuesta
@@ -259,14 +267,6 @@ export class IniciarCargaUseCase {
       throw error;
     }
 
-    // 5. Sesion del primer conteo. En autoventa el primero siempre es el
-    //    vendedor; el contador abrira la suya al verificar.
-    const sesion = await this.cargas.crearSesion(
-      evento.id,
-      'VENDEDOR',
-      entrada.usuarioAppId,
-    );
-
-    return { exito: true, evento, sesion };
+    return { exito: true, evento: creado.evento, sesion: creado.sesion };
   }
 }

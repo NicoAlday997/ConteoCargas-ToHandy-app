@@ -43,6 +43,7 @@ Casos que **deben** tener prueba unitaria antes de considerarse listos para prod
 - Probar los endpoints del backend contra una base de datos de prueba (puede ser el mismo contenedor Docker con una base separada, ej. `handy_conteo_test`).
 - El adaptador `HandyHttpGateway` se prueba con un **servidor HTTP simulado** (mock server) que reproduce las respuestas documentadas de Handy (201, 422 con `prettyMessages`, 401, timeout) — nunca contra el ambiente real de Handy en pruebas automatizadas, para no generar rutas de prueba en el sistema productivo de la compañía.
 - Casos mínimos: creación exitosa de ruta, rechazo por inventario insuficiente, token inválido, timeout simulado.
+- **Contra Postgres real: `npm run test:db`** (en `apps/backend`, necesita Docker levantado). Aparte de `npm test`, que sigue sin depender de Docker. Usa la base `handy_conteo_test` del mismo contenedor y le aplica todas las migraciones. Archivos `*.db-spec.ts`. Hoy cubre: los triggers de las tablas de solo agregar, y que iniciar una carga (evento + sesión) y confirmar una discrepancia (confirmación + cambio de estado) no dejan nada a medias si falla el segundo paso. Se corre antes de cada commit que toque el esquema, una migración, un `$transaction` de un adaptador Prisma o una tabla de solo agregar (detalle en `docs/07-despliegue.md` §13.3).
 
 ### 2.5 Pruebas manuales (QA) — antes de cada entrega relevante
 

@@ -54,6 +54,13 @@ class FakeCargaRepository implements CargaRepository {
     return `${prefijo}-${this.secuencia}`;
   }
 
+  crearEventoConSesion(): never {
+    throw new Error('no usado en estas pruebas');
+  }
+  confirmarDiscrepancia(): never {
+    throw new Error('no usado en estas pruebas');
+  }
+  /** Ayudante para sembrar eventos; ya no es parte del puerto. */
   async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
     const evento: EventoCarga = {
       id: this.nuevoId('ev'),

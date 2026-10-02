@@ -1,4 +1,4 @@
-import type { EstadoCarga, TipoSesion, UbicacionConteo } from '@prisma/client';
+import type { EstadoCarga, TipoSesion } from '@prisma/client';
 
 import {
   HandyErrorServidorError,
@@ -20,6 +20,7 @@ import {
   type CargaRepository,
   type DatosCambiarFechaOperativa,
   type DatosCrearEvento,
+  type DatosSesionInicial,
   type Discrepancia,
   type DatosActualizarDiscrepancia,
   type DiscrepanciaAGuardar,
@@ -61,9 +62,15 @@ const AYER = new Date('2026-09-07T00:00:00-06:00');
 
 /**
  * Doble del repositorio de cargas: solo implementa lo que este caso de uso usa
- * (`crearEvento`, `crearSesion`, `buscarCargaInicialDeFecha`) y registra sus
+ * (`crearEventoConSesion`, `buscarCargaInicialDeFecha`) y registra sus
  * llamadas. El resto lanza para que una prueba falle si el caso de uso empieza
- * a depender de mas.
+ * a depender de mas; en particular `crearSesion`, que crearia la sesion fuera
+ * de la transaccion del evento.
+ *
+ * `crearEventoConSesion` imita la transaccion del adaptador real: solo
+ * "confirma" (guarda evento y sesion) si los dos pasos salen; si falla el
+ * segundo (`fallaAlCrearSesion`), no queda ninguno. Que la base de verdad lo
+ * haga asi lo prueba `prisma-carga.repository.db-spec.ts` (`npm run test:db`).
  */
 class FakeCargaRepository implements CargaRepository {
   listarCapturasDeSesion(): never {
@@ -90,6 +97,8 @@ class FakeCargaRepository implements CargaRepository {
    * cancelo o termino entretanto): el alta falla con esto y no deja nada.
    */
   fallaAlCrear: Error | null = null;
+  /** Falla el segundo paso (la sesion), con el evento ya armado. */
+  fallaAlCrearSesion: Error | null = null;
   private secuencia = 0;
 
   async buscarCargaInicialDeFecha(
@@ -108,7 +117,10 @@ class FakeCargaRepository implements CargaRepository {
     );
   }
 
-  async crearEvento(datos: DatosCrearEvento): Promise<EventoCarga> {
+  async crearEventoConSesion(
+    datos: DatosCrearEvento,
+    sesion: DatosSesionInicial,
+  ): Promise<{ evento: EventoCarga; sesion: SesionConteo }> {
     if (this.fallaAlCrear !== null) {
       const falla = this.fallaAlCrear;
       this.fallaAlCrear = null;
@@ -120,7 +132,6 @@ class FakeCargaRepository implements CargaRepository {
       throw this.errorDeCarrera;
     }
     this.secuencia += 1;
-    this.eventosCreados.push(datos);
     const evento: EventoCarga = {
       id: `ev-${this.secuencia}`,
       rutaId: datos.rutaId,
@@ -142,30 +153,39 @@ class FakeCargaRepository implements CargaRepository {
       motivoCancelacion: null,
       creadoEn: datos.fechaConteo,
     };
-    this.eventos.push(evento);
-    return evento;
-  }
-
-  async crearSesion(
-    eventoId: string,
-    tipo: TipoSesion,
-    usuarioAppId: string,
-    dispositivoId?: string,
-    ubicacion?: UbicacionConteo,
-  ): Promise<SesionConteo> {
+    // Segundo paso. Si falla, se sale antes de guardar nada: rollback.
+    if (this.fallaAlCrearSesion !== null) {
+      const falla = this.fallaAlCrearSesion;
+      this.fallaAlCrearSesion = null;
+      throw falla;
+    }
     this.secuencia += 1;
-    this.sesionesCreadas.push({ eventoId, tipo, usuarioAppId, dispositivoId });
-    return {
+    const creada: SesionConteo = {
       id: `se-${this.secuencia}`,
-      eventoCargaId: eventoId,
-      tipo,
-      usuarioAppId,
-      dispositivoId: dispositivoId ?? null,
-      ubicacion: ubicacion ?? null,
+      eventoCargaId: evento.id,
+      tipo: sesion.tipo,
+      usuarioAppId: sesion.usuarioAppId,
+      dispositivoId: null,
+      ubicacion: null,
       estado: 'ABIERTA',
       iniciadaEn: AHORA,
       finalizadaEn: null,
     };
+    this.eventosCreados.push(datos);
+    this.eventos.push(evento);
+    this.sesionesCreadas.push({
+      eventoId: evento.id,
+      tipo: sesion.tipo,
+      usuarioAppId: sesion.usuarioAppId,
+      dispositivoId: undefined,
+    });
+    return { evento, sesion: creada };
+  }
+
+  crearSesion(): never {
+    throw new Error(
+      'no usado: la sesion inicial nace con crearEventoConSesion, en la misma transaccion',
+    );
   }
 
   // Para encadenar `CancelarCargaUseCase` y `CambiarFechaOperativaUseCase`
@@ -217,6 +237,9 @@ class FakeCargaRepository implements CargaRepository {
     _productoCode: string,
     _datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia> {
+    throw new Error('no usado en esta prueba');
+  }
+  confirmarDiscrepancia(): never {
     throw new Error('no usado en esta prueba');
   }
   async cambiarFechaOperativa(
@@ -485,6 +508,30 @@ describe('IniciarCargaUseCase', () => {
     expect(resultado.sesion.estado).toBe('ABIERTA');
     expect(resultado.sesion.usuarioAppId).toBe('v1');
     expect(resultado.sesion.eventoCargaId).toBe(resultado.evento.id);
+  });
+
+  it('si falla la sesion (segundo paso), no queda la carga: la ruta no se bloquea', async () => {
+    asignaciones.vigente = { rutaId: 'ruta-7', plantillaId: 'plantilla-3' };
+    cargas.fallaAlCrearSesion = new Error('se cayo la conexion');
+
+    await expect(
+      useCase.ejecutar(
+        { usuarioAppId: 'v1', tipo: 'INICIAL', usuarioHandyId: 42, fechaOperativa: HOY },
+        AHORA,
+      ),
+    ).rejects.toThrow('se cayo la conexion');
+    expect(cargas.eventos).toHaveLength(0);
+    expect(cargas.sesionesCreadas).toHaveLength(0);
+
+    // Sin carga fantasma, el vendedor reintenta y la ruta lo deja.
+    const resultado = exigirExito(
+      await useCase.ejecutar(
+        { usuarioAppId: 'v1', tipo: 'INICIAL', usuarioHandyId: 42, fechaOperativa: HOY },
+        AHORA,
+      ),
+    );
+    expect(cargas.eventos).toEqual([resultado.evento]);
+    expect(cargas.sesionesCreadas).toHaveLength(1);
   });
 
   it('propaga plantillaId null cuando la ruta no tiene plantilla', async () => {

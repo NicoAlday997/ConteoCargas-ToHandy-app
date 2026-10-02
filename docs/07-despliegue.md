@@ -158,6 +158,7 @@ Debe salir una fila. Si no sale, no uses la app hasta resolverlo: sin el índice
 
 - En producción **nunca** se usa `prisma migrate dev`, `prisma migrate reset` ni `prisma db push`. Solo `prisma migrate deploy`, que ya corre solo al arrancar.
 - Prisma no conoce este índice (es parcial). Si una migración generada en el futuro trae `DROP INDEX "evento_carga_inicial_sin_terminar_unica"`, **borra esa línea** antes de hacer commit.
+- Lo mismo con los triggers de las tablas de solo agregar (sección 13): si una migración generada trae `DROP TRIGGER …` o `DROP FUNCTION rechazar_cambio_historial` / `registro_sincronizacion_solo_cierre`, **borra esas líneas**.
 
 ---
 
@@ -323,6 +324,7 @@ Notas:
 - [ ] Ensayo de restauración hecho y base de ensayo borrada (6.3)
 - [ ] Primer export descargado y guardado fuera de Render (6.2)
 - [ ] La app móvil apunta a Render y permite iniciar sesión (8)
+- [ ] Los 12 triggers de solo agregar existen y están activos (13.1)
 - [ ] Tu IP quitada de Access Control (7.1)
 
 ---
@@ -431,3 +433,77 @@ Si el comando se detiene, **no cambió nada**. Los avisos posibles:
 1. Si usaste `psql`, escribe `\q` y Enter para salir.
 2. Vuelve a **Access Control** en Render y **borra tu IP**.
 3. Si quitaste un bloqueo con SQL, termina tu nota (12, arriba) con la hora en que acabaste.
+
+---
+
+## 13. Tablas de solo agregar (triggers)
+
+Seis tablas registran que algo **pasó**. Una vez escrito, el renglón es historia: si algo estuvo mal, se agrega un renglón nuevo que lo diga, nunca se corrige ni se borra el viejo. Es el mismo principio que las cargas (no se borran, se cancelan). La migración `20261005120000_historial_solo_agregar` lo hace cumplir **en la base**, con triggers, aunque alguien entre con `psql`:
+
+| Tabla | Qué rechaza |
+|---|---|
+| `historiales_restablecimiento_pin` | Todo `UPDATE`, `DELETE` y `TRUNCATE` |
+| `historiales_desbloqueo` | Todo `UPDATE`, `DELETE` y `TRUNCATE` |
+| `cambios_fecha_operativa` | Todo `UPDATE`, `DELETE` y `TRUNCATE` |
+| `cambios_factor_empaque` | Todo `UPDATE`, `DELETE` y `TRUNCATE` |
+| `revisiones_supervisor` | Todo `UPDATE`, `DELETE` y `TRUNCATE`. Corregir una revisión es agregar una nueva con `reemplazaAId` apuntando a la anterior. |
+| `registros_sincronizacion` | `DELETE` y `TRUNCATE` siempre. El único `UPDATE` permitido es cerrar la corrida: llenar `terminadaEn` y `exito` una sola vez, cuando los dos siguen vacíos, sin tocar nada más. |
+
+Si algo intenta lo prohibido, la base responde con un error como `La tabla cambios_fecha_operativa es de solo agregar: UPDATE no permitido` y no cambia nada.
+
+Prisma no conoce los triggers: viven solo en el SQL de la migración. Un `prisma migrate deploy` (lo que corre Render) los crea; una base levantada con `prisma db push` **no** los tendría.
+
+### 13.1 Confirmar que están activos
+
+Conéctate a la base (7.1) y corre:
+
+```sql
+SELECT c.relname AS tabla, t.tgname AS trigger, t.tgenabled AS estado
+FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+WHERE NOT t.tgisinternal
+  AND (t.tgname LIKE '%\_solo\_agregar' OR t.tgname LIKE '%\_solo\_cierre'
+       OR t.tgname LIKE '%\_sin\_truncate')
+ORDER BY 1, 2;
+```
+
+Deben salir **12 filas** (dos por tabla) y todas con `estado` = `O` (activo). Una `D` es un trigger desactivado: alguien usó la salida de emergencia (13.2) y no lo volvió a activar. Actívalo (último paso de 13.2) y averigua quién y por qué.
+
+### 13.2 Salida de emergencia: tocar una de estas tablas
+
+> **Solo para una migración o corrección legítima que no se pueda hacer agregando un renglón.** Por ejemplo, borrar datos de prueba que se colaron en producción, o una migración de estructura que tenga que reescribir valores. Si la corrección se puede expresar como un renglón nuevo, hazlo así y no uses esto.
+
+Antes de empezar, **anótalo fuera del sistema** (un correo a ti mismo, una nota fechada): fecha y hora, quién lo hace, quién lo pidió, qué tabla, qué renglones (cópialos como estaban antes) y por qué. Desactivar el trigger es justo el tipo de intervención que el trigger existe para hacer visible: dentro de la base no va a quedar rastro de lo que cambiaste, así que esa nota es la única traza.
+
+Todo va en **una sola transacción**. En Postgres, `ALTER TABLE` también se deshace con `ROLLBACK`: si algo falla a la mitad, el trigger vuelve a quedar activo solo y no se aplica nada. Ejemplo con `cambios_fecha_operativa` (cambia la tabla y el nombre del trigger según la tabla de 13; en `registros_sincronizacion` es `registros_sincronizacion_solo_cierre`):
+
+```sql
+BEGIN;
+ALTER TABLE "cambios_fecha_operativa" DISABLE TRIGGER "cambios_fecha_operativa_solo_agregar";
+
+-- el cambio, siempre con WHERE por id:
+DELETE FROM "cambios_fecha_operativa" WHERE id = 'PEGA_AQUI_EL_ID';
+
+ALTER TABLE "cambios_fecha_operativa" ENABLE TRIGGER "cambios_fecha_operativa_solo_agregar";
+COMMIT;
+```
+
+- Para un `TRUNCATE` el trigger es el `…_sin_truncate` de la misma tabla.
+- Mientras la transacción está abierta, la tabla queda bloqueada para la app: hazlo rápido y fuera del horario de carga (antes de las 5:00 o en la tarde).
+- Si es una **migración** (un archivo en `prisma/migrations`), pon las mismas tres partes (`DISABLE`, el cambio, `ENABLE`) dentro del mismo archivo, con un comentario arriba que diga por qué. Pruébala antes con `npm run test:db` (13.3), que aplica todas las migraciones a una base de prueba: si el `ENABLE` faltara, la prueba de los triggers fallaría. La nota fuera del sistema se hace igual.
+- Al terminar, corre la consulta de 13.1: las 12 filas con `O`.
+
+### 13.3 Prueba contra la base real: `npm run test:db`
+
+`npm test` corre sin base de datos (dobles en memoria) y no puede probar triggers ni transacciones de verdad. Para eso está `npm run test:db`, aparte, en `apps/backend`:
+
+```bash
+cd apps/backend
+docker compose up -d      # necesita el Postgres de Docker levantado
+npm run test:db
+```
+
+- Usa una base **aparte**, `handy_conteo_test`, en el mismo contenedor; la crea sola la primera vez y le aplica todas las migraciones con `prisma migrate deploy`. Nunca toca tu base de desarrollo (`handy_conteo`) y se niega a correr si `DATABASE_URL` no apunta a `localhost`.
+- Prueba que los triggers de 13 rechazan `UPDATE`, `DELETE` y `TRUNCATE` y dejan pasar el `INSERT` (dentro de una transacción que se deshace al final), y que iniciar una carga y confirmar una discrepancia no dejan nada a medias si falla el segundo paso.
+- Si algún día la base de prueba queda en mal estado, bórrala y se recrea sola en la siguiente corrida: `docker exec handy_conteo_db dropdb -U handy_app handy_conteo_test`.
+
+**Cuándo correrla:** antes de cada commit que toque `prisma/schema.prisma`, una migración (sobre todo con SQL manual: triggers, índices parciales, `CHECK`), un adaptador `prisma-*.repository.ts` que use `$transaction`, o cualquiera de las seis tablas de arriba. Y siempre antes de desplegar a Render una versión con migraciones nuevas.

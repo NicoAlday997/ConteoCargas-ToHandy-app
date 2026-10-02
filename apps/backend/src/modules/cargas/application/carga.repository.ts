@@ -113,7 +113,7 @@ export interface DatosCrearEvento {
 }
 
 /**
- * Lo lanza `crearEvento` cuando la base de datos rechaza una segunda carga
+ * Lo lanza `crearEventoConSesion` cuando la base de datos rechaza una segunda carga
  * INICIAL para la misma ruta y fecha operativa (indice unico parcial). Cubre la
  * carrera entre dos solicitudes simultaneas que pasaron la consulta previa de
  * `buscarCargaInicialDeFecha`.
@@ -126,7 +126,7 @@ export class CargaInicialDuplicadaError extends Error {
 }
 
 /**
- * Lo lanza `crearEvento` cuando la base de datos rechaza una carga INICIAL
+ * Lo lanza `crearEventoConSesion` cuando la base de datos rechaza una carga INICIAL
  * porque la ruta ya tiene otra sin terminar (ni ENVIADA ni CANCELADA), en
  * cualquier fecha (indice unico parcial `evento_carga_inicial_sin_terminar_unica`).
  * Cubre la carrera entre dos solicitudes simultaneas que pasaron la consulta
@@ -215,6 +215,32 @@ export interface DatosActualizarDiscrepancia {
   fechaConfirmacion?: Date;
 }
 
+/** La confirmacion cruzada (paso 2) de una discrepancia. */
+export interface DatosConfirmarDiscrepancia {
+  confirmadaPor: string;
+  fechaConfirmacion: Date;
+}
+
+/**
+ * Decide, con el estado del evento y las discrepancias tal como quedaron tras
+ * confirmar (leidos dentro de la transaccion), a que estado pasa el evento;
+ * `null` si se queda en el que esta. Funcion pura: la ejecuta el adaptador
+ * dentro de la transaccion, no puede hacer E/S.
+ */
+export type DecidirEstadoTrasConfirmar = (
+  estadoActual: EstadoCarga,
+  discrepancias: Discrepancia[],
+) => EstadoCarga | null;
+
+/**
+ * Sesion que nace junto con el evento (ver `crearEventoConSesion`): la del
+ * primer conteo, siempre `ABIERTA`.
+ */
+export interface DatosSesionInicial {
+  tipo: TipoSesion;
+  usuarioAppId: string;
+}
+
 /**
  * Datos para forzar una discrepancia a un estado sin confirmar (ver
  * `reabrirDiscrepancia`). `cantidadFinal`/`capturadaPor`/`fechaCaptura` van
@@ -237,12 +263,19 @@ export interface DatosReabrirDiscrepancia {
 
 export abstract class CargaRepository {
   /**
-   * Crea un `EventoCarga` en estado `BORRADOR` y lo devuelve. Lanza
-   * `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y fecha, y
-   * `CargaInicialSinTerminarError` si la ruta ya tiene otra INICIAL sin
-   * terminar en otra fecha.
+   * Crea un `EventoCarga` en estado `BORRADOR` junto con la sesion del primer
+   * conteo, en UNA sola transaccion: o quedan los dos, o ninguno. Una carga
+   * sin sesion seria una INICIAL "sin terminar" que nadie puede continuar y
+   * que bloquearia la ruta entera (indice `evento_carga_inicial_sin_terminar_unica`).
+   *
+   * Lanza `CargaInicialDuplicadaError` si ya hay una INICIAL de esa ruta y
+   * fecha, y `CargaInicialSinTerminarError` si la ruta ya tiene otra INICIAL
+   * sin terminar en otra fecha; en los dos casos no se crea nada.
    */
-  abstract crearEvento(datos: DatosCrearEvento): Promise<EventoCarga>;
+  abstract crearEventoConSesion(
+    datos: DatosCrearEvento,
+    sesion: DatosSesionInicial,
+  ): Promise<{ evento: EventoCarga; sesion: SesionConteo }>;
 
   abstract buscarEventoPorId(id: string): Promise<EventoCarga | null>;
 
@@ -413,6 +446,26 @@ export abstract class CargaRepository {
     productoCode: string,
     datos: DatosActualizarDiscrepancia,
   ): Promise<Discrepancia>;
+
+  /**
+   * Confirmacion cruzada (paso 2) y, si corresponde, el cambio de estado del
+   * evento, en UNA sola transaccion: si falla cualquiera de los dos pasos, no
+   * queda ninguno. Sin esto, una falla entre los dos dejaba la carga con todo
+   * confirmado pero atorada en `CONFLICTOS_PENDIENTES`.
+   *
+   * Dentro de la transaccion, con el evento bloqueado (para que dos
+   * confirmaciones simultaneas de las ultimas discrepancias no se pierdan la
+   * transicion), guarda la confirmacion, relee las discrepancias y le pregunta
+   * a `decidirEstado` a que estado pasa el evento (`null` = se queda). La
+   * decision, incluida la validacion con `puedeTransicionar`, es del caso de
+   * uso; el adaptador solo la ejecuta.
+   */
+  abstract confirmarDiscrepancia(
+    eventoId: string,
+    productoCode: string,
+    datos: DatosConfirmarDiscrepancia,
+    decidirEstado: DecidirEstadoTrasConfirmar,
+  ): Promise<{ discrepancia: Discrepancia; evento: EventoCarga }>;
 
   /**
    * Fuerza una discrepancia a un estado SIN CONFIRMAR: crea la fila si no
