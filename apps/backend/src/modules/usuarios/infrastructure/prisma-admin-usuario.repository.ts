@@ -8,11 +8,14 @@ import {
   SinSupervisorActivoError,
   type DatosActualizarUsuario,
   type DatosCrearUsuario,
+  type MovimientoAcceso,
   type OcupanteCuentaHandy,
+  type PaginaAccesos,
   type RegistroDesbloqueo,
   type RegistroRestablecimientoPin,
   type UsuarioAdmin,
 } from '../application/admin-usuario.repository';
+import { intercalarAccesos } from '../application/intercalar-accesos';
 
 /**
  * Indice unico parcial creado a mano en la migracion
@@ -166,33 +169,131 @@ export class PrismaAdminUsuarioRepository extends AdminUsuarioRepository {
     return registro === null ? null : this.aDominio(registro);
   }
 
-  async registrarRestablecimientoPin(
-    datos: RegistroRestablecimientoPin,
+  async restablecerPin(
+    registro: RegistroRestablecimientoPin,
+    pinHash: string,
   ): Promise<void> {
-    await this.prisma.historialRestablecimientoPin.create({
-      data:
-        datos.origen === 'SUPERVISOR'
-          ? {
-              usuarioAppId: datos.usuarioAppId,
-              origen: 'SUPERVISOR',
-              restablecidoPor: datos.restablecidoPor,
-            }
-          : {
-              usuarioAppId: datos.usuarioAppId,
-              origen: 'LINEA_COMANDOS',
-              motivo: datos.motivo,
-            },
+    await this.prisma.$transaction(async (tx) => {
+      // Se fuerza el cambio en el siguiente login (RF-08) y se levanta el
+      // bloqueo por intentos (RF-03).
+      await tx.usuarioApp.update({
+        where: { id: registro.usuarioAppId },
+        data: {
+          pinHash,
+          debeCambiarPin: true,
+          intentosFallidos: 0,
+          bloqueadoHasta: null,
+        },
+      });
+      await tx.historialRestablecimientoPin.create({
+        data:
+          registro.origen === 'SUPERVISOR'
+            ? {
+                usuarioAppId: registro.usuarioAppId,
+                origen: 'SUPERVISOR',
+                restablecidoPor: registro.restablecidoPor,
+              }
+            : {
+                usuarioAppId: registro.usuarioAppId,
+                origen: 'LINEA_COMANDOS',
+                motivo: registro.motivo,
+              },
+      });
     });
   }
 
-  async registrarDesbloqueo(datos: RegistroDesbloqueo): Promise<void> {
-    await this.prisma.historialDesbloqueo.create({
-      data: {
-        usuarioAppId: datos.usuarioAppId,
-        desbloqueadoPor: datos.desbloqueadoPor,
-        bloqueadoHasta: datos.bloqueadoHasta,
-      },
+  async desbloquear(registro: RegistroDesbloqueo): Promise<UsuarioAdmin> {
+    const actualizado = await this.prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuarioApp.update({
+        where: { id: registro.usuarioAppId },
+        data: { intentosFallidos: 0, bloqueadoHasta: null },
+        select: PrismaAdminUsuarioRepository.SELECT,
+      });
+      await tx.historialDesbloqueo.create({
+        data: {
+          usuarioAppId: registro.usuarioAppId,
+          desbloqueadoPor: registro.desbloqueadoPor,
+          bloqueadoHasta: registro.bloqueadoHasta,
+        },
+      });
+      return usuario;
     });
+    return this.aDominio(actualizado);
+  }
+
+  /**
+   * Sin SQL a mano: de cada tabla se traen los `page * pageSize` mas
+   * recientes y `intercalarAccesos` los mezcla y recorta (ver ahi por que
+   * alcanza). Mismo orden en las dos consultas que en la mezcla: fecha y
+   * luego id, descendentes. Todo en una transaccion para que los totales
+   * cuadren con los renglones.
+   */
+  async listarAccesos(
+    usuarioAppId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginaAccesos> {
+    const orden = [{ fecha: 'desc' }, { id: 'desc' }] as const;
+    const autor = { select: { id: true, nombreCompleto: true } } as const;
+    const [restablecimientos, desbloqueos, totalR, totalD] =
+      await this.prisma.$transaction([
+        this.prisma.historialRestablecimientoPin.findMany({
+          where: { usuarioAppId },
+          orderBy: [...orden],
+          take: page * pageSize,
+          select: {
+            id: true,
+            origen: true,
+            motivo: true,
+            fecha: true,
+            admin: autor,
+          },
+        }),
+        this.prisma.historialDesbloqueo.findMany({
+          where: { usuarioAppId },
+          orderBy: [...orden],
+          take: page * pageSize,
+          select: { id: true, bloqueadoHasta: true, fecha: true, admin: autor },
+        }),
+        this.prisma.historialRestablecimientoPin.count({
+          where: { usuarioAppId },
+        }),
+        this.prisma.historialDesbloqueo.count({ where: { usuarioAppId } }),
+      ]);
+
+    const items = intercalarAccesos(
+      restablecimientos.map((r): MovimientoAcceso => {
+        // Los CHECK de `restablecimiento_origen_motivo` garantizan que un
+        // renglon de SUPERVISOR trae quien y uno de LINEA_COMANDOS trae por que.
+        if (r.origen === 'LINEA_COMANDOS' || r.admin === null) {
+          return {
+            id: r.id,
+            tipo: 'PIN_RESTABLECIDO',
+            fecha: r.fecha,
+            origen: 'LINEA_COMANDOS',
+            motivo: r.motivo ?? '',
+          };
+        }
+        return {
+          id: r.id,
+          tipo: 'PIN_RESTABLECIDO',
+          fecha: r.fecha,
+          origen: 'SUPERVISOR',
+          autor: r.admin,
+        };
+      }),
+      desbloqueos.map((d): MovimientoAcceso => ({
+        id: d.id,
+        tipo: 'BLOQUEO_QUITADO',
+        fecha: d.fecha,
+        autor: d.admin,
+        bloqueadoHasta: d.bloqueadoHasta,
+      })),
+      page,
+      pageSize,
+    );
+
+    return { items, total: totalR + totalD, page, pageSize };
   }
 
   async contarSupervisoresActivos(): Promise<number> {

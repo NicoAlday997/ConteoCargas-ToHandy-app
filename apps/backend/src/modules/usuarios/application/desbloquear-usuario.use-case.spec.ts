@@ -4,6 +4,7 @@ import type {
   AdminUsuarioRepository,
   DatosActualizarUsuario,
   DatosCrearUsuario,
+  PaginaAccesos,
   RegistroDesbloqueo,
   RegistroRestablecimientoPin,
   UsuarioAdmin,
@@ -20,10 +21,6 @@ const EN_12_MIN = new Date('2026-10-01T06:12:00-06:00');
 
 class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   readonly usuarios = new Map<string, UsuarioAdmin>();
-  readonly actualizaciones: Array<{
-    id: string;
-    datos: DatosActualizarUsuario;
-  }> = [];
   readonly desbloqueos: RegistroDesbloqueo[] = [];
 
   sembrar(usuario: UsuarioAdmin): void {
@@ -38,35 +35,39 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     throw new Error('no usado en estas pruebas');
   }
 
-  async actualizar(
-    id: string,
-    datos: DatosActualizarUsuario,
+  // El caso de uso no debe actualizar por separado: desbloqueo y traza van
+  // en una sola llamada (una transaccion en el repositorio real).
+  actualizar(
+    _id: string,
+    _datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin> {
-    this.actualizaciones.push({ id, datos });
-    const actual = this.usuarios.get(id);
-    if (actual === undefined) throw new Error(`usuario inexistente: ${id}`);
-    const actualizado: UsuarioAdmin = {
-      ...actual,
-      ...(datos.bloqueadoHasta !== undefined
-        ? { bloqueadoHasta: datos.bloqueadoHasta }
-        : {}),
-    };
-    this.usuarios.set(id, actualizado);
-    return actualizado;
+    throw new Error('el desbloqueo debe ir por desbloquear()');
   }
 
   async buscarPorId(id: string): Promise<UsuarioAdmin | null> {
     return this.usuarios.get(id) ?? null;
   }
 
-  registrarRestablecimientoPin(
-    _datos: RegistroRestablecimientoPin,
+  restablecerPin(
+    _registro: RegistroRestablecimientoPin,
+    _pinHash: string,
   ): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
 
-  async registrarDesbloqueo(datos: RegistroDesbloqueo): Promise<void> {
-    this.desbloqueos.push(datos);
+  async desbloquear(registro: RegistroDesbloqueo): Promise<UsuarioAdmin> {
+    this.desbloqueos.push(registro);
+    const actual = this.usuarios.get(registro.usuarioAppId);
+    if (actual === undefined) {
+      throw new Error(`usuario inexistente: ${registro.usuarioAppId}`);
+    }
+    const actualizado: UsuarioAdmin = { ...actual, bloqueadoHasta: null };
+    this.usuarios.set(actual.id, actualizado);
+    return actualizado;
+  }
+
+  listarAccesos(): Promise<PaginaAccesos> {
+    throw new Error('no usado en estas pruebas');
   }
 
   contarSupervisoresActivos(): Promise<number> {
@@ -107,19 +108,17 @@ describe('DesbloquearUsuarioUseCase', () => {
     useCase = new DesbloquearUsuarioUseCase(repo);
   });
 
-  it('pone intentosFallidos en 0 y bloqueadoHasta en null', async () => {
+  it('quita el bloqueo y devuelve al usuario ya desbloqueado', async () => {
     repo.sembrar(crearUsuario());
 
     const resultado = await useCase.ejecutar('u-1', 'sup-1', AHORA);
 
     expect(resultado.exito).toBe(true);
-    expect(repo.actualizaciones).toEqual([
-      { id: 'u-1', datos: { intentosFallidos: 0, bloqueadoHasta: null } },
-    ]);
+    if (resultado.exito) expect(resultado.usuario.bloqueadoHasta).toBeNull();
     expect(repo.usuarios.get('u-1')?.bloqueadoHasta).toBeNull();
   });
 
-  it('deja traza de quien desbloqueo a quien y cuanto le faltaba', async () => {
+  it('desbloqueo y traza en una sola llamada al repositorio (atomica): quien, a quien y cuanto le faltaba', async () => {
     repo.sembrar(crearUsuario());
 
     await useCase.ejecutar('u-1', 'sup-1', AHORA);
@@ -140,7 +139,6 @@ describe('DesbloquearUsuarioUseCase', () => {
       exito: false,
       motivo: 'USUARIO_NO_ENCONTRADO',
     });
-    expect(repo.actualizaciones).toHaveLength(0);
     expect(repo.desbloqueos).toHaveLength(0);
   });
 
@@ -153,7 +151,6 @@ describe('DesbloquearUsuarioUseCase', () => {
       exito: false,
       motivo: 'AUTODESBLOQUEO_PROHIBIDO',
     });
-    expect(repo.actualizaciones).toHaveLength(0);
     expect(repo.desbloqueos).toHaveLength(0);
   });
 
@@ -163,7 +160,6 @@ describe('DesbloquearUsuarioUseCase', () => {
     const resultado = await useCase.ejecutar('u-1', 'sup-1', AHORA);
 
     expect(resultado).toEqual({ exito: false, motivo: 'NO_BLOQUEADO' });
-    expect(repo.actualizaciones).toHaveLength(0);
     expect(repo.desbloqueos).toHaveLength(0);
   });
 

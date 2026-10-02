@@ -21,7 +21,9 @@ const usuarioHandyId = z
   .positive('El usuario de Handy no es valido');
 
 /** Id de un `UsuarioApp`: siempre un CUID (no UUID). */
-export const IdUsuarioSchema = z.cuid('El identificador de usuario no es valido');
+export const IdUsuarioSchema = z.cuid(
+  'El identificador de usuario no es valido',
+);
 
 /** Body de `POST /admin/usuarios` (alta, RF-07). */
 export const CrearUsuarioSchema = z.object({
@@ -49,3 +51,11 @@ export const EditarUsuarioSchema = z
 
 export type CrearUsuarioDto = z.infer<typeof CrearUsuarioSchema>;
 export type EditarUsuarioDto = z.infer<typeof EditarUsuarioSchema>;
+
+/** Query de `GET /admin/usuarios/:id/accesos`. El caso de uso acota `pageSize`. */
+export const PaginaAccesosSchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().optional(),
+});
+
+export type PaginaAccesosDto = z.infer<typeof PaginaAccesosSchema>;

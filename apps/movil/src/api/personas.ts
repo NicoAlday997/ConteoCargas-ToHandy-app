@@ -68,3 +68,32 @@ export function desbloquearPersona(id: string): Promise<UsuarioAdminApi | null> 
 export function restablecerPinPersona(id: string): Promise<{ pinTemporal: string | null } | null> {
   return peticion(`${base}/${encodeURIComponent(id)}/restablecer-pin`, { method: 'POST' });
 }
+
+/**
+ * Renglón de `GET /admin/usuarios/:id/accesos`. `autor` es `null` solo en
+ * `LINEA_COMANDOS` (no hay sesión: nunca se sabrá quién), y entonces `motivo`
+ * dice por qué. `bloqueadoHasta`: solo en `BLOQUEO_QUITADO`.
+ */
+export interface MovimientoAccesoApi {
+  id: string | null;
+  tipo: 'PIN_RESTABLECIDO' | 'BLOQUEO_QUITADO' | null;
+  /** ISO 8601. */
+  fecha: string | null;
+  origen: 'SUPERVISOR' | 'LINEA_COMANDOS' | null;
+  autor: { id: string | null; nombreCompleto: string | null } | null;
+  motivo: string | null;
+  /** ISO 8601. */
+  bloqueadoHasta: string | null;
+}
+
+export interface PaginaAccesosApi {
+  items: MovimientoAccesoApi[] | null;
+  total: number | null;
+  page: number | null;
+  pageSize: number | null;
+}
+
+/** Solo lectura: no hay (ni habrá) forma de editar o borrar un renglón. */
+export function listarAccesosPersona(id: string, page: number, pageSize: number): Promise<PaginaAccesosApi | null> {
+  return peticion(`${base}/${encodeURIComponent(id)}/accesos?page=${page}&pageSize=${pageSize}`);
+}

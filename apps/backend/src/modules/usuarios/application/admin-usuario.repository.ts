@@ -66,6 +66,48 @@ export interface RegistroDesbloqueo {
   bloqueadoHasta: Date;
 }
 
+/** Quien hizo un movimiento de acceso desde la app. */
+export interface AutorMovimiento {
+  id: string;
+  nombreCompleto: string;
+}
+
+/**
+ * Un renglon del historial de acceso de una persona: un restablecimiento de
+ * PIN (por un supervisor, o por linea de comandos con su motivo) o un bloqueo
+ * quitado a mano (con hasta cuando iba). Solo lectura: nadie edita ni borra
+ * estos renglones; una correccion seria un renglon nuevo.
+ */
+export type MovimientoAcceso =
+  | {
+      id: string;
+      tipo: 'PIN_RESTABLECIDO';
+      fecha: Date;
+      origen: 'SUPERVISOR';
+      autor: AutorMovimiento;
+    }
+  | {
+      id: string;
+      tipo: 'PIN_RESTABLECIDO';
+      fecha: Date;
+      origen: 'LINEA_COMANDOS';
+      motivo: string;
+    }
+  | {
+      id: string;
+      tipo: 'BLOQUEO_QUITADO';
+      fecha: Date;
+      autor: AutorMovimiento;
+      bloqueadoHasta: Date;
+    };
+
+export interface PaginaAccesos {
+  items: MovimientoAcceso[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 /** El usuario activo que ya ocupa una cuenta de Handy. */
 export interface OcupanteCuentaHandy {
   id: string;
@@ -117,10 +159,32 @@ export abstract class AdminUsuarioRepository {
     datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin>;
   abstract buscarPorId(id: string): Promise<UsuarioAdmin | null>;
-  abstract registrarRestablecimientoPin(
-    datos: RegistroRestablecimientoPin,
+  /**
+   * Pone el PIN temporal (con `debeCambiarPin = true`, sin intentos fallidos
+   * ni bloqueo) y escribe el renglon del historial (RF-10) en una sola
+   * transaccion: o quedan los dos o no queda ninguno. Un PIN restablecido sin
+   * traza seria una intervencion invisible.
+   */
+  abstract restablecerPin(
+    registro: RegistroRestablecimientoPin,
+    pinHash: string,
   ): Promise<void>;
-  abstract registrarDesbloqueo(datos: RegistroDesbloqueo): Promise<void>;
+  /**
+   * Quita el bloqueo por intentos (`intentosFallidos = 0`, `bloqueadoHasta =
+   * null`) y escribe el renglon del historial en una sola transaccion: o
+   * quedan los dos o no queda ninguno. Un acceso restaurado sin traza no diria
+   * quien lo dio.
+   */
+  abstract desbloquear(registro: RegistroDesbloqueo): Promise<UsuarioAdmin>;
+  /**
+   * Restablecimientos de PIN y desbloqueos de esa persona en una sola lista,
+   * del mas reciente al mas antiguo. `page`/`pageSize` ya vienen resueltos.
+   */
+  abstract listarAccesos(
+    usuarioAppId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<PaginaAccesos>;
   /**
    * Cuenta los `UsuarioApp` con `rolApp = SUPERVISOR` y `activo = true`. Lo usa
    * `politica-supervisores.ts` para impedir que una desactivacion o un cambio

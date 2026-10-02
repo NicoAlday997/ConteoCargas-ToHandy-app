@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ErrorApi } from './cliente';
 import {
   crearPersona,
   desbloquearPersona,
   editarPersona,
+  listarAccesosPersona,
   listarCuentasHandy,
   listarPersonas,
   restablecerPinPersona,
@@ -16,6 +17,9 @@ export const clavesPersonas = {
   todo: ['personas'] as const,
   lista: ['personas', 'lista'] as const,
   cuentasHandy: ['personas', 'cuentas-handy'] as const,
+  // Bajo `personas`: restablecer o desbloquear agrega un renglón y lo refresca.
+  accesosRecientes: (id: string) => ['personas', 'accesos', id, 'recientes'] as const,
+  accesosTodos: (id: string) => ['personas', 'accesos', id, 'todos'] as const,
 };
 
 /** Un 403 o un 409 no se arreglan reintentando. */
@@ -89,4 +93,33 @@ export function useRestablecerPin() {
 export function useDesbloquearPersona() {
   const refrescar = useRefrescarPersonas();
   return useMutation({ mutationFn: (id: string) => desbloquearPersona(id), onSettled: refrescar });
+}
+
+/** Los que caben a la vista en la ficha; el resto, en "Ver todo". */
+export const ACCESOS_RECIENTES = 5;
+const TAMANO_PAGINA_ACCESOS = 50;
+
+/** Los últimos movimientos de acceso de una persona, para su ficha. */
+export function useAccesosRecientes(id: string) {
+  return useQuery({
+    queryKey: clavesPersonas.accesosRecientes(id),
+    queryFn: () => listarAccesosPersona(id, 1, ACCESOS_RECIENTES),
+    staleTime: 0,
+    retry: reintentar,
+  });
+}
+
+/** Todo el historial de acceso, por páginas, del más reciente al más antiguo. */
+export function useAccesosTodos(id: string) {
+  return useInfiniteQuery({
+    queryKey: clavesPersonas.accesosTodos(id),
+    queryFn: ({ pageParam }) => listarAccesosPersona(id, pageParam, TAMANO_PAGINA_ACCESOS),
+    initialPageParam: 1,
+    getNextPageParam: (ultima, _todas, paginaActual) => {
+      const total = ultima?.total ?? 0;
+      return paginaActual * TAMANO_PAGINA_ACCESOS < total ? paginaActual + 1 : undefined;
+    },
+    staleTime: 0,
+    retry: reintentar,
+  });
 }

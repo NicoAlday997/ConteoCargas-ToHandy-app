@@ -7,6 +7,7 @@ import {
   type DatosActualizarUsuario,
   type DatosCrearUsuario,
   type OcupanteCuentaHandy,
+  type PaginaAccesos,
   type RegistroDesbloqueo,
   type RegistroRestablecimientoPin,
   type UsuarioAdmin,
@@ -77,13 +78,18 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     throw new Error('no usado en estas pruebas');
   }
 
-  registrarRestablecimientoPin(
-    _datos: RegistroRestablecimientoPin,
+  restablecerPin(
+    _registro: RegistroRestablecimientoPin,
+    _pinHash: string,
   ): Promise<void> {
     throw new Error('no usado en estas pruebas');
   }
 
-  registrarDesbloqueo(_datos: RegistroDesbloqueo): Promise<void> {
+  desbloquear(_registro: RegistroDesbloqueo): Promise<UsuarioAdmin> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  listarAccesos(): Promise<PaginaAccesos> {
     throw new Error('no usado en estas pruebas');
   }
 

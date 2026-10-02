@@ -49,11 +49,10 @@ export class DesbloquearUsuarioUseCase {
       return { exito: false, motivo: 'NO_BLOQUEADO' };
     }
 
-    const actualizado = await this.usuarios.actualizar(usuarioAppId, {
-      intentosFallidos: 0,
-      bloqueadoHasta: null,
-    });
-    await this.usuarios.registrarDesbloqueo({
+    // Desbloqueo y traza van juntos en una transaccion: o quedan los dos o
+    // ninguno. Un desbloqueo sin renglon dejaria a alguien con el acceso
+    // restaurado y sin rastro de quien se lo dio.
+    const actualizado = await this.usuarios.desbloquear({
       usuarioAppId,
       desbloqueadoPor,
       bloqueadoHasta: bloqueo.hasta,

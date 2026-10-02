@@ -22,6 +22,7 @@ import {
   type Dato,
 } from '../componentes/base';
 import { ANCHO_MAXIMO_LISTA, COLORES, ESPACIADO, FUENTE, RITMO, TIPOGRAFIA } from '../theme/tokens';
+import { PantallaHistorialAcceso, SeccionHistorialAcceso } from './HistorialAcceso';
 import { bloqueoVigente, CONSEJO_DESACTIVAR, textoBloqueo, textoInicioBloqueo, type Persona } from './modelo-personas';
 import { PantallaPin, type PinTemporal } from './PantallaPin';
 
@@ -32,7 +33,8 @@ type Confirmacion = 'desactivar' | 'restablecer' | null;
 /**
  * Ficha de una persona: cambiar su nombre, darla de baja o de alta otra vez,
  * restablecer su PIN y, si está bloqueada por intentos fallidos, quitarle el
- * bloqueo. El rol y la cuenta de Handy no se cambian aquí.
+ * bloqueo. Abajo, su historial de acceso (solo lectura). El rol y la cuenta
+ * de Handy no se cambian aquí.
  *
  * Los rechazos del servidor (no puedes desactivarte a ti mismo, no puedes
  * dejar el sistema sin supervisor…) se muestran tal cual: ya vienen escritos
@@ -52,18 +54,38 @@ export function DetallePersona({
   onCerrar: () => void;
 }) {
   const [pin, setPin] = useState<PinTemporal | null>(null);
+  const [verAccesos, setVerAccesos] = useState(false);
+  // El nombre a medio editar vive aquí y no en la Ficha: la Ficha se desmonta
+  // al abrir "Ver todo" (o el PIN) y, al volver, no debe perderse lo escrito.
+  // Va atado a la persona para que no se cuele en la ficha de otra.
+  const [borrador, setBorrador] = useState<{ personaId: string; nombre: string } | null>(null);
   const terminar = () => {
     setPin(null);
+    setVerAccesos(false);
+    setBorrador(null);
     onCerrar();
   };
   return (
-    // Con el PIN en pantalla, el atrás del sistema no hace nada.
-    <PantallaModal visible={persona !== null} onCerrar={pin ? () => {} : terminar}>
+    // Con el PIN en pantalla, el atrás del sistema no hace nada; con el
+    // historial completo, regresa a la ficha.
+    <PantallaModal visible={persona !== null} onCerrar={pin ? () => {} : verAccesos ? () => setVerAccesos(false) : terminar}>
       {persona &&
         (pin ? (
           <PantallaPin datos={pin} onListo={() => setPin(null)} />
+        ) : verAccesos ? (
+          <PantallaHistorialAcceso persona={persona} ahora={ahora} onVolver={() => setVerAccesos(false)} />
         ) : (
-          <Ficha key={persona.id} persona={persona} cuentaHandy={cuentaHandy} ahora={ahora} onCerrar={terminar} onPin={setPin} />
+          <Ficha
+            key={persona.id}
+            persona={persona}
+            cuentaHandy={cuentaHandy}
+            ahora={ahora}
+            nombre={borrador?.personaId === persona.id ? borrador.nombre : persona.nombre}
+            onCambiarNombre={(nombre) => setBorrador({ personaId: persona.id, nombre })}
+            onCerrar={terminar}
+            onPin={setPin}
+            onVerAccesos={() => setVerAccesos(true)}
+          />
         ))}
     </PantallaModal>
   );
@@ -88,20 +110,26 @@ function Ficha({
   persona,
   cuentaHandy,
   ahora,
+  nombre,
+  onCambiarNombre,
   onCerrar,
   onPin,
+  onVerAccesos,
 }: {
   persona: Persona;
   cuentaHandy: string | null;
   ahora: number;
+  /** Lo que hay en el campo de nombre (el borrador, si alguien lo está editando). */
+  nombre: string;
+  onCambiarNombre: (nombre: string) => void;
   onCerrar: () => void;
   onPin: (pin: PinTemporal) => void;
+  onVerAccesos: () => void;
 }) {
   const editar = useEditarPersona();
   const restablecer = useRestablecerPin();
   const desbloquear = useDesbloquearPersona();
   const miId = useMiId();
-  const [nombre, setNombre] = useState(persona.nombre);
   const [confirmar, setConfirmar] = useState<Confirmacion>(null);
   const bloqueo = bloqueoVigente(persona, ahora);
   const esYo = miId !== null && miId === persona.id;
@@ -181,7 +209,7 @@ function Ficha({
           <CampoTexto
             etiqueta="Nombre completo"
             valor={nombre}
-            onCambiar={setNombre}
+            onCambiar={onCambiarNombre}
             maxLength={120}
             ayuda="Para corregirlo. Si llega otra persona, no le cambies el nombre a esta: da de alta una nueva."
             error={nombre.trim().length === 0 ? 'Escribe su nombre completo.' : null}
@@ -258,6 +286,8 @@ function Ficha({
             </>
           )}
         </View>
+
+        <SeccionHistorialAcceso personaId={persona.id} ahora={ahora} onVerTodo={onVerAccesos} />
       </PantallaConFormulario>
 
       <Hoja

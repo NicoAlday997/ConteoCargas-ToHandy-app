@@ -5,6 +5,7 @@ import type {
   AdminUsuarioRepository,
   DatosActualizarUsuario,
   DatosCrearUsuario,
+  PaginaAccesos,
   RegistroDesbloqueo,
   RegistroRestablecimientoPin,
   UsuarioAdmin,
@@ -22,15 +23,15 @@ import {
 
 /**
  * Repositorio falso: guarda los usuarios en un Map y registra cada llamada a
- * `actualizar` y a `registrarRestablecimientoPin` para poder verificarlas.
+ * `restablecerPin` (el PIN y la traza, que el adaptador real escribe en una
+ * sola transaccion) para poder verificarlas.
  */
 class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
   readonly usuarios = new Map<string, UsuarioAdmin>();
-  readonly actualizaciones: Array<{
-    id: string;
-    datos: DatosActualizarUsuario;
+  readonly restablecimientos: Array<{
+    registro: RegistroRestablecimientoPin;
+    pinHash: string;
   }> = [];
-  readonly restablecimientos: RegistroRestablecimientoPin[] = [];
 
   sembrar(usuario: UsuarioAdmin): void {
     this.usuarios.set(usuario.id, usuario);
@@ -44,37 +45,29 @@ class FakeAdminUsuarioRepository implements AdminUsuarioRepository {
     throw new Error('no usado en estas pruebas');
   }
 
-  async actualizar(
-    id: string,
-    datos: DatosActualizarUsuario,
+  actualizar(
+    _id: string,
+    _datos: DatosActualizarUsuario,
   ): Promise<UsuarioAdmin> {
-    this.actualizaciones.push({ id, datos });
-    const actual = this.usuarios.get(id);
-    if (actual === undefined) {
-      throw new Error(`usuario inexistente: ${id}`);
-    }
-    const actualizado: UsuarioAdmin = {
-      ...actual,
-      ...(datos.debeCambiarPin !== undefined
-        ? { debeCambiarPin: datos.debeCambiarPin }
-        : {}),
-      ...(datos.activo !== undefined ? { activo: datos.activo } : {}),
-    };
-    this.usuarios.set(id, actualizado);
-    return actualizado;
+    throw new Error('no usado en estas pruebas');
   }
 
   async buscarPorId(id: string): Promise<UsuarioAdmin | null> {
     return this.usuarios.get(id) ?? null;
   }
 
-  async registrarRestablecimientoPin(
-    datos: RegistroRestablecimientoPin,
+  async restablecerPin(
+    registro: RegistroRestablecimientoPin,
+    pinHash: string,
   ): Promise<void> {
-    this.restablecimientos.push(datos);
+    this.restablecimientos.push({ registro, pinHash });
   }
 
-  registrarDesbloqueo(_datos: RegistroDesbloqueo): Promise<void> {
+  desbloquear(_registro: RegistroDesbloqueo): Promise<UsuarioAdmin> {
+    throw new Error('no usado en estas pruebas');
+  }
+
+  listarAccesos(): Promise<PaginaAccesos> {
     throw new Error('no usado en estas pruebas');
   }
 
@@ -154,7 +147,6 @@ describe('RestablecerPinUseCase', () => {
       exito: false,
       motivo: 'USUARIO_NO_ENCONTRADO',
     });
-    expect(repo.actualizaciones).toHaveLength(0);
     expect(repo.restablecimientos).toHaveLength(0);
     expect(hasher.hashInvocaciones).toHaveLength(0);
   });
@@ -167,24 +159,22 @@ describe('RestablecerPinUseCase', () => {
     expect(resultado.pinTemporal).toMatch(/^\d{4}$/);
   });
 
-  it('3. persiste solo el hash del PIN nuevo, fuerza debeCambiarPin y levanta el bloqueo', async () => {
+  it('3. persiste solo el hash del PIN nuevo, junto con la traza, en una sola escritura', async () => {
     repo.sembrar(crearUsuario({ debeCambiarPin: false }));
 
     const resultado = exigirExito(await useCase.ejecutar('u-1', SUPERVISOR_1));
 
     expect(hasher.hashInvocaciones).toEqual([resultado.pinTemporal]);
-    expect(repo.actualizaciones).toEqual([
+    expect(repo.restablecimientos).toEqual([
       {
-        id: 'u-1',
-        datos: {
-          pinHash: `HASH:${resultado.pinTemporal}`,
-          debeCambiarPin: true,
-          intentosFallidos: 0,
-          bloqueadoHasta: null,
+        registro: {
+          usuarioAppId: 'u-1',
+          origen: 'SUPERVISOR',
+          restablecidoPor: 'admin-1',
         },
+        pinHash: `HASH:${resultado.pinTemporal}`,
       },
     ]);
-    expect(repo.usuarios.get('u-1')?.debeCambiarPin).toBe(true);
   });
 
   it('4. deja traza del restablecimiento con el usuario afectado y quien lo ejecuto (RF-10)', async () => {
@@ -195,8 +185,12 @@ describe('RestablecerPinUseCase', () => {
       restablecidoPor: 'admin-99',
     });
 
-    expect(repo.restablecimientos).toEqual([
-      { usuarioAppId: 'u-1', origen: 'SUPERVISOR', restablecidoPor: 'admin-99' },
+    expect(repo.restablecimientos.map((r) => r.registro)).toEqual([
+      {
+        usuarioAppId: 'u-1',
+        origen: 'SUPERVISOR',
+        restablecidoPor: 'admin-99',
+      },
     ]);
   });
 
@@ -212,17 +206,14 @@ describe('RestablecerPinUseCase', () => {
       );
 
       expect(resultado.pinTemporal).toMatch(/^\d{4}$/);
-      expect(repo.actualizaciones[0]?.datos).toEqual({
-        pinHash: `HASH:${resultado.pinTemporal}`,
-        debeCambiarPin: true,
-        intentosFallidos: 0,
-        bloqueadoHasta: null,
-      });
       expect(repo.restablecimientos).toEqual([
         {
-          usuarioAppId: 'u-1',
-          origen: 'LINEA_COMANDOS',
-          motivo: 'Unico supervisor olvido su PIN',
+          registro: {
+            usuarioAppId: 'u-1',
+            origen: 'LINEA_COMANDOS',
+            motivo: 'Unico supervisor olvido su PIN',
+          },
+          pinHash: `HASH:${resultado.pinTemporal}`,
         },
       ]);
     });
@@ -238,7 +229,6 @@ describe('RestablecerPinUseCase', () => {
         });
 
         expect(resultado).toEqual({ exito: false, motivo: 'MOTIVO_REQUERIDO' });
-        expect(repo.actualizaciones).toHaveLength(0);
         expect(repo.restablecimientos).toHaveLength(0);
         expect(hasher.hashInvocaciones).toHaveLength(0);
       },

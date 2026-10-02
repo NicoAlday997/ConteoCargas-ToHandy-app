@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { RolApp } from '@prisma/client';
@@ -20,6 +21,10 @@ import { RolesGuard } from '../../../shared/auth/roles.guard';
 import { UsuarioActual } from '../../../shared/auth/usuario-actual.decorator';
 import { ZodValidationPipe } from '../../auth/interface/zod-validation.pipe';
 import { AdminUsuarioRepository } from '../application/admin-usuario.repository';
+import {
+  ConsultarAccesosUseCase,
+  vistaMovimientoAcceso,
+} from '../application/consultar-accesos.use-case';
 import { CrearUsuarioUseCase } from '../application/crear-usuario.use-case';
 import type { RechazoCuentaHandyYaAsignada } from '../application/cuenta-handy-libre';
 import { DesbloquearUsuarioUseCase } from '../application/desbloquear-usuario.use-case';
@@ -30,11 +35,24 @@ import {
   CrearUsuarioSchema,
   EditarUsuarioSchema,
   IdUsuarioSchema,
+  PaginaAccesosSchema,
   type CrearUsuarioDto,
   type EditarUsuarioDto,
+  type PaginaAccesosDto,
 } from './usuarios.dto';
 
-const MENSAJE_USUARIO_NO_ENCONTRADO = 'Usuario no encontrado';
+/**
+ * 404 solo cuando de verdad no existe el usuario. Cada otro rechazo de un caso
+ * de uso tiene su propio codigo HTTP y su `codigo`: un 404 generico mandaria a
+ * quien depura por el camino equivocado.
+ */
+function usuarioNoEncontrado(): NotFoundException {
+  return new NotFoundException({
+    statusCode: 404,
+    codigo: 'USUARIO_NO_ENCONTRADO',
+    mensaje: 'Usuario no encontrado',
+  });
+}
 
 /**
  * 409 cuando la cuenta de Handy ya la tiene otro usuario activo: dice a quien,
@@ -67,6 +85,7 @@ export class UsuariosController {
     private readonly restablecerPinUseCase: RestablecerPinUseCase,
     private readonly editarUsuarioUseCase: EditarUsuarioUseCase,
     private readonly desbloquearUsuarioUseCase: DesbloquearUsuarioUseCase,
+    private readonly consultarAccesosUseCase: ConsultarAccesosUseCase,
   ) {}
 
   /**
@@ -101,11 +120,13 @@ export class UsuariosController {
         case 'VENDEDOR_REQUIERE_HANDY':
           throw new BadRequestException({
             statusCode: 400,
+            codigo: resultado.motivo,
             mensaje: 'Un vendedor debe tener un usuario de Handy vinculado',
           });
         case 'NO_VENDEDOR_CON_HANDY':
           throw new BadRequestException({
             statusCode: 400,
+            codigo: resultado.motivo,
             mensaje:
               'Solo un vendedor puede tener un usuario de Handy vinculado',
           });
@@ -143,18 +164,17 @@ export class UsuariosController {
     if (!resultado.exito) {
       switch (resultado.motivo) {
         case 'USUARIO_NO_ENCONTRADO':
-          throw new NotFoundException({
-            statusCode: 404,
-            mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
-          });
+          throw usuarioNoEncontrado();
         case 'AUTODESACTIVACION_PROHIBIDA':
           throw new ConflictException({
             statusCode: 409,
+            codigo: resultado.motivo,
             mensaje: 'No puedes desactivar tu propia cuenta.',
           });
         case 'AUTOCAMBIO_ROL_PROHIBIDO':
           throw new ConflictException({
             statusCode: 409,
+            codigo: resultado.motivo,
             mensaje: 'No puedes cambiar tu propio rol.',
           });
         case 'ULTIMO_SUPERVISOR':
@@ -193,10 +213,7 @@ export class UsuariosController {
     if (!resultado.exito) {
       switch (resultado.motivo) {
         case 'USUARIO_NO_ENCONTRADO':
-          throw new NotFoundException({
-            statusCode: 404,
-            mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
-          });
+          throw usuarioNoEncontrado();
         case 'AUTODESBLOQUEO_PROHIBIDO':
           throw new BadRequestException({
             statusCode: 400,
@@ -233,12 +250,44 @@ export class UsuariosController {
     });
 
     if (!resultado.exito) {
-      throw new NotFoundException({
-        statusCode: 404,
-        mensaje: MENSAJE_USUARIO_NO_ENCONTRADO,
-      });
+      switch (resultado.motivo) {
+        case 'USUARIO_NO_ENCONTRADO':
+          throw usuarioNoEncontrado();
+        // Solo lo produce el origen LINEA_COMANDOS; se mapea igual para que,
+        // si algun dia llega por aqui, diga lo que es y no "no encontrado".
+        case 'MOTIVO_REQUERIDO':
+          throw new BadRequestException({
+            statusCode: 400,
+            codigo: resultado.motivo,
+            mensaje: 'Falta el motivo del restablecimiento.',
+          });
+      }
     }
 
     return { pinTemporal: resultado.pinTemporal };
+  }
+
+  /**
+   * Historial de acceso de la persona (RF-10): restablecimientos de PIN y
+   * desbloqueos, del mas reciente al mas antiguo, paginado (`?page=&pageSize=`,
+   * 20 por defecto, maximo 100). Solo lectura: no hay ni habra endpoint que
+   * edite o borre estos renglones.
+   */
+  @Get(':id/accesos')
+  async accesos(
+    @Param('id', new ZodValidationPipe(IdUsuarioSchema)) id: string,
+    @Query(new ZodValidationPipe(PaginaAccesosSchema)) query: PaginaAccesosDto,
+  ) {
+    const resultado = await this.consultarAccesosUseCase.ejecutar(id, query);
+
+    if (!resultado.exito) {
+      switch (resultado.motivo) {
+        case 'USUARIO_NO_ENCONTRADO':
+          throw usuarioNoEncontrado();
+      }
+    }
+
+    const { items, ...pagina } = resultado.pagina;
+    return { items: items.map(vistaMovimientoAcceso), ...pagina };
   }
 }

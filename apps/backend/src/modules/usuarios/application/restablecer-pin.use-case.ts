@@ -58,18 +58,11 @@ export class RestablecerPinUseCase {
     const pinTemporal = generarPinTemporal();
     const pinHash = await this.hasher.hash(pinTemporal);
 
-    // Se fuerza el cambio en el siguiente login (RF-08) y se levanta el
-    // bloqueo por intentos: el mensaje de bloqueo del login remite al
-    // supervisor justamente para esto (RF-03).
-    await this.usuarios.actualizar(usuarioAppId, {
-      pinHash,
-      debeCambiarPin: true,
-      intentosFallidos: 0,
-      bloqueadoHasta: null,
-    });
-
-    // Traza obligatoria: usuario afectado, quien o por que, y cuando (RF-10).
-    await this.usuarios.registrarRestablecimientoPin(
+    // Cambio de PIN y traza (usuario afectado, quien o por que, y cuando;
+    // RF-10) van juntos en una transaccion: o quedan los dos o ninguno. El
+    // repositorio ademas fuerza el cambio en el siguiente login (RF-08) y
+    // levanta el bloqueo por intentos (RF-03).
+    await this.usuarios.restablecerPin(
       autor.origen === 'SUPERVISOR'
         ? {
             usuarioAppId,
@@ -77,6 +70,7 @@ export class RestablecerPinUseCase {
             restablecidoPor: autor.restablecidoPor,
           }
         : { usuarioAppId, origen: 'LINEA_COMANDOS', motivo: motivo! },
+      pinHash,
     );
 
     return { exito: true, pinTemporal };
